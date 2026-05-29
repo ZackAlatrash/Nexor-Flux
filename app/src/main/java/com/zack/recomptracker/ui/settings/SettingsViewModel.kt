@@ -40,6 +40,7 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     val hcPermissionsContract = hcRepository.permissionsContract()
+    val hcRequiredPermissions: Set<String> = hcRepository.requiredPermissions
 
     init {
         val availability = hcRepository.availability()
@@ -125,7 +126,6 @@ class SettingsViewModel(
 
     fun onPermissionsResult(granted: Set<String>) {
         viewModelScope.launch {
-            onHcPermissionRequestConsumed()
             if (granted.containsAll(hcRepository.requiredPermissions)) {
                 val prefs = planRepository.preferences.first()
                 planRepository.save(prefs.copy(healthConnectEnabled = true))
@@ -145,10 +145,15 @@ class SettingsViewModel(
         if (_uiState.value.healthConnectSyncing) return
         viewModelScope.launch {
             _uiState.update { it.copy(healthConnectSyncing = true) }
-            val date = LocalDate.now()
-            val result = hcRepository.readToday(date)
-            logRepository.applyHealthConnectSync(date, result)
-            _uiState.update { it.copy(healthConnectSyncing = false, message = "Synced.") }
+            runCatching {
+                val date = LocalDate.now()
+                val result = hcRepository.readToday(date)
+                logRepository.applyHealthConnectSync(date, result)
+            }.onSuccess {
+                _uiState.update { it.copy(healthConnectSyncing = false, message = "Synced.") }
+            }.onFailure {
+                _uiState.update { it.copy(healthConnectSyncing = false, message = "Sync failed.") }
+            }
         }
     }
 

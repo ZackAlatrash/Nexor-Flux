@@ -52,7 +52,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
     LaunchedEffect(state.pendingHcPermissionRequest) {
         if (state.pendingHcPermissionRequest) {
-            hcPermissionLauncher.launch(emptySet())
+            hcPermissionLauncher.launch(viewModel.hcRequiredPermissions)
             viewModel.onHcPermissionRequestConsumed()
         }
     }
@@ -89,17 +89,19 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             }
         }
         item {
-            SectionCard("Samsung Health") {
+            SectionCard("Health Connect") {
                 when (state.healthConnectAvailability) {
                     HealthConnectAvailability.NotInstalled -> {
                         Text("Health Connect is not installed on this device.")
                         OutlinedButton(
                             onClick = {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("market://details?id=com.google.android.apps.healthdata"),
-                                )
-                                context.startActivity(intent)
+                                val marketUri = Uri.parse("market://details?id=com.google.android.apps.healthdata")
+                                val webUri = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
+                                try {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, marketUri))
+                                } catch (e: android.content.ActivityNotFoundException) {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {

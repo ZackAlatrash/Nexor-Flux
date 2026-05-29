@@ -80,10 +80,7 @@ class LogRepositorySyncTest {
 
         repo.applyHealthConnectSync(date, result)
 
-        // No upsert should have been called because updated == null (no existing + all nulls = default entity == null in terms of meaningful data)
-        // The entity would equal the default-constructed entity which has all nulls, so no upsert is needed.
-        // Verify: if no prior log, the result entity is identical to DailyLogEntity(date=…) with all nulls,
-        // which equals the existing (null) condition — so upsert is NOT called.
+        // Early return fires — no DB read or write happens.
         assertNull(dao.logs[date.toString()])
     }
 
@@ -103,6 +100,25 @@ class LogRepositorySyncTest {
         repo.applyHealthConnectSync(date, result)
 
         assertEquals(upsertCountBefore, dao.upsertCount) // nothing changed, no write
+    }
+
+    @Test
+    fun `sync preserves non-HC fields on existing log`() = runTest {
+        val dao = FakeDailyLogDao()
+        val repo = buildRepository(dao)
+        dao.logs[date.toString()] = DailyLogEntity(
+            date = date.toString(),
+            trained = true,
+            notes = "leg day",
+            sleepHours = null,
+        )
+
+        repo.applyHealthConnectSync(date, HealthConnectReadResult(sleepHours = 7.0))
+
+        val saved = dao.logs[date.toString()]!!
+        assertEquals(true, saved.trained)
+        assertEquals("leg day", saved.notes)
+        assertEquals(7.0, saved.sleepHours)
     }
 }
 

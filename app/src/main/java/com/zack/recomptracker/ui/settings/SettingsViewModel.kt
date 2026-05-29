@@ -102,7 +102,7 @@ class SettingsViewModel(
 
     fun onHealthConnectToggled(enabled: Boolean) {
         if (enabled) {
-            when (hcRepository.availability()) {
+            when (_uiState.value.healthConnectAvailability) {
                 HealthConnectAvailability.Available ->
                     _uiState.update { it.copy(pendingHcPermissionRequest = true) }
                 HealthConnectAvailability.NotInstalled ->
@@ -142,10 +142,12 @@ class SettingsViewModel(
     }
 
     fun syncNow() {
+        if (_uiState.value.healthConnectSyncing) return
         viewModelScope.launch {
             _uiState.update { it.copy(healthConnectSyncing = true) }
-            val result = hcRepository.readToday(LocalDate.now())
-            logRepository.applyHealthConnectSync(LocalDate.now(), result)
+            val date = LocalDate.now()
+            val result = hcRepository.readToday(date)
+            logRepository.applyHealthConnectSync(date, result)
             _uiState.update { it.copy(healthConnectSyncing = false, message = "Synced.") }
         }
     }

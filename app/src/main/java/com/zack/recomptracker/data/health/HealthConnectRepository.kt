@@ -15,12 +15,14 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-class HealthConnectRepository(private val context: Context) {
+class HealthConnectRepository(context: Context) {
+
+    private val appContext: Context = context.applicationContext
 
     // Created lazily — HealthConnectClient warns against multiple instances.
     // Only accessed after availability() confirms SDK_AVAILABLE.
     private val client: HealthConnectClient by lazy {
-        HealthConnectClient.getOrCreate(context)
+        HealthConnectClient.getOrCreate(appContext)
     }
 
     val requiredPermissions: Set<String> = setOf(
@@ -30,7 +32,7 @@ class HealthConnectRepository(private val context: Context) {
     )
 
     fun availability(): HealthConnectAvailability = when (
-        HealthConnectClient.getSdkStatus(context)
+        HealthConnectClient.getSdkStatus(appContext)
     ) {
         HealthConnectClient.SDK_AVAILABLE -> HealthConnectAvailability.Available
         HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> HealthConnectAvailability.NotInstalled

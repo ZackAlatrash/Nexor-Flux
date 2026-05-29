@@ -1,6 +1,7 @@
 package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.core.model.MacroTotals
+import com.zack.recomptracker.data.health.HealthConnectReadResult
 import com.zack.recomptracker.data.local.dao.DailyLogDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
@@ -210,6 +211,17 @@ class LogRepository(
         resetAllLogs()
         savedFoodDao.deleteAll()
         savedMealDao.deleteAll()
+    }
+
+    suspend fun applyHealthConnectSync(date: LocalDate, result: HealthConnectReadResult) {
+        if (result.steps == null && result.weightKg == null && result.sleepHours == null) return
+        val existing = dailyLogDao.getByDate(date.toString())
+        val updated = (existing ?: DailyLogEntity(date = date.toString())).copy(
+            steps = existing?.steps ?: result.steps,
+            bodyWeightKg = existing?.bodyWeightKg ?: result.weightKg,
+            sleepHours = existing?.sleepHours ?: result.sleepHours,
+        )
+        if (updated != existing) dailyLogDao.upsert(updated)
     }
 }
 

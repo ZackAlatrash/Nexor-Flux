@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.vico.compose.m3)
+    implementation(libs.androidx.health.connect)
 
     ksp(libs.androidx.room.compiler)
 

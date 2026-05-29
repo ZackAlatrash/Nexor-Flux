@@ -1,0 +1,392 @@
+package com.zack.recomptracker.ui.today
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.ui.component.CalorieZoneBar
+import com.zack.recomptracker.ui.component.MacroMiniBar
+import com.zack.recomptracker.ui.component.MessageText
+import com.zack.recomptracker.ui.component.NumberField
+import com.zack.recomptracker.ui.component.ScoreSlider
+import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.ToggleRow
+
+private val Blue = Color(0xFF3b82f6)
+private val DangerBg = Color(0xFF3d1515)
+private val DangerText = Color(0xFFf87171)
+private val Secondary = Color(0xFF6b7280)
+
+@Composable
+fun TodayScreen(
+    viewModel: TodayViewModel,
+    onAddToSlot: (slotId: Long, slotName: String) -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showAddSlotDialog by remember { mutableStateOf(false) }
+    var newSlotName by remember { mutableStateOf("") }
+
+    LazyColumn(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = state.date.toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                MessageText(state.message)
+            }
+        }
+
+        item {
+            SectionCard("Calories") {
+                CalorieZoneBar(
+                    eaten = state.totals.calories,
+                    zoneLower = state.target.calorieZoneLowerBound,
+                    zoneUpper = state.target.calorieZoneUpperBound,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    MacroMiniBar(
+                        label = "Protein",
+                        eaten = state.totals.proteinG,
+                        target = state.target.targetProteinG,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MacroMiniBar(
+                        label = "Carbs",
+                        eaten = state.totals.carbsG,
+                        target = state.target.targetCarbsG,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MacroMiniBar(
+                        label = "Fat",
+                        eaten = state.totals.fatG,
+                        target = state.target.targetFatG,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "MEALS",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.08.sp,
+                    color = Secondary,
+                )
+                TextButton(onClick = viewModel::toggleEditMode) {
+                    Icon(
+                        imageVector = if (state.slotsEditMode) Icons.Default.LockOpen else Icons.Default.Lock,
+                        contentDescription = if (state.slotsEditMode) "Done" else "Reorder",
+                        tint = if (state.slotsEditMode) Blue else Secondary,
+                    )
+                    Text(
+                        text = if (state.slotsEditMode) "Done" else "Reorder",
+                        color = if (state.slotsEditMode) Blue else Secondary,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+        }
+
+        items(state.slots, key = { it.slot.id }) { slotWithEntries ->
+            val index = state.slots.indexOf(slotWithEntries)
+            if (state.slotsEditMode) {
+                EditModeSlotCard(
+                    slotWithEntries = slotWithEntries,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < state.slots.lastIndex,
+                    onMoveUp = {
+                        val ids = state.slots.map { it.slot.id }.toMutableList()
+                        val i = ids.indexOf(slotWithEntries.slot.id)
+                        if (i > 0) {
+                            ids.add(i - 1, ids.removeAt(i))
+                            viewModel.reorderSlots(ids)
+                        }
+                    },
+                    onMoveDown = {
+                        val ids = state.slots.map { it.slot.id }.toMutableList()
+                        val i = ids.indexOf(slotWithEntries.slot.id)
+                        if (i < ids.lastIndex) {
+                            ids.add(i + 1, ids.removeAt(i))
+                            viewModel.reorderSlots(ids)
+                        }
+                    },
+                    onRename = { viewModel.renameSlot(slotWithEntries.slot.id, it) },
+                    onDelete = { viewModel.deleteSlot(slotWithEntries.slot.id) },
+                )
+            } else {
+                LockedSlotCard(
+                    slotWithEntries = slotWithEntries,
+                    onAddClick = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
+                    onDeleteEntry = viewModel::deleteMeal,
+                )
+            }
+        }
+
+        item {
+            OutlinedButton(
+                onClick = { showAddSlotDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Text("Add meal slot", modifier = Modifier.padding(start = 4.dp))
+            }
+        }
+
+        item {
+            SectionCard("Body & recovery") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    NumberField("Weight", state.bodyWeightKg, viewModel::onBodyWeightChanged, Modifier.weight(1f), "kg")
+                    NumberField("Waist", state.waistCm, viewModel::onWaistChanged, Modifier.weight(1f), "cm")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    NumberField("Steps", state.steps, viewModel::onStepsChanged, Modifier.weight(1f))
+                    NumberField("Sleep", state.sleepHours, viewModel::onSleepChanged, Modifier.weight(1f), "h")
+                }
+                ScoreSlider("Energy", state.energyScore, viewModel::onEnergyChanged)
+                ScoreSlider("Hunger", state.hungerScore, viewModel::onHungerChanged)
+                ScoreSlider("Soreness", state.sorenessScore, viewModel::onSorenessChanged)
+                ToggleRow("Training day", state.trained, viewModel::onTrainedChanged)
+                OutlinedTextField(
+                    value = state.notes,
+                    onValueChange = viewModel::onNotesChanged,
+                    label = { Text("Notes") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(onClick = viewModel::saveMetrics, modifier = Modifier.fillMaxWidth()) {
+                    Text("Save metrics")
+                }
+            }
+        }
+    }
+
+    if (showAddSlotDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddSlotDialog = false; newSlotName = "" },
+            title = { Text("New meal slot") },
+            text = {
+                OutlinedTextField(
+                    value = newSlotName,
+                    onValueChange = { newSlotName = it },
+                    label = { Text("Slot name") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.addSlot(newSlotName)
+                    newSlotName = ""
+                    showAddSlotDialog = false
+                }) { Text("Add") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddSlotDialog = false; newSlotName = "" }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun LockedSlotCard(
+    slotWithEntries: MealSlotWithEntries,
+    onAddClick: () -> Unit,
+    onDeleteEntry: (Long) -> Unit,
+) {
+    SectionCard {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = slotWithEntries.slot.name.uppercase(),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Secondary,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (slotWithEntries.entries.isNotEmpty()) {
+                        Text(
+                            text = "${slotWithEntries.totals.calories} kcal",
+                            fontSize = 11.sp,
+                            color = Secondary,
+                        )
+                    }
+                    Button(
+                        onClick = onAddClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Blue),
+                    ) {
+                        Text("+ Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            if (slotWithEntries.entries.isEmpty()) {
+                Text("Empty — tap + Add", fontSize = 12.sp, color = Color(0xFF444444))
+            } else {
+                slotWithEntries.entries.forEachIndexed { i, entry ->
+                    if (i > 0) HorizontalDivider(color = Color(0xFF222222))
+                    SlotEntryRow(entry = entry, onDelete = onDeleteEntry)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SlotEntryRow(entry: MealEntryEntity, onDelete: (Long) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(entry.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(
+                "${entry.calories} kcal · ${entry.proteinG.toInt()}P ${entry.carbsG.toInt()}C ${entry.fatG.toInt()}F",
+                fontSize = 11.sp,
+                color = Secondary,
+            )
+        }
+        TextButton(onClick = { onDelete(entry.id) }) {
+            Text("Delete", color = DangerText, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun EditModeSlotCard(
+    slotWithEntries: MealSlotWithEntries,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onRename: (String) -> Unit,
+    onDelete: () -> Unit,
+) {
+    var showRename by remember { mutableStateOf(false) }
+    var renameValue by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
+
+    SectionCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Up/down arrows
+            Column {
+                IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Move up",
+                        tint = if (canMoveUp) Blue else Color(0xFF333333),
+                    )
+                }
+                IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Move down",
+                        tint = if (canMoveDown) Blue else Color(0xFF333333),
+                    )
+                }
+            }
+            // Slot info
+            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                Text(slotWithEntries.slot.name, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${slotWithEntries.entries.size} items · ${slotWithEntries.totals.calories} kcal",
+                    fontSize = 11.sp,
+                    color = Secondary,
+                )
+            }
+            // Rename / Delete
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(
+                    onClick = { showRename = true; renameValue = slotWithEntries.slot.name },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
+                ) { Text("Rename", fontSize = 11.sp) }
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerBg),
+                ) { Text("Delete", fontSize = 11.sp, color = DangerText) }
+            }
+        }
+    }
+
+    if (showRename) {
+        AlertDialog(
+            onDismissRequest = { showRename = false },
+            title = { Text("Rename slot") },
+            text = {
+                OutlinedTextField(
+                    value = renameValue,
+                    onValueChange = { renameValue = it },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { onRename(renameValue); showRename = false }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRename = false }) { Text("Cancel") }
+            },
+        )
+    }
+}

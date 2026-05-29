@@ -1,0 +1,169 @@
+package com.zack.recomptracker.ui.dashboard
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.core.model.MacroTotals
+import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
+import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
+import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
+import com.zack.recomptracker.domain.adjustment.AdjustmentInput
+import com.zack.recomptracker.domain.adjustment.AdjustmentResult
+import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
+import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
+import com.zack.recomptracker.domain.adherence.AdherenceCalculator
+import com.zack.recomptracker.domain.adherence.NutritionDay
+import com.zack.recomptracker.domain.trend.MeasurementPoint
+import com.zack.recomptracker.domain.trend.PerformancePoint
+import com.zack.recomptracker.domain.trend.RecoveryPoint
+import com.zack.recomptracker.domain.trend.TrendCalculator
+import java.time.DayOfWeek
+import java.time.Instant
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class DashboardUiState(
+    val preferences: PlanPreferences = PlanPreferences(),
+    val todayTotals: MacroTotals = MacroTotals(),
+    val sevenDayWeightAverage: Double? = null,
+    val weightTrendKgPerWeek: Double = 0.0,
+    val waistTrendCmPerWeek: Double = 0.0,
+    val adherencePercent: Double = 0.0,
+    val daysLogged: Int = 0,
+    val result: AdjustmentResult = AdjustmentResult(
+        verdict = AdjustmentVerdict.WAIT_FOR_DATA,
+        recommendedCalorieChange = 0,
+        reasonCodes = listOf("NO_DATA"),
+        summary = "Log today to start building a review window.",
+    ),
+)
+
+class DashboardViewModel(
+    private val logRepository: LogRepository,
+    private val planRepository: PlanRepository,
+    private val dateProvider: DateProvider,
+    private val trendCalculator: TrendCalculator,
+    private val adherenceCalculator: AdherenceCalculator,
+    private val adjustmentEngine: AdjustmentEngine,
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(DashboardUiState())
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            combine(
+                logRepository.observeDailyLogs(),
+                logRepository.observeMealEntries(),
+                logRepository.observePerformances(),
+                planRepository.preferences,
+            ) { logs, meals, performances, preferences ->
+                buildState(logs, meals, performances, preferences)
+            }.collect { state ->
+                _uiState.value = state
+                persistWeeklyReview(state)
+            }
+        }
+    }
+
+    private fun buildState(
+        logs: List<DailyLogEntity>,
+        meals: List<MealEntryEntity>,
+        performances: List<LiftPerformanceEntity>,
+        preferences: PlanPreferences,
+    ): DashboardUiState {
+        val today = dateProvider.today()
+        val todayTotals = meals.filter { it.date == today.toString() }.macroTotals()
+        val last14Start = today.minusDays(13)
+        val last28Start = today.minusDays(27)
+        val logsLast28 = logs.filter { it.localDate() in last28Start..today }
+        val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
+        val mealsByDate = mealsLast14.groupBy { it.localDate() }
+        val nutritionDays = (0..13).map { offset ->
+            val date = last14Start.plusDays(offset.toLong())
+            NutritionDay(date, mealsByDate[date].orEmpty().macroTotals().calories)
+        }
+        val loggedDates = logsLast28.map { it.date }.toSet() + mealsLast14.map { it.date }.toSet()
+        val weightPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.bodyWeightKg) }
+        val waistPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.waistCm) }
+        val performancePoints = performances
+            .filter { it.localDate() in last28Start..today }
+            .map { PerformancePoint(it.localDate(), it.weight, it.reps, it.sets) }
+        val recoveryPoints = logs
+            .filter { it.localDate() in last14Start..today }
+            .map { RecoveryPoint(it.localDate(), it.sleepHours, it.energyScore, it.sorenessScore) }
+        val weightTrend = trendCalculator.trendPerWeek(weightPoints)
+        val waistTrend = trendCalculator.trendPerWeek(waistPoints)
+        val adherence = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories, expectedDays = 14)
+        val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }
+            ?.toInt()
+            ?: 4
+        val result = AdjustmentEngine(
+            AdjustmentThresholds(
+                weightTrendThresholdKgPerWeek = preferences.weightTrendThresholdKgPerWeek,
+                waistIncreaseThresholdCmAcrossTwoWeeks = preferences.waistIncreaseThresholdCm,
+                adherenceMinimumPercent = preferences.adherenceMinimumPercent,
+            ),
+        ).evaluate(
+            AdjustmentInput(
+                daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
+                adherencePercent = adherence,
+                weeksSincePhaseStart = weeksSincePhaseStart,
+                weightTrendKgPerWeek = weightTrend,
+                waistTrendCmPerWeek = waistTrend,
+                performanceTrend = trendCalculator.performanceTrend(performancePoints),
+                recoveryTrend = trendCalculator.recoveryTrend(recoveryPoints),
+            ),
+        )
+
+        return DashboardUiState(
+            preferences = preferences,
+            todayTotals = todayTotals,
+            sevenDayWeightAverage = logs
+                .filter { it.localDate() in today.minusDays(6)..today }
+                .mapNotNull { it.bodyWeightKg }
+                .takeIf { it.isNotEmpty() }
+                ?.average(),
+            weightTrendKgPerWeek = weightTrend,
+            waistTrendCmPerWeek = waistTrend,
+            adherencePercent = adherence,
+            daysLogged = loggedDates.size,
+            result = result,
+        )
+    }
+
+    private suspend fun persistWeeklyReview(state: DashboardUiState) {
+        val today = dateProvider.today()
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        logRepository.saveWeeklyReview(
+            WeeklyReviewEntity(
+                weekStart = weekStart.toString(),
+                verdict = state.result.verdict.name,
+                recommendedCalorieChange = state.result.recommendedCalorieChange,
+                reasonCodes = state.result.reasonCodes.joinToString(","),
+                generatedAt = Instant.now().toString(),
+            ),
+        )
+    }
+
+    private fun DailyLogEntity.localDate(): LocalDate = LocalDate.parse(date)
+    private fun MealEntryEntity.localDate(): LocalDate = LocalDate.parse(date)
+    private fun LiftPerformanceEntity.localDate(): LocalDate = LocalDate.parse(date)
+}
+
+private operator fun ClosedRange<LocalDate>.contains(date: LocalDate): Boolean =
+    !date.isBefore(start) && !date.isAfter(endInclusive)

@@ -1,0 +1,71 @@
+package com.zack.recomptracker.ui.plan
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ui.component.MessageText
+import com.zack.recomptracker.ui.component.NumberField
+import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.ToggleRow
+
+@Composable
+fun PlanScreen(viewModel: PlanViewModel) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LazyColumn(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Plan", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Targets and review thresholds")
+                MessageText(state.message)
+            }
+        }
+        item {
+            SectionCard("Nutrition targets") {
+                NumberField("Calories", state.targetCalories, viewModel::updateTargetCalories, suffix = "kcal")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    NumberField("Protein", state.targetProteinG, viewModel::updateProtein, Modifier.weight(1f), "g")
+                    NumberField("Carbs", state.targetCarbsG, viewModel::updateCarbs, Modifier.weight(1f), "g")
+                    NumberField("Fat", state.targetFatG, viewModel::updateFat, Modifier.weight(1f), "g")
+                }
+            }
+        }
+        item {
+            SectionCard("Review rules") {
+                NumberField("Weight trend threshold", state.weightTrendThresholdKgPerWeek, viewModel::updateWeightThreshold, suffix = "kg/week")
+                NumberField("Waist increase threshold", state.waistIncreaseThresholdCm, viewModel::updateWaistThreshold, suffix = "cm / 2 weeks")
+                NumberField("Adherence minimum", state.adherenceMinimumPercent, viewModel::updateAdherence, suffix = "%")
+                NumberField("Review cadence", state.reviewCadenceDays, viewModel::updateReviewCadence, suffix = "days")
+                NumberField("Calorie zone lower", state.calorieZoneLowerBound, viewModel::updateZoneLower, suffix = "kcal")
+                NumberField("Calorie zone upper", state.calorieZoneUpperBound, viewModel::updateZoneUpper, suffix = "kcal")
+                NumberField("Phase start date", state.maintenancePhaseStartDate, viewModel::updatePhaseStart, suffix = "YYYY-MM-DD")
+                ToggleRow("Metric units", state.useMetricUnits, viewModel::updateUnits)
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = viewModel::save, modifier = Modifier.weight(1f)) {
+                    Text("Save plan")
+                }
+                OutlinedButton(onClick = viewModel::resetDefaults, modifier = Modifier.weight(1f)) {
+                    Text("Defaults")
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Android Recomp Tracker MVP Implementation Plan</title>
+  <style>
+    :root {
+      --ink: #15181c;
+      --muted: #59636f;
+      --line: #dce3ea;
+      --paper: #f8fafb;
+      --panel: #ffffff;
+      --accent: #126d72;
+      --accent-dark: #0b4e52;
+      --amber: #94610f;
+      --green: #17633a;
+      --red: #9b2d20;
+      --blue-soft: #e7f4f5;
+      --green-soft: #eaf6ef;
+      --amber-soft: #fff3dd;
+      --code: #f1f4f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    .page {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 60px;
+    }
+
+    header {
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 24px;
+      margin-bottom: 30px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      max-width: 960px;
+    }
+
+    .subtitle {
+      max-width: 850px;
+      color: var(--muted);
+      font-size: 18px;
+      margin: 18px 0 0;
+    }
+
+    h2 {
+      font-size: 27px;
+      line-height: 1.15;
+      margin: 38px 0 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    h3 {
+      font-size: 19px;
+      margin: 24px 0 9px;
+    }
+
+    p { margin: 0 0 14px; }
+    a { color: var(--accent-dark); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 118px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 23px;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .callout {
+      background: var(--blue-soft);
+      border-left: 5px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 18px;
+      margin: 18px 0;
+    }
+
+    .callout.green {
+      background: var(--green-soft);
+      border-left-color: var(--green);
+    }
+
+    .callout.amber {
+      background: var(--amber-soft);
+      border-left-color: var(--amber);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      margin: 14px 0 22px;
+      font-size: 15px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+    }
+
+    th {
+      background: #eef4f6;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    ul, ol {
+      margin: 0 0 16px 22px;
+      padding: 0;
+    }
+
+    li { margin: 5px 0; }
+
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: var(--code);
+      border-radius: 5px;
+    }
+
+    code {
+      padding: 1px 5px;
+      font-size: 92%;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      line-height: 1.42;
+      font-size: 13px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 2px 3px 2px 0;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status {
+      font-weight: 800;
+      color: var(--accent-dark);
+    }
+
+    @media (max-width: 860px) {
+      .summary-grid, .two-col { grid-template-columns: 1fr; }
+      .page { width: min(100% - 22px, 1160px); padding-top: 24px; }
+      table { font-size: 14px; }
+      th, td { padding: 9px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <p class="eyebrow">Local-first Android MVP plan</p>
+      <h1>Recomp Tracker: Android App Implementation Plan</h1>
+      <p class="subtitle">A simple private Android app for tracking calories, macros, weight, waist, training, recovery, charts, averages, and evidence-based calorie adjustments. No backend, no accounts, no onboarding, no hosting.</p>
+    </header>
+
+    <section>
+      <h2>Executive Decision</h2>
+      <div class="summary-grid">
+        <div class="metric"><strong>Native Android</strong><span>Kotlin, Jetpack Compose, Material 3, single-activity architecture.</span></div>
+        <div class="metric"><strong>Fully offline</strong><span>Room database as local source of truth; DataStore for preferences.</span></div>
+        <div class="metric"><strong>Rule engine first</strong><span>Deterministic adjustment logic, not AI guessing.</span></div>
+        <div class="metric"><strong>Gemma later</strong><span>Optional on-device insight layer after the MVP works.</span></div>
+      </div>
+      <div class="callout green">
+        <strong>Build the app as a personal control panel, not a consumer fitness product.</strong> The MVP should open directly to today’s logging screen, make daily input fast, calculate weekly trends automatically, and tell you whether to hold calories, add calories, reduce calories, or wait for more data.
+      </div>
+    </section>
+
+    <section>
+      <h2>Non-Negotiable Scope</h2>
+      <table>
+        <thead>
+          <tr><th>Included in MVP</th><th>Excluded from MVP</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Manual calories/macros, bodyweight, waist, steps, sleep, hunger, soreness, energy, and training-day logging.</td>
+            <td>User accounts, cloud sync, social features, subscriptions, public profiles, or multi-user support.</td>
+          </tr>
+          <tr>
+            <td>7-day, 14-day, and 28-day averages/trends.</td>
+            <td>Barcode scanning, food-photo recognition, online food database, or restaurant integrations.</td>
+          </tr>
+          <tr>
+            <td>Rule-based calorie adjustment engine.</td>
+            <td>AI making final calorie decisions.</td>
+          </tr>
+          <tr>
+            <td>Charts for weight, waist, calories, macros, adherence, and performance.</td>
+            <td>Full workout programming platform.</td>
+          </tr>
+          <tr>
+            <td>Saved meals and quick copy-from-yesterday logging.</td>
+            <td>Onboarding, coaching marketplace, or generic content library.</td>
+          </tr>
+          <tr>
+            <td>Local export/import for backup.</td>
+            <td>Hosted database, web dashboard, or online account recovery.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Recommended Android Stack</h2>
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Choice</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Language</td>
+            <td><strong>Kotlin</strong></td>
+            <td>Default modern Android language, concise, strong coroutine/Flow support, good for agent-generated code.</td>
+          </tr>
+          <tr>
+            <td>UI</td>
+            <td><strong>Jetpack Compose + Material 3</strong></td>
+            <td>Fast to build, less XML, easy component reuse, official Android direction.</td>
+          </tr>
+          <tr>
+            <td>Architecture</td>
+            <td><strong>Single Activity + Compose Navigation + ViewModels</strong></td>
+            <td>Matches Android guidance: UI driven from state, ViewModels hold screen state, data stays outside the Activity.</td>
+          </tr>
+          <tr>
+            <td>Local database</td>
+            <td><strong>Room</strong></td>
+            <td>Best fit for structured offline logs, queries, migrations, and testability.</td>
+          </tr>
+          <tr>
+            <td>Preferences</td>
+            <td><strong>DataStore Preferences</strong></td>
+            <td>Stores current calorie target, macro targets, units, review cadence, and app settings.</td>
+          </tr>
+          <tr>
+            <td>Async/reactive data</td>
+            <td><strong>Kotlin Coroutines + Flow</strong></td>
+            <td>Room can expose streams; UI updates automatically when logs change.</td>
+          </tr>
+          <tr>
+            <td>Charts</td>
+            <td><strong>Vico</strong></td>
+            <td>Compose-compatible charting library suitable for line/bar trend charts without embedding old View charts.</td>
+          </tr>
+          <tr>
+            <td>Dependency setup</td>
+            <td><strong>Manual AppContainer first</strong></td>
+            <td>For a personal app, manual dependency wiring is simpler than Hilt. If the project grows, Hilt can be introduced later.</td>
+          </tr>
+          <tr>
+            <td>Export/import</td>
+            <td><strong>kotlinx.serialization + Android Storage Access Framework</strong></td>
+            <td>Simple local JSON backup/restore without hosting anything.</td>
+          </tr>
+          <tr>
+            <td>AI phase</td>
+            <td><strong>Gemma via Google AI Edge / MediaPipe LLM Inference</strong></td>
+            <td>Only after MVP. Use it for summaries and explanations, not core decisions.</td>
+          </tr>
+          <tr>
+            <td>Testing</td>
+            <td><strong>JUnit, kotlinx-coroutines-test, Room in-memory tests, Compose UI tests</strong></td>
+            <td>The adjustment engine and trend math need reliable tests because bad logic means bad nutrition decisions.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="small">Use Android Studio’s latest stable Kotlin/Compose template and keep dependency versions in a Gradle version catalog. At implementation time, verify current stable versions rather than freezing versions in this planning document.</p>
+    </section>
+
+    <section>
+      <h2>App Screens</h2>
+      <table>
+        <thead>
+          <tr><th>Screen</th><th>Purpose</th><th>Key UI</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Today</strong></td>
+            <td>Fast daily logging.</td>
+            <td>Macro progress, quick fields for weight/waist/steps/recovery, meal entries, copy yesterday, save button.</td>
+          </tr>
+          <tr>
+            <td><strong>Dashboard</strong></td>
+            <td>Current status and decision.</td>
+            <td>Current calories/macros, 7-day weight average, waist trend, adherence score, calorie verdict card.</td>
+          </tr>
+          <tr>
+            <td><strong>Progress</strong></td>
+            <td>Charts and long-term stats.</td>
+            <td>Weight, waist, calories, macros, adherence, performance charts with 7/14/28-day filters.</td>
+          </tr>
+          <tr>
+            <td><strong>Plan</strong></td>
+            <td>Edit targets and review rules.</td>
+            <td>Maintenance calories, macro targets, meal split, adjustment thresholds, review cadence.</td>
+          </tr>
+          <tr>
+            <td><strong>Foods/Meals</strong></td>
+            <td>Reduce logging friction.</td>
+            <td>Saved foods, saved meals, add/edit/delete, quick-add to meal 1/lunch/dinner.</td>
+          </tr>
+          <tr>
+            <td><strong>Settings</strong></td>
+            <td>Local-only controls.</td>
+            <td>Backup/export/import, units, reset data, optional Gemma model status.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Navigation:</strong> use a bottom navigation bar with Today, Dashboard, Progress, Plan, and More. Put Foods/Meals and Settings under More if the bottom bar gets crowded.
+      </div>
+    </section>
+
+    <section>
+      <h2>Core Data Model</h2>
+      <table>
+        <thead>
+          <tr><th>Entity</th><th>Fields</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>DailyLogEntity</code></td>
+            <td><code>date</code>, <code>bodyWeightKg</code>, <code>waistCm</code>, <code>steps</code>, <code>sleepHours</code>, <code>energyScore</code>, <code>hungerScore</code>, <code>sorenessScore</code>, <code>trained</code>, <code>notes</code></td>
+            <td>One row per calendar date. This is the primary day-level record.</td>
+          </tr>
+          <tr>
+            <td><code>MealEntryEntity</code></td>
+            <td><code>id</code>, <code>date</code>, <code>mealType</code>, <code>name</code>, <code>calories</code>, <code>proteinG</code>, <code>carbsG</code>, <code>fatG</code></td>
+            <td>Manual entries and saved meal inserts both land here.</td>
+          </tr>
+          <tr>
+            <td><code>SavedFoodEntity</code></td>
+            <td><code>id</code>, <code>name</code>, <code>servingName</code>, <code>calories</code>, <code>proteinG</code>, <code>carbsG</code>, <code>fatG</code></td>
+            <td>Simple personal food library. No online database.</td>
+          </tr>
+          <tr>
+            <td><code>SavedMealEntity</code></td>
+            <td><code>id</code>, <code>name</code>, <code>mealType</code>, <code>calories</code>, <code>proteinG</code>, <code>carbsG</code>, <code>fatG</code></td>
+            <td>Stores common meals like post-workout oats/yogurt/whey or rice/chicken dinner.</td>
+          </tr>
+          <tr>
+            <td><code>LiftPerformanceEntity</code></td>
+            <td><code>id</code>, <code>date</code>, <code>liftName</code>, <code>weight</code>, <code>reps</code>, <code>sets</code>, <code>rir</code></td>
+            <td>MVP tracks only selected marker lifts, not the whole workout.</td>
+          </tr>
+          <tr>
+            <td><code>WeeklyReviewEntity</code></td>
+            <td><code>weekStart</code>, <code>verdict</code>, <code>recommendedCalorieChange</code>, <code>reasonCodes</code>, <code>generatedAt</code></td>
+            <td>Stores what the engine recommended and why, so changes are traceable.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>DataStore Settings</h3>
+      <ul>
+        <li><code>targetCalories</code>: default 2550</li>
+        <li><code>targetProteinG</code>: default 165</li>
+        <li><code>targetCarbsG</code>: default 320</li>
+        <li><code>targetFatG</code>: default 68</li>
+        <li><code>maintenancePhaseStartDate</code></li>
+        <li><code>weightTrendThresholdKgPerWeek</code>: default 0.20</li>
+        <li><code>waistIncreaseThresholdCm</code>: default 0.5 across 2 weeks</li>
+        <li><code>adherenceMinimumPercent</code>: default 85</li>
+        <li><code>reviewCadenceDays</code>: default 7</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Adjustment Engine</h2>
+      <p>The adjustment engine should be plain Kotlin and independent from Android UI classes. It receives trend summaries and returns a verdict.</p>
+
+      <table>
+        <thead>
+          <tr><th>Condition</th><th>Verdict</th><th>Recommendation</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Fewer than 14 days of usable data, or adherence below 85%.</td>
+            <td><span class="status">Wait</span></td>
+            <td>No calorie change. Improve logging consistency.</td>
+          </tr>
+          <tr>
+            <td>First 7-10 days after raising calories from the cut.</td>
+            <td><span class="status">Ignore scale jump</span></td>
+            <td>No calorie change unless waist jumps sharply and continues rising.</td>
+          </tr>
+          <tr>
+            <td>Weight trend within +/-0.20 kg/week, waist stable/down, performance stable/up.</td>
+            <td><span class="status">Hold</span></td>
+            <td>Keep current calories and macros.</td>
+          </tr>
+          <tr>
+            <td>Weight falling faster than 0.20 kg/week and performance or recovery is poor.</td>
+            <td><span class="status">Increase</span></td>
+            <td>Add 100-150 kcal/day, mostly carbs.</td>
+          </tr>
+          <tr>
+            <td>Weight rising faster than 0.20 kg/week for 2 weeks and waist is rising.</td>
+            <td><span class="status">Reduce</span></td>
+            <td>Remove 100 kcal/day, mostly carbs or fats depending on adherence.</td>
+          </tr>
+          <tr>
+            <td>Weight up, waist stable, performance up.</td>
+            <td><span class="status">Hold</span></td>
+            <td>Likely glycogen, water, or lean-mass trend. Do not cut.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <pre><code>data class AdjustmentInput(
+    val daysLogged: Int,
+    val adherencePercent: Double,
+    val weeksSincePhaseStart: Int,
+    val weightTrendKgPerWeek: Double,
+    val waistTrendCmPerWeek: Double,
+    val performanceTrend: PerformanceTrend,
+    val recoveryTrend: RecoveryTrend
+)
+
+enum class AdjustmentVerdict {
+    WAIT_FOR_DATA,
+    HOLD,
+    INCREASE_CALORIES,
+    REDUCE_CALORIES
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>Predicted Folder Structure</h2>
+      <pre><code>RecompTracker/
+├── AGENTS.md
+├── README.md
+├── settings.gradle.kts
+├── build.gradle.kts
+├── gradle/
+│   └── libs.versions.toml
+├── app/
+│   ├── build.gradle.kts
+│   └── src/
+│       ├── main/
+│       │   ├── AndroidManifest.xml
+│       │   ├── java/com/zack/recomptracker/
+│       │   │   ├── RecompTrackerApp.kt
+│       │   │   ├── MainActivity.kt
+│       │   │   ├── core/
+│       │   │   │   ├── AppContainer.kt
+│       │   │   │   ├── time/DateProvider.kt
+│       │   │   │   ├── model/MacroTotals.kt
+│       │   │   │   └── util/NumberFormatters.kt
+│       │   │   ├── data/
+│       │   │   │   ├── local/
+│       │   │   │   │   ├── RecompDatabase.kt
+│       │   │   │   │   ├── dao/DailyLogDao.kt
+│       │   │   │   │   ├── dao/MealEntryDao.kt
+│       │   │   │   │   ├── dao/SavedFoodDao.kt
+│       │   │   │   │   ├── dao/PerformanceDao.kt
+│       │   │   │   │   └── entity/*.kt
+│       │   │   │   ├── preferences/AppPreferences.kt
+│       │   │   │   ├── repository/LogRepository.kt
+│       │   │   │   ├── repository/PlanRepository.kt
+│       │   │   │   └── repository/BackupRepository.kt
+│       │   │   ├── domain/
+│       │   │   │   ├── adjustment/AdjustmentEngine.kt
+│       │   │   │   ├── adjustment/AdjustmentModels.kt
+│       │   │   │   ├── trend/TrendCalculator.kt
+│       │   │   │   ├── trend/MovingAverage.kt
+│       │   │   │   ├── adherence/AdherenceCalculator.kt
+│       │   │   │   └── export/BackupModels.kt
+│       │   │   ├── ui/
+│       │   │   │   ├── RecompApp.kt
+│       │   │   │   ├── navigation/AppNavGraph.kt
+│       │   │   │   ├── theme/*.kt
+│       │   │   │   ├── component/*.kt
+│       │   │   │   ├── today/TodayScreen.kt
+│       │   │   │   ├── dashboard/DashboardScreen.kt
+│       │   │   │   ├── progress/ProgressScreen.kt
+│       │   │   │   ├── plan/PlanScreen.kt
+│       │   │   │   ├── foods/FoodsScreen.kt
+│       │   │   │   └── settings/SettingsScreen.kt
+│       │   │   └── ai/
+│       │   │       ├── GemmaInsightService.kt
+│       │   │       └── InsightPromptBuilder.kt
+│       │   └── res/
+│       │       ├── values/strings.xml
+│       │       └── values/colors.xml
+│       ├── test/java/com/zack/recomptracker/
+│       │   ├── domain/AdjustmentEngineTest.kt
+│       │   ├── domain/TrendCalculatorTest.kt
+│       │   └── domain/AdherenceCalculatorTest.kt
+│       └── androidTest/java/com/zack/recomptracker/
+│           ├── data/RecompDatabaseTest.kt
+│           └── ui/TodayScreenTest.kt
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── DATA_MODEL.md
+    ├── ADJUSTMENT_ENGINE.md
+    ├── UI_MAP.md
+    ├── DEVELOPMENT_CHECKLIST.md
+    ├── TESTING.md
+    ├── AI_GEMMA_NOTES.md
+    ├── DECISIONS.md
+    └── PERSONAL_PLAN_DEFAULTS.md</code></pre>
+    </section>
+
+    <section>
+      <h2>Agent Setup Documents</h2>
+      <p>Create these files before serious feature work. They make the project easy for agents to modify without rediscovering the architecture every time.</p>
+      <table>
+        <thead>
+          <tr><th>File</th><th>Purpose</th><th>Required Contents</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>AGENTS.md</code></td>
+            <td>Top-level rules for any coding agent.</td>
+            <td>Android stack, no backend, no onboarding, local-first rule, testing expectations, style conventions, do-not-add scope list.</td>
+          </tr>
+          <tr>
+            <td><code>README.md</code></td>
+            <td>Human project overview.</td>
+            <td>What the app does, how to run it, tech stack, MVP status, common Gradle commands.</td>
+          </tr>
+          <tr>
+            <td><code>docs/ARCHITECTURE.md</code></td>
+            <td>System design reference.</td>
+            <td>Layers, package responsibilities, data flow, single source of truth, AppContainer dependency graph.</td>
+          </tr>
+          <tr>
+            <td><code>docs/DATA_MODEL.md</code></td>
+            <td>Database contract.</td>
+            <td>Entities, fields, relationships, units, migration policy, query examples.</td>
+          </tr>
+          <tr>
+            <td><code>docs/ADJUSTMENT_ENGINE.md</code></td>
+            <td>Nutrition decision logic.</td>
+            <td>Inputs, thresholds, verdicts, examples, edge cases, tests that must pass.</td>
+          </tr>
+          <tr>
+            <td><code>docs/UI_MAP.md</code></td>
+            <td>Screen and navigation reference.</td>
+            <td>Screen list, state holders, user actions, expected empty/error states.</td>
+          </tr>
+          <tr>
+            <td><code>docs/DEVELOPMENT_CHECKLIST.md</code></td>
+            <td>Implementation progress tracker.</td>
+            <td>Phases, tasks, acceptance checks, known gaps.</td>
+          </tr>
+          <tr>
+            <td><code>docs/TESTING.md</code></td>
+            <td>Verification rules.</td>
+            <td>Unit test commands, emulator/manual checks, core scenarios, what must be tested before saying done.</td>
+          </tr>
+          <tr>
+            <td><code>docs/AI_GEMMA_NOTES.md</code></td>
+            <td>Future local AI guardrails.</td>
+            <td>Allowed AI use, prohibited AI decisions, model file handling, prompt templates, privacy notes.</td>
+          </tr>
+          <tr>
+            <td><code>docs/DECISIONS.md</code></td>
+            <td>Architecture decision log.</td>
+            <td>Short dated notes for decisions like “manual AppContainer instead of Hilt” and “Gemma excluded from MVP core.”</td>
+          </tr>
+          <tr>
+            <td><code>docs/PERSONAL_PLAN_DEFAULTS.md</code></td>
+            <td>Your default nutrition plan.</td>
+            <td>2550 kcal, 165P/320C/68F, 3-meal split, fasted-training protocol, adjustment thresholds.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Implementation Phases</h2>
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>Build</th><th>Acceptance Checks</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>0. Project foundation</strong></td>
+            <td>Create Android Studio project, Gradle version catalog, Compose app shell, Material 3 theme, AGENTS.md and docs.</td>
+            <td>App launches on Android emulator/device. README commands work. Agent docs exist.</td>
+          </tr>
+          <tr>
+            <td><strong>1. Local database</strong></td>
+            <td>Room database, entities, DAOs, repositories, DataStore preferences.</td>
+            <td>Unit/instrumented tests can insert logs, meals, foods, and query day totals.</td>
+          </tr>
+          <tr>
+            <td><strong>2. Today logging</strong></td>
+            <td>Today screen with macro fields, body metrics, recovery scores, training toggle, saved meals, copy yesterday.</td>
+            <td>Entering data updates day totals instantly and persists after app restart.</td>
+          </tr>
+          <tr>
+            <td><strong>3. Trend math</strong></td>
+            <td>Moving averages, weekly trends, adherence calculation, performance trend calculation.</td>
+            <td>Pure unit tests cover missing data, first-week scale jump, low adherence, and normal maintenance trend.</td>
+          </tr>
+          <tr>
+            <td><strong>4. Dashboard verdict</strong></td>
+            <td>Adjustment engine and dashboard cards.</td>
+            <td>Dashboard returns hold/increase/reduce/wait with readable reasons and no AI dependency.</td>
+          </tr>
+          <tr>
+            <td><strong>5. Charts</strong></td>
+            <td>Progress screen using Vico for weight, waist, calories, macros, adherence, and selected lift charts.</td>
+            <td>Charts handle empty data, partial data, and 7/14/28-day filters.</td>
+          </tr>
+          <tr>
+            <td><strong>6. Plan and settings</strong></td>
+            <td>Edit calorie/macro targets, thresholds, backup/export/import, reset data.</td>
+            <td>Target edits affect dashboard immediately. Export/import round trip preserves data.</td>
+          </tr>
+          <tr>
+            <td><strong>7. Optional Gemma insights</strong></td>
+            <td>On-device summary generator using Google AI Edge / MediaPipe LLM Inference.</td>
+            <td>AI can summarize a week, but cannot change calorie targets or override the rule engine.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Detailed Build Notes</h2>
+      <div class="two-col">
+        <div>
+          <h3>Keep It Easy to Use</h3>
+          <ul>
+            <li>App opens to Today.</li>
+            <li>All common fields visible without hunting through menus.</li>
+            <li>Large numeric inputs with previous value shortcuts.</li>
+            <li>One tap to copy yesterday’s meals.</li>
+            <li>Saved meals should be quicker than manual entry.</li>
+            <li>Dashboard verdict must be short: Hold, Increase, Reduce, or Wait.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Keep It Easy to Code</h3>
+          <ul>
+            <li>Use one app module for MVP.</li>
+            <li>Keep domain logic pure Kotlin.</li>
+            <li>Use manual dependency wiring first.</li>
+            <li>Use Room queries for raw data and Kotlin use cases for calculations.</li>
+            <li>Do not introduce cloud, auth, or networking.</li>
+            <li>Write tests for math before polishing charts.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Gemma Phase Guardrails</h2>
+      <div class="callout amber">
+        <strong>Do not build Gemma into the MVP core.</strong> Google’s Android LLM Inference guide says the API is optimized for high-end Android devices and does not reliably support emulators. That makes it a poor dependency for the first working version.
+      </div>
+      <table>
+        <thead>
+          <tr><th>Allowed Gemma Use</th><th>Not Allowed</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Explain the weekly verdict in plain English.</td>
+            <td>Change calorie targets directly.</td>
+          </tr>
+          <tr>
+            <td>Summarize trends from already-calculated stats.</td>
+            <td>Infer missing measurements or invent data.</td>
+          </tr>
+          <tr>
+            <td>Draft meal ideas from your saved foods and macro targets.</td>
+            <td>Use online search or hosted inference.</td>
+          </tr>
+          <tr>
+            <td>Answer “why did the app say hold?” using rule outputs.</td>
+            <td>Override the deterministic adjustment engine.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Testing Plan</h2>
+      <table>
+        <thead>
+          <tr><th>Test Type</th><th>Must Cover</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Unit tests</td>
+            <td>Moving averages, trend slopes, adherence percentage, macro totals, calorie adjustment verdicts.</td>
+          </tr>
+          <tr>
+            <td>Room tests</td>
+            <td>Insert/update/delete daily logs, meal entries, saved foods, saved meals, and weekly reviews.</td>
+          </tr>
+          <tr>
+            <td>Compose UI tests</td>
+            <td>Today logging form, dashboard verdict card, empty progress charts, settings export/import controls.</td>
+          </tr>
+          <tr>
+            <td>Manual device checks</td>
+            <td>Install on Android phone, log 7 days of fake data, restart app, verify persistence and charts.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <pre><code>./gradlew test
+./gradlew connectedAndroidTest
+./gradlew lint
+./gradlew assembleDebug</code></pre>
+    </section>
+
+    <section>
+      <h2>Acceptance Criteria for MVP</h2>
+      <ol>
+        <li>The app works fully offline on an Android phone.</li>
+        <li>The app opens directly to Today with no onboarding.</li>
+        <li>You can log calories, protein, carbs, fat, bodyweight, waist, steps, sleep, recovery scores, and training status.</li>
+        <li>You can save common foods/meals and reuse them quickly.</li>
+        <li>The app calculates day totals, 7-day averages, 14/28-day trends, adherence, and performance trend.</li>
+        <li>The dashboard gives one calorie verdict with reason codes.</li>
+        <li>Charts show weight, waist, calories, macros, adherence, and marker lifts.</li>
+        <li>Targets and thresholds can be edited locally.</li>
+        <li>Data can be exported and imported without a server.</li>
+        <li>Core trend and adjustment logic has automated tests.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Primary References</h2>
+      <ul>
+        <li><a href="https://developer.android.com/topic/architecture">Android Developers: Guide to app architecture</a></li>
+        <li><a href="https://developer.android.com/develop/ui/compose/documentation">Android Developers: Get started with Jetpack Compose</a></li>
+        <li><a href="https://developer.android.com/jetpack/androidx/releases/room">Android Developers: Room release documentation</a></li>
+        <li><a href="https://developer.android.com/topic/libraries/architecture/datastore">Android Developers: DataStore guide</a></li>
+        <li><a href="https://github.com/patrykandpatrick/vico">Vico chart library GitHub repository</a></li>
+        <li><a href="https://guide.vico.patrykandpatrick.com/android/compose/cartesian-charts/cartesianchart">Vico Compose CartesianChart documentation</a></li>
+        <li><a href="https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android">Google AI Edge: LLM Inference guide for Android</a></li>
+        <li><a href="https://ai.google.dev/gemma/docs/integrations/mobile">Google AI: Deploy Gemma on mobile devices</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

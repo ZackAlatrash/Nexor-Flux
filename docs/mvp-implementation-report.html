@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recomp Tracker MVP Implementation Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201c;
+      --muted: #60706a;
+      --line: #d9e2dd;
+      --panel: #f7faf8;
+      --accent: #0f766e;
+      --accent-weak: #e0f2ef;
+      --warn: #8a5a00;
+      --warn-bg: #fff7df;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #ffffff;
+      line-height: 1.55;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 4rem);
+      max-width: 860px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-top: 34px;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    code {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.1rem 0.32rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: var(--panel);
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #34423d;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+
+    li {
+      margin: 0.25rem 0;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: var(--panel);
+      color: #354740;
+      font-size: 0.9rem;
+    }
+
+    .summary-grid,
+    .architecture-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-weight: 700;
+      font-size: 0.84rem;
+      color: #07584f;
+      background: var(--accent-weak);
+    }
+
+    .note {
+      border: 1px solid #f0d68c;
+      background: var(--warn-bg);
+      color: var(--warn);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .paths {
+      columns: 2 320px;
+      column-gap: 28px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      color: #2e3935;
+    }
+
+    .paths div {
+      break-inside: avoid;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100% - 20px, 1120px);
+        padding-top: 24px;
+      }
+
+      th,
+      td {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Recomp Tracker Android MVP Implementation Report</h1>
+      <p>Generated after completing the MVP plan in <code>android-recomp-tracker-mvp-plan.html</code>.</p>
+      <div class="meta">
+        <span class="pill">Status: implemented</span>
+        <span class="pill">Date: 2026-05-29</span>
+        <span class="pill">Platform: Android API 26+</span>
+        <span class="pill">Verification target: API 36 emulator</span>
+      </div>
+    </header>
+
+    <section>
+      <h2>What Was Implemented</h2>
+      <div class="summary-grid">
+        <div class="card">
+          <strong>Complete local-first Android app</strong>
+          <p>Kotlin, Jetpack Compose Material 3, Compose Navigation, Room, DataStore, Vico charts, and a manual dependency container.</p>
+        </div>
+        <div class="card">
+          <strong>Daily recomp logging</strong>
+          <p>Body metrics, recovery scores, training day state, notes, meal entries, daily totals, saved meal quick-add, and copy-yesterday flow.</p>
+        </div>
+        <div class="card">
+          <strong>Deterministic plan decisions</strong>
+          <p>Pure Kotlin trend, adherence, and adjustment logic with reason-coded calorie verdicts and weekly review persistence.</p>
+        </div>
+        <div class="card">
+          <strong>Progress and data management</strong>
+          <p>Charts, plan editing, saved foods and meals, local JSON export/import, log reset, full reset, empty states, and validation.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>MVP Checklist</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Status</th>
+            <th>Completed items</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Phase 0. Project foundation</td>
+            <td><span class="status">Complete</span></td>
+            <td>Android project, Gradle version catalog, Compose shell, Material 3 theme, AGENTS/README/docs.</td>
+          </tr>
+          <tr>
+            <td>Phase 1. Local database</td>
+            <td><span class="status">Complete</span></td>
+            <td>Room schema, DAOs, database, repositories, DataStore preferences, real local persistence.</td>
+          </tr>
+          <tr>
+            <td>Phase 2. Today logging</td>
+            <td><span class="status">Complete</span></td>
+            <td>Metrics form, meal form, saved meal quick-add, copy-yesterday, daily totals, validation, empty states.</td>
+          </tr>
+          <tr>
+            <td>Phase 3. Trend math</td>
+            <td><span class="status">Complete</span></td>
+            <td>Moving averages, weekly trends, adherence, performance trend, recovery trend, core tests.</td>
+          </tr>
+          <tr>
+            <td>Phase 4. Dashboard verdict</td>
+            <td><span class="status">Complete</span></td>
+            <td>Adjustment engine, verdict card, reason codes, minimum data/adherence gates, persisted reviews.</td>
+          </tr>
+          <tr>
+            <td>Phase 5. Charts</td>
+            <td><span class="status">Complete</span></td>
+            <td>Weight, waist, calories, macros, adherence, and marker lift charts with 7/14/28 day ranges.</td>
+          </tr>
+          <tr>
+            <td>Phase 6. Plan and settings</td>
+            <td><span class="status">Complete</span></td>
+            <td>Target and threshold editing, units, backup export/import, log reset, full local reset.</td>
+          </tr>
+          <tr>
+            <td>Phase 7. Optional Gemma guardrails</td>
+            <td><span class="status">Complete</span></td>
+            <td>Non-decision service boundary and docs; calorie decisions remain rule-based as required.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Architecture And Folder Structure</h2>
+      <div class="architecture-grid">
+        <div class="card">
+          <strong><code>core</code></strong>
+          <p>Shared models, date provider, formatting helpers, and manual <code>AppContainer</code> wiring.</p>
+        </div>
+        <div class="card">
+          <strong><code>data</code></strong>
+          <p>Room entities/DAOs/database, DataStore preferences, repositories, and backup/restore implementation.</p>
+        </div>
+        <div class="card">
+          <strong><code>domain</code></strong>
+          <p>Pure Kotlin adherence, trend, adjustment, and backup models with no Compose or Android UI dependencies.</p>
+        </div>
+        <div class="card">
+          <strong><code>ui</code></strong>
+          <p>Compose screens, ViewModels, navigation, reusable components, and Material theme.</p>
+        </div>
+        <div class="card">
+          <strong><code>ai</code></strong>
+          <p>Gemma prompt and insight boundary kept outside the calorie decision path.</p>
+        </div>
+        <div class="card">
+          <strong><code>docs</code></strong>
+          <p>Architecture, data model, adjustment engine, UI map, checklist, testing notes, decisions, and this report.</p>
+        </div>
+      </div>
+      <h3>Primary implementation paths</h3>
+      <div class="paths">
+        <div>app/src/main/java/com/zack/recomptracker/core</div>
+        <div>app/src/main/java/com/zack/recomptracker/data</div>
+        <div>app/src/main/java/com/zack/recomptracker/domain</div>
+        <div>app/src/main/java/com/zack/recomptracker/ui</div>
+        <div>app/src/main/java/com/zack/recomptracker/ai</div>
+        <div>app/src/test/java/com/zack/recomptracker/domain</div>
+        <div>app/src/androidTest/java/com/zack/recomptracker/data</div>
+        <div>app/src/androidTest/java/com/zack/recomptracker/ui</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Important Technical Decisions</h2>
+      <ul>
+        <li>Used Kotlin and Compose Material 3 because the plan specified a native Android MVP with a clean, maintainable UI layer.</li>
+        <li>Used Room for logs and saved items, and DataStore for plan preferences, because the plan requires reliable local persistence without accounts or a backend.</li>
+        <li>Kept the adjustment engine as pure Kotlin domain code so it is deterministic, testable, and independent of UI state.</li>
+        <li>Used a manual <code>AppContainer</code> instead of adding a DI framework, keeping the MVP simple while preserving separation of concerns.</li>
+        <li>Used Vico for charts instead of hand-drawn graph logic.</li>
+        <li>Excluded Gemma from calorie decisions; it is represented only as a future local insight boundary, matching the guardrail requirement.</li>
+        <li>Created local JDK 17 and Android SDK tooling inside the workspace because the machine did not initially have a working Android build environment.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Testing And Build Results</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Verification</th>
+            <th>Result</th>
+            <th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Full Gradle verification</td>
+            <td><span class="status">Passed</span></td>
+            <td><code>./gradlew test lint assembleDebug assembleDebugAndroidTest</code> completed successfully in 19s with 110 actionable tasks.</td>
+          </tr>
+          <tr>
+            <td>Connected Android tests</td>
+            <td><span class="status">Passed</span></td>
+            <td><code>./gradlew connectedAndroidTest</code> ran 2 tests on <code>RecompTrackerApi36</code> and completed successfully in 31s.</td>
+          </tr>
+          <tr>
+            <td>Unit tests</td>
+            <td><span class="status">Passed</span></td>
+            <td>Adjustment engine, adherence calculator, and trend calculator tests passed through the Gradle <code>test</code> task.</td>
+          </tr>
+          <tr>
+            <td>Persistence instrumentation</td>
+            <td><span class="status">Passed</span></td>
+            <td>Room insert, read, and relational day-summary behavior passed in <code>RecompDatabaseTest</code>.</td>
+          </tr>
+          <tr>
+            <td>UI instrumentation</td>
+            <td><span class="status">Passed</span></td>
+            <td><code>TodayScreenTest</code> verified the Today screen, core sections, and empty meal state in Compose.</td>
+          </tr>
+          <tr>
+            <td>Install and launch smoke test</td>
+            <td><span class="status">Passed</span></td>
+            <td>Debug APK installed, <code>MainActivity</code> launched cold with status <code>ok</code>, and no app crash signatures were found in logcat.</td>
+          </tr>
+          <tr>
+            <td>Manual navigation inspection</td>
+            <td><span class="status">Passed</span></td>
+            <td>UI hierarchy dumps confirmed Today, Dashboard, Progress, Plan, More, Foods/Meals, and Settings screens were reachable.</td>
+          </tr>
+          <tr>
+            <td>Unfinished-work source scan</td>
+            <td><span class="status">Passed</span></td>
+            <td><code>rg -n "TODO|FIXME|placeholder|fake|mock" app/src docs/*.md AGENTS.md README.md</code> only found the project rule text in <code>AGENTS.md</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">A transient emulator System UI ANR dialog appeared during the manual launch pass and was dismissed. The app itself rendered correctly and no <code>AndroidRuntime</code>, <code>FATAL EXCEPTION</code>, or app ANR signatures were found for <code>com.zack.recomptracker</code>.</p>
+    </section>
+
+    <section>
+      <h2>Known Limitations</h2>
+      <ul>
+        <li>The MVP has a version 1 Room schema. Future schema changes should add explicit migrations before release.</li>
+        <li>Manual device validation was performed on an API 36 emulator, not a physical phone.</li>
+        <li>Gemma is not active in the MVP. That is intentional: the plan requires deterministic rule-based calorie decisions first.</li>
+        <li>Backup import accepts the local JSON shape generated by this app; broader schema-compatibility handling should be added if the format evolves.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Recommended Next Steps</h2>
+      <ul>
+        <li>Run a real-user manual pass on a physical Android device, especially Storage Access Framework import/export.</li>
+        <li>Add release signing, app icon polish, and Play-ready metadata once the MVP behavior is accepted.</li>
+        <li>Add migration tests when the Room schema changes after MVP.</li>
+        <li>Add richer end-to-end UI tests around meal saving, backup import/export, plan editing, and reset confirmation paths.</li>
+        <li>Only after deterministic decisions are trusted, add local Gemma summaries that explain the existing rule-engine verdict without changing it.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

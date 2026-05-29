@@ -12,6 +12,7 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
+import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -53,6 +55,7 @@ class TodayViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     dateProvider: DateProvider,
+    private val hcRepository: HealthConnectRepository,
 ) : ViewModel() {
     private val today = dateProvider.today()
     private val _uiState = MutableStateFlow(TodayUiState(date = today))
@@ -104,6 +107,14 @@ class TodayViewModel(
                         unslottedEntries = unslotted,
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            if (planRepository.preferences.first().healthConnectEnabled
+                && hcRepository.hasPermissions()
+            ) {
+                val result = hcRepository.readToday(today)
+                logRepository.applyHealthConnectSync(today, result)
             }
         }
     }

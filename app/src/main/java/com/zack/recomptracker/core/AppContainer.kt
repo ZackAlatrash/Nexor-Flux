@@ -7,6 +7,7 @@ import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.time.SystemDateProvider
 import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.AppPreferences
+import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
@@ -36,6 +37,7 @@ class AppContainer(context: Context) {
         mealSlotDao = database.mealSlotDao(),
     )
     val backupRepository = BackupRepository(database, planRepository)
+    val healthConnectRepository = HealthConnectRepository(context.applicationContext)
     val adjustmentEngine = AdjustmentEngine()
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
@@ -52,6 +54,7 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
+                hcRepository = container.healthConnectRepository,
             )
             DashboardViewModel::class.java -> DashboardViewModel(
                 logRepository = container.logRepository,
@@ -76,6 +79,7 @@ private class AppViewModelFactory(
                 backupRepository = container.backupRepository,
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
+                hcRepository = container.healthConnectRepository,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 logRepository = container.logRepository,

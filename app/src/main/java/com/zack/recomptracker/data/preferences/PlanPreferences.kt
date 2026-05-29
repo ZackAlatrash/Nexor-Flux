@@ -16,4 +16,5 @@ data class PlanPreferences(
     val useMetricUnits: Boolean = true,
     val calorieZoneLowerBound: Int = 2400,
     val calorieZoneUpperBound: Int = 2600,
+    val healthConnectEnabled: Boolean = false,
 )

@@ -27,6 +27,7 @@ class AppPreferences(
             adherenceMinimumPercent = prefs[Keys.AdherenceMinimumPercent] ?: 85.0,
             reviewCadenceDays = prefs[Keys.ReviewCadenceDays] ?: 7,
             useMetricUnits = prefs[Keys.UseMetricUnits] ?: true,
+            healthConnectEnabled = prefs[Keys.HealthConnectEnabled] ?: false,
         )
     }
 
@@ -46,6 +47,7 @@ class AppPreferences(
             prefs[Keys.AdherenceMinimumPercent] = preferences.adherenceMinimumPercent
             prefs[Keys.ReviewCadenceDays] = preferences.reviewCadenceDays
             prefs[Keys.UseMetricUnits] = preferences.useMetricUnits
+            prefs[Keys.HealthConnectEnabled] = preferences.healthConnectEnabled
         }
     }
 
@@ -64,5 +66,6 @@ class AppPreferences(
         val AdherenceMinimumPercent = doublePreferencesKey("adherence_minimum_percent")
         val ReviewCadenceDays = intPreferencesKey("review_cadence_days")
         val UseMetricUnits = booleanPreferencesKey("use_metric_units")
+        val HealthConnectEnabled = booleanPreferencesKey("health_connect_enabled")
     }
 }

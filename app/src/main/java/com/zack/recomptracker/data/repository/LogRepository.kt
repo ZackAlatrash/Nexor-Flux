@@ -2,8 +2,6 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.data.health.HealthConnectReadResult
-import com.zack.recomptracker.domain.food.RecentFoods
-import kotlinx.coroutines.flow.map
 import com.zack.recomptracker.data.local.dao.DailyLogDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
@@ -18,9 +16,11 @@ import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
+import com.zack.recomptracker.domain.food.RecentFoods
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 class LogRepository(
     private val dailyLogDao: DailyLogDao,

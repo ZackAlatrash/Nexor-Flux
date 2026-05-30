@@ -363,15 +363,17 @@ class FoodLibraryViewModel(
     fun onNewFoodCarbsChanged(v: String) = _uiState.update { it.copy(newFoodCarbs = v) }
     fun onNewFoodFatChanged(v: String) = _uiState.update { it.copy(newFoodFat = v) }
     fun toggleCreateFoodForm() = _uiState.update {
+        // Toggling always starts from a clean slate (a fresh "create"); editing is
+        // entered via openEditFood(), which prefills explicitly.
         it.copy(
             showCreateFoodForm = !it.showCreateFoodForm,
             editingFoodId = null,
-            newFoodName = if (it.showCreateFoodForm) it.newFoodName else "",
-            newFoodServing = if (it.showCreateFoodForm) it.newFoodServing else "100g",
-            newFoodCalories = if (it.showCreateFoodForm) it.newFoodCalories else "",
-            newFoodProtein = if (it.showCreateFoodForm) it.newFoodProtein else "",
-            newFoodCarbs = if (it.showCreateFoodForm) it.newFoodCarbs else "",
-            newFoodFat = if (it.showCreateFoodForm) it.newFoodFat else "",
+            newFoodName = "",
+            newFoodServing = "100g",
+            newFoodCalories = "",
+            newFoodProtein = "",
+            newFoodCarbs = "",
+            newFoodFat = "",
             newFoodServingName = "",
             newFoodServingGrams = "",
             message = null,

@@ -443,7 +443,7 @@ class FoodLibraryViewModel(
     fun confirmQuickAdd() {
         val s = _uiState.value
         val cal = s.quickAddCalories.toIntOrNull()
-        if (cal == null || cal < 0) {
+        if (cal == null || cal <= 0) {
             _uiState.update { it.copy(message = "Enter a calorie amount.") }
             return
         }

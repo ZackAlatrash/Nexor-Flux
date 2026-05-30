@@ -253,6 +253,7 @@ fun FoodLibraryScreen(
                         NumberField("Carbs", state.quickAddCarbs, viewModel::onQuickAddCarbsChanged, Modifier.weight(1f), "g")
                         NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
                     }
+                    MessageText(state.message)
                 }
             },
             confirmButton = { TextButton(onClick = viewModel::confirmQuickAdd) { Text("Add") } },

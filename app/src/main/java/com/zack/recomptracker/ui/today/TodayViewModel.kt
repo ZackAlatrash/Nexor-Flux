@@ -143,6 +143,19 @@ class TodayViewModel(
         viewModelScope.launch { logRepository.deleteMeal(id) }
     }
 
+    fun updateMealMacros(entry: MealEntryEntity, calories: Int, proteinG: Double, carbsG: Double, fatG: Double) {
+        viewModelScope.launch {
+            logRepository.updateMealEntry(
+                entry.copy(
+                    calories = calories,
+                    proteinG = proteinG,
+                    carbsG = carbsG,
+                    fatG = fatG,
+                ),
+            )
+        }
+    }
+
     fun onBodyWeightChanged(v: String) = editMetrics { copy(bodyWeightKg = v) }
     fun onWaistChanged(v: String) = editMetrics { copy(waistCm = v) }
     fun onStepsChanged(v: String) = editMetrics { copy(steps = v) }

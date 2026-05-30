@@ -52,4 +52,7 @@ interface MealEntryDao {
 
     @Query("UPDATE meal_entries SET slotId = NULL WHERE slotId = :slotId")
     suspend fun clearSlotId(slotId: Long)
+
+    @Query("SELECT * FROM meal_entries WHERE id = :id")
+    suspend fun getById(id: Long): MealEntryEntity?
 }

@@ -194,8 +194,13 @@ class FoodLibraryViewModel(
     val uiState: StateFlow<FoodLibraryUiState> = _uiState
     private var initialized = false
 
-    fun init(slotId: Long?, slotName: String) {
+    fun init(slotId: Long?, slotName: String, editEntryId: Long? = null) {
         _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }) }
+        if (editEntryId != null && _uiState.value.editingEntryId != editEntryId) {
+            viewModelScope.launch {
+                logRepository.getMealEntry(editEntryId)?.let { requestEditEntry(it) }
+            }
+        }
         if (initialized) return
         initialized = true
         val today = dateProvider.today()
@@ -245,6 +250,34 @@ class FoodLibraryViewModel(
                 amountMode = if (canServings) AmountMode.SERVINGS else AmountMode.GRAMS,
                 servingsValue = "1",
                 gramsValue = "100",
+                message = null,
+            )
+        }
+    }
+
+    fun requestEditEntry(entry: com.zack.recomptracker.data.local.entity.MealEntryEntity) {
+        val baseCalories = entry.basePer100Calories ?: return
+        val base = SavedFoodEntity(
+            name = entry.name,
+            servingName = entry.entryServingName ?: "100g",
+            calories = baseCalories,
+            proteinG = entry.basePer100ProteinG ?: 0.0,
+            carbsG = entry.basePer100CarbsG ?: 0.0,
+            fatG = entry.basePer100FatG ?: 0.0,
+            householdServingName = entry.entryServingName,
+            householdServingGrams = entry.entryServingGrams,
+        )
+        val useServings = entry.entryServingGrams != null && entry.entryServingName != null
+        _uiState.update {
+            it.copy(
+                showAmountSheet = true,
+                pendingFood = base,
+                editingEntryId = entry.id,
+                amountMode = if (useServings) AmountMode.SERVINGS else AmountMode.GRAMS,
+                servingsValue = if (useServings && entry.entryServingGrams!! >= 1.0) {
+                    ((entry.amountGrams ?: 0.0) / entry.entryServingGrams!!).toInt().coerceAtLeast(1).toString()
+                } else "1",
+                gramsValue = (entry.amountGrams ?: 100.0).toInt().toString(),
                 message = null,
             )
         }
@@ -303,10 +336,7 @@ class FoodLibraryViewModel(
                     it.copy(showAmountSheet = false, pendingFood = null, message = "${food.name} logged.")
                 }
             } else {
-                val existing = logRepository.getMealEntriesForSlot(
-                    date = dateProvider.today().toString(),
-                    slotId = state.slotId,
-                ).firstOrNull { it.id == editingId }
+                val existing = logRepository.getMealEntry(editingId)
                 if (existing == null) {
                     _uiState.update { it.copy(message = "Couldn't find that entry to update.") }
                     return@launch

@@ -59,8 +59,9 @@ fun FoodLibraryScreen(
     slotId: Long?,
     slotName: String,
     onBack: () -> Unit,
+    editEntryId: Long? = null,
 ) {
-    LaunchedEffect(Unit) { viewModel.init(slotId, slotName) }
+    LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(

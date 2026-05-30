@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.today
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,6 +53,7 @@ fun FoodScreen(
     viewModel: TodayViewModel,
     onAddToSlot: (slotId: Long, slotName: String) -> Unit,
     onBrowseLibrary: () -> Unit,
+    onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     FoodContent(
@@ -63,9 +65,11 @@ fun FoodScreen(
             onDeleteSlot = viewModel::deleteSlot,
             onReorderSlots = viewModel::reorderSlots,
             onDeleteMeal = viewModel::deleteMeal,
+            onEditMacros = viewModel::updateMealMacros,
         ),
         onAddToSlot = onAddToSlot,
         onBrowseLibrary = onBrowseLibrary,
+        onEditEntryAmount = onEditEntryAmount,
     )
 }
 
@@ -76,6 +80,7 @@ data class FoodActions(
     val onDeleteSlot: (Long) -> Unit,
     val onReorderSlots: (List<Long>) -> Unit,
     val onDeleteMeal: (Long) -> Unit,
+    val onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
 )
 
 @Composable
@@ -84,6 +89,7 @@ fun FoodContent(
     actions: FoodActions,
     onAddToSlot: (slotId: Long, slotName: String) -> Unit,
     onBrowseLibrary: () -> Unit,
+    onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAddSlotDialog by remember { mutableStateOf(false) }
@@ -216,6 +222,8 @@ fun FoodContent(
                     slotWithEntries = slotWithEntries,
                     onAddClick = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
                     onDeleteEntry = actions.onDeleteMeal,
+                    onEditEntryAmount = { entryId -> onEditEntryAmount(slotWithEntries.slot.id, slotWithEntries.slot.name, entryId) },
+                    onEditMacros = actions.onEditMacros,
                 )
             }
         }
@@ -275,6 +283,8 @@ private fun LockedSlotCard(
     slotWithEntries: MealSlotWithEntries,
     onAddClick: () -> Unit,
     onDeleteEntry: (Long) -> Unit,
+    onEditEntryAmount: (Long) -> Unit,
+    onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
 ) {
     SectionCard {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -313,7 +323,12 @@ private fun LockedSlotCard(
             } else {
                 slotWithEntries.entries.forEachIndexed { i, entry ->
                     if (i > 0) HorizontalDivider(color = Color(0xFF222222))
-                    SlotEntryRow(entry = entry, onDelete = onDeleteEntry)
+                    SlotEntryRow(
+                        entry = entry,
+                        onDelete = onDeleteEntry,
+                        onEditAmount = { onEditEntryAmount(entry.id) },
+                        onEditMacros = onEditMacros,
+                    )
                 }
             }
         }
@@ -321,9 +336,18 @@ private fun LockedSlotCard(
 }
 
 @Composable
-private fun SlotEntryRow(entry: MealEntryEntity, onDelete: (Long) -> Unit) {
+private fun SlotEntryRow(
+    entry: MealEntryEntity,
+    onDelete: (Long) -> Unit,
+    onEditAmount: () -> Unit,
+    onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
+) {
+    var showMacroEdit by remember { mutableStateOf(false) }
+    val amountEditable = entry.amountGrams != null && entry.basePer100Calories != null
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -339,6 +363,51 @@ private fun SlotEntryRow(entry: MealEntryEntity, onDelete: (Long) -> Unit) {
             Text("Delete", color = DangerText, fontSize = 11.sp)
         }
     }
+
+    if (showMacroEdit) {
+        MacroEditDialog(
+            entry = entry,
+            onDismiss = { showMacroEdit = false },
+            onSave = { cal, p, c, f -> onEditMacros(entry, cal, p, c, f); showMacroEdit = false },
+        )
+    }
+}
+
+@Composable
+private fun MacroEditDialog(
+    entry: MealEntryEntity,
+    onDismiss: () -> Unit,
+    onSave: (Int, Double, Double, Double) -> Unit,
+) {
+    var cal by remember { mutableStateOf(entry.calories.toString()) }
+    var p by remember { mutableStateOf(entry.proteinG.toInt().toString()) }
+    var c by remember { mutableStateOf(entry.carbsG.toInt().toString()) }
+    var f by remember { mutableStateOf(entry.fatG.toInt().toString()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit ${entry.name}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.zack.recomptracker.ui.component.NumberField("Calories", cal, { cal = it }, suffix = "kcal")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    com.zack.recomptracker.ui.component.NumberField("Protein", p, { p = it }, Modifier.weight(1f), "g")
+                    com.zack.recomptracker.ui.component.NumberField("Carbs", c, { c = it }, Modifier.weight(1f), "g")
+                    com.zack.recomptracker.ui.component.NumberField("Fat", f, { f = it }, Modifier.weight(1f), "g")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(
+                    cal.toIntOrNull() ?: entry.calories,
+                    p.toDoubleOrNull() ?: entry.proteinG,
+                    c.toDoubleOrNull() ?: entry.carbsG,
+                    f.toDoubleOrNull() ?: entry.fatG,
+                )
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

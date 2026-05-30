@@ -157,6 +157,7 @@ private object NoopMealEntryDao : MealEntryDao {
     override suspend fun deleteForDate(date: String) = Unit
     override suspend fun deleteAll() = Unit
     override suspend fun clearSlotId(slotId: Long) = Unit
+    override suspend fun getById(id: Long): MealEntryEntity? = null
 }
 
 private object NoopSavedFoodDao : SavedFoodDao {

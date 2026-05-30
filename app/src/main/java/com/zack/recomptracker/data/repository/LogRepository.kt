@@ -161,6 +161,8 @@ class LogRepository(
 
     fun observeSlots(): Flow<List<MealSlotEntity>> = mealSlotDao.observeAll()
 
+    suspend fun getMealEntry(id: Long): MealEntryEntity? = mealEntryDao.getById(id)
+
     suspend fun getMealEntriesForSlot(date: String, slotId: Long?): List<MealEntryEntity> =
         mealEntryDao.getForDate(date).filter { it.slotId == slotId }
 

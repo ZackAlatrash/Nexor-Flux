@@ -78,6 +78,11 @@ fun AppNavGraph(
                     )
                 },
                 onBrowseLibrary = { navController.navigate(Routes.FoodLibrary) },
+                onEditEntryAmount = { slotId, slotName, entryId ->
+                    navController.navigate(
+                        "${Routes.FoodLibrary}?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&editEntryId=$entryId"
+                    )
+                },
             )
         }
         composable(TopLevelDestination.Body.route) {
@@ -104,7 +109,7 @@ fun AppNavGraph(
             FoodsScreen(viewModel<FoodsViewModel>(factory = factory))
         }
         composable(
-            route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}",
+            route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}",
             arguments = listOf(
                 androidx.navigation.navArgument("slotId") {
                     type = androidx.navigation.NavType.LongType
@@ -114,6 +119,10 @@ fun AppNavGraph(
                     type = androidx.navigation.NavType.StringType
                     defaultValue = ""
                 },
+                androidx.navigation.navArgument("editEntryId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
             ),
         ) { backStackEntry ->
             val slotId = backStackEntry.arguments?.getLong("slotId")?.takeIf { it != -1L }
@@ -121,11 +130,13 @@ fun AppNavGraph(
                 backStackEntry.arguments?.getString("slotName").orEmpty(),
                 "UTF-8"
             )
+            val editEntryId = backStackEntry.arguments?.getLong("editEntryId")?.takeIf { it != -1L }
             FoodLibraryScreen(
                 viewModel = viewModel<FoodLibraryViewModel>(factory = factory),
                 slotId = slotId,
                 slotName = slotName,
                 onBack = { navController.popBackStack() },
+                editEntryId = editEntryId,
             )
         }
         composable(Routes.Settings) {

@@ -34,7 +34,7 @@ import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
         WeeklyReviewEntity::class,
         MealSlotEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -61,6 +61,20 @@ abstract class RecompDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Meal 1', 0)")
                 db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Lunch', 1)")
                 db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Dinner', 2)")
+            }
+        }
+
+        internal val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE saved_foods ADD COLUMN householdServingName TEXT")
+                db.execSQL("ALTER TABLE saved_foods ADD COLUMN householdServingGrams REAL")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN amountGrams REAL")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN basePer100Calories INTEGER")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN basePer100ProteinG REAL")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN basePer100CarbsG REAL")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN basePer100FatG REAL")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN entryServingName TEXT")
+                db.execSQL("ALTER TABLE meal_entries ADD COLUMN entryServingGrams REAL")
             }
         }
 
@@ -94,7 +108,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 }

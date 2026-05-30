@@ -14,4 +14,6 @@ data class SavedFoodEntity(
     val proteinG: Double,
     val carbsG: Double,
     val fatG: Double,
+    val householdServingName: String? = null,
+    val householdServingGrams: Double? = null,
 )

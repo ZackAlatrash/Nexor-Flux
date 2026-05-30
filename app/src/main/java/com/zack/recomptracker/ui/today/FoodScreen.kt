@@ -379,10 +379,10 @@ private fun MacroEditDialog(
     onDismiss: () -> Unit,
     onSave: (Int, Double, Double, Double) -> Unit,
 ) {
-    var cal by remember { mutableStateOf(entry.calories.toString()) }
-    var p by remember { mutableStateOf(entry.proteinG.toInt().toString()) }
-    var c by remember { mutableStateOf(entry.carbsG.toInt().toString()) }
-    var f by remember { mutableStateOf(entry.fatG.toInt().toString()) }
+    var cal by remember(entry.id) { mutableStateOf(entry.calories.toString()) }
+    var p by remember(entry.id) { mutableStateOf(entry.proteinG.toInt().toString()) }
+    var c by remember(entry.id) { mutableStateOf(entry.carbsG.toInt().toString()) }
+    var f by remember(entry.id) { mutableStateOf(entry.fatG.toInt().toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit ${entry.name}") },

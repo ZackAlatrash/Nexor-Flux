@@ -197,6 +197,7 @@ class FoodLibraryViewModel(
     fun init(slotId: Long?, slotName: String, editEntryId: Long? = null) {
         _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }) }
         if (editEntryId != null && _uiState.value.editingEntryId != editEntryId) {
+            _uiState.update { it.copy(editingEntryId = editEntryId) }
             viewModelScope.launch {
                 logRepository.getMealEntry(editEntryId)?.let { requestEditEntry(it) }
             }
@@ -275,7 +276,8 @@ class FoodLibraryViewModel(
                 editingEntryId = entry.id,
                 amountMode = if (useServings) AmountMode.SERVINGS else AmountMode.GRAMS,
                 servingsValue = if (useServings && entry.entryServingGrams!! >= 1.0) {
-                    ((entry.amountGrams ?: 0.0) / entry.entryServingGrams!!).toInt().coerceAtLeast(1).toString()
+                    val servings = ((entry.amountGrams ?: 0.0) / entry.entryServingGrams!!).coerceAtLeast(1.0)
+                    if (servings == servings.toLong().toDouble()) servings.toLong().toString() else servings.toString()
                 } else "1",
                 gramsValue = (entry.amountGrams ?: 100.0).toInt().toString(),
                 message = null,

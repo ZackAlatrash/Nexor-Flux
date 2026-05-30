@@ -65,8 +65,10 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     }
     val hcPermissionLauncher = rememberLauncherForActivityResult(
         contract = viewModel.hcPermissionsContract,
-    ) { grantedPerms ->
-        viewModel.onPermissionsResult(grantedPerms)
+    ) {
+        // The returned granted-set is unreliable; the ViewModel re-queries the
+        // authoritative permission state, so the callback payload is ignored.
+        viewModel.onPermissionsResult()
     }
 
     LaunchedEffect(state.pendingHcPermissionRequest) {
@@ -113,6 +115,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 enabled = state.healthConnectEnabled,
                 hasPermissions = state.healthConnectHasPermissions,
                 syncing = state.healthConnectSyncing,
+                message = state.healthConnectMessage,
                 onToggle = viewModel::onHealthConnectToggled,
                 onSyncNow = viewModel::syncNow,
                 onInstall = {
@@ -159,6 +162,7 @@ private fun HealthConnectSection(
     enabled: Boolean,
     hasPermissions: Boolean,
     syncing: Boolean,
+    message: String?,
     onToggle: (Boolean) -> Unit,
     onSyncNow: () -> Unit,
     onInstall: () -> Unit,
@@ -249,6 +253,8 @@ private fun HealthConnectSection(
                 }
             }
         }
+
+        MessageText(message)
     }
 }
 
@@ -290,26 +296,31 @@ private fun HealthConnectSectionPreview() {
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = true, syncing = false,
+                message = "Synced from Health Connect.",
                 onToggle = {}, onSyncNow = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = true, syncing = true,
+                message = "Connected. Syncing…",
                 onToggle = {}, onSyncNow = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = false, syncing = false,
+                message = "Permission wasn't granted. Tap the toggle to try again.",
                 onToggle = {}, onSyncNow = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = false, hasPermissions = false, syncing = false,
+                message = null,
                 onToggle = {}, onSyncNow = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.NotInstalled,
                 enabled = false, hasPermissions = false, syncing = false,
+                message = null,
                 onToggle = {}, onSyncNow = {}, onInstall = {},
             )
         }

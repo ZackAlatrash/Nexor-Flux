@@ -2,6 +2,7 @@ package com.zack.recomptracker.ui.settings
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.health.HealthConnectAvailability
@@ -28,6 +29,7 @@ data class SettingsUiState(
     val healthConnectHasPermissions: Boolean = false,
     val healthConnectSyncing: Boolean = false,
     val pendingHcPermissionRequest: Boolean = false,
+    val healthConnectMessage: String? = null,
 )
 
 class SettingsViewModel(
@@ -105,17 +107,17 @@ class SettingsViewModel(
         if (enabled) {
             when (_uiState.value.healthConnectAvailability) {
                 HealthConnectAvailability.Available ->
-                    _uiState.update { it.copy(pendingHcPermissionRequest = true) }
+                    _uiState.update { it.copy(pendingHcPermissionRequest = true, healthConnectMessage = null) }
                 HealthConnectAvailability.NotInstalled ->
-                    _uiState.update { it.copy(message = "Install Health Connect from the Play Store first.") }
+                    _uiState.update { it.copy(healthConnectMessage = "Install Health Connect from the Play Store first.") }
                 HealthConnectAvailability.NotSupported ->
-                    _uiState.update { it.copy(message = "Health Connect is not supported on this device.") }
+                    _uiState.update { it.copy(healthConnectMessage = "Health Connect is not supported on this device.") }
             }
         } else {
             viewModelScope.launch {
                 val prefs = planRepository.preferences.first()
                 planRepository.save(prefs.copy(healthConnectEnabled = false))
-                _uiState.update { it.copy(healthConnectEnabled = false) }
+                _uiState.update { it.copy(healthConnectEnabled = false, healthConnectMessage = "Disconnected.") }
             }
         }
     }
@@ -124,19 +126,39 @@ class SettingsViewModel(
         _uiState.update { it.copy(pendingHcPermissionRequest = false) }
     }
 
-    fun onPermissionsResult(granted: Set<String>) {
+    /**
+     * Called when the Health Connect permission screen returns.
+     *
+     * The result contract's returned granted-set is unreliable on some Health
+     * Connect versions (it can come back empty even when the user granted
+     * everything), so we re-query the authoritative granted state instead of
+     * trusting the callback payload.
+     */
+    fun onPermissionsResult() {
         viewModelScope.launch {
-            if (granted.containsAll(hcRepository.requiredPermissions)) {
-                val prefs = planRepository.preferences.first()
-                planRepository.save(prefs.copy(healthConnectEnabled = true))
-                _uiState.update {
-                    it.copy(
-                        healthConnectEnabled = true,
-                        healthConnectHasPermissions = true,
-                    )
+            val granted = hcRepository.hasPermissions()
+            Log.d(TAG, "onPermissionsResult: hasPermissions=$granted")
+            if (granted) {
+                runCatching {
+                    val prefs = planRepository.preferences.first()
+                    planRepository.save(prefs.copy(healthConnectEnabled = true))
+                }.onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            healthConnectEnabled = true,
+                            healthConnectHasPermissions = true,
+                            healthConnectMessage = "Connected. Syncing…",
+                        )
+                    }
+                    syncNow()
+                }.onFailure { e ->
+                    Log.e(TAG, "Failed to persist healthConnectEnabled", e)
+                    _uiState.update { it.copy(healthConnectMessage = "Couldn't save the setting: ${e.message}") }
                 }
             } else {
-                _uiState.update { it.copy(message = "All permissions are required to sync health data.") }
+                _uiState.update {
+                    it.copy(healthConnectMessage = "Permission wasn't granted. Tap the toggle to try again.")
+                }
             }
         }
     }
@@ -148,11 +170,20 @@ class SettingsViewModel(
             runCatching {
                 val date = LocalDate.now()
                 val result = hcRepository.readToday(date)
+                Log.d(TAG, "syncNow: read steps=${result.steps} weightKg=${result.weightKg} sleepHours=${result.sleepHours}")
                 logRepository.applyHealthConnectSync(date, result)
-            }.onSuccess {
-                _uiState.update { it.copy(healthConnectSyncing = false, message = "Synced.") }
-            }.onFailure {
-                _uiState.update { it.copy(healthConnectSyncing = false, message = "Sync failed.") }
+                result
+            }.onSuccess { result ->
+                val any = result.steps != null || result.weightKg != null || result.sleepHours != null
+                _uiState.update {
+                    it.copy(
+                        healthConnectSyncing = false,
+                        healthConnectMessage = if (any) "Synced from Health Connect." else "Connected — no new data for today yet.",
+                    )
+                }
+            }.onFailure { e ->
+                Log.e(TAG, "syncNow failed", e)
+                _uiState.update { it.copy(healthConnectSyncing = false, healthConnectMessage = "Sync failed: ${e.message}") }
             }
         }
     }
@@ -162,5 +193,9 @@ class SettingsViewModel(
         runCatching { block() }
             .onSuccess { _uiState.update { it.copy(busy = false, message = successMessage) } }
             .onFailure { error -> _uiState.update { it.copy(busy = false, message = error.message ?: "Operation failed.") } }
+    }
+
+    private companion object {
+        const val TAG = "HealthConnect"
     }
 }

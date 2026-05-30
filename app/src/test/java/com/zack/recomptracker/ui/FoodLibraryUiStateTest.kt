@@ -2,6 +2,7 @@ package com.zack.recomptracker.ui
 
 import com.zack.recomptracker.data.local.entity.CatalogFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
+import com.zack.recomptracker.ui.foodlibrary.AmountMode
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryUiState
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -46,5 +47,57 @@ class FoodLibraryUiStateTest {
 
         assertEquals(listOf("personal_1", "catalog_2"), state.filteredFoods.map { it.key })
         assertEquals("NEVO", state.filteredFoods.last().sourceLabel)
+    }
+
+    private val whey = SavedFoodEntity(
+        id = 5,
+        name = "Whey",
+        servingName = "100g",
+        calories = 120,
+        proteinG = 24.0,
+        carbsG = 3.0,
+        fatG = 2.0,
+        householdServingName = "scoop",
+        householdServingGrams = 30.0,
+    )
+
+    @Test
+    fun servingsModeComputesGramsAndPreviewFromHouseholdServing() {
+        val state = FoodLibraryUiState(
+            pendingFood = whey,
+            amountMode = AmountMode.SERVINGS,
+            servingsValue = "2",
+        )
+        assertEquals(60.0, state.resolvedGrams!!, 0.001)
+        assertEquals(72, state.previewMacros!!.calories)
+    }
+
+    @Test
+    fun gramsModeComputesPreviewDirectly() {
+        val state = FoodLibraryUiState(
+            pendingFood = whey,
+            amountMode = AmountMode.GRAMS,
+            gramsValue = "150",
+        )
+        assertEquals(150.0, state.resolvedGrams!!, 0.001)
+        assertEquals(180, state.previewMacros!!.calories)
+    }
+
+    @Test
+    fun foodWithoutHouseholdServingIsGramsOnly() {
+        val plain = whey.copy(householdServingName = null, householdServingGrams = null)
+        val state = FoodLibraryUiState(pendingFood = plain)
+        assertEquals(false, state.canUseServings)
+    }
+
+    @Test
+    fun invalidAmountYieldsNullPreview() {
+        val state = FoodLibraryUiState(
+            pendingFood = whey,
+            amountMode = AmountMode.GRAMS,
+            gramsValue = "abc",
+        )
+        assertEquals(null, state.resolvedGrams)
+        assertEquals(null, state.previewMacros)
     }
 }

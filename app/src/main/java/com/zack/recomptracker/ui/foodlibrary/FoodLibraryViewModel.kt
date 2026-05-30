@@ -9,6 +9,9 @@ import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.domain.food.FoodMacros
+import com.zack.recomptracker.domain.food.FoodScaling
+import com.zack.recomptracker.domain.food.MealEntryTypes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -16,6 +19,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS, NEVO }
+
+enum class AmountMode { SERVINGS, GRAMS }
 
 data class FoodLibraryItem(
     val key: String,
@@ -33,9 +38,12 @@ data class FoodLibraryUiState(
     val allCatalogFoods: List<com.zack.recomptracker.data.local.entity.CatalogFoodEntity> = emptyList(),
     val allMeals: List<SavedMealEntity> = emptyList(),
     val message: String? = null,
-    val showQuantityDialog: Boolean = false,
+    val showAmountSheet: Boolean = false,
     val pendingFood: SavedFoodEntity? = null,
-    val quantityGrams: String = "100",
+    val editingEntryId: Long? = null,
+    val amountMode: AmountMode = AmountMode.SERVINGS,
+    val servingsValue: String = "1",
+    val gramsValue: String = "100",
     val newFoodName: String = "",
     val newFoodServing: String = "100g",
     val newFoodCalories: String = "",
@@ -118,6 +126,37 @@ data class FoodLibraryUiState(
             val q = query.trim().lowercase()
             return allMeals.filter { q.isEmpty() || it.name.lowercase().contains(q) }
         }
+
+    val canUseServings: Boolean
+        get() = (pendingFood?.householdServingGrams ?: 0.0) >= 1.0 &&
+            !pendingFood?.householdServingName.isNullOrBlank()
+
+    val resolvedGrams: Double?
+        get() {
+            val food = pendingFood ?: return null
+            return when (amountMode) {
+                AmountMode.SERVINGS -> {
+                    val servings = servingsValue.toDoubleOrNull() ?: return null
+                    val perServing = food.householdServingGrams ?: return null
+                    if (servings < 1.0 || perServing < 1.0) null
+                    else FoodScaling.gramsForServings(servings, perServing)
+                }
+                AmountMode.GRAMS -> {
+                    val g = gramsValue.toDoubleOrNull() ?: return null
+                    if (g < FoodScaling.MIN_GRAMS) null else g
+                }
+            }
+        }
+
+    val previewMacros: FoodMacros?
+        get() {
+            val food = pendingFood ?: return null
+            val grams = resolvedGrams ?: return null
+            return FoodScaling.scale(
+                FoodMacros(food.calories, food.proteinG, food.carbsG, food.fatG),
+                grams,
+            )
+        }
 }
 
 class FoodLibraryViewModel(
@@ -168,40 +207,103 @@ class FoodLibraryViewModel(
     fun onCategoryChanged(c: FoodCategory) = _uiState.update { it.copy(category = c) }
 
     fun requestLogFood(food: SavedFoodEntity) {
-        _uiState.update { it.copy(showQuantityDialog = true, pendingFood = food, quantityGrams = "100") }
+        val canServings = (food.householdServingGrams ?: 0.0) >= 1.0 && !food.householdServingName.isNullOrBlank()
+        _uiState.update {
+            it.copy(
+                showAmountSheet = true,
+                pendingFood = food,
+                editingEntryId = null,
+                amountMode = if (canServings) AmountMode.SERVINGS else AmountMode.GRAMS,
+                servingsValue = "1",
+                gramsValue = "100",
+                message = null,
+            )
+        }
     }
 
-    fun onQuantityChanged(v: String) = _uiState.update { it.copy(quantityGrams = v) }
+    fun onAmountModeChanged(mode: AmountMode) = _uiState.update { it.copy(amountMode = mode) }
+    fun onServingsChanged(v: String) = _uiState.update { it.copy(servingsValue = v) }
+    fun onGramsChanged(v: String) = _uiState.update { it.copy(gramsValue = v) }
 
-    fun confirmLogFood() {
+    fun stepServings(delta: Int) = _uiState.update {
+        val current = it.servingsValue.toIntOrNull() ?: 1
+        it.copy(servingsValue = (current + delta).coerceAtLeast(1).toString())
+    }
+
+    fun stepGrams(delta: Int) = _uiState.update {
+        val current = it.gramsValue.toDoubleOrNull() ?: 100.0
+        it.copy(gramsValue = (current + delta).coerceAtLeast(FoodScaling.MIN_GRAMS).toInt().toString())
+    }
+
+    fun confirmAmount() {
         val state = _uiState.value
         val food = state.pendingFood ?: return
-        val grams = state.quantityGrams.toDoubleOrNull()
-        if (grams == null || grams < 1) {
-            _uiState.update { it.copy(message = "Enter a valid quantity (min 1g).") }
+        val grams = state.resolvedGrams
+        val preview = state.previewMacros
+        if (grams == null || preview == null) {
+            _uiState.update { it.copy(message = "Enter a valid amount (min ${FoodScaling.MIN_GRAMS.toInt()}g).") }
             return
         }
-        val scale = grams / 100.0
+        val servingName = food.householdServingName?.takeIf { state.amountMode == AmountMode.SERVINGS }
+        val servingGrams = food.householdServingGrams?.takeIf { state.amountMode == AmountMode.SERVINGS }
         viewModelScope.launch {
-            logRepository.addMealToSlot(
-                input = MealEntryInput(
-                    date = dateProvider.today(),
-                    mealType = "FOOD_LIBRARY",
-                    name = food.name,
-                    calories = (food.calories * scale).toInt(),
-                    proteinG = food.proteinG * scale,
-                    carbsG = food.carbsG * scale,
-                    fatG = food.fatG * scale,
-                ),
-                slotId = state.slotId,
-            )
-            _uiState.update {
-                it.copy(showQuantityDialog = false, pendingFood = null, message = "${food.name} logged.")
+            val editingId = state.editingEntryId
+            if (editingId == null) {
+                logRepository.addMealToSlot(
+                    input = MealEntryInput(
+                        date = dateProvider.today(),
+                        mealType = MealEntryTypes.FOOD_LIBRARY,
+                        name = food.name,
+                        calories = preview.calories,
+                        proteinG = preview.proteinG,
+                        carbsG = preview.carbsG,
+                        fatG = preview.fatG,
+                        amountGrams = grams,
+                        basePer100Calories = food.calories,
+                        basePer100ProteinG = food.proteinG,
+                        basePer100CarbsG = food.carbsG,
+                        basePer100FatG = food.fatG,
+                        entryServingName = servingName,
+                        entryServingGrams = servingGrams,
+                    ),
+                    slotId = state.slotId,
+                )
+                _uiState.update {
+                    it.copy(showAmountSheet = false, pendingFood = null, message = "${food.name} logged.")
+                }
+            } else {
+                val existing = logRepository.getMealEntriesForSlot(
+                    date = dateProvider.today().toString(),
+                    slotId = state.slotId,
+                ).firstOrNull { it.id == editingId }
+                if (existing != null) {
+                    logRepository.updateMealEntry(
+                        existing.copy(
+                            name = food.name,
+                            calories = preview.calories,
+                            proteinG = preview.proteinG,
+                            carbsG = preview.carbsG,
+                            fatG = preview.fatG,
+                            amountGrams = grams,
+                            basePer100Calories = food.calories,
+                            basePer100ProteinG = food.proteinG,
+                            basePer100CarbsG = food.carbsG,
+                            basePer100FatG = food.fatG,
+                            entryServingName = servingName,
+                            entryServingGrams = servingGrams,
+                        ),
+                    )
+                }
+                _uiState.update {
+                    it.copy(showAmountSheet = false, pendingFood = null, editingEntryId = null, message = "Entry updated.")
+                }
             }
         }
     }
 
-    fun dismissQuantityDialog() = _uiState.update { it.copy(showQuantityDialog = false, pendingFood = null) }
+    fun dismissAmountSheet() = _uiState.update {
+        it.copy(showAmountSheet = false, pendingFood = null, editingEntryId = null)
+    }
 
     fun logMeal(meal: SavedMealEntity) {
         viewModelScope.launch {

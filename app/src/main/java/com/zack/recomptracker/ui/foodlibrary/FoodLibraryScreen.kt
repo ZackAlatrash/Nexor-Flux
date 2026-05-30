@@ -171,16 +171,17 @@ fun FoodLibraryScreen(
         }
     }
 
-    if (state.showQuantityDialog && state.pendingFood != null) {
+    // TODO Task 7: replace with AmountPickerSheet (showAmountSheet / confirmAmount / dismissAmountSheet)
+    if (state.showAmountSheet && state.pendingFood != null) {
         AlertDialog(
-            onDismissRequest = viewModel::dismissQuantityDialog,
+            onDismissRequest = viewModel::dismissAmountSheet,
             title = { Text("How many grams?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(state.pendingFood?.name.orEmpty(), fontWeight = FontWeight.SemiBold)
                     OutlinedTextField(
-                        value = state.quantityGrams,
-                        onValueChange = viewModel::onQuantityChanged,
+                        value = state.gramsValue,
+                        onValueChange = viewModel::onGramsChanged,
                         label = { Text("Grams") },
                         singleLine = true,
                         suffix = { Text("g") },
@@ -188,10 +189,10 @@ fun FoodLibraryScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = viewModel::confirmLogFood) { Text("Log") }
+                TextButton(onClick = viewModel::confirmAmount) { Text("Log") }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissQuantityDialog) { Text("Cancel") }
+                TextButton(onClick = viewModel::dismissAmountSheet) { Text("Cancel") }
             },
         )
     }

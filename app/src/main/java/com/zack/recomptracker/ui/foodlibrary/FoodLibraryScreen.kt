@@ -131,6 +131,26 @@ fun FoodLibraryScreen(
             }
         }
 
+        if (state.recentFoods.isNotEmpty() && state.query.isBlank()) {
+            item {
+                Text(
+                    "RECENTS",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Secondary,
+                )
+            }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
+                        OutlinedButton(onClick = { viewModel.requestLogFood(food) }) {
+                            Text(food.name, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         if (state.category != FoodCategory.MEALS) {
             if (state.filteredFoods.isEmpty()) {
                 item {

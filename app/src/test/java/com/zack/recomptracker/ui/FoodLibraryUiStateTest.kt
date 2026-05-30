@@ -117,4 +117,31 @@ class FoodLibraryUiStateTest {
         val state = FoodLibraryUiState(pendingFood = whey)
         assertEquals(true, state.canUseServings)
     }
+
+    @Test
+    fun recentFoodsExposeBaseSnapshotAsLoggableFood() {
+        val recentEntry = com.zack.recomptracker.data.local.entity.MealEntryEntity(
+            id = 9,
+            date = "2026-05-30",
+            mealType = "FOOD_LIBRARY",
+            name = "Whey",
+            calories = 72,
+            proteinG = 14.0,
+            carbsG = 2.0,
+            fatG = 1.0,
+            amountGrams = 60.0,
+            basePer100Calories = 120,
+            basePer100ProteinG = 24.0,
+            basePer100CarbsG = 3.0,
+            basePer100FatG = 2.0,
+            entryServingName = "scoop",
+            entryServingGrams = 30.0,
+        )
+        val state = FoodLibraryUiState(recentEntries = listOf(recentEntry))
+        val recent = state.recentFoods.single()
+        assertEquals("Whey", recent.name)
+        assertEquals(120, recent.calories)
+        assertEquals("scoop", recent.householdServingName)
+        assertEquals(30.0, recent.householdServingGrams!!, 0.001)
+    }
 }

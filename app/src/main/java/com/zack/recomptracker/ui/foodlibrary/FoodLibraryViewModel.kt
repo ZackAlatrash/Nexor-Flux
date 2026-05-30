@@ -53,6 +53,7 @@ data class FoodLibraryUiState(
     val showCreateFoodForm: Boolean = false,
     val showSaveMealDialog: Boolean = false,
     val saveMealName: String = "",
+    val recentEntries: List<com.zack.recomptracker.data.local.entity.MealEntryEntity> = emptyList(),
 ) {
     val filteredFoods: List<FoodLibraryItem>
         get() {
@@ -157,6 +158,20 @@ data class FoodLibraryUiState(
                 grams,
             )
         }
+
+    val recentFoods: List<SavedFoodEntity>
+        get() = recentEntries.map { e ->
+            SavedFoodEntity(
+                name = e.name,
+                servingName = e.entryServingName?.let { "1 $it" } ?: "100g",
+                calories = e.basePer100Calories ?: 0,
+                proteinG = e.basePer100ProteinG ?: 0.0,
+                carbsG = e.basePer100CarbsG ?: 0.0,
+                fatG = e.basePer100FatG ?: 0.0,
+                householdServingName = e.entryServingName,
+                householdServingGrams = e.entryServingGrams,
+            )
+        }
 }
 
 class FoodLibraryViewModel(
@@ -199,6 +214,11 @@ class FoodLibraryViewModel(
                         remainingCalories = (data.prefs.calorieZoneLowerBound - data.eatenCalories).coerceAtLeast(0),
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            logRepository.observeRecentFoods().collect { recents ->
+                _uiState.update { it.copy(recentEntries = recents) }
             }
         }
     }

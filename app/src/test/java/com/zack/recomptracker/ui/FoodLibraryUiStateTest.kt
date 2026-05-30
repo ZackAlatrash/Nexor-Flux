@@ -100,4 +100,21 @@ class FoodLibraryUiStateTest {
         assertEquals(null, state.resolvedGrams)
         assertEquals(null, state.previewMacros)
     }
+
+    @Test
+    fun gramsBelowMinimumYieldsNullPreview() {
+        val state = FoodLibraryUiState(
+            pendingFood = whey,
+            amountMode = AmountMode.GRAMS,
+            gramsValue = "0.9",
+        )
+        assertEquals(null, state.resolvedGrams)
+        assertEquals(null, state.previewMacros)
+    }
+
+    @Test
+    fun foodWithHouseholdServingCanUseServings() {
+        val state = FoodLibraryUiState(pendingFood = whey)
+        assertEquals(true, state.canUseServings)
+    }
 }

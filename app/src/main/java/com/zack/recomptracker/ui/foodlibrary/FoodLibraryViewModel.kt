@@ -226,8 +226,10 @@ class FoodLibraryViewModel(
     fun onGramsChanged(v: String) = _uiState.update { it.copy(gramsValue = v) }
 
     fun stepServings(delta: Int) = _uiState.update {
-        val current = it.servingsValue.toIntOrNull() ?: 1
-        it.copy(servingsValue = (current + delta).coerceAtLeast(1).toString())
+        val current = it.servingsValue.toDoubleOrNull() ?: 1.0
+        val next = (current + delta).coerceAtLeast(1.0)
+        val text = if (next == next.toLong().toDouble()) next.toLong().toString() else next.toString()
+        it.copy(servingsValue = text)
     }
 
     fun stepGrams(delta: Int) = _uiState.update {
@@ -276,24 +278,26 @@ class FoodLibraryViewModel(
                     date = dateProvider.today().toString(),
                     slotId = state.slotId,
                 ).firstOrNull { it.id == editingId }
-                if (existing != null) {
-                    logRepository.updateMealEntry(
-                        existing.copy(
-                            name = food.name,
-                            calories = preview.calories,
-                            proteinG = preview.proteinG,
-                            carbsG = preview.carbsG,
-                            fatG = preview.fatG,
-                            amountGrams = grams,
-                            basePer100Calories = food.calories,
-                            basePer100ProteinG = food.proteinG,
-                            basePer100CarbsG = food.carbsG,
-                            basePer100FatG = food.fatG,
-                            entryServingName = servingName,
-                            entryServingGrams = servingGrams,
-                        ),
-                    )
+                if (existing == null) {
+                    _uiState.update { it.copy(message = "Couldn't find that entry to update.") }
+                    return@launch
                 }
+                logRepository.updateMealEntry(
+                    existing.copy(
+                        name = food.name,
+                        calories = preview.calories,
+                        proteinG = preview.proteinG,
+                        carbsG = preview.carbsG,
+                        fatG = preview.fatG,
+                        amountGrams = grams,
+                        basePer100Calories = food.calories,
+                        basePer100ProteinG = food.proteinG,
+                        basePer100CarbsG = food.carbsG,
+                        basePer100FatG = food.fatG,
+                        entryServingName = servingName,
+                        entryServingGrams = servingGrams,
+                    ),
+                )
                 _uiState.update {
                     it.copy(showAmountSheet = false, pendingFood = null, editingEntryId = null, message = "Entry updated.")
                 }

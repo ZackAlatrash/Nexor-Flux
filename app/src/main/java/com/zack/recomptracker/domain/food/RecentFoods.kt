@@ -11,7 +11,7 @@ object RecentFoods {
      */
     fun fromEntries(entries: List<MealEntryEntity>, limit: Int = DEFAULT_LIMIT): List<MealEntryEntity> =
         entries
-            .filter { it.mealType == "FOOD_LIBRARY" && it.basePer100Calories != null }
+            .filter { it.mealType == MealEntryTypes.FOOD_LIBRARY && it.basePer100Calories != null }
             .sortedByDescending { it.id }
             .distinctBy { it.name.trim().lowercase() }
             .take(limit)

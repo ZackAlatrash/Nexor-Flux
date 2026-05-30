@@ -54,6 +54,18 @@ class RecentFoodsTest {
     @Test
     fun capsToLimit() {
         val entries = (1..12).map { entry(it.toLong(), "Food$it") }
-        assertEquals(8, RecentFoods.fromEntries(entries, limit = 8).size)
+        assertEquals(5, RecentFoods.fromEntries(entries, limit = 5).size)
+    }
+
+    @Test
+    fun dedupesNamesIgnoringSurroundingWhitespace() {
+        val result = RecentFoods.fromEntries(
+            listOf(
+                entry(1, "Chicken"),
+                entry(2, "  chicken  "),
+            ),
+        )
+        assertEquals(1, result.size)
+        assertEquals(2L, result.first().id)
     }
 }

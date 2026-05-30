@@ -197,6 +197,13 @@ fun FoodLibraryScreen(
                     if (state.showCreateFoodForm) {
                         CreateFoodForm(state = state, viewModel = viewModel)
                     }
+                    OutlinedButton(
+                        onClick = viewModel::openQuickAdd,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
+                    ) {
+                        Text("Quick add calories")
+                    }
                 }
             }
         }
@@ -224,6 +231,32 @@ fun FoodLibraryScreen(
             dismissButton = {
                 TextButton(onClick = viewModel::dismissSaveMealDialog) { Text("Cancel") }
             },
+        )
+    }
+
+    if (state.showQuickAddDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissQuickAdd,
+            title = { Text("Quick add") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = state.quickAddName,
+                        onValueChange = viewModel::onQuickAddNameChanged,
+                        label = { Text("Name (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    NumberField("Calories", state.quickAddCalories, viewModel::onQuickAddCaloriesChanged, suffix = "kcal")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        NumberField("Protein", state.quickAddProtein, viewModel::onQuickAddProteinChanged, Modifier.weight(1f), "g")
+                        NumberField("Carbs", state.quickAddCarbs, viewModel::onQuickAddCarbsChanged, Modifier.weight(1f), "g")
+                        NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = viewModel::confirmQuickAdd) { Text("Add") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissQuickAdd) { Text("Cancel") } },
         )
     }
 }

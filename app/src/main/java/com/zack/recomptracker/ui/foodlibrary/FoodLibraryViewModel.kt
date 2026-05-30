@@ -54,6 +54,12 @@ data class FoodLibraryUiState(
     val showSaveMealDialog: Boolean = false,
     val saveMealName: String = "",
     val recentEntries: List<com.zack.recomptracker.data.local.entity.MealEntryEntity> = emptyList(),
+    val showQuickAddDialog: Boolean = false,
+    val quickAddName: String = "",
+    val quickAddCalories: String = "",
+    val quickAddProtein: String = "",
+    val quickAddCarbs: String = "",
+    val quickAddFat: String = "",
 ) {
     val filteredFoods: List<FoodLibraryItem>
         get() {
@@ -423,4 +429,38 @@ class FoodLibraryViewModel(
     }
 
     fun dismissSaveMealDialog() = _uiState.update { it.copy(showSaveMealDialog = false) }
+
+    fun openQuickAdd() = _uiState.update {
+        it.copy(showQuickAddDialog = true, quickAddName = "", quickAddCalories = "", quickAddProtein = "", quickAddCarbs = "", quickAddFat = "", message = null)
+    }
+    fun dismissQuickAdd() = _uiState.update { it.copy(showQuickAddDialog = false) }
+    fun onQuickAddNameChanged(v: String) = _uiState.update { it.copy(quickAddName = v) }
+    fun onQuickAddCaloriesChanged(v: String) = _uiState.update { it.copy(quickAddCalories = v) }
+    fun onQuickAddProteinChanged(v: String) = _uiState.update { it.copy(quickAddProtein = v) }
+    fun onQuickAddCarbsChanged(v: String) = _uiState.update { it.copy(quickAddCarbs = v) }
+    fun onQuickAddFatChanged(v: String) = _uiState.update { it.copy(quickAddFat = v) }
+
+    fun confirmQuickAdd() {
+        val s = _uiState.value
+        val cal = s.quickAddCalories.toIntOrNull()
+        if (cal == null || cal < 0) {
+            _uiState.update { it.copy(message = "Enter a calorie amount.") }
+            return
+        }
+        viewModelScope.launch {
+            logRepository.addMealToSlot(
+                input = MealEntryInput(
+                    date = dateProvider.today(),
+                    mealType = MealEntryTypes.QUICK_ADD,
+                    name = s.quickAddName.ifBlank { "Quick add" },
+                    calories = cal,
+                    proteinG = s.quickAddProtein.toDoubleOrNull() ?: 0.0,
+                    carbsG = s.quickAddCarbs.toDoubleOrNull() ?: 0.0,
+                    fatG = s.quickAddFat.toDoubleOrNull() ?: 0.0,
+                ),
+                slotId = s.slotId,
+            )
+            _uiState.update { it.copy(showQuickAddDialog = false, message = "Quick add logged.") }
+        }
+    }
 }

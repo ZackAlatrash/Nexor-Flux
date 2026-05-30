@@ -163,7 +163,7 @@ data class FoodLibraryUiState(
         get() = recentEntries.map { e ->
             SavedFoodEntity(
                 name = e.name,
-                servingName = e.entryServingName?.let { "1 $it" } ?: "100g",
+                servingName = e.entryServingName ?: "100g",
                 calories = e.basePer100Calories ?: 0,
                 proteinG = e.basePer100ProteinG ?: 0.0,
                 carbsG = e.basePer100CarbsG ?: 0.0,

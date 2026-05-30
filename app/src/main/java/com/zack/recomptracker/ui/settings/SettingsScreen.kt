@@ -4,22 +4,38 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ai.GemmaInsightService
@@ -27,7 +43,10 @@ import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.component.ToggleRow
+import com.zack.recomptracker.ui.theme.RecompTrackerTheme
 import java.time.LocalDate
+
+private val HealthConnectGreen = Color(0xFF34D399)
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
@@ -89,57 +108,23 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             }
         }
         item {
-            SectionCard("Health Connect") {
-                when (state.healthConnectAvailability) {
-                    HealthConnectAvailability.NotInstalled -> {
-                        Text("Health Connect is not installed on this device.")
-                        OutlinedButton(
-                            onClick = {
-                                val marketUri = Uri.parse("market://details?id=com.google.android.apps.healthdata")
-                                val webUri = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
-                                try {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, marketUri))
-                                } catch (e: android.content.ActivityNotFoundException) {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Install Health Connect")
-                        }
+            HealthConnectSection(
+                availability = state.healthConnectAvailability,
+                enabled = state.healthConnectEnabled,
+                hasPermissions = state.healthConnectHasPermissions,
+                syncing = state.healthConnectSyncing,
+                onToggle = viewModel::onHealthConnectToggled,
+                onSyncNow = viewModel::syncNow,
+                onInstall = {
+                    val marketUri = Uri.parse("market://details?id=com.google.android.apps.healthdata")
+                    val webUri = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, marketUri))
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
                     }
-                    HealthConnectAvailability.NotSupported -> {
-                        Text("Health Connect is not supported on this device.")
-                    }
-                    HealthConnectAvailability.Available -> {
-                        ToggleRow(
-                            label = "Sync steps, weight & sleep automatically",
-                            checked = state.healthConnectEnabled,
-                            onCheckedChange = viewModel::onHealthConnectToggled,
-                        )
-                        val statusText = when {
-                            state.healthConnectEnabled && state.healthConnectHasPermissions -> "Connected"
-                            state.healthConnectEnabled && !state.healthConnectHasPermissions ->
-                                "Permissions required — tap the toggle to reconnect"
-                            else -> "Not connected"
-                        }
-                        Text(statusText, style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (state.healthConnectEnabled && state.healthConnectHasPermissions) {
-                            if (state.healthConnectSyncing) {
-                                CircularProgressIndicator()
-                            } else {
-                                OutlinedButton(
-                                    onClick = viewModel::syncNow,
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text("Sync now")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                },
+            )
         }
         item {
             SectionCard("Reset") {
@@ -164,6 +149,169 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 Text(if (gemma.available) "Available" else "Not enabled")
                 Text(gemma.reason)
             }
+        }
+    }
+}
+
+@Composable
+private fun HealthConnectSection(
+    availability: HealthConnectAvailability,
+    enabled: Boolean,
+    hasPermissions: Boolean,
+    syncing: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onSyncNow: () -> Unit,
+    onInstall: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SectionCard(modifier = modifier) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.MonitorHeart,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column {
+                Text(
+                    "Health Connect",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    "Auto-fill steps, weight & sleep",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        when (availability) {
+            HealthConnectAvailability.NotInstalled -> {
+                StatusRow(
+                    dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "Health Connect isn't installed on this device.",
+                )
+                Button(
+                    onClick = onInstall,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Install Health Connect")
+                }
+            }
+
+            HealthConnectAvailability.NotSupported -> {
+                StatusRow(
+                    dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "Health Connect isn't supported on this device.",
+                )
+            }
+
+            HealthConnectAvailability.Available -> {
+                ToggleRow(
+                    label = "Sync automatically",
+                    checked = enabled,
+                    onCheckedChange = onToggle,
+                )
+                val (dotColor, statusText) = when {
+                    enabled && hasPermissions ->
+                        HealthConnectGreen to "Connected"
+                    enabled && !hasPermissions ->
+                        MaterialTheme.colorScheme.error to "Permission needed — tap to reconnect"
+                    else ->
+                        MaterialTheme.colorScheme.onSurfaceVariant to "Not connected"
+                }
+                StatusRow(dotColor = dotColor, text = statusText)
+                if (enabled && hasPermissions) {
+                    Button(
+                        onClick = onSyncNow,
+                        enabled = !syncing,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (syncing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Syncing…")
+                        } else {
+                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Sync now")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusRow(
+    dotColor: Color,
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HealthConnectSectionPreview() {
+    RecompTrackerTheme {
+        Column(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            HealthConnectSection(
+                availability = HealthConnectAvailability.Available,
+                enabled = true, hasPermissions = true, syncing = false,
+                onToggle = {}, onSyncNow = {}, onInstall = {},
+            )
+            HealthConnectSection(
+                availability = HealthConnectAvailability.Available,
+                enabled = true, hasPermissions = true, syncing = true,
+                onToggle = {}, onSyncNow = {}, onInstall = {},
+            )
+            HealthConnectSection(
+                availability = HealthConnectAvailability.Available,
+                enabled = true, hasPermissions = false, syncing = false,
+                onToggle = {}, onSyncNow = {}, onInstall = {},
+            )
+            HealthConnectSection(
+                availability = HealthConnectAvailability.Available,
+                enabled = false, hasPermissions = false, syncing = false,
+                onToggle = {}, onSyncNow = {}, onInstall = {},
+            )
+            HealthConnectSection(
+                availability = HealthConnectAvailability.NotInstalled,
+                enabled = false, hasPermissions = false, syncing = false,
+                onToggle = {}, onSyncNow = {}, onInstall = {},
+            )
         }
     }
 }

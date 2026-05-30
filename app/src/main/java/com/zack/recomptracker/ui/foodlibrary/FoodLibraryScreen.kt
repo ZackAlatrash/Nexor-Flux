@@ -2,9 +2,11 @@ package com.zack.recomptracker.ui.foodlibrary
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -13,15 +15,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -171,30 +180,8 @@ fun FoodLibraryScreen(
         }
     }
 
-    // TODO Task 7: replace with AmountPickerSheet (showAmountSheet / confirmAmount / dismissAmountSheet)
     if (state.showAmountSheet && state.pendingFood != null) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissAmountSheet,
-            title = { Text("How many grams?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(state.pendingFood?.name.orEmpty(), fontWeight = FontWeight.SemiBold)
-                    OutlinedTextField(
-                        value = state.gramsValue,
-                        onValueChange = viewModel::onGramsChanged,
-                        label = { Text("Grams") },
-                        singleLine = true,
-                        suffix = { Text("g") },
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmAmount) { Text("Log") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissAmountSheet) { Text("Cancel") }
-            },
-        )
+        AmountSheet(state = state, viewModel = viewModel)
     }
 
     if (state.showSaveMealDialog) {
@@ -302,5 +289,152 @@ private fun CreateFoodForm(state: FoodLibraryUiState, viewModel: FoodLibraryView
                 Text("Save food")
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
+    val food = state.pendingFood ?: return
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = viewModel::dismissAmountSheet,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(food.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            val reference = if (state.canUseServings) {
+                "1 ${food.householdServingName} = ${food.householdServingGrams?.toInt()} g · ${food.calories} kcal / 100 g"
+            } else {
+                "${food.calories} kcal / 100 g"
+            }
+            Text(reference, color = Secondary, fontSize = 11.sp)
+
+            if (state.canUseServings) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = state.amountMode == AmountMode.SERVINGS,
+                        onClick = { viewModel.onAmountModeChanged(AmountMode.SERVINGS) },
+                        shape = SegmentedButtonDefaults.itemShape(0, 2),
+                    ) { Text("Servings") }
+                    SegmentedButton(
+                        selected = state.amountMode == AmountMode.GRAMS,
+                        onClick = { viewModel.onAmountModeChanged(AmountMode.GRAMS) },
+                        shape = SegmentedButtonDefaults.itemShape(1, 2),
+                    ) { Text("Grams") }
+                }
+            }
+
+            if (state.amountMode == AmountMode.SERVINGS && state.canUseServings) {
+                AmountStepper(
+                    value = state.servingsValue,
+                    onValueChange = viewModel::onServingsChanged,
+                    onMinus = { viewModel.stepServings(-1) },
+                    onPlus = { viewModel.stepServings(1) },
+                    caption = state.resolvedGrams?.let { "${it.toInt()} g" } ?: "",
+                    suffix = "servings",
+                )
+            } else {
+                AmountStepper(
+                    value = state.gramsValue,
+                    onValueChange = viewModel::onGramsChanged,
+                    onMinus = { viewModel.stepGrams(-10) },
+                    onPlus = { viewModel.stepGrams(10) },
+                    caption = "",
+                    suffix = "g",
+                )
+            }
+
+            val preview = state.previewMacros
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
+                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
+                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
+                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+            }
+
+            MessageText(state.message)
+
+            Button(
+                onClick = viewModel::confirmAmount,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue),
+            ) {
+                Text(
+                    if (state.editingEntryId == null) {
+                        if (state.slotId != null) "Add to ${state.slotName}" else "Add"
+                    } else {
+                        "Save"
+                    },
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AmountStepper(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+    caption: String,
+    suffix: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedButton(
+            onClick = onMinus,
+            modifier = Modifier.size(48.dp),
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            Text("−", fontSize = 20.sp)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                suffix = { Text(suffix) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (caption.isNotBlank()) {
+                Text(
+                    caption,
+                    color = Secondary,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        OutlinedButton(
+            onClick = onPlus,
+            modifier = Modifier.size(48.dp),
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            Text("+", fontSize = 20.sp)
+        }
+    }
+}
+
+@Composable
+private fun AmountPreviewStat(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+        Text(label, color = Secondary, fontSize = 10.sp)
     }
 }

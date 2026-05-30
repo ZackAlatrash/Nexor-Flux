@@ -33,4 +33,11 @@ data class MealEntryInput(
     val proteinG: Double,
     val carbsG: Double,
     val fatG: Double,
+    val amountGrams: Double? = null,
+    val basePer100Calories: Int? = null,
+    val basePer100ProteinG: Double? = null,
+    val basePer100CarbsG: Double? = null,
+    val basePer100FatG: Double? = null,
+    val entryServingName: String? = null,
+    val entryServingGrams: Double? = null,
 )

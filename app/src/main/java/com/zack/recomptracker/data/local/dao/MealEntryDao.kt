@@ -23,6 +23,9 @@ interface MealEntryDao {
     @Query("SELECT * FROM meal_entries ORDER BY date, id")
     fun observeAll(): Flow<List<MealEntryEntity>>
 
+    @Query("SELECT * FROM meal_entries WHERE mealType = 'FOOD_LIBRARY' ORDER BY id DESC")
+    fun observeFoodLibraryEntries(): Flow<List<MealEntryEntity>>
+
     @Query("SELECT * FROM meal_entries ORDER BY date, id")
     suspend fun getAll(): List<MealEntryEntity>
 

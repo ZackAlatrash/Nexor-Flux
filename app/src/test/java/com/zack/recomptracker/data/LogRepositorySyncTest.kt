@@ -147,6 +147,7 @@ private object NoopMealEntryDao : MealEntryDao {
     override suspend fun getForDate(date: String): List<MealEntryEntity> = emptyList()
     override fun observeBetween(s: String, e: String): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override fun observeAll(): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
+    override fun observeFoodLibraryEntries(): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override suspend fun getAll(): List<MealEntryEntity> = emptyList()
     override suspend fun insert(entry: MealEntryEntity): Long = 0L
     override suspend fun insertAll(entries: List<MealEntryEntity>) = Unit

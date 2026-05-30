@@ -2,6 +2,8 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.data.health.HealthConnectReadResult
+import com.zack.recomptracker.domain.food.RecentFoods
+import kotlinx.coroutines.flow.map
 import com.zack.recomptracker.data.local.dao.DailyLogDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
@@ -197,8 +199,30 @@ class LogRepository(
             carbsG = input.carbsG.coerceAtLeast(0.0),
             fatG = input.fatG.coerceAtLeast(0.0),
             slotId = slotId,
+            amountGrams = input.amountGrams,
+            basePer100Calories = input.basePer100Calories,
+            basePer100ProteinG = input.basePer100ProteinG,
+            basePer100CarbsG = input.basePer100CarbsG,
+            basePer100FatG = input.basePer100FatG,
+            entryServingName = input.entryServingName,
+            entryServingGrams = input.entryServingGrams,
         ),
     )
+
+    suspend fun updateMealEntry(entry: MealEntryEntity) {
+        mealEntryDao.update(
+            entry.copy(
+                name = entry.name.trim(),
+                calories = entry.calories.coerceAtLeast(0),
+                proteinG = entry.proteinG.coerceAtLeast(0.0),
+                carbsG = entry.carbsG.coerceAtLeast(0.0),
+                fatG = entry.fatG.coerceAtLeast(0.0),
+            ),
+        )
+    }
+
+    fun observeRecentFoods(limit: Int = RecentFoods.DEFAULT_LIMIT): Flow<List<MealEntryEntity>> =
+        mealEntryDao.observeFoodLibraryEntries().map { RecentFoods.fromEntries(it, limit) }
 
     suspend fun resetAllLogs() {
         weeklyReviewDao.deleteAll()

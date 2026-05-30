@@ -44,12 +44,15 @@ data class FoodLibraryUiState(
     val amountMode: AmountMode = AmountMode.SERVINGS,
     val servingsValue: String = "1",
     val gramsValue: String = "100",
+    val editingFoodId: Long? = null,
     val newFoodName: String = "",
     val newFoodServing: String = "100g",
     val newFoodCalories: String = "",
     val newFoodProtein: String = "",
     val newFoodCarbs: String = "",
     val newFoodFat: String = "",
+    val newFoodServingName: String = "",
+    val newFoodServingGrams: String = "",
     val showCreateFoodForm: Boolean = false,
     val showSaveMealDialog: Boolean = false,
     val saveMealName: String = "",
@@ -359,7 +362,40 @@ class FoodLibraryViewModel(
     fun onNewFoodProteinChanged(v: String) = _uiState.update { it.copy(newFoodProtein = v) }
     fun onNewFoodCarbsChanged(v: String) = _uiState.update { it.copy(newFoodCarbs = v) }
     fun onNewFoodFatChanged(v: String) = _uiState.update { it.copy(newFoodFat = v) }
-    fun toggleCreateFoodForm() = _uiState.update { it.copy(showCreateFoodForm = !it.showCreateFoodForm, message = null) }
+    fun toggleCreateFoodForm() = _uiState.update {
+        it.copy(
+            showCreateFoodForm = !it.showCreateFoodForm,
+            editingFoodId = null,
+            newFoodName = if (it.showCreateFoodForm) it.newFoodName else "",
+            newFoodServing = if (it.showCreateFoodForm) it.newFoodServing else "100g",
+            newFoodCalories = if (it.showCreateFoodForm) it.newFoodCalories else "",
+            newFoodProtein = if (it.showCreateFoodForm) it.newFoodProtein else "",
+            newFoodCarbs = if (it.showCreateFoodForm) it.newFoodCarbs else "",
+            newFoodFat = if (it.showCreateFoodForm) it.newFoodFat else "",
+            newFoodServingName = "",
+            newFoodServingGrams = "",
+            message = null,
+        )
+    }
+
+    fun onNewFoodServingNameChanged(v: String) = _uiState.update { it.copy(newFoodServingName = v) }
+    fun onNewFoodServingGramsChanged(v: String) = _uiState.update { it.copy(newFoodServingGrams = v) }
+
+    fun openEditFood(food: SavedFoodEntity) = _uiState.update {
+        it.copy(
+            showCreateFoodForm = true,
+            editingFoodId = food.id,
+            newFoodName = food.name,
+            newFoodServing = food.servingName,
+            newFoodCalories = food.calories.toString(),
+            newFoodProtein = food.proteinG.toString(),
+            newFoodCarbs = food.carbsG.toString(),
+            newFoodFat = food.fatG.toString(),
+            newFoodServingName = food.householdServingName.orEmpty(),
+            newFoodServingGrams = food.householdServingGrams?.toInt()?.toString().orEmpty(),
+            message = null,
+        )
+    }
 
     fun saveNewFood() {
         val s = _uiState.value
@@ -371,24 +407,31 @@ class FoodLibraryViewModel(
             _uiState.update { it.copy(message = "Fill in all fields with valid numbers.") }
             return
         }
+        val servingGrams = s.newFoodServingGrams.toDoubleOrNull()
+        val servingName = s.newFoodServingName.trim().ifBlank { null }
         viewModelScope.launch {
             logRepository.saveFood(
                 SavedFoodEntity(
+                    id = s.editingFoodId ?: 0,
                     name = s.newFoodName.trim(),
                     servingName = s.newFoodServing.trim(),
                     calories = cal,
                     proteinG = p,
                     carbsG = c,
                     fatG = f,
+                    householdServingName = servingName?.takeIf { servingGrams != null && servingGrams >= 1.0 },
+                    householdServingGrams = servingGrams?.takeIf { it >= 1.0 && servingName != null },
                 ),
             )
             _uiState.update {
                 it.copy(
                     showCreateFoodForm = false,
+                    editingFoodId = null,
                     newFoodName = "", newFoodServing = "100g",
                     newFoodCalories = "", newFoodProtein = "",
                     newFoodCarbs = "", newFoodFat = "",
-                    message = "Food saved to library.",
+                    newFoodServingName = "", newFoodServingGrams = "",
+                    message = if (s.editingFoodId != null) "Food updated." else "Food saved to library.",
                 )
             }
         }

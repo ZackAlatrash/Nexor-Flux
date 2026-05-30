@@ -164,7 +164,11 @@ fun FoodLibraryScreen(
                 }
             } else {
                 items(state.filteredFoods, key = { it.key }) { item ->
-                    FoodRow(item = item, onLog = { viewModel.requestLogFood(item.food) })
+                    FoodRow(
+                        item = item,
+                        onLog = { viewModel.requestLogFood(item.food) },
+                        onEdit = if (item.sourceLabel == null) { { viewModel.openEditFood(item.food) } } else null,
+                    )
                 }
             }
         }
@@ -263,7 +267,7 @@ fun FoodLibraryScreen(
 }
 
 @Composable
-private fun FoodRow(item: FoodLibraryItem, onLog: () -> Unit) {
+private fun FoodRow(item: FoodLibraryItem, onLog: () -> Unit, onEdit: (() -> Unit)? = null) {
     val food = item.food
     SectionCard {
         Row(
@@ -282,10 +286,15 @@ private fun FoodRow(item: FoodLibraryItem, onLog: () -> Unit) {
                     color = Secondary,
                 )
             }
-            Button(
-                onClick = onLog,
-                colors = ButtonDefaults.buttonColors(containerColor = Blue),
-            ) { Text("Log", fontSize = 11.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (onEdit != null) {
+                    TextButton(onClick = onEdit) { Text("Edit", fontSize = 11.sp, color = Secondary) }
+                }
+                Button(
+                    onClick = onLog,
+                    colors = ButtonDefaults.buttonColors(containerColor = Blue),
+                ) { Text("Log", fontSize = 11.sp) }
+            }
         }
     }
 }
@@ -318,7 +327,10 @@ private fun MealRow(meal: SavedMealEntity, onLog: () -> Unit) {
 private fun CreateFoodForm(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
     SectionCard {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("New food", fontWeight = FontWeight.Bold)
+            Text(
+                if (state.editingFoodId != null) "Edit food" else "New food",
+                fontWeight = FontWeight.Bold,
+            )
             OutlinedTextField(
                 value = state.newFoodName,
                 onValueChange = viewModel::onNewFoodNameChanged,
@@ -341,8 +353,18 @@ private fun CreateFoodForm(state: FoodLibraryUiState, viewModel: FoodLibraryView
                 NumberField("Carbs", state.newFoodCarbs, viewModel::onNewFoodCarbsChanged, Modifier.weight(1f), "g")
                 NumberField("Fat", state.newFoodFat, viewModel::onNewFoodFatChanged, Modifier.weight(1f), "g")
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = state.newFoodServingName,
+                    onValueChange = viewModel::onNewFoodServingNameChanged,
+                    label = { Text("Serving name (e.g. scoop)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
+            }
             Button(onClick = viewModel::saveNewFood, modifier = Modifier.fillMaxWidth()) {
-                Text("Save food")
+                Text(if (state.editingFoodId != null) "Update food" else "Save food")
             }
         }
     }

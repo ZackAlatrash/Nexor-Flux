@@ -1,12 +1,10 @@
 package com.zack.recomptracker.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,6 +15,7 @@ import androidx.navigation.compose.composable
 import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.dashboard.DashboardScreen
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
+import com.zack.recomptracker.ui.dashboard.HomeDashboardScreen
 import com.zack.recomptracker.ui.foods.FoodsScreen
 import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.more.MoreScreen
@@ -28,7 +27,8 @@ import com.zack.recomptracker.ui.settings.SettingsScreen
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryScreen
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
-import com.zack.recomptracker.ui.today.TodayScreen
+import com.zack.recomptracker.ui.today.BodyRecoveryScreen
+import com.zack.recomptracker.ui.today.FoodScreen
 import com.zack.recomptracker.ui.today.TodayViewModel
 
 enum class TopLevelDestination(
@@ -36,14 +36,16 @@ enum class TopLevelDestination(
     val label: String,
     val icon: ImageVector,
 ) {
-    Today("today", "Today", Icons.Default.Home),
-    Dashboard("dashboard", "Stats", Icons.Default.GridView),
-    Progress("progress", "Charts", Icons.AutoMirrored.Filled.TrendingUp),
-    Plan("plan", "Plan", Icons.Default.Person),
+    Home("home", "Home", Icons.Default.Home),
+    Food("food", "Food", Icons.Default.Restaurant),
+    Body("body", "Body", Icons.Default.Favorite),
     More("more", "More", Icons.Default.MoreHoriz),
 }
 
 object Routes {
+    const val Stats = "stats"
+    const val Charts = "charts"
+    const val Plan = "plan"
     const val FoodLibrary = "food_library"
     const val Foods = "foods"
     const val Settings = "settings"
@@ -57,31 +59,44 @@ fun AppNavGraph(
     val factory = LocalAppContainer.current.viewModelFactory
     NavHost(
         navController = navController,
-        startDestination = TopLevelDestination.Today.route,
+        startDestination = TopLevelDestination.Home.route,
         modifier = modifier,
     ) {
-        composable(TopLevelDestination.Today.route) {
-            TodayScreen(
+        composable(TopLevelDestination.Home.route) {
+            HomeDashboardScreen(
+                viewModel = viewModel<DashboardViewModel>(factory = factory),
+                onLogFood = { navController.navigate(TopLevelDestination.Food.route) },
+                onUpdateBody = { navController.navigate(TopLevelDestination.Body.route) },
+            )
+        }
+        composable(TopLevelDestination.Food.route) {
+            FoodScreen(
                 viewModel = viewModel(factory = factory),
                 onAddToSlot = { slotId, slotName ->
                     navController.navigate(
                         "${Routes.FoodLibrary}?slotId=$slotId&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}"
                     )
                 },
+                onBrowseLibrary = { navController.navigate(Routes.FoodLibrary) },
             )
         }
-        composable(TopLevelDestination.Dashboard.route) {
+        composable(TopLevelDestination.Body.route) {
+            BodyRecoveryScreen(viewModel<TodayViewModel>(factory = factory))
+        }
+        composable(Routes.Stats) {
             DashboardScreen(viewModel<DashboardViewModel>(factory = factory))
         }
-        composable(TopLevelDestination.Progress.route) {
+        composable(Routes.Charts) {
             ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
         }
-        composable(TopLevelDestination.Plan.route) {
+        composable(Routes.Plan) {
             PlanScreen(viewModel<PlanViewModel>(factory = factory))
         }
         composable(TopLevelDestination.More.route) {
             MoreScreen(
-                onFoodsClick = { navController.navigate(Routes.FoodLibrary) },
+                onStatsClick = { navController.navigate(Routes.Stats) },
+                onChartsClick = { navController.navigate(Routes.Charts) },
+                onPlanClick = { navController.navigate(Routes.Plan) },
                 onSettingsClick = { navController.navigate(Routes.Settings) },
             )
         }

@@ -16,4 +16,10 @@ UI depends on ViewModels. ViewModels depend on repositories and pure domain calc
 The MVP uses manual dependency wiring through `AppContainer`, as required by the plan. Hilt is intentionally not used yet.
 
 ## Data flow
-Room is the source of truth for logs, meals, foods, saved meals, marker lifts, and weekly reviews. DataStore is the source of truth for plan targets and thresholds. Repositories expose `Flow` streams, ViewModels combine those streams into screen state, and Compose collects state with lifecycle-aware collection.
+Room is the source of truth for logs, meals, personal foods, imported reference foods, saved meals, marker lifts, and weekly reviews. DataStore is the source of truth for plan targets and thresholds. Repositories expose `Flow` streams, ViewModels combine those streams into screen state, and Compose collects state with lifecycle-aware collection.
+
+## Local food imports
+- `PersonalFoodRepository` exports and merge-imports editable personal foods as local JSON.
+- `FoodCatalogRepository` imports an official NEVO CSV export after the user accepts RIVM's download conditions. It transactionally replaces only the prior NEVO catalog.
+- `HealthConnectRepository` can read named nutrition records from the last 365 days when Health Connect supports and grants full-history access. The Settings review flow deduplicates those records and saves only selected rows as personal foods.
+- Health Connect nutrition history is not a lossless Samsung Health library export: the records do not guarantee the original serving weight. The review dialog makes clear that selected macros become the app's 100g baseline.

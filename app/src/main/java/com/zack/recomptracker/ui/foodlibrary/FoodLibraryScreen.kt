@@ -83,7 +83,12 @@ fun FoodLibraryScreen(
             OutlinedTextField(
                 value = state.query,
                 onValueChange = viewModel::onQueryChanged,
-                placeholder = { Text("Search saved foods…") },
+                placeholder = {
+                    Text(
+                        if (state.category == FoodCategory.NEVO) "Search NEVO foods…"
+                        else "Search saved foods…"
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -102,6 +107,7 @@ fun FoodLibraryScreen(
                                     FoodCategory.PROTEINS -> "Proteins"
                                     FoodCategory.CARBS -> "Carbs"
                                     FoodCategory.MEALS -> "Saved Meals"
+                                    FoodCategory.NEVO -> "NEVO"
                                 },
                             )
                         },
@@ -116,10 +122,18 @@ fun FoodLibraryScreen(
 
         if (state.category != FoodCategory.MEALS) {
             if (state.filteredFoods.isEmpty()) {
-                item { Text("No foods found.", color = Secondary) }
+                item {
+                    Text(
+                        if (state.category == FoodCategory.NEVO)
+                            "No NEVO foods imported yet. Go to Settings → Import NEVO CSV."
+                        else
+                            "No foods found.",
+                        color = Secondary,
+                    )
+                }
             } else {
-                items(state.filteredFoods, key = { it.id }) { food ->
-                    FoodRow(food = food, onLog = { viewModel.requestLogFood(food) })
+                items(state.filteredFoods, key = { it.key }) { item ->
+                    FoodRow(item = item, onLog = { viewModel.requestLogFood(item.food) })
                 }
             }
         }
@@ -130,26 +144,28 @@ fun FoodLibraryScreen(
             }
         }
 
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (slotId != null) {
-                    OutlinedButton(
-                        onClick = viewModel::openSaveMealDialog,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenStar),
-                    ) {
-                        Text("Save current slot as meal")
+        if (state.category != FoodCategory.NEVO) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (slotId != null) {
+                        OutlinedButton(
+                            onClick = viewModel::openSaveMealDialog,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenStar),
+                        ) {
+                            Text("Save current slot as meal")
+                        }
                     }
-                }
-                OutlinedButton(
-                    onClick = viewModel::toggleCreateFoodForm,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
-                ) {
-                    Text(if (state.showCreateFoodForm) "Cancel" else "+ Create new food")
-                }
-                if (state.showCreateFoodForm) {
-                    CreateFoodForm(state = state, viewModel = viewModel)
+                    OutlinedButton(
+                        onClick = viewModel::toggleCreateFoodForm,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
+                    ) {
+                        Text(if (state.showCreateFoodForm) "Cancel" else "+ Create new food")
+                    }
+                    if (state.showCreateFoodForm) {
+                        CreateFoodForm(state = state, viewModel = viewModel)
+                    }
                 }
             }
         }
@@ -203,7 +219,8 @@ fun FoodLibraryScreen(
 }
 
 @Composable
-private fun FoodRow(food: SavedFoodEntity, onLog: () -> Unit) {
+private fun FoodRow(item: FoodLibraryItem, onLog: () -> Unit) {
+    val food = item.food
     SectionCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -212,6 +229,9 @@ private fun FoodRow(food: SavedFoodEntity, onLog: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(food.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                if (item.sourceLabel != null) {
+                    Text(item.sourceLabel, fontSize = 10.sp, color = Blue, fontWeight = FontWeight.Bold)
+                }
                 Text(
                     "${food.servingName} · ${food.calories} kcal · ${food.proteinG.toInt()}P ${food.carbsG.toInt()}C ${food.fatG.toInt()}F",
                     fontSize = 11.sp,

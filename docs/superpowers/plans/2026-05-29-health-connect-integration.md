@@ -68,7 +68,7 @@ Replace the current `<manifest xmlns:android=…>` opening with:
 
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
-    <uses-permission android:name="android.permission.health.READ_SLEEP_SESSION" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />

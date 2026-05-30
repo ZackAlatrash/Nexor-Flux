@@ -3,8 +3,10 @@ package com.zack.recomptracker.data.health
 import android.content.Context
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
@@ -14,6 +16,9 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
+import kotlin.math.roundToInt
+import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 
 class HealthConnectRepository(context: Context) {
 
@@ -29,6 +34,11 @@ class HealthConnectRepository(context: Context) {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
         HealthPermission.getReadPermission(SleepSessionRecord::class),
+    )
+    val nutritionPermission: String = HealthPermission.getReadPermission(NutritionRecord::class)
+    val historicalNutritionPermissions: Set<String> = setOf(
+        nutritionPermission,
+        HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
     )
 
     fun availability(): HealthConnectAvailability = when (
@@ -46,6 +56,19 @@ class HealthConnectRepository(context: Context) {
         client.permissionController.getGrantedPermissions().containsAll(requiredPermissions)
     }.getOrDefault(false)
 
+    suspend fun hasNutritionPermission(): Boolean = runCatching {
+        nutritionPermission in client.permissionController.getGrantedPermissions()
+    }.getOrDefault(false)
+
+    fun supportsHistoricalNutritionImport(): Boolean =
+        availability() == HealthConnectAvailability.Available &&
+            client.features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY) ==
+            HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+
+    suspend fun hasHistoricalNutritionPermissions(): Boolean = runCatching {
+        client.permissionController.getGrantedPermissions().containsAll(historicalNutritionPermissions)
+    }.getOrDefault(false)
+
     suspend fun readToday(date: LocalDate): HealthConnectReadResult = runCatching {
         val zone = ZoneId.systemDefault()
         val startOfDay: Instant = date.atStartOfDay(zone).toInstant()
@@ -59,6 +82,28 @@ class HealthConnectRepository(context: Context) {
 
         HealthConnectReadResult(steps = steps, weightKg = weightKg, sleepHours = sleepHours)
     }.getOrDefault(HealthConnectReadResult())
+
+    suspend fun readHistoricalNutrition(days: Long = 365): Result<List<FoodImportCandidate>> = runCatching {
+        check(supportsHistoricalNutritionImport()) {
+            "Health Connect on this device cannot provide 365-day history access."
+        }
+        val end = Instant.now()
+        val start = end.minus(Duration.ofDays(days))
+        val foods = mutableListOf<FoodImportCandidate>()
+        var pageToken: String? = null
+        do {
+            val response = client.readRecords(
+                ReadRecordsRequest(
+                    recordType = NutritionRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(start, end),
+                    pageToken = pageToken,
+                ),
+            )
+            foods += response.records.mapNotNull(NutritionRecord::toFoodImportCandidate)
+            pageToken = response.pageToken
+        } while (pageToken != null)
+        foods
+    }
 
     private suspend fun readSteps(start: Instant, end: Instant): Int? {
         val response = client.readRecords(
@@ -81,5 +126,39 @@ class HealthConnectRepository(context: Context) {
         )
         val latest = response.records.maxByOrNull { it.endTime } ?: return null
         return Duration.between(latest.startTime, latest.endTime).toMinutes() / 60.0
+    }
+}
+
+// Samsung Health syncs nutrition to Health Connect as one aggregate record per
+// meal type (HealthConstants.Nutrition MEAL_TYPE_BREAKFAST/LUNCH/DINNER and the
+// MORNING/AFTERNOON/EVENING_SNACK variants), labelling NutritionRecord.name with
+// the localized meal-type rather than the foods inside it. Those aggregates are
+// not reusable "foods", so we drop any record whose name is just a meal-type tag.
+private val MEAL_TYPE_NAMES: Set<String> = setOf(
+    // English (Samsung's six meal types + common synonyms)
+    "breakfast", "lunch", "dinner", "supper", "brunch", "meal", "snack",
+    "morning snack", "afternoon snack", "evening snack", "late night snack",
+    "morning meal", "afternoon meal", "evening meal", "night meal",
+    // Dutch (RIVM/NEVO users typically run Samsung Health in Dutch)
+    "ontbijt", "middageten", "diner", "avondeten", "tussendoortje",
+    "ochtendsnack", "middagsnack", "avondsnack", "snack ochtend", "snack middag", "snack avond",
+    // Korean (Samsung Health's origin locale)
+    "아침", "점심", "저녁", "간식", "야식", "아침식사", "점심식사", "저녁식사",
+)
+
+private fun NutritionRecord.toFoodImportCandidate(): FoodImportCandidate? {
+    val foodName = name?.trim().orEmpty()
+    if (foodName.isBlank()) return null
+    if (foodName.lowercase(Locale.ROOT) in MEAL_TYPE_NAMES) return null
+    val food = FoodImportCandidate(
+        name = foodName,
+        servingName = "100g",
+        calories = energy?.inKilocalories?.roundToInt() ?: 0,
+        proteinG = protein?.inGrams ?: 0.0,
+        carbsG = totalCarbohydrate?.inGrams ?: 0.0,
+        fatG = totalFat?.inGrams ?: 0.0,
+    )
+    return food.takeIf {
+        it.calories > 0 || it.proteinG > 0 || it.carbsG > 0 || it.fatG > 0
     }
 }

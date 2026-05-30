@@ -71,7 +71,7 @@ class HealthConnectRepository(private val context: Context) {
     fun permissionsContract(): ActivityResultContract<Set<String>, Set<String>>
 
     /** The three permissions this app needs. */
-    val requiredPermissions: Set<String>   // READ_STEPS, READ_WEIGHT, READ_SLEEP_SESSION
+    val requiredPermissions: Set<String>   // READ_STEPS, READ_WEIGHT, READ_SLEEP
 
     /** True if all three permissions are currently granted. */
     suspend fun hasPermissions(): Boolean
@@ -201,7 +201,7 @@ suspend fun applyHealthConnectSync(date: LocalDate, result: HealthConnectReadRes
 <!-- Inside <manifest>, before <application> -->
 <uses-permission android:name="android.permission.health.READ_STEPS" />
 <uses-permission android:name="android.permission.health.READ_WEIGHT" />
-<uses-permission android:name="android.permission.health.READ_SLEEP_SESSION" />
+<uses-permission android:name="android.permission.health.READ_SLEEP" />
 
 <!-- Required for Health Connect SDK to resolve the HC package -->
 <queries>

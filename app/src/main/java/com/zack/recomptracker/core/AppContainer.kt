@@ -9,7 +9,9 @@ import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.AppPreferences
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.BackupRepository
+import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
@@ -37,6 +39,8 @@ class AppContainer(context: Context) {
         mealSlotDao = database.mealSlotDao(),
     )
     val backupRepository = BackupRepository(database, planRepository)
+    val foodCatalogRepository = FoodCatalogRepository(database)
+    val personalFoodRepository = PersonalFoodRepository(database.savedFoodDao())
     val healthConnectRepository = HealthConnectRepository(context.applicationContext)
     val adjustmentEngine = AdjustmentEngine()
     val trendCalculator = TrendCalculator()
@@ -80,11 +84,14 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 hcRepository = container.healthConnectRepository,
+                foodCatalogRepository = container.foodCatalogRepository,
+                personalFoodRepository = container.personalFoodRepository,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
+                foodCatalogRepository = container.foodCatalogRepository,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

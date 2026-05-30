@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
+import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
@@ -14,7 +15,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS }
+enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS, NEVO }
+
+data class FoodLibraryItem(
+    val key: String,
+    val food: SavedFoodEntity,
+    val sourceLabel: String? = null,
+)
 
 data class FoodLibraryUiState(
     val slotId: Long? = null,
@@ -23,6 +30,7 @@ data class FoodLibraryUiState(
     val query: String = "",
     val category: FoodCategory = FoodCategory.ALL,
     val allFoods: List<SavedFoodEntity> = emptyList(),
+    val allCatalogFoods: List<com.zack.recomptracker.data.local.entity.CatalogFoodEntity> = emptyList(),
     val allMeals: List<SavedMealEntity> = emptyList(),
     val message: String? = null,
     val showQuantityDialog: Boolean = false,
@@ -38,18 +46,72 @@ data class FoodLibraryUiState(
     val showSaveMealDialog: Boolean = false,
     val saveMealName: String = "",
 ) {
-    val filteredFoods: List<SavedFoodEntity>
+    val filteredFoods: List<FoodLibraryItem>
         get() {
             val q = query.trim().lowercase()
-            return allFoods.filter { food ->
+
+            // NEVO tab: show the full catalog, searchable, no personal foods mixed in.
+            if (category == FoodCategory.NEVO) {
+                return allCatalogFoods
+                    .filter { q.isEmpty() || it.name.lowercase().contains(q) }
+                    .map { food ->
+                        FoodLibraryItem(
+                            key = "catalog_${food.id}",
+                            food = SavedFoodEntity(
+                                name = food.name,
+                                servingName = food.servingName,
+                                calories = food.calories,
+                                proteinG = food.proteinG,
+                                carbsG = food.carbsG,
+                                fatG = food.fatG,
+                            ),
+                            sourceLabel = "NEVO",
+                        )
+                    }
+            }
+
+            // All / Proteins / Carbs / Meals tabs: personal foods always shown,
+            // catalog foods only appear when searching.
+            val personal = allFoods.filter { food ->
                 (q.isEmpty() || food.name.lowercase().contains(q)) &&
-                when (category) {
-                    FoodCategory.PROTEINS -> food.proteinG >= food.carbsG && food.proteinG >= food.fatG
-                    FoodCategory.CARBS -> food.carbsG >= food.proteinG && food.carbsG > food.fatG
-                    else -> true
+                    food.matchesCategory()
+            }.map { food -> FoodLibraryItem(key = "personal_${food.id}", food = food) }
+            val catalog = if (q.isEmpty()) {
+                emptyList()
+            } else {
+                allCatalogFoods.filter { food ->
+                    food.name.lowercase().contains(q) &&
+                        SavedFoodEntity(
+                            name = food.name,
+                            servingName = food.servingName,
+                            calories = food.calories,
+                            proteinG = food.proteinG,
+                            carbsG = food.carbsG,
+                            fatG = food.fatG,
+                        ).matchesCategory()
+                }.map { food ->
+                    FoodLibraryItem(
+                        key = "catalog_${food.id}",
+                        food = SavedFoodEntity(
+                            name = food.name,
+                            servingName = food.servingName,
+                            calories = food.calories,
+                            proteinG = food.proteinG,
+                            carbsG = food.carbsG,
+                            fatG = food.fatG,
+                        ),
+                        sourceLabel = food.source,
+                    )
                 }
             }
+            return personal + catalog
         }
+
+    private fun SavedFoodEntity.matchesCategory(): Boolean = when (category) {
+        FoodCategory.PROTEINS -> proteinG >= carbsG && proteinG >= fatG
+        FoodCategory.CARBS -> carbsG >= proteinG && carbsG > fatG
+        else -> true
+    }
 
     val filteredMeals: List<SavedMealEntity>
         get() {
@@ -62,6 +124,7 @@ class FoodLibraryViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
+    private val foodCatalogRepository: FoodCatalogRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
@@ -76,12 +139,14 @@ class FoodLibraryViewModel(
         viewModelScope.launch {
             combine(
                 logRepository.observeSavedFoods(),
+                foodCatalogRepository.observeCatalogFoods(),
                 logRepository.observeSavedMeals(),
                 planRepository.preferences,
                 logRepository.observeDay(today),
-            ) { foods, meals, prefs, day ->
+            ) { foods, catalogFoods, meals, prefs, day ->
                 object {
                     val foods = foods
+                    val catalogFoods = catalogFoods
                     val meals = meals
                     val prefs = prefs
                     val eatenCalories = day.totals.calories
@@ -90,6 +155,7 @@ class FoodLibraryViewModel(
                 _uiState.update { current ->
                     current.copy(
                         allFoods = data.foods,
+                        allCatalogFoods = data.catalogFoods,
                         allMeals = data.meals,
                         remainingCalories = (data.prefs.calorieZoneLowerBound - data.eatenCalories).coerceAtLeast(0),
                     )

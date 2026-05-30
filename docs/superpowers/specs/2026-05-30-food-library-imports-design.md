@@ -152,9 +152,10 @@ Add:
 
 ```xml
 <uses-permission android:name="android.permission.health.READ_NUTRITION" />
+<uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
 ```
 
-Keep the existing step, weight, and sleep permissions as the base Health Connect permission set. Add `HealthPermission.getReadPermission(NutritionRecord::class)` as a separate historical-food import permission requested only when the user starts that import. Existing step, weight, and sleep behavior remains unchanged for users who do not grant nutrition access.
+Keep the existing step, weight, and sleep permissions as the base Health Connect permission set. Add `HealthPermission.getReadPermission(NutritionRecord::class)` and `HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY` as separate historical-food import permissions requested only when the user starts that import. Health Connect limits reads to 30 days by default, so the app checks `HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY` before offering a 365-day scan. Existing step, weight, and sleep behavior remains unchanged for users who do not grant historical nutrition access.
 
 ### Read flow
 

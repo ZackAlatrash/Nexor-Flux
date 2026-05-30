@@ -48,7 +48,7 @@ fun RecompApp(container: AppContainer) {
                                 selected = selected,
                                 onClick = {
                                     navController.navigate(destination.route) {
-                                        popUpTo(TopLevelDestination.Today.route) {
+                                        popUpTo(TopLevelDestination.Home.route) {
                                             saveState = true
                                         }
                                         launchSingleTop = true

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,12 +21,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ai.GemmaInsightService
 import com.zack.recomptracker.data.health.HealthConnectAvailability
+import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
+import com.zack.recomptracker.domain.foodimport.identity
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.component.ToggleRow
@@ -63,6 +69,26 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     ) { uri ->
         if (uri != null) viewModel.importFromUri(context, uri)
     }
+    val personalFoodsExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) viewModel.exportPersonalFoodsToUri(context, uri)
+    }
+    val personalFoodsImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) viewModel.importPersonalFoodsFromUri(context, uri)
+    }
+    val nevoImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) viewModel.importNevoFromUri(context, uri)
+    }
+    val samsungFoodExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) viewModel.scanSamsungHealthFoodExport(context, uri)
+    }
     val hcPermissionLauncher = rememberLauncherForActivityResult(
         contract = viewModel.hcPermissionsContract,
     ) {
@@ -70,11 +96,22 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         // authoritative permission state, so the callback payload is ignored.
         viewModel.onPermissionsResult()
     }
+    val nutritionPermissionLauncher = rememberLauncherForActivityResult(
+        contract = viewModel.hcPermissionsContract,
+    ) {
+        viewModel.onNutritionPermissionsResult()
+    }
 
     LaunchedEffect(state.pendingHcPermissionRequest) {
         if (state.pendingHcPermissionRequest) {
             hcPermissionLauncher.launch(viewModel.hcRequiredPermissions)
             viewModel.onHcPermissionRequestConsumed()
+        }
+    }
+    LaunchedEffect(state.pendingNutritionPermissionRequest) {
+        if (state.pendingNutritionPermissionRequest) {
+            nutritionPermissionLauncher.launch(viewModel.nutritionPermission)
+            viewModel.onNutritionPermissionRequestConsumed()
         }
     }
 
@@ -107,6 +144,69 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 ) {
                     Text("Import JSON backup")
                 }
+                OutlinedButton(
+                    onClick = { personalFoodsExportLauncher.launch("recomp-tracker-personal-foods-${LocalDate.now()}.json") },
+                    enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Export personal foods JSON")
+                }
+                OutlinedButton(
+                    onClick = { personalFoodsImportLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
+                    enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Import personal foods JSON")
+                }
+            }
+        }
+        item {
+            SectionCard("Dutch food catalog") {
+                Text("Import an official NEVO CSV export downloaded after accepting RIVM's conditions.")
+                Button(
+                    onClick = { nevoImportLauncher.launch(arrayOf("text/csv", "text/*", "*/*")) },
+                    enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (state.nevoSourceVersion == null) "Import NEVO CSV" else "Replace NEVO CSV")
+                }
+                if (state.nevoSourceVersion != null) {
+                    Text(
+                        "Based on data from NEVO online version ${state.nevoSourceVersion}, RIVM, Bilthoven",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        onClick = viewModel::removeNevoCatalog,
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Remove NEVO catalog")
+                    }
+                }
+            }
+        }
+        item {
+            SectionCard("Samsung Health food import") {
+                Text(
+                    "In Samsung Health: Profile → Settings → Download personal data. " +
+                        "Once downloaded, pick the ZIP file directly — or extract it and pick " +
+                        "\"com.samsung.health.food_info.T.csv\". " +
+                        "Foods are normalised to per-100 g and added to your personal library.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = { samsungFoodExportLauncher.launch(arrayOf("*/*")) },
+                    enabled = !state.historicalFoodBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (state.historicalFoodBusy) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("Pick food_info CSV")
+                }
             }
         }
         item {
@@ -118,6 +218,8 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 message = state.healthConnectMessage,
                 onToggle = viewModel::onHealthConnectToggled,
                 onSyncNow = viewModel::syncNow,
+                importingFoods = state.historicalFoodBusy,
+                onImportFoods = viewModel::startHistoricalFoodImport,
                 onInstall = {
                     val marketUri = Uri.parse("market://details?id=com.google.android.apps.healthdata")
                     val webUri = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
@@ -154,6 +256,16 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             }
         }
     }
+
+    if (state.historicalFoodCandidates.isNotEmpty()) {
+        HistoricalFoodReviewDialog(
+            candidates = state.historicalFoodCandidates,
+            selected = state.selectedHistoricalFoodIdentities,
+            onToggle = viewModel::toggleHistoricalFoodCandidate,
+            onDismiss = viewModel::dismissHistoricalFoodReview,
+            onImport = viewModel::importSelectedHistoricalFoods,
+        )
+    }
 }
 
 @Composable
@@ -165,6 +277,8 @@ private fun HealthConnectSection(
     message: String?,
     onToggle: (Boolean) -> Unit,
     onSyncNow: () -> Unit,
+    importingFoods: Boolean,
+    onImportFoods: () -> Unit,
     onInstall: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -251,11 +365,74 @@ private fun HealthConnectSection(
                         }
                     }
                 }
+                OutlinedButton(
+                    onClick = onImportFoods,
+                    enabled = !importingFoods,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (importingFoods) "Scanning food history…" else "Import foods from Health Connect")
+                }
             }
         }
 
         MessageText(message)
     }
+}
+
+@Composable
+private fun HistoricalFoodReviewDialog(
+    candidates: List<FoodImportCandidate>,
+    selected: Set<com.zack.recomptracker.domain.foodimport.FoodIdentity>,
+    onToggle: (FoodImportCandidate) -> Unit,
+    onDismiss: () -> Unit,
+    onImport: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Review historical foods") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100g baseline.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(candidates.size) { index ->
+                        val candidate = candidates[index]
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Checkbox(
+                                checked = candidate.identity() in selected,
+                                onCheckedChange = { onToggle(candidate) },
+                            )
+                            Column {
+                                Text(candidate.name, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onImport, enabled = selected.isNotEmpty()) {
+                Text("Import selected")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
@@ -297,31 +474,36 @@ private fun HealthConnectSectionPreview() {
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = true, syncing = false,
                 message = "Synced from Health Connect.",
-                onToggle = {}, onSyncNow = {}, onInstall = {},
+                importingFoods = false,
+                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = true, syncing = true,
                 message = "Connected. Syncing…",
-                onToggle = {}, onSyncNow = {}, onInstall = {},
+                importingFoods = false,
+                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = false, syncing = false,
                 message = "Permission wasn't granted. Tap the toggle to try again.",
-                onToggle = {}, onSyncNow = {}, onInstall = {},
+                importingFoods = false,
+                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.Available,
                 enabled = false, hasPermissions = false, syncing = false,
                 message = null,
-                onToggle = {}, onSyncNow = {}, onInstall = {},
+                importingFoods = false,
+                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
             HealthConnectSection(
                 availability = HealthConnectAvailability.NotInstalled,
                 enabled = false, hasPermissions = false, syncing = false,
                 message = null,
-                onToggle = {}, onSyncNow = {}, onInstall = {},
+                importingFoods = false,
+                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
         }
     }

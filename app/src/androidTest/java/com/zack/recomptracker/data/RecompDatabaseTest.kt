@@ -142,6 +142,59 @@ class RecompDatabaseTest {
         }
     }
 
+    @Test
+    fun migratesVersion3To4PreservingDataAndAddingColumns() = runBlocking {
+        val databaseName = "migration-3-4-${System.nanoTime()}.db"
+        context.deleteDatabase(databaseName)
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(databaseName)
+                .callback(
+                    object : SupportSQLiteOpenHelper.Callback(3) {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            createVersion2Schema(db)
+                            db.execSQL(
+                                "CREATE TABLE IF NOT EXISTS catalog_foods (" +
+                                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, source TEXT NOT NULL, " +
+                                    "sourceVersion TEXT NOT NULL, externalId TEXT NOT NULL, name TEXT NOT NULL, " +
+                                    "servingName TEXT NOT NULL, calories INTEGER NOT NULL, proteinG REAL NOT NULL, " +
+                                    "carbsG REAL NOT NULL, fatG REAL NOT NULL)",
+                            )
+                        }
+
+                        override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                    },
+                )
+                .build(),
+        )
+        helper.writableDatabase.execSQL(
+            "INSERT INTO saved_foods (name, servingName, calories, proteinG, carbsG, fatG) " +
+                "VALUES ('Whey', '100g', 120, 24.0, 3.0, 2.0)",
+        )
+        helper.writableDatabase.execSQL(
+            "INSERT INTO meal_entries (date, mealType, name, calories, proteinG, carbsG, fatG, slotId) " +
+                "VALUES ('2026-05-30', 'FOOD_LIBRARY', 'Whey', 72, 14, 2, 1, NULL)",
+        )
+        helper.close()
+
+        val migrated = Room.databaseBuilder(context, RecompDatabase::class.java, databaseName)
+            .addMigrations(RecompDatabase.MIGRATION_3_4)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val foods = migrated.savedFoodDao().getAll()
+            val meals = migrated.mealEntryDao().getAll()
+            assertEquals(1, foods.size)
+            assertEquals(null, foods.first().householdServingName)
+            assertEquals(1, meals.size)
+            assertEquals(null, meals.first().amountGrams)
+            assertEquals(null, meals.first().basePer100Calories)
+        } finally {
+            migrated.close()
+            context.deleteDatabase(databaseName)
+        }
+    }
+
     private fun createVersion2Schema(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS daily_logs (date TEXT NOT NULL, bodyWeightKg REAL, waistCm REAL, steps INTEGER, sleepHours REAL, energyScore INTEGER, hungerScore INTEGER, sorenessScore INTEGER, trained INTEGER NOT NULL, notes TEXT NOT NULL, PRIMARY KEY(date))")
         db.execSQL("CREATE TABLE IF NOT EXISTS meal_entries (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, date TEXT NOT NULL, mealType TEXT NOT NULL, name TEXT NOT NULL, calories INTEGER NOT NULL, proteinG REAL NOT NULL, carbsG REAL NOT NULL, fatG REAL NOT NULL, slotId INTEGER)")

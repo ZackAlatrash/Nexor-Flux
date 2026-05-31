@@ -147,7 +147,7 @@ data class FoodLibraryUiState(
             return when (amountMode) {
                 AmountMode.SERVINGS -> {
                     val servings = servingsValue.toDoubleOrNull() ?: return null
-                    val perServing = food.householdServingGrams ?: 100.0
+                    val perServing = food.householdServingGrams ?: FoodScaling.DEFAULT_SERVING_GRAMS
                     if (servings < 1.0 || perServing < 1.0) null
                     else FoodScaling.gramsForServings(servings, perServing)
                 }

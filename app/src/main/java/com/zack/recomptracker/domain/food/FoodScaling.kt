@@ -12,6 +12,7 @@ data class FoodMacros(
 
 object FoodScaling {
     const val MIN_GRAMS: Double = 1.0
+    const val DEFAULT_SERVING_GRAMS: Double = 100.0
 
     /** Scales a per-100g base to [grams]. Calories round to the nearest Int; macros stay Double. */
     fun scale(basePer100: FoodMacros, grams: Double): FoodMacros {

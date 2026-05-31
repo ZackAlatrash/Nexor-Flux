@@ -25,7 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +44,7 @@ fun BodyHistoryScreen(
     onEditDay: (LocalDate) -> Unit,
     onBack: () -> Unit,
 ) {
-    val items = viewModel.items.collectAsState(initial = emptyList()).value
+    val items by viewModel.items.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Scaffold(
         topBar = {

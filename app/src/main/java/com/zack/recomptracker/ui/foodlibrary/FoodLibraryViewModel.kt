@@ -242,13 +242,12 @@ class FoodLibraryViewModel(
     fun onCategoryChanged(c: FoodCategory) = _uiState.update { it.copy(category = c) }
 
     fun requestLogFood(food: SavedFoodEntity) {
-        val canServings = (food.householdServingGrams ?: 0.0) >= 1.0 && !food.householdServingName.isNullOrBlank()
         _uiState.update {
             it.copy(
                 showAmountSheet = true,
                 pendingFood = food,
                 editingEntryId = null,
-                amountMode = if (canServings) AmountMode.SERVINGS else AmountMode.GRAMS,
+                amountMode = AmountMode.SERVINGS,
                 servingsValue = "1",
                 gramsValue = "100",
                 message = null,

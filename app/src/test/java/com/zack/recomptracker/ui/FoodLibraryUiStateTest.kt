@@ -125,6 +125,28 @@ class FoodLibraryUiStateTest {
     }
 
     @Test
+    fun fractionalServingsResolveCorrectly() {
+        val state = FoodLibraryUiState(
+            pendingFood = whey,
+            amountMode = AmountMode.SERVINGS,
+            servingsValue = "0.5",
+        )
+        assertEquals(15.0, state.resolvedGrams!!, 0.001) // 0.5 × 30 g/scoop
+        assertEquals(18, state.previewMacros!!.calories)  // 15 g × 120 kcal/100 g = 18 kcal
+    }
+
+    @Test
+    fun servingsBelowMinimumYieldsNullPreview() {
+        val state = FoodLibraryUiState(
+            pendingFood = whey,
+            amountMode = AmountMode.SERVINGS,
+            servingsValue = "0.09",
+        )
+        assertEquals(null, state.resolvedGrams)
+        assertEquals(null, state.previewMacros)
+    }
+
+    @Test
     fun foodWithHouseholdServingCanUseServings() {
         val state = FoodLibraryUiState(pendingFood = whey)
         assertEquals(true, state.canUseServings)

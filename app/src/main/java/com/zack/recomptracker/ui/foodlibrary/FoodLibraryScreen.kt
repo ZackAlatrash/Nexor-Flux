@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
+import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -417,8 +418,8 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                 AmountStepper(
                     value = state.servingsValue,
                     onValueChange = viewModel::onServingsChanged,
-                    onMinus = { viewModel.stepServings(-1) },
-                    onPlus = { viewModel.stepServings(1) },
+                    onMinus = { viewModel.stepServings(-FoodScaling.SERVING_STEP) },
+                    onPlus = { viewModel.stepServings(FoodScaling.SERVING_STEP) },
                     caption = state.resolvedGrams?.let { "${it.toInt()} g" } ?: "",
                     suffix = "servings",
                 )

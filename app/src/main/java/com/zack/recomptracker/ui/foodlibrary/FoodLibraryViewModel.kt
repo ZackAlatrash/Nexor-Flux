@@ -148,7 +148,7 @@ data class FoodLibraryUiState(
                 AmountMode.SERVINGS -> {
                     val servings = servingsValue.toDoubleOrNull() ?: return null
                     val perServing = food.householdServingGrams ?: FoodScaling.DEFAULT_SERVING_GRAMS
-                    if (servings < 1.0 || perServing < 1.0) null
+                    if (servings < FoodScaling.MIN_SERVINGS || perServing < 1.0) null
                     else FoodScaling.gramsForServings(servings, perServing)
                 }
                 AmountMode.GRAMS -> {
@@ -288,9 +288,9 @@ class FoodLibraryViewModel(
     fun onServingsChanged(v: String) = _uiState.update { it.copy(servingsValue = v) }
     fun onGramsChanged(v: String) = _uiState.update { it.copy(gramsValue = v) }
 
-    fun stepServings(delta: Int) = _uiState.update {
+    fun stepServings(delta: Double) = _uiState.update {
         val current = it.servingsValue.toDoubleOrNull() ?: 1.0
-        val next = (current + delta).coerceAtLeast(1.0)
+        val next = (current + delta).coerceAtLeast(FoodScaling.MIN_SERVINGS)
         val text = if (next == next.toLong().toDouble()) next.toLong().toString() else next.toString()
         it.copy(servingsValue = text)
     }

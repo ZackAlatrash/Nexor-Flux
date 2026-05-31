@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -391,7 +392,13 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
             val servingLabel = food.householdServingName ?: "serving"
             val servingGrams = food.householdServingGrams?.toInt() ?: 100
             val reference = "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g"
-            Text(reference, color = Secondary, fontSize = 11.sp)
+            Text(
+                reference,
+                color = Secondary,
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
 
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(

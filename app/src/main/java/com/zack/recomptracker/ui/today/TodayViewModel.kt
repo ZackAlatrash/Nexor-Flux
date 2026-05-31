@@ -40,6 +40,7 @@ data class TodayUiState(
     val slotsEditMode: Boolean = false,
     val bodyWeightKg: String = "",
     val waistCm: String = "",
+    val waistSkinfoldMm: String = "",
     val steps: String = "",
     val sleepHours: String = "",
     val energyScore: Int = 5,
@@ -49,6 +50,8 @@ data class TodayUiState(
     val notes: String = "",
     val metricsDirty: Boolean = false,
     val message: String? = null,
+    val weightChange7d: Float? = null,
+    val waistChange7d: Float? = null,
 )
 
 class TodayViewModel(
@@ -91,6 +94,7 @@ class TodayViewModel(
                         current.copy(
                             bodyWeightKg = log.bodyWeightKg?.toString().orEmpty(),
                             waistCm = log.waistCm?.toString().orEmpty(),
+                            waistSkinfoldMm = log.waistSkinfoldMm?.toString().orEmpty(),
                             steps = log.steps?.toString().orEmpty(),
                             sleepHours = log.sleepHours?.toString().orEmpty(),
                             energyScore = log.energyScore ?: 5,
@@ -115,6 +119,33 @@ class TodayViewModel(
             ) {
                 val result = hcRepository.readToday(today)
                 logRepository.applyHealthConnectSync(today, result)
+            }
+        }
+        viewModelScope.launch {
+            logRepository.observeDailyLogs().collect { allLogs ->
+                val cutoff = today.minusDays(14)
+                val recent = allLogs
+                    .filter { LocalDate.parse(it.date) >= cutoff }
+                    .sortedByDescending { LocalDate.parse(it.date) }
+
+                val latestWeight = recent.firstNotNullOfOrNull { it.bodyWeightKg }
+                val weight7dAgo = recent
+                    .filter { LocalDate.parse(it.date) <= today.minusDays(6) }
+                    .firstNotNullOfOrNull { it.bodyWeightKg }
+
+                val latestWaist = recent.firstNotNullOfOrNull { it.waistCm }
+                val waist7dAgo = recent
+                    .filter { LocalDate.parse(it.date) <= today.minusDays(6) }
+                    .firstNotNullOfOrNull { it.waistCm }
+
+                _uiState.update {
+                    it.copy(
+                        weightChange7d = if (latestWeight != null && weight7dAgo != null)
+                            (latestWeight - weight7dAgo).toFloat() else null,
+                        waistChange7d = if (latestWaist != null && waist7dAgo != null)
+                            (latestWaist - waist7dAgo).toFloat() else null,
+                    )
+                }
             }
         }
     }
@@ -158,6 +189,7 @@ class TodayViewModel(
 
     fun onBodyWeightChanged(v: String) = editMetrics { copy(bodyWeightKg = v) }
     fun onWaistChanged(v: String) = editMetrics { copy(waistCm = v) }
+    fun onWaistSkinfoldChanged(v: String) = editMetrics { copy(waistSkinfoldMm = v) }
     fun onStepsChanged(v: String) = editMetrics { copy(steps = v) }
     fun onSleepChanged(v: String) = editMetrics { copy(sleepHours = v) }
     fun onEnergyChanged(v: Int) = editMetrics { copy(energyScore = v.coerceIn(1, 10)) }
@@ -180,6 +212,7 @@ class TodayViewModel(
                     date = s.date,
                     bodyWeightKg = s.bodyWeightKg.toNullableDouble(),
                     waistCm = s.waistCm.toNullableDouble(),
+                    waistSkinfoldMm = s.waistSkinfoldMm.toNullableDouble(),
                     steps = steps,
                     sleepHours = s.sleepHours.toNullableDouble(),
                     energyScore = s.energyScore,

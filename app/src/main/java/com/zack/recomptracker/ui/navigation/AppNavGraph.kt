@@ -86,7 +86,10 @@ fun AppNavGraph(
             )
         }
         composable(TopLevelDestination.Body.route) {
-            BodyRecoveryScreen(viewModel<TodayViewModel>(factory = factory))
+            BodyRecoveryScreen(
+                viewModel = viewModel<TodayViewModel>(factory = factory),
+                onViewHistory = {},
+            )
         }
         composable(Routes.Stats) {
             DashboardScreen(viewModel<DashboardViewModel>(factory = factory))

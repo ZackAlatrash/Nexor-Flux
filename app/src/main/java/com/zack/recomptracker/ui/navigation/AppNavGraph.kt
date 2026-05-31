@@ -30,6 +30,11 @@ import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.today.BodyRecoveryScreen
 import com.zack.recomptracker.ui.today.FoodScreen
 import com.zack.recomptracker.ui.today.TodayViewModel
+import com.zack.recomptracker.ui.body.BodyEditViewModel
+import com.zack.recomptracker.ui.body.BodyHistoryViewModel
+import com.zack.recomptracker.ui.body.BodyHistoryScreen
+import com.zack.recomptracker.ui.body.BodyEditScreen
+import java.time.LocalDate
 
 enum class TopLevelDestination(
     val route: String,
@@ -49,6 +54,9 @@ object Routes {
     const val FoodLibrary = "food_library"
     const val Foods = "foods"
     const val Settings = "settings"
+    const val BodyHistory = "body_history"
+    const val BodyEdit = "body_edit/{date}"
+    fun bodyEdit(date: LocalDate) = "body_edit/$date"
 }
 
 @Composable
@@ -88,7 +96,27 @@ fun AppNavGraph(
         composable(TopLevelDestination.Body.route) {
             BodyRecoveryScreen(
                 viewModel = viewModel<TodayViewModel>(factory = factory),
-                onViewHistory = {},
+                onViewHistory = { navController.navigate(Routes.BodyHistory) },
+            )
+        }
+        composable(Routes.BodyHistory) {
+            BodyHistoryScreen(
+                viewModel = viewModel<BodyHistoryViewModel>(factory = factory),
+                onEditDay = { date -> navController.navigate(Routes.bodyEdit(date)) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.BodyEdit,
+            arguments = listOf(
+                androidx.navigation.navArgument("date") {
+                    type = androidx.navigation.NavType.StringType
+                },
+            ),
+        ) {
+            BodyEditScreen(
+                viewModel = viewModel<BodyEditViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.Stats) {

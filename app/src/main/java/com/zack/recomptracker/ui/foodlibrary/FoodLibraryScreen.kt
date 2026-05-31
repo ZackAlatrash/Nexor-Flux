@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.foodlibrary
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -130,6 +131,31 @@ fun FoodLibraryScreen(
                             selectedLabelColor = Color.White,
                         ),
                     )
+                }
+            }
+        }
+
+        if (state.category != FoodCategory.NEVO) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = viewModel::toggleCreateFoodForm,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue),
+                        border = BorderStroke(1.5.dp, Blue),
+                    ) {
+                        Text("+ New food", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    OutlinedButton(
+                        onClick = viewModel::openQuickAdd,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
+                    ) {
+                        Text("⚡ Quick add", fontSize = 12.sp)
+                    }
                 }
             }
         }

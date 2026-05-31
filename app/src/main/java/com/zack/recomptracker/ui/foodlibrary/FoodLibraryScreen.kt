@@ -208,35 +208,14 @@ fun FoodLibraryScreen(
             }
         }
 
-        if (state.category != FoodCategory.NEVO) {
+        if (slotId != null) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (slotId != null) {
-                        OutlinedButton(
-                            onClick = viewModel::openSaveMealDialog,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenStar),
-                        ) {
-                            Text("Save current slot as meal")
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = viewModel::toggleCreateFoodForm,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
-                    ) {
-                        Text(if (state.showCreateFoodForm) "Cancel" else "+ Create new food")
-                    }
-                    if (state.showCreateFoodForm) {
-                        CreateFoodForm(state = state, viewModel = viewModel)
-                    }
-                    OutlinedButton(
-                        onClick = viewModel::openQuickAdd,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
-                    ) {
-                        Text("Quick add calories")
-                    }
+                OutlinedButton(
+                    onClick = viewModel::openSaveMealDialog,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenStar),
+                ) {
+                    Text("Save current slot as meal")
                 }
             }
         }
@@ -329,53 +308,6 @@ private fun MealRow(meal: SavedMealEntity, onLog: () -> Unit) {
                 onClick = onLog,
                 colors = ButtonDefaults.buttonColors(containerColor = Blue),
             ) { Text("Log all", fontSize = 11.sp) }
-        }
-    }
-}
-
-@Composable
-private fun CreateFoodForm(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
-    SectionCard {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                if (state.editingFoodId != null) "Edit food" else "New food",
-                fontWeight = FontWeight.Bold,
-            )
-            OutlinedTextField(
-                value = state.newFoodName,
-                onValueChange = viewModel::onNewFoodNameChanged,
-                label = { Text("Name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.newFoodServing,
-                onValueChange = viewModel::onNewFoodServingChanged,
-                label = { Text("Serving (e.g. 100g, 1 scoop)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                NumberField("Calories", state.newFoodCalories, viewModel::onNewFoodCaloriesChanged, Modifier.weight(1f), "kcal")
-                NumberField("Protein", state.newFoodProtein, viewModel::onNewFoodProteinChanged, Modifier.weight(1f), "g")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                NumberField("Carbs", state.newFoodCarbs, viewModel::onNewFoodCarbsChanged, Modifier.weight(1f), "g")
-                NumberField("Fat", state.newFoodFat, viewModel::onNewFoodFatChanged, Modifier.weight(1f), "g")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = state.newFoodServingName,
-                    onValueChange = viewModel::onNewFoodServingNameChanged,
-                    label = { Text("Serving name (e.g. scoop)") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
-            }
-            Button(onClick = viewModel::saveNewFood, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.editingFoodId != null) "Update food" else "Save food")
-            }
         }
     }
 }

@@ -84,6 +84,18 @@ class FoodLibraryUiStateTest {
     }
 
     @Test
+    fun servingsModeWithoutHouseholdServingFallsBackTo100gPerServing() {
+        val plain = whey.copy(householdServingName = null, householdServingGrams = null)
+        val state = FoodLibraryUiState(
+            pendingFood = plain,
+            amountMode = AmountMode.SERVINGS,
+            servingsValue = "2",
+        )
+        assertEquals(200.0, state.resolvedGrams!!, 0.001)
+        assertEquals(240, state.previewMacros!!.calories) // whey has 120 kcal/100 g; 200 g → 240 kcal
+    }
+
+    @Test
     fun foodWithoutHouseholdServingIsGramsOnly() {
         val plain = whey.copy(householdServingName = null, householdServingGrams = null)
         val state = FoodLibraryUiState(pendingFood = plain)

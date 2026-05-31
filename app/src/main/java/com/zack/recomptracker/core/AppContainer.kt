@@ -16,6 +16,9 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.zack.recomptracker.ui.body.BodyEditViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
@@ -53,7 +56,7 @@ private class AppViewModelFactory(
     private val container: AppContainer,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+    override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
         return when (modelClass) {
             TodayViewModel::class.java -> TodayViewModel(
                 logRepository = container.logRepository,
@@ -97,6 +100,10 @@ private class AppViewModelFactory(
             BodyHistoryViewModel::class.java -> BodyHistoryViewModel(
                 logRepository = container.logRepository,
                 dateProvider = container.dateProvider,
+            )
+            BodyEditViewModel::class.java -> BodyEditViewModel(
+                logRepository = container.logRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

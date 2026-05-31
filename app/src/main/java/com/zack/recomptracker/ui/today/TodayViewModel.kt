@@ -124,19 +124,21 @@ class TodayViewModel(
         viewModelScope.launch {
             logRepository.observeDailyLogs().collect { allLogs ->
                 val cutoff = today.minusDays(14)
+                val priorCutoff = today.minusDays(6)
                 val recent = allLogs
-                    .filter { LocalDate.parse(it.date) >= cutoff }
-                    .sortedByDescending { LocalDate.parse(it.date) }
+                    .map { it to LocalDate.parse(it.date) }
+                    .filter { (_, date) -> date >= cutoff }
+                    .sortedByDescending { (_, date) -> date }
 
-                val latestWeight = recent.firstNotNullOfOrNull { it.bodyWeightKg }
+                val latestWeight = recent.firstNotNullOfOrNull { (log, _) -> log.bodyWeightKg }
                 val weight7dAgo = recent
-                    .filter { LocalDate.parse(it.date) <= today.minusDays(6) }
-                    .firstNotNullOfOrNull { it.bodyWeightKg }
+                    .filter { (_, date) -> date <= priorCutoff }
+                    .firstNotNullOfOrNull { (log, _) -> log.bodyWeightKg }
 
-                val latestWaist = recent.firstNotNullOfOrNull { it.waistCm }
+                val latestWaist = recent.firstNotNullOfOrNull { (log, _) -> log.waistCm }
                 val waist7dAgo = recent
-                    .filter { LocalDate.parse(it.date) <= today.minusDays(6) }
-                    .firstNotNullOfOrNull { it.waistCm }
+                    .filter { (_, date) -> date <= priorCutoff }
+                    .firstNotNullOfOrNull { (log, _) -> log.waistCm }
 
                 _uiState.update {
                     it.copy(

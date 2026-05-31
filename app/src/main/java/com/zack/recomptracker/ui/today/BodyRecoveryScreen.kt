@@ -142,8 +142,11 @@ private fun TrendCard(weightChange7d: Float?, waistChange7d: Float?) {
 
 @Composable
 private fun TrendChip(value: Float, unit: String, label: String, modifier: Modifier = Modifier) {
-    val isDown = value < 0f
-    val color = if (isDown) Color(0xFF34d399) else MaterialTheme.colorScheme.error
+    val color = when {
+        value < 0f -> Color(0xFF34d399)
+        value > 0f -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val sign = if (value > 0f) "+" else ""
     Card(
         modifier = modifier,

@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
+import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
@@ -92,6 +93,10 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 foodCatalogRepository = container.foodCatalogRepository,
+            )
+            BodyHistoryViewModel::class.java -> BodyHistoryViewModel(
+                logRepository = container.logRepository,
+                dateProvider = container.dateProvider,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

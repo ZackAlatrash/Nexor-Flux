@@ -388,29 +388,25 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(food.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            val reference = if (state.canUseServings) {
-                "1 ${food.householdServingName} = ${food.householdServingGrams?.toInt() ?: "?"} g · ${food.calories} kcal / 100 g"
-            } else {
-                "${food.calories} kcal / 100 g"
-            }
+            val servingLabel = food.householdServingName ?: "serving"
+            val servingGrams = food.householdServingGrams?.toInt() ?: 100
+            val reference = "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g"
             Text(reference, color = Secondary, fontSize = 11.sp)
 
-            if (state.canUseServings) {
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = state.amountMode == AmountMode.SERVINGS,
-                        onClick = { viewModel.onAmountModeChanged(AmountMode.SERVINGS) },
-                        shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    ) { Text("Servings") }
-                    SegmentedButton(
-                        selected = state.amountMode == AmountMode.GRAMS,
-                        onClick = { viewModel.onAmountModeChanged(AmountMode.GRAMS) },
-                        shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text("Grams") }
-                }
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = state.amountMode == AmountMode.SERVINGS,
+                    onClick = { viewModel.onAmountModeChanged(AmountMode.SERVINGS) },
+                    shape = SegmentedButtonDefaults.itemShape(0, 2),
+                ) { Text("Servings") }
+                SegmentedButton(
+                    selected = state.amountMode == AmountMode.GRAMS,
+                    onClick = { viewModel.onAmountModeChanged(AmountMode.GRAMS) },
+                    shape = SegmentedButtonDefaults.itemShape(1, 2),
+                ) { Text("Grams") }
             }
 
-            if (state.amountMode == AmountMode.SERVINGS && state.canUseServings) {
+            if (state.amountMode == AmountMode.SERVINGS) {
                 AmountStepper(
                     value = state.servingsValue,
                     onValueChange = viewModel::onServingsChanged,

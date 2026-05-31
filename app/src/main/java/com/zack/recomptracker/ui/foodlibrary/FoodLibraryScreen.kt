@@ -272,30 +272,7 @@ fun FoodLibraryScreen(
     }
 
     if (state.showQuickAddDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissQuickAdd,
-            title = { Text("Quick add") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = state.quickAddName,
-                        onValueChange = viewModel::onQuickAddNameChanged,
-                        label = { Text("Name (optional)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    NumberField("Calories", state.quickAddCalories, viewModel::onQuickAddCaloriesChanged, suffix = "kcal")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        NumberField("Protein", state.quickAddProtein, viewModel::onQuickAddProteinChanged, Modifier.weight(1f), "g")
-                        NumberField("Carbs", state.quickAddCarbs, viewModel::onQuickAddCarbsChanged, Modifier.weight(1f), "g")
-                        NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
-                    }
-                    MessageText(state.message)
-                }
-            },
-            confirmButton = { TextButton(onClick = viewModel::confirmQuickAdd) { Text("Add") } },
-            dismissButton = { TextButton(onClick = viewModel::dismissQuickAdd) { Text("Cancel") } },
-        )
+        QuickAddSheet(state = state, viewModel = viewModel)
     }
 }
 
@@ -550,6 +527,50 @@ private fun AmountPreviewStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         Text(label, color = Secondary, fontSize = 10.sp)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = viewModel::dismissQuickAdd,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("⚡ Quick add", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Log calories without creating a food", color = Secondary, fontSize = 11.sp)
+            }
+            OutlinedTextField(
+                value = state.quickAddName,
+                onValueChange = viewModel::onQuickAddNameChanged,
+                label = { Text("Name (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            NumberField("Calories", state.quickAddCalories, viewModel::onQuickAddCaloriesChanged, suffix = "kcal")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                NumberField("Protein", state.quickAddProtein, viewModel::onQuickAddProteinChanged, Modifier.weight(1f), "g")
+                NumberField("Carbs", state.quickAddCarbs, viewModel::onQuickAddCarbsChanged, Modifier.weight(1f), "g")
+                NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
+            }
+            MessageText(state.message)
+            Button(
+                onClick = viewModel::confirmQuickAdd,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4b5563)),
+            ) {
+                Text("Add", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 

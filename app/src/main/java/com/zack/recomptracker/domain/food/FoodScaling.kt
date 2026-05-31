@@ -25,6 +25,4 @@ object FoodScaling {
     }
 
     fun gramsForServings(servings: Double, servingGrams: Double): Double = servings * servingGrams
-
-    fun normalizeGrams(grams: Double): Double = if (grams < MIN_GRAMS) MIN_GRAMS else grams
 }

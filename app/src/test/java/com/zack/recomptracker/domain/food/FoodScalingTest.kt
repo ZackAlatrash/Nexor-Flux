@@ -25,11 +25,4 @@ class FoodScalingTest {
     fun convertsServingsToGrams() {
         assertEquals(90.0, FoodScaling.gramsForServings(servings = 3.0, servingGrams = 30.0), 0.001)
     }
-
-    @Test
-    fun clampsGramsToMinimum() {
-        assertEquals(FoodScaling.MIN_GRAMS, FoodScaling.normalizeGrams(0.0), 0.001)
-        assertEquals(FoodScaling.MIN_GRAMS, FoodScaling.normalizeGrams(-5.0), 0.001)
-        assertEquals(250.0, FoodScaling.normalizeGrams(250.0), 0.001)
-    }
 }

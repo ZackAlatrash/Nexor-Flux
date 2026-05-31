@@ -157,6 +157,8 @@ Saved meals keep the existing **Log all** behavior (composite, logged at their s
 - Derived from existing `meal_entries` history through a new DAO query and repository method; no new storage.
 - Each Recents item carries its base snapshot, so tapping it opens the amount picker exactly like selecting the food.
 
+**Known trade-off (snapshot-on-entry):** A Recents item is reconstructed from the *logged entry's* snapshot, and the household serving (`entryServingName`/`entryServingGrams`) is only recorded when the food was logged in **Servings** mode. So a food that has a household serving but was last logged in **Grams** mode appears in Recents as grams-only (the Servings toggle is hidden) until it is next logged in Servings mode. This is an accepted consequence of snapshotting the entry rather than holding a reference to the food. A future enhancement could fall back to the current personal-food definition (matched by name) to restore the serving.
+
 ---
 
 ## 9. Quick Add

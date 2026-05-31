@@ -10,6 +10,7 @@ data class DailyLogEntity(
     @PrimaryKey val date: String,
     val bodyWeightKg: Double? = null,
     val waistCm: Double? = null,
+    val waistSkinfoldMm: Double? = null,
     val steps: Int? = null,
     val sleepHours: Double? = null,
     val energyScore: Int? = null,

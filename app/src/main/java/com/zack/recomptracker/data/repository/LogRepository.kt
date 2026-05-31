@@ -59,6 +59,7 @@ class LogRepository(
                 date = input.date.toString(),
                 bodyWeightKg = input.bodyWeightKg,
                 waistCm = input.waistCm,
+                waistSkinfoldMm = input.waistSkinfoldMm,
                 steps = input.steps,
                 sleepHours = input.sleepHours,
                 energyScore = input.energyScore?.coerceIn(1, 10),

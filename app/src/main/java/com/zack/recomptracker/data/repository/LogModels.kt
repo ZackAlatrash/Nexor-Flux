@@ -16,6 +16,7 @@ data class DailyMetricsInput(
     val date: LocalDate,
     val bodyWeightKg: Double?,
     val waistCm: Double?,
+    val waistSkinfoldMm: Double? = null,
     val steps: Int?,
     val sleepHours: Double?,
     val energyScore: Int?,

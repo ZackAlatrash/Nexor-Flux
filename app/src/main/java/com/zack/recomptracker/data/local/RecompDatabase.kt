@@ -34,7 +34,7 @@ import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
         WeeklyReviewEntity::class,
         MealSlotEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -78,6 +78,12 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE daily_logs ADD COLUMN waistSkinfoldMm REAL")
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -108,7 +114,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 }

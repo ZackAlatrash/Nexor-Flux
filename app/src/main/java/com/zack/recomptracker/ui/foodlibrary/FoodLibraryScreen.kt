@@ -246,6 +246,10 @@ fun FoodLibraryScreen(
         AmountSheet(state = state, viewModel = viewModel)
     }
 
+    if (state.showCreateFoodForm) {
+        CreateFoodSheet(state = state, viewModel = viewModel)
+    }
+
     if (state.showSaveMealDialog) {
         AlertDialog(
             onDismissRequest = viewModel::dismissSaveMealDialog,
@@ -546,5 +550,75 @@ private fun AmountPreviewStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         Text(label, color = Secondary, fontSize = 10.sp)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = viewModel::toggleCreateFoodForm,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    if (state.editingFoodId != null) "Edit: ${state.newFoodName}" else "New food",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                )
+                Text("Macros are per 100 g", color = Secondary, fontSize = 11.sp)
+            }
+            OutlinedTextField(
+                value = state.newFoodName,
+                onValueChange = viewModel::onNewFoodNameChanged,
+                label = { Text("Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.newFoodServing,
+                onValueChange = viewModel::onNewFoodServingChanged,
+                label = { Text("Serving (e.g. 100g, 1 scoop)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                NumberField("Calories", state.newFoodCalories, viewModel::onNewFoodCaloriesChanged, Modifier.weight(1f), "kcal")
+                NumberField("Protein", state.newFoodProtein, viewModel::onNewFoodProteinChanged, Modifier.weight(1f), "g")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                NumberField("Carbs", state.newFoodCarbs, viewModel::onNewFoodCarbsChanged, Modifier.weight(1f), "g")
+                NumberField("Fat", state.newFoodFat, viewModel::onNewFoodFatChanged, Modifier.weight(1f), "g")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = state.newFoodServingName,
+                    onValueChange = viewModel::onNewFoodServingNameChanged,
+                    label = { Text("Serving name (opt.)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
+            }
+            MessageText(state.message)
+            Button(
+                onClick = viewModel::saveNewFood,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue),
+            ) {
+                Text(
+                    if (state.editingFoodId != null) "Update food" else "Save food",
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }

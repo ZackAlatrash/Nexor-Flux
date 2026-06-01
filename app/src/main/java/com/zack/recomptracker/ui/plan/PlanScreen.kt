@@ -55,6 +55,11 @@ fun PlanScreen(viewModel: PlanViewModel) {
         }
     }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis)
+    LaunchedEffect(showDatePicker) {
+        if (showDatePicker) {
+            datePickerState.selectedDateMillis = initialDateMillis
+        }
+    }
     val snackbarHostState = LocalSnackbarHostState.current
     LaunchedEffect(viewModel) {
         viewModel.savedEvent.collect {
@@ -94,7 +99,9 @@ fun PlanScreen(viewModel: PlanViewModel) {
                     value = state.maintenancePhaseStartDate,
                     onValueChange = {},
                     label = { Text("Phase start date") },
+                    placeholder = { Text("Not set") },
                     readOnly = true,
+                    singleLine = true,
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
                             Icon(Icons.Default.CalendarToday, contentDescription = "Pick date")

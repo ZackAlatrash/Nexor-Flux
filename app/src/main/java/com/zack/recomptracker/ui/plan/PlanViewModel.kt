@@ -93,7 +93,8 @@ class PlanViewModel(
     fun resetDefaults() {
         viewModelScope.launch {
             planRepository.resetDefaults()
-            _uiState.update { PlanUiState(message = "Defaults restored.") }
+            _uiState.update { PlanUiState() }
+            _savedEvent.emit(Unit)
         }
     }
 
@@ -106,7 +107,7 @@ class PlanViewModel(
     }
 }
 
-private fun PlanPreferences.toUiState(message: String? = null) = PlanUiState(
+private fun PlanPreferences.toUiState() = PlanUiState(
     targetCalories = targetCalories.toString(),
     targetProteinG = targetProteinG.toString(),
     targetCarbsG = targetCarbsG.toString(),
@@ -119,5 +120,4 @@ private fun PlanPreferences.toUiState(message: String? = null) = PlanUiState(
     calorieZoneLowerBound = calorieZoneLowerBound.toString(),
     calorieZoneUpperBound = calorieZoneUpperBound.toString(),
     useMetricUnits = useMetricUnits,
-    message = message,
 )

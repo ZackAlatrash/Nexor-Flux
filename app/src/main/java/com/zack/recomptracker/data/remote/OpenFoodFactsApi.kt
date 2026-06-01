@@ -10,9 +10,10 @@ class OpenFoodFactsApi(
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
     suspend fun fetchByBarcode(barcode: String): OffProductResponse? = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
         try {
-            val url = URL("https://world.openfoodfacts.org/api/v2/product/$barcode.json")
-            val connection = url.openConnection() as HttpURLConnection
+            connection = URL("https://world.openfoodfacts.org/api/v2/product/$barcode.json")
+                .openConnection() as HttpURLConnection
             connection.setRequestProperty("User-Agent", "RecompTracker/1.0 (Android; barcode lookup)")
             connection.connectTimeout = 8_000
             connection.readTimeout = 8_000
@@ -20,6 +21,8 @@ class OpenFoodFactsApi(
             json.decodeFromString<OffProductResponse>(responseText)
         } catch (_: Exception) {
             null
+        } finally {
+            connection?.disconnect()
         }
     }
 }

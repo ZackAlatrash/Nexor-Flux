@@ -53,6 +53,7 @@ import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.ui.LocalSnackbarHostState
+import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.SectionCard
@@ -110,7 +111,7 @@ fun FoodLibraryScreen(
                     Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan barcode")
                 }
             }
-            MessageText(state.message)
+            MessageText(state.message, state.messageKind)
         }
 
         item {
@@ -428,7 +429,7 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                 AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
             }
 
-            MessageText(state.message)
+            MessageText(state.message, state.messageKind)
 
             Button(
                 onClick = viewModel::confirmAmount,
@@ -561,7 +562,7 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
                 )
                 NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
             }
-            MessageText(state.message)
+            MessageText(state.message, state.messageKind)
             Button(
                 onClick = viewModel::saveNewFood,
                 modifier = Modifier.fillMaxWidth(),
@@ -608,7 +609,7 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
                 NumberField("Carbs", state.quickAddCarbs, viewModel::onQuickAddCarbsChanged, Modifier.weight(1f), "g")
                 NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
             }
-            MessageText(state.message)
+            MessageText(state.message, state.messageKind)
             Button(
                 onClick = viewModel::confirmQuickAdd,
                 modifier = Modifier.fillMaxWidth(),

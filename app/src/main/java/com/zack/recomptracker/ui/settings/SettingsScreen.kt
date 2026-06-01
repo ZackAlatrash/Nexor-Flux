@@ -134,7 +134,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text("Local-only controls")
-                MessageText(state.message)
+                MessageText(state.message, state.messageKind)
             }
         }
         item {

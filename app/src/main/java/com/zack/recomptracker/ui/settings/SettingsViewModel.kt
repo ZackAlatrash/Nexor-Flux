@@ -15,6 +15,7 @@ import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.foodimport.FoodIdentity
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
+import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.domain.foodimport.HistoricalFoodImporter
 import com.zack.recomptracker.domain.foodimport.SamsungHealthFoodCsvParser
 import com.zack.recomptracker.domain.foodimport.identity
@@ -33,6 +34,7 @@ import kotlinx.coroutines.withContext
 data class SettingsUiState(
     val busy: Boolean = false,
     val message: String? = null,
+    val messageKind: MessageKind = MessageKind.INFO,
     val healthConnectAvailability: HealthConnectAvailability = HealthConnectAvailability.NotSupported,
     val healthConnectEnabled: Boolean = false,
     val healthConnectHasPermissions: Boolean = false,
@@ -140,10 +142,11 @@ class SettingsViewModel(
                     it.copy(
                         busy = false,
                         message = "NEVO catalog imported: ${summary.importedCount} added; ${summary.duplicateCount} duplicates skipped.",
+                        messageKind = MessageKind.SUCCESS,
                     )
                 }
             }.onFailure { error ->
-                _uiState.update { it.copy(busy = false, message = error.message ?: "Import failed.") }
+                _uiState.update { it.copy(busy = false, message = error.message ?: "Import failed.", messageKind = MessageKind.ERROR) }
             }
         }
     }
@@ -373,10 +376,10 @@ class SettingsViewModel(
     }
 
     private suspend fun runBusy(successMessage: String, block: suspend () -> Unit) {
-        _uiState.update { it.copy(busy = true, message = null) }
+        _uiState.update { it.copy(busy = true, message = null, messageKind = MessageKind.INFO) }
         runCatching { block() }
-            .onSuccess { _uiState.update { it.copy(busy = false, message = successMessage) } }
-            .onFailure { error -> _uiState.update { it.copy(busy = false, message = error.message ?: "Operation failed.") } }
+            .onSuccess { _uiState.update { it.copy(busy = false, message = successMessage, messageKind = MessageKind.SUCCESS) } }
+            .onFailure { error -> _uiState.update { it.copy(busy = false, message = error.message ?: "Operation failed.", messageKind = MessageKind.ERROR) } }
     }
 
     private suspend fun scanHistoricalFoods() {
@@ -415,18 +418,19 @@ class SettingsViewModel(
         import: suspend (String) -> com.zack.recomptracker.domain.foodimport.FoodImportSummary,
         read: suspend () -> String,
     ) {
-        _uiState.update { it.copy(busy = true, message = null) }
+        _uiState.update { it.copy(busy = true, message = null, messageKind = MessageKind.INFO) }
         runCatching { import(read()) }
             .onSuccess { summary ->
                 _uiState.update {
                     it.copy(
                         busy = false,
                         message = "$label: ${summary.importedCount} added; ${summary.duplicateCount} duplicates skipped.",
+                        messageKind = MessageKind.SUCCESS,
                     )
                 }
             }
             .onFailure { error ->
-                _uiState.update { it.copy(busy = false, message = error.message ?: "Import failed.") }
+                _uiState.update { it.copy(busy = false, message = error.message ?: "Import failed.", messageKind = MessageKind.ERROR) }
             }
     }
 

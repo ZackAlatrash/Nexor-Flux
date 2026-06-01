@@ -10,6 +10,7 @@ import com.zack.recomptracker.data.repository.BarcodeResult
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import com.zack.recomptracker.ui.component.MessageKind
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,7 @@ data class BarcodeScannerUiState(
     val slotName: String = "",
     val scanState: ScanState = ScanState.Scanning,
     val message: String? = null,
+    val messageKind: MessageKind = MessageKind.ERROR,
 )
 
 class BarcodeScannerViewModel(

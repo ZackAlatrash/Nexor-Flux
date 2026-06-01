@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import com.zack.recomptracker.ui.component.MessageKind
+import com.zack.recomptracker.ui.component.MessageText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -293,9 +295,7 @@ private fun ProductFoundSheet(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
-        if (message != null) {
-            Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-        }
+        MessageText(message, MessageKind.ERROR)
         Button(onClick = onLogAndSave, modifier = Modifier.fillMaxWidth()) {
             Text("Log & Save to Library")
         }

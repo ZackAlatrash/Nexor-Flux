@@ -12,6 +12,7 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.food.FoodMacros
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import com.zack.recomptracker.ui.component.MessageKind
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -40,6 +41,7 @@ data class FoodLibraryUiState(
     val allCatalogFoods: List<com.zack.recomptracker.data.local.entity.CatalogFoodEntity> = emptyList(),
     val allMeals: List<SavedMealEntity> = emptyList(),
     val message: String? = null,
+    val messageKind: MessageKind = MessageKind.INFO,
     val showAmountSheet: Boolean = false,
     val pendingFood: SavedFoodEntity? = null,
     val editingEntryId: Long? = null,
@@ -322,7 +324,7 @@ class FoodLibraryViewModel(
         val grams = state.resolvedGrams
         val preview = state.previewMacros
         if (grams == null || preview == null) {
-            _uiState.update { it.copy(message = "Enter a valid amount (min ${FoodScaling.MIN_GRAMS.toInt()}g).") }
+            _uiState.update { it.copy(message = "Enter a valid amount (min ${FoodScaling.MIN_GRAMS.toInt()}g).", messageKind = MessageKind.ERROR) }
             return
         }
         val servingName = food.householdServingName?.takeIf { state.amountMode == AmountMode.SERVINGS }
@@ -355,7 +357,7 @@ class FoodLibraryViewModel(
             } else {
                 val existing = logRepository.getMealEntry(editingId)
                 if (existing == null) {
-                    _uiState.update { it.copy(message = "Couldn't find that entry to update.") }
+                    _uiState.update { it.copy(message = "Couldn't find that entry to update.", messageKind = MessageKind.ERROR) }
                     return@launch
                 }
                 logRepository.updateMealEntry(
@@ -454,7 +456,7 @@ class FoodLibraryViewModel(
         val c = s.newFoodCarbs.toDoubleOrNull()
         val f = s.newFoodFat.toDoubleOrNull()
         if (s.newFoodName.isBlank() || cal == null || p == null || c == null || f == null) {
-            _uiState.update { it.copy(message = "Fill in all fields with valid numbers.") }
+            _uiState.update { it.copy(message = "Fill in all fields with valid numbers.", messageKind = MessageKind.ERROR) }
             return
         }
         val servingGrams = s.newFoodServingGrams.toDoubleOrNull()
@@ -482,6 +484,7 @@ class FoodLibraryViewModel(
                     newFoodCarbs = "", newFoodFat = "",
                     newFoodServingName = "", newFoodServingGrams = "",
                     message = if (s.editingFoodId != null) "Food updated." else "Food saved to library.",
+                    messageKind = MessageKind.SUCCESS,
                 )
             }
         }
@@ -502,7 +505,7 @@ class FoodLibraryViewModel(
                 slotId = s.slotId,
             )
             if (slotEntries.isEmpty()) {
-                _uiState.update { it.copy(message = "No foods in slot to save.") }
+                _uiState.update { it.copy(message = "No foods in slot to save.", messageKind = MessageKind.ERROR) }
                 return@launch
             }
             logRepository.saveMeal(
@@ -516,7 +519,7 @@ class FoodLibraryViewModel(
                 ),
             )
             _uiState.update {
-                it.copy(showSaveMealDialog = false, saveMealName = "", message = "Meal saved.")
+                it.copy(showSaveMealDialog = false, saveMealName = "", message = "Meal saved.", messageKind = MessageKind.SUCCESS)
             }
         }
     }
@@ -537,7 +540,7 @@ class FoodLibraryViewModel(
         val s = _uiState.value
         val cal = s.quickAddCalories.toIntOrNull()
         if (cal == null || cal <= 0) {
-            _uiState.update { it.copy(message = "Enter a calorie amount.") }
+            _uiState.update { it.copy(message = "Enter a calorie amount.", messageKind = MessageKind.ERROR) }
             return
         }
         viewModelScope.launch {

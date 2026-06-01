@@ -33,6 +33,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +49,7 @@ import com.zack.recomptracker.ai.GemmaInsightService
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 import com.zack.recomptracker.domain.foodimport.identity
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.component.ToggleRow
@@ -102,6 +106,11 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         viewModel.onNutritionPermissionsResult()
     }
 
+    var showResetLogsConfirm by remember { mutableStateOf(false) }
+    var showResetAllConfirm by remember { mutableStateOf(false) }
+    var showRemoveNevoConfirm by remember { mutableStateOf(false) }
+    var showImportConfirm by remember { mutableStateOf(false) }
+
     LaunchedEffect(state.pendingHcPermissionRequest) {
         if (state.pendingHcPermissionRequest) {
             hcPermissionLauncher.launch(viewModel.hcRequiredPermissions)
@@ -138,7 +147,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     Text("Export JSON backup")
                 }
                 OutlinedButton(
-                    onClick = { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
+                    onClick = { showImportConfirm = true },
                     enabled = !state.busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -177,7 +186,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     OutlinedButton(
-                        onClick = viewModel::removeNevoCatalog,
+                        onClick = { showRemoveNevoConfirm = true },
                         enabled = !state.busy,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -234,14 +243,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         item {
             SectionCard("Reset") {
                 OutlinedButton(
-                    onClick = viewModel::resetLogsOnly,
+                    onClick = { showResetLogsConfirm = true },
                     enabled = !state.busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Reset logs only")
                 }
                 OutlinedButton(
-                    onClick = viewModel::resetEverything,
+                    onClick = { showResetAllConfirm = true },
                     enabled = !state.busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -255,6 +264,53 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 Text(gemma.reason)
             }
         }
+    }
+
+    if (showResetLogsConfirm) {
+        ConfirmDialog(
+            title = "Reset logs?",
+            body = "All food and body log entries will be deleted. Your plan, foods, and meals are kept.",
+            confirmLabel = "Reset",
+            isDestructive = true,
+            onConfirm = { viewModel.resetLogsOnly(); showResetLogsConfirm = false },
+            onDismiss = { showResetLogsConfirm = false },
+        )
+    }
+
+    if (showResetAllConfirm) {
+        ConfirmDialog(
+            title = "Delete everything?",
+            body = "All data will be permanently deleted — logs, plan, foods, and meals. This cannot be undone.",
+            confirmLabel = "Delete everything",
+            isDestructive = true,
+            onConfirm = { viewModel.resetEverything(); showResetAllConfirm = false },
+            onDismiss = { showResetAllConfirm = false },
+        )
+    }
+
+    if (showRemoveNevoConfirm) {
+        ConfirmDialog(
+            title = "Remove NEVO catalog?",
+            body = "The imported NEVO foods will be removed. You can re-import the CSV at any time.",
+            confirmLabel = "Remove",
+            isDestructive = true,
+            onConfirm = { viewModel.removeNevoCatalog(); showRemoveNevoConfirm = false },
+            onDismiss = { showRemoveNevoConfirm = false },
+        )
+    }
+
+    if (showImportConfirm) {
+        ConfirmDialog(
+            title = "Import backup?",
+            body = "This will replace all your current data with the contents of the backup file.",
+            confirmLabel = "Import",
+            isDestructive = false,
+            onConfirm = {
+                importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                showImportConfirm = false
+            },
+            onDismiss = { showImportConfirm = false },
+        )
     }
 
     if (state.historicalFoodCandidates.isNotEmpty()) {

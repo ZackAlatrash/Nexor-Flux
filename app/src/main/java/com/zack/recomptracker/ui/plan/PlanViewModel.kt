@@ -6,7 +6,9 @@ import com.zack.recomptracker.core.util.toNullableDouble
 import com.zack.recomptracker.core.util.toNullableInt
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.PlanRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -34,6 +36,9 @@ class PlanViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlanUiState())
     val uiState: StateFlow<PlanUiState> = _uiState.asStateFlow()
+
+    private val _savedEvent = MutableSharedFlow<Unit>(replay = 0)
+    val savedEvent: SharedFlow<Unit> = _savedEvent
 
     init {
         viewModelScope.launch {
@@ -80,7 +85,8 @@ class PlanViewModel(
         }
         viewModelScope.launch {
             planRepository.save(preferences)
-            _uiState.value = preferences.toUiState(message = "Plan saved.")
+            _uiState.value = preferences.toUiState()
+            _savedEvent.emit(Unit)
         }
     }
 

@@ -11,11 +11,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ui.LocalSnackbarHostState
+import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.SectionCard
@@ -24,6 +27,12 @@ import com.zack.recomptracker.ui.component.ToggleRow
 @Composable
 fun PlanScreen(viewModel: PlanViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = LocalSnackbarHostState.current
+    LaunchedEffect(viewModel) {
+        viewModel.savedEvent.collect {
+            snackbarHostState.showSnackbar("Plan saved")
+        }
+    }
     LazyColumn(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -32,7 +41,7 @@ fun PlanScreen(viewModel: PlanViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Plan", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text("Targets and review thresholds")
-                MessageText(state.message)
+                MessageText(state.message, MessageKind.ERROR)
             }
         }
         item {

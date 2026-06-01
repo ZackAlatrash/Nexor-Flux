@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.ui.component.CalorieZoneBar
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
 
@@ -343,6 +344,7 @@ private fun SlotEntryRow(
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
 ) {
     var showMacroEdit by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     val amountEditable = entry.amountGrams != null && entry.basePer100Calories != null
     Row(
         modifier = Modifier
@@ -359,7 +361,7 @@ private fun SlotEntryRow(
                 color = Secondary,
             )
         }
-        TextButton(onClick = { onDelete(entry.id) }) {
+        TextButton(onClick = { showDeleteConfirm = true }) {
             Text("Delete", color = DangerText, fontSize = 11.sp)
         }
     }
@@ -369,6 +371,20 @@ private fun SlotEntryRow(
             entry = entry,
             onDismiss = { showMacroEdit = false },
             onSave = { cal, p, c, f -> onEditMacros(entry, cal, p, c, f); showMacroEdit = false },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        ConfirmDialog(
+            title = "Delete entry?",
+            body = "Remove \"${entry.name}\" from this slot?",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                onDelete(entry.id)
+                showDeleteConfirm = false
+            },
+            onDismiss = { showDeleteConfirm = false },
         )
     }
 }

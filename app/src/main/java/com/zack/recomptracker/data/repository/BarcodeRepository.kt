@@ -46,4 +46,26 @@ open class BarcodeRepository(private val api: OpenFoodFactsApi = OpenFoodFactsAp
             ),
         )
     }
+
+    open suspend fun searchFoods(query: String): List<BarcodeProduct> {
+        if (query.isBlank()) return emptyList()
+        val response = api.searchByName(query) ?: return emptyList()
+        return response.products.mapNotNull { product ->
+            val name = product.productNameNl.trim().ifBlank { product.productName.trim() }
+            if (name.isBlank()) return@mapNotNull null
+            val n = product.nutriments
+            val hasComplete = n.energyKcal100g != null && n.proteins100g != null &&
+                n.carbohydrates100g != null && n.fat100g != null
+            BarcodeProduct(
+                name = name,
+                caloriesPer100g = n.energyKcal100g?.toInt() ?: 0,
+                proteinPer100g = n.proteins100g ?: 0.0,
+                carbsPer100g = n.carbohydrates100g ?: 0.0,
+                fatPer100g = n.fat100g ?: 0.0,
+                servingName = product.servingSize?.trim()?.takeIf { it.isNotBlank() },
+                servingGrams = product.servingQuantity,
+                hasCompleteData = hasComplete,
+            )
+        }
+    }
 }

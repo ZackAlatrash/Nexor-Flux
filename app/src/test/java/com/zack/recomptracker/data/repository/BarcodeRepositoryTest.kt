@@ -3,6 +3,8 @@ package com.zack.recomptracker.data.repository
 import com.zack.recomptracker.data.remote.OffNutriments
 import com.zack.recomptracker.data.remote.OffProduct
 import com.zack.recomptracker.data.remote.OffProductResponse
+import com.zack.recomptracker.data.remote.OffSearchProduct
+import com.zack.recomptracker.data.remote.OffSearchResponse
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -14,6 +16,11 @@ class BarcodeRepositoryTest {
 
     private fun api(response: OffProductResponse?) = object : OpenFoodFactsApi() {
         override suspend fun fetchByBarcode(barcode: String) = response
+    }
+
+    private fun apiWithSearch(response: OffSearchResponse?) = object : OpenFoodFactsApi() {
+        override suspend fun fetchByBarcode(barcode: String) = null
+        override suspend fun searchByName(query: String) = response
     }
 
     @Test
@@ -99,5 +106,52 @@ class BarcodeRepositoryTest {
     fun `returns NetworkError when api returns null`() = runTest {
         val repo = BarcodeRepository(api(null))
         assertTrue(repo.lookupBarcode("22222") is BarcodeResult.NetworkError)
+    }
+
+    @Test
+    fun `searchFoods returns list of BarcodeProduct for valid response`() = runTest {
+        val response = OffSearchResponse(
+            count = 2,
+            products = listOf(
+                OffSearchProduct(
+                    productName = "Hagelslag",
+                    productNameNl = "Hagelslag Puur",
+                    servingSize = "15g",
+                    servingQuantity = 15.0,
+                    nutriments = OffNutriments(408.0, 5.3, 72.4, 11.2),
+                ),
+                OffSearchProduct(
+                    productName = "Stroopwafel",
+                    productNameNl = "",
+                    nutriments = OffNutriments(450.0, 4.5, 68.0, 16.0),
+                ),
+            ),
+        )
+        val repo = BarcodeRepository(apiWithSearch(response))
+        val results = repo.searchFoods("hagelslag")
+
+        assertEquals(2, results.size)
+        assertEquals("Hagelslag Puur", results[0].name)
+        assertEquals(408, results[0].caloriesPer100g)
+        assertEquals("Stroopwafel", results[1].name)
+    }
+
+    @Test
+    fun `searchFoods filters out products with blank names`() = runTest {
+        val response = OffSearchResponse(
+            count = 1,
+            products = listOf(OffSearchProduct(productName = "", productNameNl = "")),
+        )
+        val repo = BarcodeRepository(apiWithSearch(response))
+        val results = repo.searchFoods("test")
+
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `searchFoods returns empty list when api returns null`() = runTest {
+        val repo = BarcodeRepository(apiWithSearch(null))
+        val results = repo.searchFoods("anything")
+        assertTrue(results.isEmpty())
     }
 }

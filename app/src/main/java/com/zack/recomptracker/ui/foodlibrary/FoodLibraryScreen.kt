@@ -74,7 +74,7 @@ fun FoodLibraryScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     val snackbarHostState = LocalSnackbarHostState.current
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel) {
         viewModel.loggedEvent.collect { message ->
             snackbarHostState.showSnackbar(message)
         }

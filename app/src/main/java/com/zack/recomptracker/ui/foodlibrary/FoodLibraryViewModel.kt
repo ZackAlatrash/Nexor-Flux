@@ -398,8 +398,8 @@ class FoodLibraryViewModel(
                 ),
                 slotId = _uiState.value.slotId,
             )
-            _uiState.update { it.copy(message = null) }
             val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
+            _uiState.update { it.copy(message = null) }
             _loggedEvent.emit("${meal.name} added to $slotLabel")
         }
     }

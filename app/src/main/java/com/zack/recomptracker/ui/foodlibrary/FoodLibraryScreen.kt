@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,6 +64,7 @@ fun FoodLibraryScreen(
     slotName: String,
     onBack: () -> Unit,
     editEntryId: Long? = null,
+    onScanBarcode: () -> Unit,
 ) {
     LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,11 +74,14 @@ fun FoodLibraryScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (slotId != null) "Add to ${state.slotName}" else "Foods & Meals",
                         style = MaterialTheme.typography.titleLarge,
@@ -89,6 +94,9 @@ fun FoodLibraryScreen(
                             color = Secondary,
                         )
                     }
+                }
+                IconButton(onClick = onScanBarcode) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan barcode")
                 }
             }
             MessageText(state.message)

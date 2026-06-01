@@ -34,6 +34,8 @@ import com.zack.recomptracker.ui.body.BodyEditViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryScreen
 import com.zack.recomptracker.ui.body.BodyEditScreen
+import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
+import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import java.time.LocalDate
 
 enum class TopLevelDestination(
@@ -57,6 +59,9 @@ object Routes {
     const val BodyHistory = "body_history"
     const val BodyEdit = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
+    const val BarcodeScanner = "barcode_scanner?slotId={slotId}&slotName={slotName}"
+    fun barcodeScanner(slotId: Long?, slotName: String) =
+        "barcode_scanner?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}"
 }
 
 @Composable
@@ -168,6 +173,33 @@ fun AppNavGraph(
                 slotName = slotName,
                 onBack = { navController.popBackStack() },
                 editEntryId = editEntryId,
+                onScanBarcode = {
+                    navController.navigate(Routes.barcodeScanner(slotId, slotName))
+                },
+            )
+        }
+        composable(
+            route = Routes.BarcodeScanner,
+            arguments = listOf(
+                androidx.navigation.navArgument("slotId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+                androidx.navigation.navArgument("slotName") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { backStackEntry ->
+            val slotId = backStackEntry.arguments?.getLong("slotId")?.takeIf { it != -1L }
+            val slotName = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("slotName").orEmpty(), "UTF-8"
+            )
+            BarcodeScannerScreen(
+                viewModel = viewModel<BarcodeScannerViewModel>(factory = factory),
+                slotId = slotId,
+                slotName = slotName,
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.Settings) {

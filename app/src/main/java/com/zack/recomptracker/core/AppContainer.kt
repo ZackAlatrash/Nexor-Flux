@@ -27,6 +27,9 @@ import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.today.TodayViewModel
+import com.zack.recomptracker.data.remote.OpenFoodFactsApi
+import com.zack.recomptracker.data.repository.BarcodeRepository
+import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 
 class AppContainer(context: Context) {
     val dateProvider: DateProvider = SystemDateProvider()
@@ -44,6 +47,8 @@ class AppContainer(context: Context) {
     )
     val backupRepository = BackupRepository(database, planRepository)
     val foodCatalogRepository = FoodCatalogRepository(database)
+    val openFoodFactsApi = OpenFoodFactsApi()
+    val barcodeRepository = BarcodeRepository(openFoodFactsApi)
     val personalFoodRepository = PersonalFoodRepository(database.savedFoodDao())
     val healthConnectRepository = HealthConnectRepository(context.applicationContext)
     val adjustmentEngine = AdjustmentEngine()
@@ -104,6 +109,11 @@ private class AppViewModelFactory(
             BodyEditViewModel::class.java -> BodyEditViewModel(
                 logRepository = container.logRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
+            )
+            BarcodeScannerViewModel::class.java -> BarcodeScannerViewModel(
+                barcodeRepository = container.barcodeRepository,
+                logRepository = container.logRepository,
+                dateProvider = container.dateProvider,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

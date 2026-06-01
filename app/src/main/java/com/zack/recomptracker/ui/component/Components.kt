@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -19,6 +20,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -167,14 +170,49 @@ fun MealTypeDropdown(
     }
 }
 
+enum class MessageKind { SUCCESS, ERROR, INFO }
+
 @Composable
-fun MessageText(message: String?, modifier: Modifier = Modifier) {
+fun MessageText(message: String?, kind: MessageKind = MessageKind.INFO, modifier: Modifier = Modifier) {
     if (!message.isNullOrBlank()) {
+        val color = when (kind) {
+            MessageKind.SUCCESS -> Color(0xFF34d399)
+            MessageKind.ERROR -> MaterialTheme.colorScheme.error
+            MessageKind.INFO -> MaterialTheme.colorScheme.primary
+        }
         Text(
             text = message,
-            color = MaterialTheme.colorScheme.primary,
+            color = color,
             style = MaterialTheme.typography.bodyMedium,
             modifier = modifier,
         )
     }
+}
+
+@Composable
+fun ConfirmDialog(
+    title: String,
+    body: String,
+    confirmLabel: String = "Delete",
+    isDestructive: Boolean = true,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(body) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = confirmLabel,
+                    color = if (isDestructive) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }

@@ -211,6 +211,7 @@ class FoodLibraryViewModel(
     val loggedEvent: SharedFlow<String> = _loggedEvent
 
     private var initialized = false
+    private var offSearchJob: kotlinx.coroutines.Job? = null
 
     fun init(slotId: Long?, slotName: String, editEntryId: Long? = null) {
         _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }) }
@@ -256,8 +257,32 @@ class FoodLibraryViewModel(
         }
     }
 
-    fun onQueryChanged(q: String) = _uiState.update { it.copy(query = q, message = null) }
-    fun onCategoryChanged(c: FoodCategory) = _uiState.update { it.copy(category = c) }
+    private fun triggerOffSearch() {
+        offSearchJob?.cancel()
+        val q = _uiState.value.query.trim()
+        if (q.isBlank()) {
+            _uiState.update { it.copy(offSearchResults = emptyList(), offSearchLoading = false, message = null) }
+            return
+        }
+        offSearchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(600)
+            searchOff()
+        }
+    }
+
+    fun onQueryChanged(q: String) {
+        _uiState.update { it.copy(query = q, message = null) }
+        if (_uiState.value.category == FoodCategory.OFF) {
+            triggerOffSearch()
+        }
+    }
+
+    fun onCategoryChanged(c: FoodCategory) {
+        _uiState.update { it.copy(category = c) }
+        if (c == FoodCategory.OFF && _uiState.value.query.isNotBlank()) {
+            triggerOffSearch()
+        }
+    }
 
     fun requestLogFood(food: SavedFoodEntity) {
         _uiState.update {

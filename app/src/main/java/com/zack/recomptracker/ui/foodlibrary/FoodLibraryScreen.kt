@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -122,18 +121,11 @@ fun FoodLibraryScreen(
                     Text(
                         when (state.category) {
                             FoodCategory.NEVO -> "Search NEVO foods…"
-                            FoodCategory.OFF -> "Search Dutch products…"
+                            FoodCategory.OFF -> "Type to search Dutch products…"
                             else -> "Search saved foods…"
                         }
                     )
                 },
-                trailingIcon = if (state.category == FoodCategory.OFF) {
-                    {
-                        IconButton(onClick = viewModel::searchOff) {
-                            Icon(Icons.Default.Search, contentDescription = "Search Open Food Facts")
-                        }
-                    }
-                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

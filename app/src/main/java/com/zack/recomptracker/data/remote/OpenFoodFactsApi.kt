@@ -6,10 +6,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-class OpenFoodFactsApi(
+open class OpenFoodFactsApi(
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
-    suspend fun fetchByBarcode(barcode: String): OffProductResponse? = withContext(Dispatchers.IO) {
+    open suspend fun fetchByBarcode(barcode: String): OffProductResponse? = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         try {
             connection = URL("https://world.openfoodfacts.org/api/v2/product/$barcode.json")

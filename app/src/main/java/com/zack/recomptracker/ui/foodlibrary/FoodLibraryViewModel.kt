@@ -574,7 +574,7 @@ class FoodLibraryViewModel(
                             householdServingGrams = product.servingGrams,
                         )
                     },
-                    message = if (products.isEmpty()) "No products found for '${state.query}'." else null,
+                    message = if (products.isEmpty()) "No products found for '$q'." else null,
                 )
             }
         }

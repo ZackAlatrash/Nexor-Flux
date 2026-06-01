@@ -19,7 +19,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val DEBOUNCE_SEARCH_MS = 600L
 
 enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS, NEVO, OFF }
 
@@ -211,7 +215,7 @@ class FoodLibraryViewModel(
     val loggedEvent: SharedFlow<String> = _loggedEvent
 
     private var initialized = false
-    private var offSearchJob: kotlinx.coroutines.Job? = null
+    private var offSearchJob: Job? = null
 
     fun init(slotId: Long?, slotName: String, editEntryId: Long? = null) {
         _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }) }
@@ -265,7 +269,7 @@ class FoodLibraryViewModel(
             return
         }
         offSearchJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(600)
+            delay(DEBOUNCE_SEARCH_MS)
             searchOff()
         }
     }

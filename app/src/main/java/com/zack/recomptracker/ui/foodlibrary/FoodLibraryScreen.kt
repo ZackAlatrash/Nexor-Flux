@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
+import com.zack.recomptracker.ui.LocalSnackbarHostState
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.SectionCard
@@ -71,6 +72,13 @@ fun FoodLibraryScreen(
 ) {
     LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val snackbarHostState = LocalSnackbarHostState.current
+    LaunchedEffect(Unit) {
+        viewModel.loggedEvent.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.padding(16.dp),

@@ -12,7 +12,9 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.food.FoodMacros
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
@@ -202,6 +204,10 @@ class FoodLibraryViewModel(
 
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
     val uiState: StateFlow<FoodLibraryUiState> = _uiState
+
+    private val _loggedEvent = MutableSharedFlow<String>(replay = 0)
+    val loggedEvent: SharedFlow<String> = _loggedEvent
+
     private var initialized = false
 
     fun init(slotId: Long?, slotName: String, editEntryId: Long? = null) {
@@ -343,9 +349,9 @@ class FoodLibraryViewModel(
                     ),
                     slotId = state.slotId,
                 )
-                _uiState.update {
-                    it.copy(showAmountSheet = false, pendingFood = null, message = "${food.name} logged.")
-                }
+                _uiState.update { it.copy(showAmountSheet = false, pendingFood = null, message = null) }
+                val slotLabel = if (state.slotId != null) state.slotName else "log"
+                _loggedEvent.emit("Added ${food.name} to $slotLabel")
             } else {
                 val existing = logRepository.getMealEntry(editingId)
                 if (existing == null) {
@@ -368,9 +374,8 @@ class FoodLibraryViewModel(
                         entryServingGrams = servingGrams,
                     ),
                 )
-                _uiState.update {
-                    it.copy(showAmountSheet = false, pendingFood = null, editingEntryId = null, message = "Entry updated.")
-                }
+                _uiState.update { it.copy(showAmountSheet = false, pendingFood = null, editingEntryId = null, message = null) }
+                _loggedEvent.emit("${food.name} updated")
             }
         }
     }
@@ -393,7 +398,9 @@ class FoodLibraryViewModel(
                 ),
                 slotId = _uiState.value.slotId,
             )
-            _uiState.update { it.copy(message = "${meal.name} logged.") }
+            _uiState.update { it.copy(message = null) }
+            val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
+            _loggedEvent.emit("${meal.name} added to $slotLabel")
         }
     }
 
@@ -546,7 +553,8 @@ class FoodLibraryViewModel(
                 ),
                 slotId = s.slotId,
             )
-            _uiState.update { it.copy(showQuickAddDialog = false, message = "Quick add logged.") }
+            _uiState.update { it.copy(showQuickAddDialog = false, message = null) }
+            _loggedEvent.emit("Quick add logged")
         }
     }
 

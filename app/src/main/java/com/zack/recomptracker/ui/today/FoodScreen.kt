@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -320,7 +321,22 @@ private fun LockedSlotCard(
                 }
             }
             if (slotWithEntries.entries.isEmpty()) {
-                Text("Empty — tap + Add", fontSize = 12.sp, color = Color(0xFF444444))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Secondary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text("No items yet", fontSize = 12.sp, color = Secondary)
+                    Text("Tap + Add to log food", fontSize = 11.sp, color = Secondary)
+                }
             } else {
                 slotWithEntries.entries.forEachIndexed { i, entry ->
                     if (i > 0) HorizontalDivider(color = Color(0xFF222222))

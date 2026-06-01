@@ -166,8 +166,8 @@ fun BarcodeScannerScreen(
                         state = scanState,
                         message = state.message,
                         onAmountChanged = viewModel::onAmountChanged,
-                        onConfirmLog = viewModel::confirmLog,
-                        onSaveToLibrary = viewModel::saveToLibrary,
+                        onLogAndSave = viewModel::confirmLogAndSave,
+                        onLogOnly = viewModel::confirmLog,
                         onCancel = viewModel::resetScan,
                     )
                 }
@@ -202,8 +202,8 @@ private fun ProductFoundSheet(
     state: ScanState.ProductFound,
     message: String?,
     onAmountChanged: (String) -> Unit,
-    onConfirmLog: () -> Unit,
-    onSaveToLibrary: () -> Unit,
+    onLogAndSave: () -> Unit,
+    onLogOnly: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val product = state.product
@@ -237,12 +237,12 @@ private fun ProductFoundSheet(
         if (message != null) {
             Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
         }
-        Button(onClick = onConfirmLog, modifier = Modifier.fillMaxWidth()) {
-            Text("Log Food")
+        Button(onClick = onLogAndSave, modifier = Modifier.fillMaxWidth()) {
+            Text("Log & Save to Library")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onSaveToLibrary, modifier = Modifier.weight(1f)) {
-                Text("Save to Library", fontSize = 12.sp)
+            OutlinedButton(onClick = onLogOnly, modifier = Modifier.weight(1f)) {
+                Text("Log Only", fontSize = 12.sp)
             }
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
                 Text("Cancel", fontSize = 12.sp)

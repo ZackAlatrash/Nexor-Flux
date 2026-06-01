@@ -123,4 +123,39 @@ class BarcodeScannerViewModelTest {
         val state = vm.uiState.value.scanState as ScanState.ProductFound
         assertEquals("150", state.amountGrams)
     }
+
+    @Test
+    fun `confirmLogAndSave logs food and saves to library then transitions to Logged`() = runTest {
+        val product = BarcodeProduct("Hagelslag", 408, 5.3, 72.4, 11.2, "15g", 15.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        whenever(logRepository.addMealToSlot(any(), any())).thenReturn(1L)
+        whenever(logRepository.saveFood(any())).thenReturn(1L)
+        val vm = viewModel()
+        vm.init(slotId = 1L, slotName = "Breakfast")
+        vm.onBarcodeDetected("8710522955")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.confirmLogAndSave()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.scanState is ScanState.Logged)
+        org.mockito.kotlin.verify(logRepository).addMealToSlot(any(), any())
+        org.mockito.kotlin.verify(logRepository).saveFood(any())
+    }
+
+    @Test
+    fun `confirmLogAndSave shows message for invalid amount`() = runTest {
+        val product = BarcodeProduct("Hagelslag", 408, 5.3, 72.4, 11.2, null, null, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        val vm = viewModel()
+        vm.onBarcodeDetected("8710522955")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onAmountChanged("0")
+        vm.confirmLogAndSave()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.scanState is ScanState.ProductFound)
+        assertEquals("Enter a valid amount (min 1g).", vm.uiState.value.message)
+    }
 }

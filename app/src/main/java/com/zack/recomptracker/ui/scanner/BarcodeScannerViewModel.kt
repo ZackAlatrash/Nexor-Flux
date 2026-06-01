@@ -106,6 +106,52 @@ class BarcodeScannerViewModel(
         }
     }
 
+    fun confirmLogAndSave() {
+        val state = _uiState.value
+        val productState = state.scanState as? ScanState.ProductFound ?: return
+        val product = productState.product
+        val grams = productState.amountGrams.toDoubleOrNull()
+        if (grams == null || grams < 1.0) {
+            _uiState.update { it.copy(message = "Enter a valid amount (min 1g).") }
+            return
+        }
+        val scale = grams / 100.0
+        viewModelScope.launch {
+            logRepository.addMealToSlot(
+                input = MealEntryInput(
+                    date = dateProvider.today(),
+                    mealType = MealEntryTypes.FOOD_LIBRARY,
+                    name = product.name,
+                    calories = (product.caloriesPer100g * scale).toInt(),
+                    proteinG = product.proteinPer100g * scale,
+                    carbsG = product.carbsPer100g * scale,
+                    fatG = product.fatPer100g * scale,
+                    amountGrams = grams,
+                    basePer100Calories = product.caloriesPer100g,
+                    basePer100ProteinG = product.proteinPer100g,
+                    basePer100CarbsG = product.carbsPer100g,
+                    basePer100FatG = product.fatPer100g,
+                    entryServingName = null,
+                    entryServingGrams = null,
+                ),
+                slotId = state.slotId,
+            )
+            logRepository.saveFood(
+                SavedFoodEntity(
+                    name = product.name,
+                    servingName = product.servingName ?: "100g",
+                    calories = product.caloriesPer100g,
+                    proteinG = product.proteinPer100g,
+                    carbsG = product.carbsPer100g,
+                    fatG = product.fatPer100g,
+                    householdServingName = product.servingName,
+                    householdServingGrams = product.servingGrams,
+                ),
+            )
+            _uiState.update { it.copy(scanState = ScanState.Logged, message = "${product.name} logged and saved.") }
+        }
+    }
+
     fun saveToLibrary() {
         val productState = _uiState.value.scanState as? ScanState.ProductFound ?: return
         val product = productState.product

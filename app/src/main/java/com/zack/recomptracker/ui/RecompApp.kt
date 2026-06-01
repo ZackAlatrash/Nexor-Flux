@@ -43,55 +43,55 @@ fun RecompApp(container: AppContainer) {
         val navController = rememberNavController()
         val snackbarHostState = remember { SnackbarHostState() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            bottomBar = {
-                NavigationBar(
-                    containerColor = NavBarBg,
-                    tonalElevation = 0.dp,
-                ) {
-                    TopLevelDestination.entries.forEach { destination ->
-                        val selected = currentRoute == destination.route
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(TopLevelDestination.Home.route) {
-                                        saveState = true
+        CompositionLocalProvider(
+            LocalAppContainer provides container,
+            LocalSnackbarHostState provides snackbarHostState,
+        ) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                snackbarHost = { SnackbarHost(snackbarHostState) },
+                bottomBar = {
+                    NavigationBar(
+                        containerColor = NavBarBg,
+                        tonalElevation = 0.dp,
+                    ) {
+                        TopLevelDestination.entries.forEach { destination ->
+                            val selected = currentRoute == destination.route
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(destination.route) {
+                                        popUpTo(TopLevelDestination.Home.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = destination.icon,
-                                    contentDescription = destination.label,
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = destination.label,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = NavPillBg,
-                                selectedIconColor = NavBlue,
-                                selectedTextColor = NavBlue,
-                                unselectedIconColor = NavInactive,
-                                unselectedTextColor = NavInactive,
-                            ),
-                        )
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = destination.icon,
+                                        contentDescription = destination.label,
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = destination.label,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = NavPillBg,
+                                    selectedIconColor = NavBlue,
+                                    selectedTextColor = NavBlue,
+                                    unselectedIconColor = NavInactive,
+                                    unselectedTextColor = NavInactive,
+                                ),
+                            )
+                        }
                     }
-                }
-            },
-        ) { padding ->
-            CompositionLocalProvider(
-                LocalAppContainer provides container,
-                LocalSnackbarHostState provides snackbarHostState,
-            ) {
+                },
+            ) { padding ->
                 AppNavGraph(
                     navController = navController,
                     modifier = Modifier.padding(padding),

@@ -16,7 +16,9 @@ import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -67,6 +69,9 @@ class TodayViewModel(
         SharingStarted.WhileSubscribed(5000),
         TodayUiState(date = today),
     )
+
+    private val _savedEvent = MutableSharedFlow<Unit>(replay = 0)
+    val savedEvent: SharedFlow<Unit> = _savedEvent
 
     init {
         viewModelScope.launch {
@@ -224,7 +229,8 @@ class TodayViewModel(
                     notes = s.notes,
                 ),
             )
-            _uiState.update { it.copy(metricsDirty = false, message = "Metrics saved.") }
+            _uiState.update { it.copy(metricsDirty = false, message = null) }
+            _savedEvent.emit(Unit)
         }
     }
 

@@ -12,12 +12,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ui.LocalSnackbarHostState
 import com.zack.recomptracker.ui.body.BodyCheckInFormActions
 import com.zack.recomptracker.ui.body.BodyCheckInFormContent
 import com.zack.recomptracker.ui.body.BodyCheckInFormState
@@ -30,6 +32,12 @@ fun BodyRecoveryScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = LocalSnackbarHostState.current
+    LaunchedEffect(viewModel) {
+        viewModel.savedEvent.collect {
+            snackbarHostState.showSnackbar("Check-in saved")
+        }
+    }
     BodyRecoveryContent(
         state = state,
         onViewHistory = onViewHistory,

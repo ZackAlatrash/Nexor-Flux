@@ -615,6 +615,7 @@ class FoodLibraryViewModel(
                         )
                     },
                     message = if (products.isEmpty()) "No products found for '$q'." else null,
+                    messageKind = MessageKind.INFO,
                 )
             }
         }

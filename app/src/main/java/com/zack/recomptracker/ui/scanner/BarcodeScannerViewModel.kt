@@ -38,6 +38,8 @@ data class BarcodeScannerUiState(
     val messageKind: MessageKind = MessageKind.ERROR,
 )
 
+private const val SUCCESS_OVERLAY_MS = 800L
+
 class BarcodeScannerViewModel(
     private val barcodeRepository: BarcodeRepository,
     private val logRepository: LogRepository,
@@ -108,7 +110,7 @@ class BarcodeScannerViewModel(
             )
             val slotLabel = state.slotName.ifBlank { "log" }
             _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Added to $slotLabel")) }
-            delay(800)
+            delay(SUCCESS_OVERLAY_MS)
             _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
     }
@@ -157,7 +159,7 @@ class BarcodeScannerViewModel(
             )
             val slotLabel = state.slotName.ifBlank { "log" }
             _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Saved & added to $slotLabel")) }
-            delay(800)
+            delay(SUCCESS_OVERLAY_MS)
             _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
     }

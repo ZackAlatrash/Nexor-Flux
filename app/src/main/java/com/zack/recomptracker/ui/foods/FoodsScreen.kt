@@ -14,6 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -152,6 +156,7 @@ private fun SavedFoodRow(
     onAdd: (SavedFoodEntity) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
             Text(food.name, fontWeight = FontWeight.SemiBold)
@@ -159,7 +164,20 @@ private fun SavedFoodRow(
             Text("${food.proteinG.formatOneDecimal()}P ${food.carbsG.formatOneDecimal()}C ${food.fatG.formatOneDecimal()}F")
         }
         TextButton(onClick = { onAdd(food) }) { Text("Add") }
-        TextButton(onClick = { onDelete(food.id) }) { Text("Delete") }
+        TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete") }
+    }
+    if (showDeleteConfirm) {
+        ConfirmDialog(
+            title = "Delete food?",
+            body = "\"${food.name}\" will be permanently removed from your library.",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                onDelete(food.id)
+                showDeleteConfirm = false
+            },
+            onDismiss = { showDeleteConfirm = false },
+        )
     }
 }
 
@@ -169,6 +187,7 @@ private fun SavedMealRow(
     onAdd: (SavedMealEntity) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
             Text(meal.name, fontWeight = FontWeight.SemiBold)
@@ -176,6 +195,19 @@ private fun SavedMealRow(
             Text("${meal.proteinG.formatOneDecimal()}P ${meal.carbsG.formatOneDecimal()}C ${meal.fatG.formatOneDecimal()}F")
         }
         TextButton(onClick = { onAdd(meal) }) { Text("Add") }
-        TextButton(onClick = { onDelete(meal.id) }) { Text("Delete") }
+        TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete") }
+    }
+    if (showDeleteConfirm) {
+        ConfirmDialog(
+            title = "Delete meal?",
+            body = "\"${meal.name}\" will be permanently removed from your saved meals.",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                onDelete(meal.id)
+                showDeleteConfirm = false
+            },
+            onDismiss = { showDeleteConfirm = false },
+        )
     }
 }

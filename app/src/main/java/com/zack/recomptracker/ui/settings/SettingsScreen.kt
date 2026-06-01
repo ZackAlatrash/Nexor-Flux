@@ -50,6 +50,7 @@ import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 import com.zack.recomptracker.domain.foodimport.identity
 import com.zack.recomptracker.ui.component.ConfirmDialog
+import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.component.ToggleRow
@@ -225,6 +226,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 hasPermissions = state.healthConnectHasPermissions,
                 syncing = state.healthConnectSyncing,
                 message = state.healthConnectMessage,
+                messageKind = state.healthConnectMessageKind,
                 onToggle = viewModel::onHealthConnectToggled,
                 onSyncNow = viewModel::syncNow,
                 importingFoods = state.historicalFoodBusy,
@@ -331,6 +333,7 @@ private fun HealthConnectSection(
     hasPermissions: Boolean,
     syncing: Boolean,
     message: String?,
+    messageKind: MessageKind = MessageKind.INFO,
     onToggle: (Boolean) -> Unit,
     onSyncNow: () -> Unit,
     importingFoods: Boolean,
@@ -431,7 +434,7 @@ private fun HealthConnectSection(
             }
         }
 
-        MessageText(message)
+        MessageText(message, messageKind)
     }
 }
 
@@ -530,6 +533,7 @@ private fun HealthConnectSectionPreview() {
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = true, syncing = false,
                 message = "Synced from Health Connect.",
+                messageKind = MessageKind.SUCCESS,
                 importingFoods = false,
                 onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
@@ -537,6 +541,7 @@ private fun HealthConnectSectionPreview() {
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = true, syncing = true,
                 message = "Connected. Syncing…",
+                messageKind = MessageKind.SUCCESS,
                 importingFoods = false,
                 onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
@@ -544,6 +549,7 @@ private fun HealthConnectSectionPreview() {
                 availability = HealthConnectAvailability.Available,
                 enabled = true, hasPermissions = false, syncing = false,
                 message = "Permission wasn't granted. Tap the toggle to try again.",
+                messageKind = MessageKind.ERROR,
                 importingFoods = false,
                 onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
@@ -551,6 +557,7 @@ private fun HealthConnectSectionPreview() {
                 availability = HealthConnectAvailability.Available,
                 enabled = false, hasPermissions = false, syncing = false,
                 message = null,
+                messageKind = MessageKind.INFO,
                 importingFoods = false,
                 onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )
@@ -558,6 +565,7 @@ private fun HealthConnectSectionPreview() {
                 availability = HealthConnectAvailability.NotInstalled,
                 enabled = false, hasPermissions = false, syncing = false,
                 message = null,
+                messageKind = MessageKind.INFO,
                 importingFoods = false,
                 onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
             )

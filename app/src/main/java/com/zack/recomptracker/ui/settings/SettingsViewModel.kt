@@ -41,6 +41,7 @@ data class SettingsUiState(
     val healthConnectSyncing: Boolean = false,
     val pendingHcPermissionRequest: Boolean = false,
     val healthConnectMessage: String? = null,
+    val healthConnectMessageKind: MessageKind = MessageKind.INFO,
     val nevoSourceVersion: String? = null,
     val historicalFoodCandidates: List<FoodImportCandidate> = emptyList(),
     val selectedHistoricalFoodIdentities: Set<FoodIdentity> = emptySet(),
@@ -181,15 +182,15 @@ class SettingsViewModel(
                 HealthConnectAvailability.Available ->
                     _uiState.update { it.copy(pendingHcPermissionRequest = true, healthConnectMessage = null) }
                 HealthConnectAvailability.NotInstalled ->
-                    _uiState.update { it.copy(healthConnectMessage = "Install Health Connect from the Play Store first.") }
+                    _uiState.update { it.copy(healthConnectMessage = "Install Health Connect from the Play Store first.", healthConnectMessageKind = MessageKind.ERROR) }
                 HealthConnectAvailability.NotSupported ->
-                    _uiState.update { it.copy(healthConnectMessage = "Health Connect is not supported on this device.") }
+                    _uiState.update { it.copy(healthConnectMessage = "Health Connect is not supported on this device.", healthConnectMessageKind = MessageKind.ERROR) }
             }
         } else {
             viewModelScope.launch {
                 val prefs = planRepository.preferences.first()
                 planRepository.save(prefs.copy(healthConnectEnabled = false))
-                _uiState.update { it.copy(healthConnectEnabled = false, healthConnectMessage = "Disconnected.") }
+                _uiState.update { it.copy(healthConnectEnabled = false, healthConnectMessage = "Disconnected.", healthConnectMessageKind = MessageKind.SUCCESS) }
             }
         }
     }
@@ -200,12 +201,12 @@ class SettingsViewModel(
 
     fun startHistoricalFoodImport() {
         if (_uiState.value.healthConnectAvailability != HealthConnectAvailability.Available) {
-            _uiState.update { it.copy(healthConnectMessage = "Health Connect is not available on this device.") }
+            _uiState.update { it.copy(healthConnectMessage = "Health Connect is not available on this device.", healthConnectMessageKind = MessageKind.ERROR) }
             return
         }
         if (!hcRepository.supportsHistoricalNutritionImport()) {
             _uiState.update {
-                it.copy(healthConnectMessage = "Health Connect on this device cannot provide 365-day history access.")
+                it.copy(healthConnectMessage = "Health Connect on this device cannot provide 365-day history access.", healthConnectMessageKind = MessageKind.ERROR)
             }
             return
         }
@@ -228,7 +229,7 @@ class SettingsViewModel(
                 scanHistoricalFoods()
             } else {
                 _uiState.update {
-                    it.copy(healthConnectMessage = "Nutrition permission is required to import historical foods.")
+                    it.copy(healthConnectMessage = "Nutrition permission is required to import historical foods.", healthConnectMessageKind = MessageKind.ERROR)
                 }
             }
         }
@@ -236,7 +237,7 @@ class SettingsViewModel(
 
     fun scanSamsungHealthFoodExport(context: Context, uri: Uri) {
         viewModelScope.launch {
-            _uiState.update { it.copy(historicalFoodBusy = true, healthConnectMessage = "Reading Samsung Health export…") }
+            _uiState.update { it.copy(historicalFoodBusy = true, healthConnectMessage = "Reading Samsung Health export…", healthConnectMessageKind = MessageKind.INFO) }
             runCatching {
                 val parsed = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { raw ->
@@ -264,6 +265,7 @@ class SettingsViewModel(
                         } else {
                             "${candidates.size} foods ready for review."
                         },
+                        healthConnectMessageKind = MessageKind.SUCCESS,
                     )
                 }
             }.onFailure { error ->
@@ -271,6 +273,7 @@ class SettingsViewModel(
                     it.copy(
                         historicalFoodBusy = false,
                         healthConnectMessage = error.message ?: "Samsung Health food import failed.",
+                        healthConnectMessageKind = MessageKind.ERROR,
                     )
                 }
             }
@@ -304,11 +307,12 @@ class SettingsViewModel(
                             historicalFoodCandidates = emptyList(),
                             selectedHistoricalFoodIdentities = emptySet(),
                             healthConnectMessage = "${summary.importedCount} historical foods imported; ${summary.duplicateCount} duplicates skipped.",
+                            healthConnectMessageKind = MessageKind.SUCCESS,
                         )
                     }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(healthConnectMessage = error.message ?: "Historical food import failed.") }
+                    _uiState.update { it.copy(healthConnectMessage = error.message ?: "Historical food import failed.", healthConnectMessageKind = MessageKind.ERROR) }
                 }
         }
     }
@@ -335,16 +339,17 @@ class SettingsViewModel(
                             healthConnectEnabled = true,
                             healthConnectHasPermissions = true,
                             healthConnectMessage = "Connected. Syncing…",
+                            healthConnectMessageKind = MessageKind.SUCCESS,
                         )
                     }
                     syncNow()
                 }.onFailure { e ->
                     Log.e(TAG, "Failed to persist healthConnectEnabled", e)
-                    _uiState.update { it.copy(healthConnectMessage = "Couldn't save the setting: ${e.message}") }
+                    _uiState.update { it.copy(healthConnectMessage = "Couldn't save the setting: ${e.message}", healthConnectMessageKind = MessageKind.ERROR) }
                 }
             } else {
                 _uiState.update {
-                    it.copy(healthConnectMessage = "Permission wasn't granted. Tap the toggle to try again.")
+                    it.copy(healthConnectMessage = "Permission wasn't granted. Tap the toggle to try again.", healthConnectMessageKind = MessageKind.ERROR)
                 }
             }
         }
@@ -366,11 +371,12 @@ class SettingsViewModel(
                     it.copy(
                         healthConnectSyncing = false,
                         healthConnectMessage = if (any) "Synced from Health Connect." else "Connected — no new data for today yet.",
+                        healthConnectMessageKind = MessageKind.SUCCESS,
                     )
                 }
             }.onFailure { e ->
                 Log.e(TAG, "syncNow failed", e)
-                _uiState.update { it.copy(healthConnectSyncing = false, healthConnectMessage = "Sync failed: ${e.message}") }
+                _uiState.update { it.copy(healthConnectSyncing = false, healthConnectMessage = "Sync failed: ${e.message}", healthConnectMessageKind = MessageKind.ERROR) }
             }
         }
     }
@@ -383,7 +389,7 @@ class SettingsViewModel(
     }
 
     private suspend fun scanHistoricalFoods() {
-        _uiState.update { it.copy(historicalFoodBusy = true, healthConnectMessage = "Scanning the last 365 days…") }
+        _uiState.update { it.copy(historicalFoodBusy = true, healthConnectMessage = "Scanning the last 365 days…", healthConnectMessageKind = MessageKind.INFO) }
         runCatching {
             val history = hcRepository.readHistoricalNutrition().getOrThrow()
             HistoricalFoodImporter.reviewCandidates(
@@ -401,6 +407,7 @@ class SettingsViewModel(
                     } else {
                         "${candidates.size} foods ready for review."
                     },
+                    healthConnectMessageKind = MessageKind.SUCCESS,
                 )
             }
         }.onFailure { error ->
@@ -408,6 +415,7 @@ class SettingsViewModel(
                 it.copy(
                     historicalFoodBusy = false,
                     healthConnectMessage = error.message ?: "Historical food scan failed.",
+                    healthConnectMessageKind = MessageKind.ERROR,
                 )
             }
         }

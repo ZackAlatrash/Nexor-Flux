@@ -178,7 +178,7 @@ class BarcodeScannerViewModel(
                     householdServingGrams = product.servingGrams,
                 ),
             )
-            _uiState.update { it.copy(message = "${product.name} saved to library.") }
+            _uiState.update { it.copy(message = "${product.name} saved to library.", messageKind = MessageKind.SUCCESS) }
         }
     }
 

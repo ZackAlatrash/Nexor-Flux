@@ -564,7 +564,7 @@ class FoodLibraryViewModel(
     fun searchOff() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) {
-            _uiState.update { it.copy(message = "Enter a search term.") }
+            _uiState.update { it.copy(message = "Enter a search term.", messageKind = MessageKind.ERROR) }
             return
         }
         _uiState.update { it.copy(offSearchLoading = true, message = null, offSearchResults = emptyList()) }

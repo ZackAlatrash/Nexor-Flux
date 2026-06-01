@@ -12,6 +12,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -119,6 +123,33 @@ fun BarcodeScannerScreen(
             }
         }
 
+        if (state.scanState is ScanState.Scanning) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 260.dp, height = 160.dp)
+                            .border(
+                                width = 2.dp,
+                                color = Color.White.copy(alpha = 0.8f),
+                                shape = RoundedCornerShape(8.dp),
+                            ),
+                    )
+                    Text(
+                        "Point at a barcode",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        }
+
         IconButton(
             onClick = onBack,
             modifier = Modifier
@@ -170,6 +201,33 @@ fun BarcodeScannerScreen(
                         onLogOnly = viewModel::confirmLog,
                         onCancel = viewModel::resetScan,
                     )
+                }
+            }
+            is ScanState.ShowingSuccess -> {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(24.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF34d399),
+                            modifier = Modifier.size(48.dp),
+                        )
+                        Text(
+                            scanState.message,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
+                        )
+                    }
                 }
             }
             else -> Unit

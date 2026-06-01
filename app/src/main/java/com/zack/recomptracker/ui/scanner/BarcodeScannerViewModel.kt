@@ -10,6 +10,7 @@ import com.zack.recomptracker.data.repository.BarcodeResult
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -24,6 +25,7 @@ sealed class ScanState {
     ) : ScanState()
     object NotFound : ScanState()
     object NetworkError : ScanState()
+    data class ShowingSuccess(val message: String) : ScanState()
     object Logged : ScanState()
 }
 
@@ -102,7 +104,10 @@ class BarcodeScannerViewModel(
                 ),
                 slotId = state.slotId,
             )
-            _uiState.update { it.copy(scanState = ScanState.Logged, message = "${product.name} logged.") }
+            val slotLabel = state.slotName.ifBlank { "log" }
+            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Added to $slotLabel")) }
+            delay(800)
+            _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
     }
 
@@ -148,7 +153,10 @@ class BarcodeScannerViewModel(
                     householdServingGrams = product.servingGrams,
                 ),
             )
-            _uiState.update { it.copy(scanState = ScanState.Logged, message = "${product.name} logged and saved.") }
+            val slotLabel = state.slotName.ifBlank { "log" }
+            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Saved & added to $slotLabel")) }
+            delay(800)
+            _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
     }
 

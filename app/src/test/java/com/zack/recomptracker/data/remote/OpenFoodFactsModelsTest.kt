@@ -67,4 +67,41 @@ class OpenFoodFactsModelsTest {
         assertNull(result.product?.nutriments?.energyKcal100g)
         assertNull(result.product?.nutriments?.proteins100g)
     }
+
+    @Test
+    fun `parses search response with products`() {
+        val raw = """
+            {
+              "count": 2,
+              "products": [
+                {
+                  "product_name": "Hagelslag",
+                  "product_name_nl": "Hagelslag Puur",
+                  "serving_size": "15g",
+                  "serving_quantity": 15.0,
+                  "nutriments": {
+                    "energy-kcal_100g": 408.0,
+                    "proteins_100g": 5.3,
+                    "carbohydrates_100g": 72.4,
+                    "fat_100g": 11.2
+                  }
+                },
+                {
+                  "product_name": "Stroopwafel",
+                  "product_name_nl": "",
+                  "nutriments": {}
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val result = json.decodeFromString<OffSearchResponse>(raw)
+
+        assertEquals(2, result.count)
+        assertEquals(2, result.products.size)
+        assertEquals("Hagelslag Puur", result.products[0].productNameNl)
+        assertEquals(408.0, result.products[0].nutriments.energyKcal100g!!, 0.001)
+        assertEquals("Stroopwafel", result.products[1].productName)
+        assertNull(result.products[1].nutriments.energyKcal100g)
+    }
 }

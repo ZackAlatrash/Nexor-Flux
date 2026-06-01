@@ -25,3 +25,18 @@ data class OffNutriments(
     @SerialName("carbohydrates_100g") val carbohydrates100g: Double? = null,
     @SerialName("fat_100g") val fat100g: Double? = null,
 )
+
+@Serializable
+data class OffSearchResponse(
+    val count: Int = 0,
+    val products: List<OffSearchProduct> = emptyList(),
+)
+
+@Serializable
+data class OffSearchProduct(
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("product_name_nl") val productNameNl: String = "",
+    @SerialName("serving_size") val servingSize: String? = null,
+    @SerialName("serving_quantity") val servingQuantity: Double? = null,
+    val nutriments: OffNutriments = OffNutriments(),
+)

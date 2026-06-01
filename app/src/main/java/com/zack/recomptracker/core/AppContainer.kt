@@ -101,6 +101,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 foodCatalogRepository = container.foodCatalogRepository,
+                barcodeRepository = container.barcodeRepository,
             )
             BodyHistoryViewModel::class.java -> BodyHistoryViewModel(
                 logRepository = container.logRepository,

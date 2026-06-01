@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS, NEVO }
+enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS, NEVO, OFF }
 
 enum class AmountMode { SERVINGS, GRAMS }
 
@@ -63,10 +63,19 @@ data class FoodLibraryUiState(
     val quickAddProtein: String = "",
     val quickAddCarbs: String = "",
     val quickAddFat: String = "",
+    val offSearchResults: List<com.zack.recomptracker.data.local.entity.SavedFoodEntity> = emptyList(),
+    val offSearchLoading: Boolean = false,
 ) {
     val filteredFoods: List<FoodLibraryItem>
         get() {
             val q = query.trim().lowercase()
+
+            // OFF tab: show results from Open Food Facts search.
+            if (category == FoodCategory.OFF) {
+                return offSearchResults.mapIndexed { i, food ->
+                    FoodLibraryItem(key = "off_${food.name}_$i", food = food, sourceLabel = "Open Food Facts")
+                }
+            }
 
             // NEVO tab: show the full catalog, searchable, no personal foods mixed in.
             if (category == FoodCategory.NEVO) {
@@ -128,7 +137,7 @@ data class FoodLibraryUiState(
     private fun SavedFoodEntity.matchesCategory(): Boolean = when (category) {
         FoodCategory.PROTEINS -> proteinG >= carbsG && proteinG >= fatG
         FoodCategory.CARBS -> carbsG >= proteinG && carbsG > fatG
-        else -> true
+        FoodCategory.ALL, FoodCategory.MEALS, FoodCategory.NEVO, FoodCategory.OFF -> true
     }
 
     val filteredMeals: List<SavedMealEntity>
@@ -188,6 +197,7 @@ class FoodLibraryViewModel(
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
     private val foodCatalogRepository: FoodCatalogRepository,
+    private val barcodeRepository: com.zack.recomptracker.data.repository.BarcodeRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
@@ -537,6 +547,36 @@ class FoodLibraryViewModel(
                 slotId = s.slotId,
             )
             _uiState.update { it.copy(showQuickAddDialog = false, message = "Quick add logged.") }
+        }
+    }
+
+    fun searchOff() {
+        val q = _uiState.value.query.trim()
+        if (q.isBlank()) {
+            _uiState.update { it.copy(message = "Enter a search term.") }
+            return
+        }
+        _uiState.update { it.copy(offSearchLoading = true, message = null, offSearchResults = emptyList()) }
+        viewModelScope.launch {
+            val products = barcodeRepository.searchFoods(q)
+            _uiState.update { state ->
+                state.copy(
+                    offSearchLoading = false,
+                    offSearchResults = products.map { product ->
+                        com.zack.recomptracker.data.local.entity.SavedFoodEntity(
+                            name = product.name,
+                            servingName = product.servingName ?: "100g",
+                            calories = product.caloriesPer100g,
+                            proteinG = product.proteinPer100g,
+                            carbsG = product.carbsPer100g,
+                            fatG = product.fatPer100g,
+                            householdServingName = product.servingName,
+                            householdServingGrams = product.servingGrams,
+                        )
+                    },
+                    message = if (products.isEmpty()) "No products found for '${state.query}'." else null,
+                )
+            }
         }
     }
 }

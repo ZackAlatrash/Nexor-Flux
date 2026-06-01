@@ -12,9 +12,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -108,10 +111,20 @@ fun FoodLibraryScreen(
                 onValueChange = viewModel::onQueryChanged,
                 placeholder = {
                     Text(
-                        if (state.category == FoodCategory.NEVO) "Search NEVO foods…"
-                        else "Search saved foods…"
+                        when (state.category) {
+                            FoodCategory.NEVO -> "Search NEVO foods…"
+                            FoodCategory.OFF -> "Search Dutch products…"
+                            else -> "Search saved foods…"
+                        }
                     )
                 },
+                trailingIcon = if (state.category == FoodCategory.OFF) {
+                    {
+                        IconButton(onClick = viewModel::searchOff) {
+                            Icon(Icons.Default.Search, contentDescription = "Search Open Food Facts")
+                        }
+                    }
+                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -131,6 +144,7 @@ fun FoodLibraryScreen(
                                     FoodCategory.CARBS -> "Carbs"
                                     FoodCategory.MEALS -> "Saved Meals"
                                     FoodCategory.NEVO -> "NEVO"
+                                    FoodCategory.OFF -> "Open Food Facts"
                                 },
                             )
                         },
@@ -143,7 +157,20 @@ fun FoodLibraryScreen(
             }
         }
 
-        if (state.category != FoodCategory.NEVO) {
+        if (state.offSearchLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+
+        if (state.category != FoodCategory.NEVO && state.category != FoodCategory.OFF) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -189,13 +216,14 @@ fun FoodLibraryScreen(
         }
 
         if (state.category != FoodCategory.MEALS) {
-            if (state.filteredFoods.isEmpty()) {
+            if (state.filteredFoods.isEmpty() && !state.offSearchLoading) {
                 item {
                     Text(
-                        if (state.category == FoodCategory.NEVO)
-                            "No NEVO foods imported yet. Go to Settings → Import NEVO CSV."
-                        else
-                            "No foods found.",
+                        when (state.category) {
+                            FoodCategory.NEVO -> "No NEVO foods imported yet. Go to Settings → Import NEVO CSV."
+                            FoodCategory.OFF -> "Use the search bar above to find products from Open Food Facts."
+                            else -> "No foods found."
+                        },
                         color = Secondary,
                     )
                 }

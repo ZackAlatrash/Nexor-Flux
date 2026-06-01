@@ -438,6 +438,7 @@ private fun EditModeSlotCard(
 ) {
     var showRename by remember { mutableStateOf(false) }
     var renameValue by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     SectionCard {
         Row(
@@ -478,7 +479,7 @@ private fun EditModeSlotCard(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
                 ) { Text("Rename", fontSize = 11.sp) }
                 Button(
-                    onClick = onDelete,
+                    onClick = { showDeleteConfirm = true },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerBg),
                 ) { Text("Delete", fontSize = 11.sp, color = DangerText) }
             }
@@ -502,6 +503,25 @@ private fun EditModeSlotCard(
             dismissButton = {
                 TextButton(onClick = { showRename = false }) { Text("Cancel") }
             },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        val entryCount = slotWithEntries.entries.size
+        val bodyText = if (entryCount > 0)
+            "\"${slotWithEntries.slot.name}\" and its $entryCount ${if (entryCount == 1) "entry" else "entries"} will be removed."
+        else
+            "\"${slotWithEntries.slot.name}\" will be removed."
+        ConfirmDialog(
+            title = "Delete slot?",
+            body = bodyText,
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                onDelete()
+                showDeleteConfirm = false
+            },
+            onDismiss = { showDeleteConfirm = false },
         )
     }
 }

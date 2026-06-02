@@ -21,7 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -150,14 +152,17 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
 
 @Composable
 private fun FeaturedChartCard(series: ChartSeries) {
+    var scrubValue by remember { mutableStateOf<Float?>(null) }
     FeaturedCard {
-        ChartHeader(series)
+        ChartHeader(series, overrideValue = scrubValue)
         Spacer(Modifier.height(10.dp))
         if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
             SparklineChart(
                 values = series.values,
                 height = 72.dp,
                 showGlowDot = true,
+                showScrubber = true,
+                onScrubValue = { scrubValue = it },
             )
         } else {
             NoDataLabel()
@@ -248,7 +253,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
 // ── Chart Header ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun ChartHeader(series: ChartSeries) {
+private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -263,8 +268,9 @@ private fun ChartHeader(series: ChartSeries) {
                 letterSpacing = 0.08.sp,
             )
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                val displayValue = overrideValue ?: series.currentValue
                 Text(
-                    text = series.currentValue?.let {
+                    text = displayValue?.let {
                         if (series.unit == "%" || series.unit == "kcal") "%.0f".format(it)
                         else "%.1f".format(it)
                     } ?: "—",
@@ -274,7 +280,7 @@ private fun ChartHeader(series: ChartSeries) {
                     letterSpacing = (-1).sp,
                     lineHeight = 26.sp,
                 )
-                if (series.currentValue != null) {
+                if (displayValue != null) {
                     Text(
                         series.unit,
                         fontSize = 12.sp,

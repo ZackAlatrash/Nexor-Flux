@@ -22,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,7 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.core.util.formatPercent
 import com.zack.recomptracker.core.util.formatSignedOneDecimal
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
-import com.zack.recomptracker.ui.component.CalorieProgressBar
+import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
+import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.CalorieZoneBar
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
@@ -297,7 +297,7 @@ private fun MacroBarItem(
 ) {
     val animatedFrac by animateFloatAsState(
         targetValue = fraction,
-        animationSpec = tween(durationMillis = 900),
+        animationSpec = ChartDefaults.AnimSpec.progressBar,
         label = "macroFill",
     )
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {

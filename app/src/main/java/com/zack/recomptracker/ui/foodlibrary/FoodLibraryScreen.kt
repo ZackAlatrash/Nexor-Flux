@@ -15,7 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -107,7 +107,7 @@ fun FoodLibraryScreen(
                     }
                 }
                 IconButton(onClick = onScanBarcode) {
-                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan barcode")
+                    Icon(Icons.Default.CameraAlt, contentDescription = "Scan barcode")
                 }
             }
             MessageText(state.message, state.messageKind)

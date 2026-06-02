@@ -35,6 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -200,6 +203,7 @@ fun BarcodeScannerScreen(
                         state = scanState,
                         message = state.message,
                         onAmountChanged = viewModel::onAmountChanged,
+                        onLogModeChanged = viewModel::onLogModeChanged,
                         onLogAndSave = viewModel::confirmLogAndSave,
                         onLogOnly = viewModel::confirmLog,
                         onCancel = viewModel::resetScan,
@@ -263,6 +267,7 @@ private fun ProductFoundSheet(
     state: ScanState.ProductFound,
     message: String?,
     onAmountChanged: (String) -> Unit,
+    onLogModeChanged: (LogMode) -> Unit,
     onLogAndSave: () -> Unit,
     onLogOnly: () -> Unit,
     onCancel: () -> Unit,
@@ -287,10 +292,33 @@ private fun ProductFoundSheet(
             MacroChip("Fat", "${product.fatPer100g}g")
         }
         Text("per 100g", fontSize = 11.sp, color = Color(0xFF6b7280))
+        if (product.servingGrams != null) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = state.logMode == LogMode.GRAMS,
+                    onClick = { onLogModeChanged(LogMode.GRAMS) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    label = { Text("Grams") },
+                )
+                SegmentedButton(
+                    selected = state.logMode == LogMode.SERVING,
+                    onClick = { onLogModeChanged(LogMode.SERVING) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    label = { Text("Serving") },
+                )
+            }
+        }
+        val fieldLabel = if (state.logMode == LogMode.SERVING && product.servingGrams != null) {
+            val gramsInt = product.servingGrams.toInt()
+            if (product.servingName != null) "Servings (1 serving = ${gramsInt}g · ${product.servingName})"
+            else "Servings (1 serving = ${gramsInt}g)"
+        } else {
+            "Amount (grams)"
+        }
         OutlinedTextField(
             value = state.amountInput,
             onValueChange = onAmountChanged,
-            label = { Text("Amount (grams)") },
+            label = { Text(fieldLabel) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,

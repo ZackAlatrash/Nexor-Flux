@@ -54,6 +54,13 @@ data class TodayUiState(
     val message: String? = null,
     val weightChange7d: Float? = null,
     val waistChange7d: Float? = null,
+    // Body screen MetricsHero data
+    val lastLogDate: LocalDate? = null,
+    val lastLogWeightKg: Double? = null,
+    val lastLogWaistCm: Double? = null,
+    val weightSparkline14d: List<Float> = emptyList(),
+    val waistSparkline14d: List<Float> = emptyList(),
+    val totalDaysLogged: Int = 0,
 )
 
 class TodayViewModel(
@@ -145,12 +152,34 @@ class TodayViewModel(
                     .filter { (_, date) -> date <= priorCutoff }
                     .firstNotNullOfOrNull { (log, _) -> log.waistCm }
 
+                // MetricsHero: last logged entry (may be yesterday or earlier)
+                val lastEntry = allLogs
+                    .map { it to LocalDate.parse(it.date) }
+                    .sortedByDescending { (_, d) -> d }
+                    .firstOrNull { (log, d) ->
+                        d < today && (log.bodyWeightKg != null || log.waistCm != null)
+                    }
+
+                // 14-day sparklines (ordered oldest → newest, gaps kept as 0)
+                val dates14 = (13 downTo 0).map { today.minusDays(it.toLong()) }
+                val byDate = allLogs.associateBy { LocalDate.parse(it.date) }
+                val weightSpark = dates14.mapNotNull { byDate[it]?.bodyWeightKg?.toFloat() }
+                val waistSpark = dates14.mapNotNull { byDate[it]?.waistCm?.toFloat() }
+
                 _uiState.update {
                     it.copy(
                         weightChange7d = if (latestWeight != null && weight7dAgo != null)
                             (latestWeight - weight7dAgo).toFloat() else null,
                         waistChange7d = if (latestWaist != null && waist7dAgo != null)
                             (latestWaist - waist7dAgo).toFloat() else null,
+                        lastLogDate = lastEntry?.second,
+                        lastLogWeightKg = lastEntry?.first?.bodyWeightKg,
+                        lastLogWaistCm = lastEntry?.first?.waistCm,
+                        weightSparkline14d = weightSpark,
+                        waistSparkline14d = waistSpark,
+                        totalDaysLogged = allLogs.count { log ->
+                            log.bodyWeightKg != null || log.waistCm != null
+                        },
                     )
                 }
             }

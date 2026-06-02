@@ -1,13 +1,7 @@
 package com.zack.recomptracker.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -19,6 +13,7 @@ import com.zack.recomptracker.ui.dashboard.HomeDashboardScreen
 import com.zack.recomptracker.ui.foods.FoodsScreen
 import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.more.MoreScreen
+import com.zack.recomptracker.ui.more.MoreViewModel
 import com.zack.recomptracker.ui.plan.PlanScreen
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.progress.ProgressScreen
@@ -41,23 +36,23 @@ import java.time.LocalDate
 enum class TopLevelDestination(
     val route: String,
     val label: String,
-    val icon: ImageVector,
 ) {
-    Home("home", "Home", Icons.Default.Home),
-    Food("food", "Food", Icons.Default.Restaurant),
-    Body("body", "Body", Icons.Default.Favorite),
-    More("more", "More", Icons.Default.MoreHoriz),
+    Home("home", "Home"),
+    Body("body", "Body"),
+    Progress("progress", "Progress"),
+    More("more", "More"),
 }
 
 object Routes {
-    const val Stats = "stats"
-    const val Charts = "charts"
-    const val Plan = "plan"
+    const val Food      = "food"
+    const val Stats     = "stats"
+    const val Charts    = "charts"
+    const val Plan      = "plan"
     const val FoodLibrary = "food_library"
-    const val Foods = "foods"
-    const val Settings = "settings"
+    const val Foods     = "foods"
+    const val Settings  = "settings"
     const val BodyHistory = "body_history"
-    const val BodyEdit = "body_edit/{date}"
+    const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
     const val BarcodeScanner = "barcode_scanner?slotId={slotId}&slotName={slotName}"
     fun barcodeScanner(slotId: Long?, slotName: String) =
@@ -78,13 +73,11 @@ fun AppNavGraph(
         composable(TopLevelDestination.Home.route) {
             HomeDashboardScreen(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
-                onLogFood = { navController.navigate(TopLevelDestination.Food.route) },
-                onUpdateBody = { navController.navigate(TopLevelDestination.Body.route) },
             )
         }
-        composable(TopLevelDestination.Food.route) {
+        composable(Routes.Food) {
             FoodScreen(
-                viewModel = viewModel(factory = factory),
+                viewModel = viewModel<TodayViewModel>(factory = factory),
                 onAddToSlot = { slotId, slotName ->
                     navController.navigate(
                         "${Routes.FoodLibrary}?slotId=$slotId&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}"
@@ -103,6 +96,9 @@ fun AppNavGraph(
                 viewModel = viewModel<TodayViewModel>(factory = factory),
                 onViewHistory = { navController.navigate(Routes.BodyHistory) },
             )
+        }
+        composable(TopLevelDestination.Progress.route) {
+            ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
         }
         composable(Routes.BodyHistory) {
             BodyHistoryScreen(
@@ -135,10 +131,10 @@ fun AppNavGraph(
         }
         composable(TopLevelDestination.More.route) {
             MoreScreen(
-                onStatsClick = { navController.navigate(Routes.Stats) },
-                onChartsClick = { navController.navigate(Routes.Charts) },
-                onPlanClick = { navController.navigate(Routes.Plan) },
-                onSettingsClick = { navController.navigate(Routes.Settings) },
+                viewModel      = viewModel<MoreViewModel>(factory = factory),
+                onStatsClick   = { navController.navigate(Routes.Stats) },
+                onChartsClick  = { navController.navigate(Routes.Charts) },
+                onPlanClick    = { navController.navigate(Routes.Plan) },
             )
         }
         composable(Routes.Foods) {

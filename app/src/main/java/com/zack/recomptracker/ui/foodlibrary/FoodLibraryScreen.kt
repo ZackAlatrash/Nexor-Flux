@@ -1,33 +1,39 @@
 package com.zack.recomptracker.ui.foodlibrary
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -38,9 +44,17 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -48,18 +62,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.data.local.entity.SavedFoodEntity
-import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
+import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.ui.LocalSnackbarHostState
+import com.zack.recomptracker.ui.component.GlassButtonClickable
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
-import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.theme.NavLogEnd
+import com.zack.recomptracker.ui.theme.NavLogStart
+import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.Violet300
+import com.zack.recomptracker.ui.theme.Violet400
+import com.zack.recomptracker.ui.theme.Violet500
 
-private val Blue = Color(0xFF3b82f6)
-private val Secondary = Color(0xFF6b7280)
-private val GreenStar = Color(0xFF15803d)
+private val TextSecondary = Color(0x47FFFFFF) // TextMuted
 
 @Composable
 fun FoodLibraryScreen(
@@ -80,192 +98,236 @@ fun FoodLibraryScreen(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Column(modifier = Modifier.weight(1f)) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // ── Top Bar ───────────────────────────────────────────────────────────
+        FoodLibraryTopBar(
+            slotId = slotId,
+            slotName = state.slotName,
+            remainingCalories = state.remainingCalories,
+            onBack = onBack,
+            onScanBarcode = onScanBarcode,
+        )
+
+        MessageText(
+            message = state.message,
+            kind = state.messageKind,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+
+        // ── Search Field ──────────────────────────────────────────────────────
+        GlassSearchField(
+            query = state.query,
+            onQueryChanged = viewModel::onQueryChanged,
+            category = state.category,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        )
+
+        // ── Category Chips ────────────────────────────────────────────────────
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            items(FoodCategory.entries) { cat ->
+                val isActive = state.category == cat
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (isActive) Color(0x338B5CF6) else Color(0x0DFFFFFF))
+                        .border(
+                            1.dp,
+                            if (isActive) Color(0x598B5CF6) else Color(0x14FFFFFF),
+                            RoundedCornerShape(20.dp),
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { viewModel.onCategoryChanged(cat) }
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
                     Text(
-                        text = if (slotId != null) "Add to ${state.slotName}" else "Foods & Meals",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
+                        text = cat.label(),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isActive) Violet300 else Color(0x59FFFFFF),
                     )
-                    if (slotId != null) {
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // ── Action Row ────────────────────────────────────────────────────────
+        if (state.category != FoodCategory.NEVO && state.category != FoodCategory.OFF) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                GlassActionButton(
+                    text = "+ New food",
+                    onClick = viewModel::toggleCreateFoodForm,
+                    isPrimary = true,
+                    modifier = Modifier.weight(1f),
+                )
+                GlassActionButton(
+                    text = "⚡ Quick add",
+                    onClick = viewModel::openQuickAdd,
+                    isPrimary = false,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
+        // ── Food List ─────────────────────────────────────────────────────────
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            if (state.offSearchLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = Violet400)
+                    }
+                }
+            }
+
+            if (state.recentFoods.isNotEmpty() && state.query.isBlank()) {
+                item {
+                    SectionLabel("Recents", modifier = Modifier.padding(vertical = 8.dp))
+                }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color(0x0DFFFFFF))
+                                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(20.dp))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) { viewModel.requestLogFood(food) }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                            ) {
+                                Text(food.name, fontSize = 12.sp, color = Color(0xBFFFFFFF))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+
+            if (state.category != FoodCategory.MEALS) {
+                when {
+                    state.filteredFoods.isEmpty() && !state.offSearchLoading -> {
+                        item {
+                            EmptyStateLabel(state.category)
+                        }
+                    }
+                    else -> {
+                        item {
+                            // Food list wrapped in glass card
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0x0AFFFFFF))
+                                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp)),
+                            ) {
+                                state.filteredFoods.forEachIndexed { index, item ->
+                                    if (index > 0) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(1.dp)
+                                                .background(Color(0x0AFFFFFF)),
+                                        )
+                                    }
+                                    GlassFoodRow(
+                                        item = item,
+                                        onLog = { viewModel.requestLogFood(item.food) },
+                                        onEdit = if (item.sourceLabel == null) {
+                                            { viewModel.openEditFood(item.food) }
+                                        } else null,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS) {
+                if (state.filteredMeals.isNotEmpty()) {
+                    item { Spacer(Modifier.height(8.dp)) }
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0x0AFFFFFF))
+                                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp)),
+                        ) {
+                            state.filteredMeals.forEachIndexed { index, meal ->
+                                if (index > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(1.dp)
+                                            .background(Color(0x0AFFFFFF)),
+                                    )
+                                }
+                                GlassMealRow(meal = meal, onLog = { viewModel.logMeal(meal) })
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (slotId != null) {
+                item {
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(Color(0x0DFFFFFF))
+                            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(11.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { viewModel.openSaveMealDialog() }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text(
-                            "${state.remainingCalories} kcal to zone",
-                            fontSize = 11.sp,
-                            color = Secondary,
+                            "Save slot as meal",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Violet300,
                         )
                     }
                 }
-                IconButton(onClick = onScanBarcode) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = "Scan barcode")
-                }
             }
-            MessageText(state.message, state.messageKind)
-        }
 
-        item {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChanged,
-                placeholder = {
-                    Text(
-                        when (state.category) {
-                            FoodCategory.NEVO -> "Search NEVO foods…"
-                            FoodCategory.OFF -> "Type to search Dutch products…"
-                            else -> "Search saved foods…"
-                        }
-                    )
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(FoodCategory.entries) { cat ->
-                    FilterChip(
-                        selected = state.category == cat,
-                        onClick = { viewModel.onCategoryChanged(cat) },
-                        label = {
-                            Text(
-                                when (cat) {
-                                    FoodCategory.ALL -> "All"
-                                    FoodCategory.PROTEINS -> "Proteins"
-                                    FoodCategory.CARBS -> "Carbs"
-                                    FoodCategory.MEALS -> "Saved Meals"
-                                    FoodCategory.NEVO -> "NEVO"
-                                    FoodCategory.OFF -> "Open Food Facts"
-                                },
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Blue,
-                            selectedLabelColor = Color.White,
-                        ),
-                    )
-                }
-            }
-        }
-
-        if (state.offSearchLoading) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
-
-        if (state.category != FoodCategory.NEVO && state.category != FoodCategory.OFF) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(
-                        onClick = viewModel::toggleCreateFoodForm,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue),
-                        border = BorderStroke(1.5.dp, Blue),
-                    ) {
-                        Text("+ New food", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    OutlinedButton(
-                        onClick = viewModel::openQuickAdd,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Secondary),
-                    ) {
-                        Text("⚡ Quick add", fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-
-        if (state.recentFoods.isNotEmpty() && state.query.isBlank()) {
-            item {
-                Text(
-                    "RECENTS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Secondary,
-                )
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
-                        OutlinedButton(onClick = { viewModel.requestLogFood(food) }) {
-                            Text(food.name, fontSize = 12.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        if (state.category != FoodCategory.MEALS) {
-            if (state.filteredFoods.isEmpty() && !state.offSearchLoading) {
-                item {
-                    Text(
-                        when (state.category) {
-                            FoodCategory.NEVO -> "No NEVO foods imported yet. Go to Settings → Import NEVO CSV."
-                            FoodCategory.OFF -> "Use the search bar above to find products from Open Food Facts."
-                            else -> "No foods found."
-                        },
-                        color = Secondary,
-                    )
-                }
-            } else {
-                items(state.filteredFoods, key = { it.key }) { item ->
-                    FoodRow(
-                        item = item,
-                        onLog = { viewModel.requestLogFood(item.food) },
-                        onEdit = if (item.sourceLabel == null) { { viewModel.openEditFood(item.food) } } else null,
-                    )
-                }
-            }
-        }
-
-        if (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS) {
-            items(state.filteredMeals, key = { "meal_${it.id}" }) { meal ->
-                MealRow(meal = meal, onLog = { viewModel.logMeal(meal) })
-            }
-        }
-
-        if (slotId != null) {
-            item {
-                OutlinedButton(
-                    onClick = viewModel::openSaveMealDialog,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenStar),
-                ) {
-                    Text("Save current slot as meal")
-                }
-            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 
+    // ── Bottom Sheets ─────────────────────────────────────────────────────────
     if (state.showAmountSheet && state.pendingFood != null) {
         AmountSheet(state = state, viewModel = viewModel)
     }
-
     if (state.showCreateFoodForm) {
         CreateFoodSheet(state = state, viewModel = viewModel)
     }
-
     if (state.showSaveMealDialog) {
         AlertDialog(
             onDismissRequest = viewModel::dismissSaveMealDialog,
@@ -286,68 +348,357 @@ fun FoodLibraryScreen(
             },
         )
     }
-
     if (state.showQuickAddDialog) {
         QuickAddSheet(state = state, viewModel = viewModel)
     }
 }
 
+// ── Top Bar ───────────────────────────────────────────────────────────────────
+
 @Composable
-private fun FoodRow(item: FoodLibraryItem, onLog: () -> Unit, onEdit: (() -> Unit)? = null) {
-    val food = item.food
-    SectionCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+private fun FoodLibraryTopBar(
+    slotId: Long?,
+    slotName: String,
+    remainingCalories: Int,
+    onBack: () -> Unit,
+    onScanBarcode: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // Back button
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0x0FFFFFFF))
+                .border(1.dp, Color(0x17FFFFFF), RoundedCornerShape(10.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onBack,
+                ),
+            contentAlignment = Alignment.Center,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(food.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                if (item.sourceLabel != null) {
-                    Text(item.sourceLabel, fontSize = 10.sp, color = Blue, fontWeight = FontWeight.Bold)
-                }
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Color(0xBFFFFFFF),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        // Title column
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (slotId != null) "Add to $slotName" else "Foods & Meals",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = (-0.3).sp,
+            )
+            if (slotId != null) {
                 Text(
-                    "${food.servingName} · ${food.calories} kcal · ${food.proteinG.toInt()}P ${food.carbsG.toInt()}C ${food.fatG.toInt()}F",
+                    text = "$remainingCalories kcal remaining to zone",
                     fontSize = 11.sp,
-                    color = Secondary,
+                    color = Color(0xBFA78BFA),
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (onEdit != null) {
-                    TextButton(onClick = onEdit) { Text("Edit", fontSize = 11.sp, color = Secondary) }
-                }
-                Button(
-                    onClick = onLog,
-                    colors = ButtonDefaults.buttonColors(containerColor = Blue),
-                ) { Text("Log", fontSize = 11.sp) }
-            }
+        }
+
+        // Camera scan button
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0x268B5CF6))
+                .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(10.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onScanBarcode,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.CameraAlt,
+                contentDescription = "Scan barcode",
+                tint = Violet300,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }
 
+// ── Glass Search Field ────────────────────────────────────────────────────────
+
 @Composable
-private fun MealRow(meal: SavedMealEntity, onLog: () -> Unit) {
-    SectionCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(meal.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                Text(
-                    "${meal.calories} kcal · ${meal.proteinG.toInt()}P ${meal.carbsG.toInt()}C ${meal.fatG.toInt()}F",
-                    fontSize = 11.sp,
-                    color = Secondary,
+private fun GlassSearchField(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    category: FoodCategory,
+    modifier: Modifier = Modifier,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val borderColor = if (focused) Color(0x738B5CF6) else Color(0x1AFFFFFF)
+    val bgColor = if (focused) Color(0x128B5CF6) else Color(0x0FFFFFFF)
+    val placeholder = when (category) {
+        FoodCategory.NEVO -> "Search NEVO foods…"
+        FoodCategory.OFF -> "Search Dutch products…"
+        else -> "Search foods…"
+    }
+
+    BasicTextField(
+        value = query,
+        onValueChange = onQueryChanged,
+        singleLine = true,
+        textStyle = TextStyle(fontSize = 14.sp, color = Color(0xBFFFFFFF)),
+        cursorBrush = SolidColor(Violet300),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        decorationBox = { innerField ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = Color(0x40FFFFFF),
+                    modifier = Modifier.size(18.dp),
                 )
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text(placeholder, fontSize = 14.sp, color = Color(0x40FFFFFF))
+                    }
+                    innerField()
+                }
             }
-            Button(
-                onClick = onLog,
-                colors = ButtonDefaults.buttonColors(containerColor = Blue),
-            ) { Text("Log all", fontSize = 11.sp) }
+        },
+    )
+}
+
+// ── Glass Action Buttons ──────────────────────────────────────────────────────
+
+@Composable
+private fun GlassActionButton(
+    text: String,
+    onClick: () -> Unit,
+    isPrimary: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(if (isPrimary) Color(0x2E8B5CF6) else Color(0x0DFFFFFF))
+            .border(
+                1.dp,
+                if (isPrimary) Color(0x528B5CF6) else Color(0x17FFFFFF),
+                RoundedCornerShape(11.dp),
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isPrimary) Violet300 else Color(0x73FFFFFF),
+        )
+    }
+}
+
+// ── Glass Food Row ────────────────────────────────────────────────────────────
+
+@Composable
+private fun GlassFoodRow(
+    item: FoodLibraryItem,
+    onLog: () -> Unit,
+    onEdit: (() -> Unit)? = null,
+) {
+    val food = item.food
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = food.name,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (item.sourceLabel != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0x1F8B5CF6))
+                            .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    ) {
+                        Text(item.sourceLabel, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xB38B5CF6))
+                    }
+                }
+            }
+            Text(
+                text = "${food.proteinG.toInt()}P ${food.carbsG.toInt()}C ${food.fatG.toInt()}F",
+                fontSize = 10.sp,
+                color = TextSecondary,
+            )
+        }
+        Text(
+            text = "${food.calories} kcal",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0x66FFFFFF),
+        )
+        if (onEdit != null) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(Color(0x0DFFFFFF))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onEdit,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✎", fontSize = 13.sp, color = Violet400)
+            }
+        }
+        // Add button
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Violet500)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onLog,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
         }
     }
 }
+
+// ── Glass Meal Row ────────────────────────────────────────────────────────────
+
+@Composable
+private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x0A8B5CF6))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = meal.name,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0x1F8B5CF6))
+                        .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                ) {
+                    Text("Meal", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xB38B5CF6))
+                }
+            }
+            Text(
+                text = "${meal.proteinG.toInt()}P ${meal.carbsG.toInt()}C ${meal.fatG.toInt()}F",
+                fontSize = 10.sp,
+                color = TextSecondary,
+            )
+        }
+        Text(
+            text = "${meal.calories} kcal",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0x66FFFFFF),
+        )
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Violet500)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onLog,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
+        }
+    }
+}
+
+// ── Empty State ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun EmptyStateLabel(category: FoodCategory) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = when (category) {
+                FoodCategory.NEVO -> "No NEVO foods imported yet.\nGo to More → Settings → Import NEVO CSV."
+                FoodCategory.OFF -> "Use the search bar above to find\nproducts from Open Food Facts."
+                else -> "No foods found."
+            },
+            fontSize = 12.sp,
+            color = TextMuted,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private fun FoodCategory.label() = when (this) {
+    FoodCategory.ALL -> "All"
+    FoodCategory.PROTEINS -> "Proteins"
+    FoodCategory.CARBS -> "Carbs"
+    FoodCategory.MEALS -> "Saved Meals"
+    FoodCategory.NEVO -> "NEVO"
+    FoodCategory.OFF -> "Open Food Facts"
+}
+
+// ── Amount Sheet (unchanged functionality, glass style) ───────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -368,15 +719,13 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
             Text(food.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             val servingLabel = food.householdServingName ?: "serving"
             val servingGrams = food.householdServingGrams?.toInt() ?: 100
-            val reference = "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g"
             Text(
-                reference,
-                color = Secondary,
+                "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g",
+                color = TextSecondary,
                 fontSize = 11.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = state.amountMode == AmountMode.SERVINGS,
@@ -389,7 +738,6 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                     shape = SegmentedButtonDefaults.itemShape(1, 2),
                 ) { Text("Grams") }
             }
-
             if (state.amountMode == AmountMode.SERVINGS) {
                 AmountStepper(
                     value = state.servingsValue,
@@ -409,34 +757,20 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                     suffix = "g",
                 )
             }
-
             val preview = state.previewMacros
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
                 AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
                 AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
                 AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
             }
-
             MessageText(state.message, state.messageKind)
-
-            Button(
+            GlassButtonClickable(
+                text = if (state.editingEntryId == null) {
+                    if (state.slotId != null) "Add to ${state.slotName}" else "Add"
+                } else "Save",
                 onClick = viewModel::confirmAmount,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Blue),
-            ) {
-                Text(
-                    if (state.editingEntryId == null) {
-                        if (state.slotId != null) "Add to ${state.slotName}" else "Add"
-                    } else {
-                        "Save"
-                    },
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            )
         }
     }
 }
@@ -455,12 +789,20 @@ private fun AmountStepper(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedButton(
-            onClick = onMinus,
-            modifier = Modifier.size(48.dp),
-            contentPadding = PaddingValues(0.dp),
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0x0DFFFFFF))
+                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(12.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onMinus,
+                ),
+            contentAlignment = Alignment.Center,
         ) {
-            Text("−", fontSize = 20.sp)
+            Text("−", fontSize = 20.sp, color = Color.White)
         }
         Column(modifier = Modifier.weight(1f)) {
             OutlinedTextField(
@@ -472,21 +814,23 @@ private fun AmountStepper(
                 modifier = Modifier.fillMaxWidth(),
             )
             if (caption.isNotBlank()) {
-                Text(
-                    caption,
-                    color = Secondary,
-                    fontSize = 11.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Text(caption, color = TextSecondary, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
-        OutlinedButton(
-            onClick = onPlus,
-            modifier = Modifier.size(48.dp),
-            contentPadding = PaddingValues(0.dp),
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0x0DFFFFFF))
+                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(12.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onPlus,
+                ),
+            contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 20.sp)
+            Text("+", fontSize = 20.sp, color = Color.White)
         }
     }
 }
@@ -495,7 +839,7 @@ private fun AmountStepper(
 private fun AmountPreviewStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-        Text(label, color = Secondary, fontSize = 10.sp)
+        Text(label, color = TextSecondary, fontSize = 10.sp)
     }
 }
 
@@ -520,7 +864,7 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                 )
-                Text("Macros are per 100 g", color = Secondary, fontSize = 11.sp)
+                Text("Macros are per 100 g", color = TextSecondary, fontSize = 11.sp)
             }
             OutlinedTextField(
                 value = state.newFoodName,
@@ -555,16 +899,10 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
                 NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
             }
             MessageText(state.message, state.messageKind)
-            Button(
+            GlassButtonClickable(
+                text = if (state.editingFoodId != null) "Update food" else "Save food",
                 onClick = viewModel::saveNewFood,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Blue),
-            ) {
-                Text(
-                    if (state.editingFoodId != null) "Update food" else "Save food",
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            )
         }
     }
 }
@@ -586,7 +924,7 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("⚡ Quick add", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text("Log calories without creating a food", color = Secondary, fontSize = 11.sp)
+                Text("Log calories without creating a food", color = TextSecondary, fontSize = 11.sp)
             }
             OutlinedTextField(
                 value = state.quickAddName,
@@ -602,13 +940,7 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
                 NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
             }
             MessageText(state.message, state.messageKind)
-            Button(
-                onClick = viewModel::confirmQuickAdd,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4b5563)),
-            ) {
-                Text("Add", fontWeight = FontWeight.Bold)
-            }
+            GlassButtonClickable(text = "Add", onClick = viewModel::confirmQuickAdd)
         }
     }
 }

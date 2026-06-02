@@ -67,5 +67,28 @@ class AppPreferences(
         val ReviewCadenceDays = intPreferencesKey("review_cadence_days")
         val UseMetricUnits = booleanPreferencesKey("use_metric_units")
         val HealthConnectEnabled = booleanPreferencesKey("health_connect_enabled")
+        val SelectedFont = stringPreferencesKey("selected_font")
+        val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
+    }
+}
+
+// Separate lightweight preference class for UI-only settings (font, AI)
+class UiPreferences(private val context: Context) {
+    private val Context.uiDataStore by preferencesDataStore(name = "ui_preferences")
+
+    val selectedFont: kotlinx.coroutines.flow.Flow<String> = context.uiDataStore.data.map { it[Keys.SelectedFont] ?: "default" }
+    val aiInsightsEnabled: kotlinx.coroutines.flow.Flow<Boolean> = context.uiDataStore.data.map { it[Keys.AiInsightsEnabled] ?: false }
+
+    suspend fun setFont(font: String) {
+        context.uiDataStore.edit { it[Keys.SelectedFont] = font }
+    }
+
+    suspend fun setAiInsights(enabled: Boolean) {
+        context.uiDataStore.edit { it[Keys.AiInsightsEnabled] = enabled }
+    }
+
+    private object Keys {
+        val SelectedFont = stringPreferencesKey("selected_font")
+        val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
     }
 }

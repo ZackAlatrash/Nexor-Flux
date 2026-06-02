@@ -1,19 +1,24 @@
 package com.zack.recomptracker.ui.body
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.zack.recomptracker.ui.component.GlassButtonClickable
+import com.zack.recomptracker.ui.component.GlassInputField
+import com.zack.recomptracker.ui.component.GlassTextArea
 import com.zack.recomptracker.ui.component.MessageText
-import com.zack.recomptracker.ui.component.NumberField
-import com.zack.recomptracker.ui.component.ScoreSlider
-import com.zack.recomptracker.ui.component.ToggleRow
+import com.zack.recomptracker.ui.component.ScoreStepper
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.VioletToggle
 import java.time.LocalDate
 
 data class BodyCheckInFormState(
@@ -45,6 +50,15 @@ data class BodyCheckInFormActions(
     val onSave: () -> Unit,
 )
 
+private val Divider: @Composable () -> Unit = {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(Color(0x0DFFFFFF)),
+    )
+}
+
 @Composable
 fun BodyCheckInFormContent(
     state: BodyCheckInFormState,
@@ -54,31 +68,70 @@ fun BodyCheckInFormContent(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         MessageText(state.message)
+
+        // ── Group 1: Measurements ─────────────────────────────────────────────
+        SectionLabel("Measurements")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            NumberField("Weight", state.bodyWeightKg, actions.onBodyWeightChanged, Modifier.weight(1f), "kg")
-            NumberField("Waist", state.waistCm, actions.onWaistChanged, Modifier.weight(1f), "cm")
+            GlassInputField(
+                label = "Weight",
+                value = state.bodyWeightKg,
+                onValueChange = actions.onBodyWeightChanged,
+                unit = "kg",
+                modifier = Modifier.weight(1f),
+            )
+            GlassInputField(
+                label = "Waist",
+                value = state.waistCm,
+                onValueChange = actions.onWaistChanged,
+                unit = "cm",
+                modifier = Modifier.weight(1f),
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            NumberField("Belly skinfold", state.waistSkinfoldMm, actions.onWaistSkinfoldChanged, Modifier.weight(1f), "mm")
-            NumberField("Sleep", state.sleepHours, actions.onSleepChanged, Modifier.weight(1f), "h")
+            GlassInputField(
+                label = "Sleep",
+                value = state.sleepHours,
+                onValueChange = actions.onSleepChanged,
+                unit = "hrs",
+                modifier = Modifier.weight(1f),
+            )
+            GlassInputField(
+                label = "Steps",
+                value = state.steps,
+                onValueChange = actions.onStepsChanged,
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.weight(1f),
+            )
         }
-        NumberField("Steps", state.steps, actions.onStepsChanged, Modifier.fillMaxWidth())
-        ScoreSlider("Energy", state.energyScore, actions.onEnergyChanged)
-        ScoreSlider("Hunger", state.hungerScore, actions.onHungerChanged)
-        ScoreSlider("Soreness", state.sorenessScore, actions.onSorenessChanged)
-        ToggleRow("Training day", state.trained, actions.onTrainedChanged)
-        OutlinedTextField(
+        GlassInputField(
+            label = "Skinfold",
+            value = state.waistSkinfoldMm,
+            onValueChange = actions.onWaistSkinfoldChanged,
+            unit = "mm",
+        )
+
+        Divider()
+
+        // ── Group 2: Recovery Scores ──────────────────────────────────────────
+        SectionLabel("Recovery")
+        ScoreStepper("Energy", state.energyScore, actions.onEnergyChanged)
+        ScoreStepper("Hunger", state.hungerScore, actions.onHungerChanged)
+        ScoreStepper("Soreness", state.sorenessScore, actions.onSorenessChanged)
+
+        Divider()
+
+        // ── Group 3: Training + Notes ─────────────────────────────────────────
+        VioletToggle("Training day", state.trained, actions.onTrainedChanged)
+        GlassTextArea(
             value = state.notes,
             onValueChange = actions.onNotesChanged,
-            label = { Text("Notes") },
+            placeholder = "Notes…",
             minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
         )
-        Button(onClick = actions.onSave, modifier = Modifier.fillMaxWidth()) {
-            Text(saveLabel)
-        }
+
+        GlassButtonClickable(text = saveLabel, onClick = actions.onSave)
     }
 }

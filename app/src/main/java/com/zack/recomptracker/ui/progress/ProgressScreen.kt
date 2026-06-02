@@ -1,94 +1,308 @@
 package com.zack.recomptracker.ui.progress
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.FeaturedCard
+import com.zack.recomptracker.ui.component.GlassSurfaceCard
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SparklineChart
+import com.zack.recomptracker.ui.component.MiniSparkline
+import com.zack.recomptracker.ui.theme.ErrorRed
+import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.Violet400
 
 @Composable
 fun ProgressScreen(viewModel: ProgressViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LazyColumn(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Progress", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(7, 14, 28).forEach { days ->
-                        FilterChip(
-                            selected = state.rangeDays == days,
-                            onClick = { viewModel.setRange(days) },
-                            label = { Text("${days}d") },
-                        )
-                    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .offset(x = (-70).dp, y = (-90).dp)
+                .background(
+                    Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent)),
+                ),
+        )
+
+        LazyColumn(
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 4.dp,
+                bottom = FloatingNavHeight + 16.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = "Progress",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        letterSpacing = (-0.8).sp,
+                    )
                 }
             }
+
+            // Range selector
+            item {
+                RangeSelector(
+                    selected = state.rangeDays,
+                    onSelect = viewModel::setRange,
+                )
+            }
+
+            // Body section
+            item { SectionLabel("Body") }
+            item { FeaturedChartCard(state.weight) }
+            item { FeaturedChartCard(state.waist) }
+
+            // Nutrition section
+            item { SectionLabel("Nutrition") }
+            item { FeaturedChartCard(state.calories) }
+            item { MiniChartPair(state.protein, state.carbs) }
+            item { ShortChartCard(state.fat) }
+
+            // Performance section
+            item { SectionLabel("Performance") }
+            item { MiniChartPair(state.adherence, state.lifts) }
         }
-        item { ChartCard(state.weight) }
-        item { ChartCard(state.waist) }
-        item { ChartCard(state.calories) }
-        item { ChartCard(state.protein) }
-        item { ChartCard(state.carbs) }
-        item { ChartCard(state.fat) }
-        item { ChartCard(state.adherence) }
-        item { ChartCard(state.lifts) }
     }
 }
 
-@Composable
-private fun ChartCard(series: ChartSeries) {
-    SectionCard("${series.title} (${series.unit})") {
-        if (series.values.isEmpty() || series.values.all { it == 0f }) {
-            Text("No data for this range.")
-        } else {
-            VicoLineChart(series.values)
-        }
-    }
-}
+// ── Range Selector ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun VicoLineChart(values: List<Float>) {
-    val modelProducer = remember { CartesianChartModelProducer() }
-    LaunchedEffect(values) {
-        modelProducer.runTransaction {
-            lineSeries {
-                series(values)
+private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        listOf(7, 14, 28).forEach { days ->
+            val isActive = selected == days
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isActive) Color(0x338B5CF6) else Color(0x0DFFFFFF))
+                    .border(
+                        1.dp,
+                        if (isActive) Color(0x598B5CF6) else Color(0x12FFFFFF),
+                        RoundedCornerShape(10.dp),
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onSelect(days) }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "${days}d",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isActive) Color(0xFFC4B5FD) else Color(0x59FFFFFF),
+                )
             }
         }
     }
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(),
-            startAxis = VerticalAxis.rememberStart(),
-            bottomAxis = HorizontalAxis.rememberBottom(),
-        ),
-        modelProducer = modelProducer,
+}
+
+// ── Featured Chart Card (full-width, violet tint) ─────────────────────────────
+
+@Composable
+private fun FeaturedChartCard(series: ChartSeries) {
+    FeaturedCard {
+        ChartHeader(series)
+        Spacer(Modifier.height(10.dp))
+        if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
+            SparklineChart(
+                values = series.values,
+                height = 72.dp,
+                showGlowDot = true,
+            )
+        } else {
+            NoDataLabel()
+        }
+    }
+}
+
+// ── Short Chart Card (full-width, surface style, 44dp chart height) ───────────
+
+@Composable
+private fun ShortChartCard(series: ChartSeries) {
+    GlassSurfaceCard(cornerRadius = 18) {
+        ChartHeader(series)
+        Spacer(Modifier.height(8.dp))
+        if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
+            SparklineChart(values = series.values, height = 44.dp, showGlowDot = false)
+        } else {
+            NoDataLabel()
+        }
+    }
+}
+
+// ── Mini Chart Pair (2-column) ────────────────────────────────────────────────
+
+@Composable
+private fun MiniChartPair(left: ChartSeries, right: ChartSeries) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        MiniChartCard(left, Modifier.weight(1f))
+        MiniChartCard(right, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0x0AFFFFFF))
+            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(
+            text = series.title.uppercase(),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0x66FFFFFF),
+            letterSpacing = 0.08.sp,
+        )
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = series.currentValue?.let {
+                    if (series.unit == "%") "${"%.0f".format(it)}%" else "%.1f".format(it)
+                } ?: "—",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                letterSpacing = (-0.8).sp,
+                lineHeight = 20.sp,
+            )
+            if (series.currentValue != null && series.unit != "%") {
+                Text(
+                    series.unit,
+                    fontSize = 10.sp,
+                    color = Color(0x4CFFFFFF),
+                    modifier = Modifier.padding(bottom = 2.dp),
+                )
+            }
+        }
+        if (series.trendLabel.isNotEmpty()) {
+            Text(
+                text = series.trendLabel,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (series.trendIsGood) Violet400 else ErrorRed,
+            )
+        }
+        Spacer(Modifier.height(3.dp))
+        if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
+            MiniSparkline(values = series.values)
+        }
+    }
+}
+
+// ── Chart Header ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun ChartHeader(series: ChartSeries) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = series.title.uppercase(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextMuted,
+                letterSpacing = 0.08.sp,
+            )
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = series.currentValue?.let {
+                        if (series.unit == "%" || series.unit == "kcal") "%.0f".format(it)
+                        else "%.1f".format(it)
+                    } ?: "—",
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = (-1).sp,
+                    lineHeight = 26.sp,
+                )
+                if (series.currentValue != null) {
+                    Text(
+                        series.unit,
+                        fontSize = 12.sp,
+                        color = Color(0x59FFFFFF),
+                        modifier = Modifier.padding(bottom = 3.dp),
+                    )
+                }
+            }
+            if (series.trendLabel.isNotEmpty()) {
+                Text(
+                    text = series.trendLabel,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (series.trendIsGood) Violet400 else ErrorRed,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoDataLabel() {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp),
-    )
+            .height(44.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("No data", fontSize = 11.sp, color = TextMuted)
+    }
 }

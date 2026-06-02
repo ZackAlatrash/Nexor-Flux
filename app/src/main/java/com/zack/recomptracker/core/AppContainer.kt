@@ -18,11 +18,13 @@ import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.ui.body.BodyEditViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
+import com.zack.recomptracker.ui.more.MoreViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
@@ -35,6 +37,7 @@ class AppContainer(context: Context) {
     val dateProvider: DateProvider = SystemDateProvider()
     val database: RecompDatabase = RecompDatabase.create(context)
     private val appPreferences = AppPreferences(context.applicationContext)
+    val uiPreferences = UiPreferences(context.applicationContext)
     val planRepository = PlanRepository(appPreferences)
     val logRepository = LogRepository(
         dailyLogDao = database.dailyLogDao(),
@@ -115,6 +118,11 @@ private class AppViewModelFactory(
                 barcodeRepository = container.barcodeRepository,
                 logRepository = container.logRepository,
                 dateProvider = container.dateProvider,
+            )
+            MoreViewModel::class.java -> MoreViewModel(
+                uiPreferences = container.uiPreferences,
+                hcRepository = container.healthConnectRepository,
+                backupRepository = container.backupRepository,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

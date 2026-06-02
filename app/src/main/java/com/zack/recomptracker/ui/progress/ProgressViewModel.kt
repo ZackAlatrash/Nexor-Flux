@@ -22,6 +22,9 @@ data class ChartSeries(
     val title: String,
     val unit: String,
     val values: List<Float>,
+    val currentValue: Float? = null,
+    val trendLabel: String = "",
+    val trendIsGood: Boolean = true,
 )
 
 data class ProgressUiState(
@@ -62,25 +65,80 @@ class ProgressViewModel(
                 val liftByDate = performances
                     .groupBy { LocalDate.parse(it.date) }
                     .mapValues { (_, entries) -> entries.maxOf { it.estimatedOneRepMax() }.toFloat() }
+                val weightValues = dates.mapNotNull { logsByDate[it]?.bodyWeightKg?.toFloat() }
+                val waistValues = dates.mapNotNull { logsByDate[it]?.waistCm?.toFloat() }
+                val calValues = dates.map { mealsByDate[it].orEmpty().macroTotals().calories.toFloat() }
+                val proteinValues = dates.map { mealsByDate[it].orEmpty().macroTotals().proteinG.toFloat() }
+                val carbsValues = dates.map { mealsByDate[it].orEmpty().macroTotals().carbsG.toFloat() }
+                val fatValues = dates.map { mealsByDate[it].orEmpty().macroTotals().fatG.toFloat() }
+                val adherenceValues = dates.map {
+                    adherenceCalculator.dailyAdherencePercent(
+                        calories = mealsByDate[it].orEmpty().macroTotals().calories,
+                        targetCalories = preferences.targetCalories,
+                    ).toFloat()
+                }
+                val liftValues = dates.mapNotNull { liftByDate[it] }
+
+                fun trendPerWeek(values: List<Float>): Float? {
+                    if (values.size < 2) return null
+                    val first = values.first()
+                    val last = values.last()
+                    val weeks = (values.size - 1).toFloat() / 7f
+                    return if (weeks > 0) (last - first) / weeks else null
+                }
+
+                val weightTrend = trendPerWeek(weightValues)
+                val waistTrend = trendPerWeek(waistValues)
+                val adherenceLast = adherenceValues.lastOrNull { it > 0 }
+
                 ProgressUiState(
                     rangeDays = range,
-                    weight = ChartSeries("Weight", "kg", dates.mapNotNull { logsByDate[it]?.bodyWeightKg?.toFloat() }),
-                    waist = ChartSeries("Waist", "cm", dates.mapNotNull { logsByDate[it]?.waistCm?.toFloat() }),
-                    calories = ChartSeries("Calories", "kcal", dates.map { mealsByDate[it].orEmpty().macroTotals().calories.toFloat() }),
-                    protein = ChartSeries("Protein", "g", dates.map { mealsByDate[it].orEmpty().macroTotals().proteinG.toFloat() }),
-                    carbs = ChartSeries("Carbs", "g", dates.map { mealsByDate[it].orEmpty().macroTotals().carbsG.toFloat() }),
-                    fat = ChartSeries("Fat", "g", dates.map { mealsByDate[it].orEmpty().macroTotals().fatG.toFloat() }),
-                    adherence = ChartSeries(
-                        "Adherence",
-                        "%",
-                        dates.map {
-                            adherenceCalculator.dailyAdherencePercent(
-                                calories = mealsByDate[it].orEmpty().macroTotals().calories,
-                                targetCalories = preferences.targetCalories,
-                            ).toFloat()
-                        },
+                    weight = ChartSeries(
+                        "Weight", "kg", weightValues,
+                        currentValue = weightValues.lastOrNull(),
+                        trendLabel = weightTrend?.let {
+                            val sign = if (it <= 0) "↓" else "↑"
+                            "$sign ${"%.1f".format(Math.abs(it))} kg/wk"
+                        } ?: "",
+                        trendIsGood = (weightTrend ?: 0f) <= 0f,
                     ),
-                    lifts = ChartSeries("Marker lift e1RM", "kg", dates.mapNotNull { liftByDate[it] }),
+                    waist = ChartSeries(
+                        "Waist", "cm", waistValues,
+                        currentValue = waistValues.lastOrNull(),
+                        trendLabel = waistTrend?.let {
+                            val sign = if (it <= 0) "↓" else "↑"
+                            "$sign ${"%.1f".format(Math.abs(it))} cm/wk"
+                        } ?: "",
+                        trendIsGood = (waistTrend ?: 0f) <= 0f,
+                    ),
+                    calories = ChartSeries(
+                        "Calories", "kcal", calValues,
+                        currentValue = calValues.lastOrNull { it > 0 },
+                        trendLabel = "",
+                        trendIsGood = true,
+                    ),
+                    protein = ChartSeries(
+                        "Protein", "g", proteinValues,
+                        currentValue = proteinValues.lastOrNull { it > 0 },
+                    ),
+                    carbs = ChartSeries(
+                        "Carbs", "g", carbsValues,
+                        currentValue = carbsValues.lastOrNull { it > 0 },
+                    ),
+                    fat = ChartSeries(
+                        "Fat", "g", fatValues,
+                        currentValue = fatValues.lastOrNull { it > 0 },
+                    ),
+                    adherence = ChartSeries(
+                        "Adherence", "%", adherenceValues,
+                        currentValue = adherenceLast,
+                        trendLabel = adherenceLast?.let { "${"%.0f".format(it)}%" } ?: "",
+                        trendIsGood = (adherenceLast ?: 0f) >= 85f,
+                    ),
+                    lifts = ChartSeries(
+                        "Lifts e1RM", "kg", liftValues,
+                        currentValue = liftValues.lastOrNull(),
+                    ),
                 )
             }.collect { _uiState.value = it }
         }

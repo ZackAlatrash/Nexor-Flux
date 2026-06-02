@@ -26,14 +26,21 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class DayCalories(
+    val label: String,
+    val calories: Int,
+    val isToday: Boolean,
+)
 
 data class DashboardUiState(
     val preferences: PlanPreferences = PlanPreferences(),
@@ -43,6 +50,8 @@ data class DashboardUiState(
     val waistTrendCmPerWeek: Double = 0.0,
     val adherencePercent: Double = 0.0,
     val daysLogged: Int = 0,
+    val last7DaysCalories: List<DayCalories> = emptyList(),
+    val inZoneDays7: Int = 0,
     val result: AdjustmentResult = AdjustmentResult(
         verdict = AdjustmentVerdict.WAIT_FOR_DATA,
         recommendedCalorieChange = 0,
@@ -88,25 +97,28 @@ class DashboardViewModel(
         val todayTotals = meals.filter { it.date == today.toString() }.macroTotals()
         val last14Start = today.minusDays(13)
         val last28Start = today.minusDays(27)
-        val logsLast28 = logs.filter { it.localDate() in last28Start..today }
+        val last7Start  = today.minusDays(6)
+        val logsLast28  = logs.filter { it.localDate() in last28Start..today }
         val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
         val mealsByDate = mealsLast14.groupBy { it.localDate() }
+
         val nutritionDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())
             NutritionDay(date, mealsByDate[date].orEmpty().macroTotals().calories)
         }
         val loggedDates = logsLast28.map { it.date }.toSet() + mealsLast14.map { it.date }.toSet()
         val weightPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.bodyWeightKg) }
-        val waistPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.waistCm) }
+        val waistPoints  = logsLast28.map { MeasurementPoint(it.localDate(), it.waistCm) }
         val performancePoints = performances
             .filter { it.localDate() in last28Start..today }
             .map { PerformancePoint(it.localDate(), it.weight, it.reps, it.sets) }
         val recoveryPoints = logs
             .filter { it.localDate() in last14Start..today }
             .map { RecoveryPoint(it.localDate(), it.sleepHours, it.energyScore, it.sorenessScore) }
-        val weightTrend = trendCalculator.trendPerWeek(weightPoints)
-        val waistTrend = trendCalculator.trendPerWeek(waistPoints)
-        val adherence = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories, expectedDays = 14)
+
+        val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
+        val waistTrend   = trendCalculator.trendPerWeek(waistPoints)
+        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories, expectedDays = 14)
         val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }
@@ -130,6 +142,22 @@ class DashboardViewModel(
             ),
         )
 
+        val last7DaysCalories = (0..6).map { offset ->
+            val date = last7Start.plusDays(offset.toLong())
+            DayCalories(
+                label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                calories = mealsByDate[date].orEmpty().macroTotals().calories,
+                isToday = date == today,
+            )
+        }
+        val inZoneDays7 = if (preferences.calorieZoneLowerBound > 0) {
+            last7DaysCalories.count {
+                it.calories > 0 &&
+                it.calories >= preferences.calorieZoneLowerBound &&
+                it.calories <= preferences.calorieZoneUpperBound
+            }
+        } else 0
+
         return DashboardUiState(
             preferences = preferences,
             todayTotals = todayTotals,
@@ -142,6 +170,8 @@ class DashboardViewModel(
             waistTrendCmPerWeek = waistTrend,
             adherencePercent = adherence,
             daysLogged = loggedDates.size,
+            last7DaysCalories = last7DaysCalories,
+            inZoneDays7 = inZoneDays7,
             result = result,
         )
     }

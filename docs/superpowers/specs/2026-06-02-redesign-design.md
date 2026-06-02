@@ -62,9 +62,51 @@ _Date: 2026-06-02_
 
 ---
 
+---
+
+## Screen 2 — Food Log ✅ LOCKED
+
+**Accessed via:** Center Log button in pill nav (Log button glows brighter with outer violet ring when active).
+
+### Nutrition Strip (top card)
+- Background: `rgba(139,92,246,0.08)` / border `rgba(139,92,246,0.20)` / `border-radius: 16px`
+- Top shine: 1px gradient line
+- Calorie row: `22px / 900` white number + muted subtitle + "In zone" violet badge
+- Calorie progress bar: `3px`, violet gradient
+- 3-column macro section (Protein / Carbs / Fat), each column has:
+  - Label (9px muted uppercase) + value (13px bold white) on same row
+  - `3px` violet progress bar
+  - "Xg to go" in 8px muted text below
+
+### Meals Section
+- "MEALS" label (9px uppercase muted) + "Reorder" violet link — same row, no card wrapper
+- Slots with entries: `border-color: rgba(139,92,246,0.18)` + `background: rgba(139,92,246,0.04)`
+- Slots without entries: default muted surface
+
+### Slot Card
+- **Header** (always visible): slot name (13px / 800 white), calorie total (10px violet if has entries, muted if empty), violet "+ Add" button (right)
+- **Entry area** background: `rgba(0,0,0,0.20)` — visually inset/darker than header
+- `border-top: 1px solid rgba(255,255,255,0.05)` separates header from entries
+
+### Entry Row
+- Left indent `padding-left: 18px` + thin `2px` violet accent bar on left edge (`rgba(139,92,246,0.30)`)
+- Food name: 12px / 500 / `rgba(255,255,255,0.75)` — smaller and muted vs slot name
+- Macro string: 9px / `rgba(255,255,255,0.25)`
+- kcal: 12px / 700 / `rgba(255,255,255,0.40)`
+- **Edit button**: 26×26px rounded, `rgba(139,92,246,0.12)` bg, violet `✎`
+- **Delete button**: 26×26px rounded, `rgba(251,113,133,0.10)` bg, red `✕`
+
+### Empty Slot State
+- Inset dark bg, centered "nothing logged yet" in 10px muted text, flanked by hairlines
+
+### Add Slot Button
+- Full-width, dashed border `rgba(255,255,255,0.10)`, muted text, `border-radius: 14px`
+
+---
+
 ## Screens to Design (remaining)
 
-- [ ] Food / Today screen
+- [x] Food / Today screen
 - [ ] Body screen
 - [ ] Progress screen
 - [ ] Food Library screen

@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ui.dashboard
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -24,18 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +39,7 @@ import com.zack.recomptracker.core.util.formatSignedOneDecimal
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
+import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.CalorieZoneBar
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
@@ -387,11 +382,17 @@ private fun SevenDayChartCard(state: DashboardUiState) {
         }
         Spacer(Modifier.height(10.dp))
 
-        // SVG-like chart
-        ChartCanvas(
-            days = state.last7DaysCalories,
-            zoneLow = state.preferences.calorieZoneLowerBound,
-            zoneHigh = state.preferences.calorieZoneUpperBound,
+        // Sparkline chart
+        var scrubCalories by remember { mutableStateOf<Float?>(null) }
+
+        SparklineChart(
+            values       = state.last7DaysCalories.map { it.calories.toFloat() },
+            height       = 90.dp,
+            showGlowDot  = true,
+            showScrubber = true,
+            zoneLow      = state.preferences.calorieZoneLowerBound.toFloat(),
+            zoneHigh     = state.preferences.calorieZoneUpperBound.toFloat(),
+            onScrubValue = { scrubCalories = it },
         )
 
         // Day labels
@@ -462,130 +463,6 @@ private fun SevenDayChartCard(state: DashboardUiState) {
     }
 }
 
-@Composable
-private fun ChartCanvas(
-    days: List<DayCalories>,
-    zoneLow: Int,
-    zoneHigh: Int,
-) {
-    if (days.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(90.dp),
-        )
-        return
-    }
-
-    val zoneLowF  = zoneLow.toFloat()
-    val zoneHighF = zoneHigh.toFloat()
-    val maxCal    = maxOf(days.maxOf { it.calories }.toFloat(), zoneHighF)
-    val yMax      = (maxCal * 1.2f).coerceAtLeast(1f)
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(90.dp),
-    ) {
-        val w        = size.width
-        val h        = size.height
-        val sidePad  = 12.dp.toPx()
-        val usableW  = w - 2 * sidePad
-        val n        = days.size
-
-        // Compute point positions
-        val pts = days.mapIndexed { i, day ->
-            val x = sidePad + (if (n > 1) i.toFloat() / (n - 1) else 0.5f) * usableW
-            val y = h * (1f - day.calories.toFloat() / yMax)
-            Offset(x, y)
-        }
-
-        // Zone band
-        val zoneLowY  = h * (1f - zoneLowF  / yMax)
-        val zoneHighY = h * (1f - zoneHighF / yMax)
-        drawRect(
-            color    = Color(0x148B5CF6),
-            topLeft  = Offset(0f, zoneHighY),
-            size     = Size(w, zoneLowY - zoneHighY),
-        )
-        val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 4.dp.toPx()))
-        drawLine(
-            color       = Color(0x408B5CF6),
-            start       = Offset(0f, zoneHighY),
-            end         = Offset(w, zoneHighY),
-            strokeWidth = 0.7.dp.toPx(),
-            pathEffect  = dash,
-        )
-        drawLine(
-            color       = Color(0x408B5CF6),
-            start       = Offset(0f, zoneLowY),
-            end         = Offset(w, zoneLowY),
-            strokeWidth = 0.7.dp.toPx(),
-            pathEffect  = dash,
-        )
-
-        // Smooth bezier path
-        val linePath = Path().apply {
-            moveTo(pts[0].x, pts[0].y)
-            for (i in 1 until pts.size) {
-                val p0   = pts[i - 1]
-                val p1   = pts[i]
-                val midX = (p0.x + p1.x) / 2f
-                cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
-            }
-        }
-
-        // Area fill under line
-        val areaPath = Path().apply {
-            addPath(linePath)
-            lineTo(pts.last().x, h)
-            lineTo(pts.first().x, h)
-            close()
-        }
-        drawPath(
-            path  = areaPath,
-            brush = Brush.verticalGradient(
-                colors = listOf(Color(0x408B5CF6), Color(0x058B5CF6)),
-                startY = 0f,
-                endY   = h,
-            ),
-        )
-
-        // Line stroke
-        drawPath(
-            path  = linePath,
-            brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color(0xFF7c3aed).copy(alpha = 0.55f),
-                    Color(0xFFa78bfa),
-                    Color(0xFFc4b5fd).copy(alpha = 0.85f),
-                ),
-            ),
-            style = Stroke(
-                width = 1.5.dp.toPx(),
-                cap   = StrokeCap.Round,
-                join  = StrokeJoin.Round,
-            ),
-        )
-
-        // Data point dots
-        pts.forEachIndexed { i, pt ->
-            val cal = days[i].calories
-            val dotColor = when {
-                cal <= 0                              -> Color(0x2EFFFFFF)
-                cal in zoneLow..zoneHigh              -> Color(0xFFa78bfa)
-                cal > zoneHigh                        -> ErrorRed
-                else                                  -> Color(0x2EFFFFFF)
-            }
-            if (days[i].isToday) {
-                drawCircle(color = Color(0x1Fc4b5fd), radius = 9.dp.toPx(), center = pt)
-                drawCircle(color = Color(0xFFc4b5fd), radius = 4.5.dp.toPx(), center = pt)
-            } else {
-                drawCircle(color = dotColor, radius = 2.5.dp.toPx(), center = pt)
-            }
-        }
-    }
-}
 
 @Composable
 private fun ChartStat(

@@ -106,14 +106,14 @@ fun StackedBarChart(
                     )
                 }
 
-                // Protein (top) — rounded corners applied to entire bar
+                // Protein (top) — rounded top corners only, flush bottom to connect with carbs
                 if (proteinH > 0f) {
                     val top = h - totalH
                     drawRoundRect(
                         color        = ChartDefaults.MacroColors.Protein,
                         topLeft      = Offset(left, top),
                         size         = Size(barWidth, proteinH),
-                        cornerRadius = cr,
+                        cornerRadius = CornerRadius(barCornerRadius.toPx(), barCornerRadius.toPx(), 0f, 0f),
                     )
                 }
 

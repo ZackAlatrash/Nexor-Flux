@@ -14,8 +14,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -109,12 +111,22 @@ fun StackedBarChart(
                 // Protein (top) — rounded top corners only, flush bottom to connect with carbs
                 if (proteinH > 0f) {
                     val top = h - totalH
-                    drawRoundRect(
-                        color        = ChartDefaults.MacroColors.Protein,
-                        topLeft      = Offset(left, top),
-                        size         = Size(barWidth, proteinH),
-                        cornerRadius = CornerRadius(barCornerRadius.toPx(), barCornerRadius.toPx(), 0f, 0f),
-                    )
+                    val r = barCornerRadius.toPx()
+                    val proteinPath = Path().apply {
+                        addRoundRect(
+                            RoundRect(
+                                left                   = left,
+                                top                    = top,
+                                right                  = left + barWidth,
+                                bottom                 = top + proteinH,
+                                topLeftCornerRadius    = CornerRadius(r),
+                                topRightCornerRadius   = CornerRadius(r),
+                                bottomRightCornerRadius = CornerRadius.Zero,
+                                bottomLeftCornerRadius = CornerRadius.Zero,
+                            )
+                        )
+                    }
+                    drawPath(proteinPath, color = ChartDefaults.MacroColors.Protein)
                 }
 
                 // Today highlight border

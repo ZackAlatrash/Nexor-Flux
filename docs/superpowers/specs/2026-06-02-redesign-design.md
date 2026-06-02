@@ -110,7 +110,49 @@ _Date: 2026-06-02_
 - [x] Body screen
 - [x] Progress screen
 - [x] Food Library screen
-- [ ] Settings / More screen
+- [x] Settings / More screen
+
+---
+
+## Screen 6 — More / Settings ✅ LOCKED
+
+**Nav tab:** More (fifth item, rightmost in pill nav).
+
+### Section Groups (top to bottom)
+
+**Insights**
+- Stats row: 📊 icon · "Stats" · "Verdict, targets and trend summary" · chevron
+- Charts row: 📈 icon · "Charts" · "Weight, waist, nutrition and lifts" · chevron
+
+**Planning**
+- Plan row: 🎯 icon · "Plan" · "Targets, zones and review cadence" · chevron
+
+**Appearance**
+- Font row: 🔤 icon · "Font" · "Choose your preferred typeface" · inline font picker (Default / Space / Jakarta chips)
+
+**App**
+- Health Connect row: ❤️ icon · "Health Connect" · "Sync steps and heart rate" · green "Connected" badge (`rgba(52,211,153,0.12)` bg, `#34d399` text + dot)
+- AI Insights row: ✨ icon · "AI Insights" · "On-device Gemma analysis" · "On-device" violet label + violet toggle
+
+**Data**
+- Side-by-side 2-col action cards: Export backup (violet tint) + Import backup (muted)
+
+### Menu Row Style
+- `border-bottom: 1px solid rgba(255,255,255,0.05)` between rows, none on last
+- Icon container: 34×34px, `border-radius: 10px`, `rgba(139,92,246,0.14)` bg, `rgba(139,92,246,0.22)` border
+- Title: 14px / 600 / white · Detail: 11px / `rgba(255,255,255,0.28)`
+- Chevron: `›` in `rgba(255,255,255,0.20)`
+
+### Font Picker (inline chips)
+- 3 options: Default · Space · Jakarta
+- Inactive: `rgba(255,255,255,0.06)` bg, `rgba(255,255,255,0.08)` border, 35% white
+- Active: `rgba(139,92,246,0.22)` bg, `rgba(139,92,246,0.35)` border, `#c4b5fd`
+- `border-radius: 7px`, 10px / 700
+
+### Export / Import Action Cards
+- `border-radius: 12px`, flex-col with icon + label
+- Export: `rgba(139,92,246,0.12)` bg, `rgba(139,92,246,0.22)` border, `#c4b5fd` text
+- Import: `rgba(255,255,255,0.05)` bg, `rgba(255,255,255,0.09)` border, muted text
 
 ---
 

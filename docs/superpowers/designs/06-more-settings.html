@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>More / Settings Screen</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #060810; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 48px;
+  }
+  .page-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #555; margin-bottom: 28px; text-align: center; }
+
+  .phone-shell {
+    width: 375px; min-height: 820px;
+    background: linear-gradient(162deg, #0d0818 0%, #0f0b1c 45%, #090a12 100%);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 40px 80px rgba(0,0,0,0.85), 0 0 100px rgba(139,92,246,0.07);
+    display: flex; flex-direction: column;
+  }
+  .orb-1 {
+    position: absolute; top: -90px; left: -70px; width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .status-bar { position: relative; z-index: 1; padding: 14px 24px 0; display: flex; justify-content: space-between; }
+  .status-time { font-size: 15px; font-weight: 600; color: #fff; }
+  .status-icons { font-size: 11px; color: rgba(255,255,255,0.4); display: flex; gap: 4px; }
+
+  .screen-header { position: relative; z-index: 1; padding: 18px 20px 0; display: flex; justify-content: space-between; align-items: flex-end; }
+  .screen-title { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.8px; }
+
+  .scroll-content {
+    position: relative; z-index: 1; flex: 1;
+    padding: 14px 16px 108px;
+    display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25);
+    text-transform: uppercase; letter-spacing: 0.14em; padding: 0 2px;
+    margin-bottom: -2px;
+  }
+
+  /* ── MENU CARD ── */
+  .menu-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* ── MENU ROW ── */
+  .menu-row {
+    display: flex; align-items: center; padding: 13px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px;
+    cursor: pointer;
+  }
+  .menu-row:last-child { border-bottom: none; }
+  .menu-icon {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.22);
+  }
+  .menu-text { flex: 1; }
+  .menu-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .menu-detail { font-size: 11px; color: rgba(255,255,255,0.28); margin-top: 1px; }
+  .menu-chevron { font-size: 14px; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+
+  /* ── SETTINGS CARD (for settings with values/controls) ── */
+  .settings-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* settings row with control on right */
+  .setting-row {
+    display: flex; align-items: center; padding: 13px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-icon {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.22);
+  }
+  .setting-text { flex: 1; }
+  .setting-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .setting-detail { font-size: 11px; color: rgba(255,255,255,0.28); margin-top: 1px; }
+
+  /* font picker — inline segmented control */
+  .font-picker {
+    display: flex; gap: 4px; flex-shrink: 0;
+  }
+  .font-opt {
+    padding: 4px 8px; border-radius: 7px; font-size: 10px; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.08); white-space: nowrap;
+  }
+  .font-opt.active {
+    background: rgba(139,92,246,0.22); color: #c4b5fd;
+    border-color: rgba(139,92,246,0.35);
+  }
+
+  /* Health Connect status badge */
+  .hc-badge {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
+  }
+  .hc-badge.connected {
+    background: rgba(52,211,153,0.12); color: #34d399;
+    border: 1px solid rgba(52,211,153,0.25);
+  }
+  .hc-badge.connected::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #34d399; }
+
+  /* toggle */
+  .toggle-switch { width: 36px; height: 20px; border-radius: 10px; background: #8b5cf6; position: relative; box-shadow: 0 1px 6px rgba(139,92,246,0.4); flex-shrink: 0; }
+  .toggle-thumb { position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+  /* action row (export/import) */
+  .action-row-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .action-btn {
+    border-radius: 12px; padding: 12px 0;
+    font-size: 12px; font-weight: 700;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .action-btn.export-btn {
+    background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.22); color: #c4b5fd;
+  }
+  .action-btn.import-btn {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); color: rgba(255,255,255,0.45);
+  }
+  .action-btn-icon { font-size: 18px; }
+
+  /* AI insight row */
+  .ai-badge {
+    font-size: 8px; font-weight: 700; color: rgba(139,92,246,0.8);
+    background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.2);
+    padding: 2px 7px; border-radius: 6px; flex-shrink: 0;
+  }
+
+  /* ── PILL NAV ── */
+  .nav-wrap { position: absolute; bottom: 0; left: 0; right: 0; z-index: 20; display: flex; justify-content: center; padding: 0 16px 18px; }
+  .pill-nav { width: 100%; background: rgba(14, 9, 26, 0.90); border: 1px solid rgba(139,92,246,0.22); border-radius: 36px; padding: 8px 6px; display: flex; align-items: center; gap: 2px; box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 24px; }
+  .nav-item.active { background: rgba(139,92,246,0.18); }
+  .nav-icon-wrap { font-size: 18px; line-height: 1; opacity: 0.28; }
+  .nav-item.active .nav-icon-wrap { opacity: 1; }
+  .nav-lbl { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.22); }
+  .nav-item.active .nav-lbl { color: #c4b5fd; font-weight: 700; }
+  .nav-log { flex: 1.4; display: flex; flex-direction: column; align-items: center; gap: 2px; background: linear-gradient(145deg, #9f75f7, #7c3aed); border-radius: 28px; padding: 10px 8px 8px; margin: -6px 2px; box-shadow: 0 4px 16px rgba(139,92,246,0.50), inset 0 1px 0 rgba(255,255,255,0.20); position: relative; z-index: 1; }
+  .nav-log-icon { font-size: 20px; line-height: 1; color: #fff; }
+  .nav-log-lbl { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.9); }
+
+  .annotations { width: 375px; margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+  .annotation { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.15); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.55); line-height: 1.5; display: flex; gap: 8px; }
+  .annotation-dot { width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6; flex-shrink: 0; margin-top: 5px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Screen 6 of 6 — More</div>
+<div class="page-sub">Hub links + Settings in one screen</div>
+
+<div class="phone-shell">
+  <div class="orb-1"></div>
+
+  <div class="status-bar">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>▲▲▲</span><span>WiFi</span><span>▐▌</span></div>
+  </div>
+
+  <div class="screen-header">
+    <div class="screen-title">More</div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- INSIGHTS -->
+    <div class="section-label">Insights</div>
+    <div class="menu-card">
+      <div class="menu-row">
+        <div class="menu-icon">📊</div>
+        <div class="menu-text">
+          <div class="menu-title">Stats</div>
+          <div class="menu-detail">Verdict, targets and trend summary</div>
+        </div>
+        <div class="menu-chevron">›</div>
+      </div>
+      <div class="menu-row">
+        <div class="menu-icon">📈</div>
+        <div class="menu-text">
+          <div class="menu-title">Charts</div>
+          <div class="menu-detail">Weight, waist, nutrition and lifts</div>
+        </div>
+        <div class="menu-chevron">›</div>
+      </div>
+    </div>
+
+    <!-- PLANNING -->
+    <div class="section-label">Planning</div>
+    <div class="menu-card">
+      <div class="menu-row">
+        <div class="menu-icon">🎯</div>
+        <div class="menu-text">
+          <div class="menu-title">Plan</div>
+          <div class="menu-detail">Targets, zones and review cadence</div>
+        </div>
+        <div class="menu-chevron">›</div>
+      </div>
+    </div>
+
+    <!-- APPEARANCE -->
+    <div class="section-label">Appearance</div>
+    <div class="settings-card">
+      <div class="setting-row">
+        <div class="setting-icon">🔤</div>
+        <div class="setting-text">
+          <div class="setting-title">Font</div>
+          <div class="setting-detail">Choose your preferred typeface</div>
+        </div>
+        <div class="font-picker">
+          <div class="font-opt active">Default</div>
+          <div class="font-opt">Space</div>
+          <div class="font-opt">Jakarta</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div class="section-label">App</div>
+    <div class="settings-card">
+
+      <!-- Health Connect -->
+      <div class="setting-row">
+        <div class="setting-icon">❤️</div>
+        <div class="setting-text">
+          <div class="setting-title">Health Connect</div>
+          <div class="setting-detail">Sync steps and heart rate</div>
+        </div>
+        <div class="hc-badge connected">Connected</div>
+      </div>
+
+      <!-- AI Insights toggle -->
+      <div class="setting-row">
+        <div class="setting-icon">✨</div>
+        <div class="setting-text">
+          <div class="setting-title">AI Insights</div>
+          <div class="setting-detail">On-device Gemma analysis</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="ai-badge">On-device</div>
+          <div class="toggle-switch"><div class="toggle-thumb"></div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- DATA -->
+    <div class="section-label">Data</div>
+    <div class="action-row-pair">
+      <div class="action-btn export-btn">
+        <div class="action-btn-icon">⬆</div>
+        Export backup
+      </div>
+      <div class="action-btn import-btn">
+        <div class="action-btn-icon">⬇</div>
+        Import backup
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PILL NAV — More active -->
+  <div class="nav-wrap">
+    <div class="pill-nav">
+      <div class="nav-item"><div class="nav-icon-wrap">⊞</div><div class="nav-lbl">Home</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">◎</div><div class="nav-lbl">Body</div></div>
+      <div class="nav-log"><div class="nav-log-icon">＋</div><div class="nav-log-lbl">Log</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">↗</div><div class="nav-lbl">Progress</div></div>
+      <div class="nav-item active"><div class="nav-icon-wrap" style="opacity:1">⋯</div><div class="nav-lbl" style="color:#c4b5fd;font-weight:700">More</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="annotations">
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Menu rows</strong> — icon (violet tint rounded square) + title + detail + chevron. Much more premium than the current OutlinedButton style. Groups: Insights (Stats, Charts) · Planning (Plan) · Appearance · App · Data.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Font picker</strong> — inline 3-option segmented control right in the Appearance row. Default / Space (Grotesk) / Jakarta. Active option gets violet chip. No separate screen needed.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Export / Import</strong> — side-by-side action cards instead of plain buttons. Export gets violet tint, Import stays muted.</div>
+  </div>
+</div>
+
+</body>
+</html>

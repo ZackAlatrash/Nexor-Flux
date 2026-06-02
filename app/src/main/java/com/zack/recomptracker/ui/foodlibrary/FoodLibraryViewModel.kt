@@ -314,7 +314,8 @@ class FoodLibraryViewModel(
             householdServingName = entry.entryServingName,
             householdServingGrams = entry.entryServingGrams,
         )
-        val useServings = entry.entryServingGrams != null && entry.entryServingName != null
+        val useServings = entry.loggedByServings ||
+            (entry.entryServingGrams != null && entry.entryServingName != null)
         _uiState.update {
             it.copy(
                 showAmountSheet = true,
@@ -356,8 +357,8 @@ class FoodLibraryViewModel(
             _uiState.update { it.copy(message = "Enter a valid amount (min ${FoodScaling.MIN_GRAMS.toInt()}g).", messageKind = MessageKind.ERROR) }
             return
         }
-        val servingName = food.householdServingName?.takeIf { state.amountMode == AmountMode.SERVINGS }
-        val servingGrams = food.householdServingGrams?.takeIf { state.amountMode == AmountMode.SERVINGS }
+        val servingName = food.householdServingName
+        val servingGrams = food.householdServingGrams
         viewModelScope.launch {
             val editingId = state.editingEntryId
             if (editingId == null) {
@@ -377,6 +378,7 @@ class FoodLibraryViewModel(
                         basePer100FatG = food.fatG,
                         entryServingName = servingName,
                         entryServingGrams = servingGrams,
+                        loggedByServings = state.amountMode == AmountMode.SERVINGS,
                     ),
                     slotId = state.slotId,
                 )
@@ -403,6 +405,7 @@ class FoodLibraryViewModel(
                         basePer100FatG = food.fatG,
                         entryServingName = servingName,
                         entryServingGrams = servingGrams,
+                        loggedByServings = state.amountMode == AmountMode.SERVINGS,
                     ),
                 )
                 _uiState.update { it.copy(showAmountSheet = false, pendingFood = null, editingEntryId = null, message = null) }

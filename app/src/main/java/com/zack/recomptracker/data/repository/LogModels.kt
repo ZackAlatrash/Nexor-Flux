@@ -41,4 +41,5 @@ data class MealEntryInput(
     val basePer100FatG: Double? = null,
     val entryServingName: String? = null,
     val entryServingGrams: Double? = null,
+    val loggedByServings: Boolean = false,
 )

@@ -209,6 +209,7 @@ class LogRepository(
             basePer100FatG = input.basePer100FatG,
             entryServingName = input.entryServingName,
             entryServingGrams = input.entryServingGrams,
+            loggedByServings = input.loggedByServings,
         ),
     )
 

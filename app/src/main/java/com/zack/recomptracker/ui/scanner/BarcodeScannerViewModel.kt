@@ -139,8 +139,9 @@ class BarcodeScannerViewModel(
                     basePer100ProteinG = product.proteinPer100g,
                     basePer100CarbsG = product.carbsPer100g,
                     basePer100FatG = product.fatPer100g,
-                    entryServingName = null,
-                    entryServingGrams = null,
+                    entryServingName = product.servingName,
+                    entryServingGrams = product.servingGrams,
+                    loggedByServings = productState.logMode == LogMode.SERVING,
                 ),
                 slotId = state.slotId,
             )
@@ -176,8 +177,9 @@ class BarcodeScannerViewModel(
                     basePer100ProteinG = product.proteinPer100g,
                     basePer100CarbsG = product.carbsPer100g,
                     basePer100FatG = product.fatPer100g,
-                    entryServingName = null,
-                    entryServingGrams = null,
+                    entryServingName = product.servingName,
+                    entryServingGrams = product.servingGrams,
+                    loggedByServings = productState.logMode == LogMode.SERVING,
                 ),
                 slotId = state.slotId,
             )

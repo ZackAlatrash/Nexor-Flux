@@ -107,8 +107,53 @@ _Date: 2026-06-02_
 ## Screens to Design (remaining)
 
 - [x] Food / Today screen
-- [ ] Body screen
+- [x] Body screen
 - [ ] Progress screen
 - [ ] Food Library screen
 - [ ] Scanner screen
 - [ ] Settings / More screen
+
+---
+
+## Screen 3 — Body ✅ LOCKED
+
+**Nav tab:** Body (second item, left of Log button).
+
+### Metrics Hero Card
+- Background: `rgba(139,92,246,0.09)` / border `rgba(139,92,246,0.24)` / `border-radius: 20px`
+- Top shine: 1px gradient line
+- Header: "LATEST CHECK-IN · Jun 1" (9px violet uppercase)
+- 2-column grid: Weight (36px/900) + Waist (36px/900), each with label + `↓ X.X unit / week` violet trend
+- Bottom section (separated by divider): 2-column sparkline grid (weight 14d + waist 14d), SVG area charts
+
+### Inline Log Form Card
+- Background: `rgba(139,92,246,0.06)` / border `rgba(139,92,246,0.28)` / `border-radius: 18px`
+- Header: "Today's check-in" + date sub + "Collapse ↑" button (top-right)
+- Collapsed state: shows just the header row as a tappable CTA
+- Expanded state (shown by default if not yet logged today): full form
+
+**Form sections (3 groups separated by `1px rgba(255,255,255,0.05)` dividers):**
+
+1. **Measurements group:**
+   - Row 1: Weight (kg) | Waist (cm) — 2-col grid
+   - Row 2: Skinfold (mm) | Sleep (hrs) — 2-col grid
+   - Row 3: Steps — full width
+   - Each field: `rgba(0,0,0,0.25)` bg, `1px rgba(255,255,255,0.10)` border, `border-radius: 10px`, 17px/800 value + 11px muted unit. Focused field: violet border + tint.
+
+2. **Daily scores group:**
+   - Energy / Hunger / Soreness — each as a slider row
+   - Each row: label (12px/600 muted) + violet value badge (right), then track + thumb + 1–5–10 scale labels
+   - Track: 5px, `rgba(255,255,255,0.07)` bg, violet gradient fill
+   - Thumb: 16px circle, `#c4b5fd`, glow ring `0 0 0 3px rgba(139,92,246,0.25)`
+
+3. **Training + Notes group:**
+   - "Training day" label + violet toggle (on = `#8b5cf6`, off = `rgba(255,255,255,0.12)`)
+   - Notes: multi-line input, same dark field style
+
+- **Save button:** full-width, violet gradient, 12px radius, 14px/800
+
+### View History Button
+- `rgba(255,255,255,0.04)` bg / `rgba(255,255,255,0.09)` border / `border-radius: 14px`
+- Left: "Check-in history" title + "47 days logged · tap to view all" sub
+- Right: `→` in violet
+- Taps navigate to the full history screen (BodyHistoryScreen)

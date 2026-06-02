@@ -121,7 +121,7 @@ class BarcodeScannerViewModelTest {
         vm.onAmountChanged("150")
 
         val state = vm.uiState.value.scanState as ScanState.ProductFound
-        assertEquals("150", state.amountGrams)
+        assertEquals("150", state.amountInput)
     }
 
     @Test

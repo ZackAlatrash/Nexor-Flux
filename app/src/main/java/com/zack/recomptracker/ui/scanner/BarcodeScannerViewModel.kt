@@ -17,12 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class LogMode { GRAMS, SERVING }
+
 sealed class ScanState {
     object Scanning : ScanState()
     object Loading : ScanState()
     data class ProductFound(
         val product: BarcodeProduct,
-        val amountGrams: String = "100",
+        val logMode: LogMode = LogMode.GRAMS,
+        val amountInput: String = "100",
     ) : ScanState()
     object NotFound : ScanState()
     object NetworkError : ScanState()
@@ -75,14 +78,14 @@ class BarcodeScannerViewModel(
 
     fun onAmountChanged(grams: String) {
         val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
-        _uiState.update { it.copy(scanState = current.copy(amountGrams = grams)) }
+        _uiState.update { it.copy(scanState = current.copy(amountInput = grams)) }
     }
 
     fun confirmLog() {
         val state = _uiState.value
         val productState = state.scanState as? ScanState.ProductFound ?: return
         val product = productState.product
-        val grams = productState.amountGrams.toDoubleOrNull()
+        val grams = productState.amountInput.toDoubleOrNull()
         if (grams == null || grams < 1.0) {
             _uiState.update { it.copy(message = "Enter a valid amount (min 1g).") }
             return
@@ -119,7 +122,7 @@ class BarcodeScannerViewModel(
         val state = _uiState.value
         val productState = state.scanState as? ScanState.ProductFound ?: return
         val product = productState.product
-        val grams = productState.amountGrams.toDoubleOrNull()
+        val grams = productState.amountInput.toDoubleOrNull()
         if (grams == null || grams < 1.0) {
             _uiState.update { it.copy(message = "Enter a valid amount (min 1g).") }
             return

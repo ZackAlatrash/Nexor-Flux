@@ -288,7 +288,7 @@ private fun ProductFoundSheet(
         }
         Text("per 100g", fontSize = 11.sp, color = Color(0xFF6b7280))
         OutlinedTextField(
-            value = state.amountGrams,
+            value = state.amountInput,
             onValueChange = onAmountChanged,
             label = { Text("Amount (grams)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

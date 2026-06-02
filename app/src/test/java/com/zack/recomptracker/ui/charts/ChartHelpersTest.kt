@@ -54,4 +54,11 @@ class ChartHelpersTest {
     fun nearestPointIndexReturnsZeroForEmptyList() {
         assertEquals(0, nearestPointIndex(50f, emptyList()))
     }
+
+    @Test
+    fun dotScaleCapsTotalWidthRatioAt95Percent() {
+        // dotX/totalWidth = 0.98, capped to threshold = 0.95
+        // progress = 1.0 → local = (1.0 - 0.95) / 0.08 = 0.625
+        assertEquals(0.625f, dotScale(dotX = 98f, totalWidth = 100f, progress = 1.0f), 0.001f)
+    }
 }

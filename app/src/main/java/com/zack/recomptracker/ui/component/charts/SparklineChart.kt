@@ -58,38 +58,42 @@ fun SparklineChart(
     }
 
     val drawInProgress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(values) {
+        drawInProgress.snapTo(0f)
         drawInProgress.animateTo(1f, animationSpec = ChartDefaults.AnimSpec.drawIn)
     }
 
     var scrubIndex by remember { mutableStateOf<Int?>(null) }
 
+    LaunchedEffect(values) {
+        scrubIndex = null
+        onScrubValue?.invoke(null)
+    }
+
     val gestureModifier = if (showScrubber && values.size >= 2) {
         Modifier.pointerInput(values) {
+            // Compute pts once — width is stable within this pointerInput scope
+            val w = size.width.toFloat()
+            val sidePad = 4.dp.toPx()
+            val usableW = w - 2 * sidePad
+            val n = values.size
+            val pts = values.mapIndexed { i, _ ->
+                Offset(sidePad + (if (n > 1) i.toFloat() / (n - 1) else 0.5f) * usableW, 0f)
+            }
             detectDragGestures(
                 onDragStart = { offset ->
-                    val w = size.width.toFloat()
-                    val sidePad = 4.dp.toPx()
-                    val usableW = w - 2 * sidePad
-                    val n = values.size
-                    val pts = values.mapIndexed { i, _ ->
-                        Offset(sidePad + (if (n > 1) i.toFloat() / (n - 1) else 0.5f) * usableW, 0f)
-                    }
                     scrubIndex = nearestPointIndex(offset.x, pts)
                     onScrubValue?.invoke(values[scrubIndex!!])
+                },
+                onDragCancel = {
+                    scrubIndex = null
+                    onScrubValue?.invoke(null)
                 },
                 onDragEnd = {
                     scrubIndex = null
                     onScrubValue?.invoke(null)
                 },
                 onDrag = { change, _ ->
-                    val w = size.width.toFloat()
-                    val sidePad = 4.dp.toPx()
-                    val usableW = w - 2 * sidePad
-                    val n = values.size
-                    val pts = values.mapIndexed { i, _ ->
-                        Offset(sidePad + (if (n > 1) i.toFloat() / (n - 1) else 0.5f) * usableW, 0f)
-                    }
                     scrubIndex = nearestPointIndex(change.position.x, pts)
                     onScrubValue?.invoke(values[scrubIndex!!])
                 },
@@ -219,8 +223,8 @@ fun SparklineChart(
                 } else if (showGlowDot && isEndDot && scrubIndex == null) {
                     val glowAlpha = ((progress - 0.9f) / 0.1f).coerceIn(0f, 1f)
                     if (glowAlpha > 0f) {
-                        drawCircle(color = Color(0x1Fc4b5fd).copy(alpha = 0.08f * glowAlpha), radius = ChartDefaults.glowHalo.toPx(), center = pt)
-                        drawCircle(color = Color(0x1Fc4b5fd).copy(alpha = 0.15f * glowAlpha), radius = ChartDefaults.glowRadius.toPx(), center = pt)
+                        drawCircle(color = Color(0xFFc4b5fd).copy(alpha = 0.08f * glowAlpha), radius = ChartDefaults.glowHalo.toPx() * scale, center = pt)
+                        drawCircle(color = Color(0xFFc4b5fd).copy(alpha = 0.15f * glowAlpha), radius = ChartDefaults.glowRadius.toPx() * scale, center = pt)
                         drawCircle(color = Violet300.copy(alpha = glowAlpha), radius = ChartDefaults.dotRadius.toPx() * scale, center = pt)
                     }
                 } else {

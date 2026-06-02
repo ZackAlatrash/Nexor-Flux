@@ -344,19 +344,31 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
+        var scrubCalories by remember { mutableStateOf<Float?>(null) }
+
         // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "LAST 7 DAYS",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xD9a78bfa),
-                letterSpacing = 0.13.sp,
-            )
+            if (scrubCalories != null) {
+                Text(
+                    text = String.format(java.util.Locale.US, "%,d kcal", scrubCalories!!.toInt()),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    letterSpacing = (-0.3).sp,
+                )
+            } else {
+                Text(
+                    text = "LAST 7 DAYS",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xD9a78bfa),
+                    letterSpacing = 0.13.sp,
+                )
+            }
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -381,9 +393,6 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             }
         }
         Spacer(Modifier.height(10.dp))
-
-        // Sparkline chart
-        var scrubCalories by remember { mutableStateOf<Float?>(null) }
 
         SparklineChart(
             values       = state.last7DaysCalories.map { it.calories.toFloat() },

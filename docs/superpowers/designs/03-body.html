@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Body Screen v4</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #060810; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 48px;
+  }
+  .page-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #555; margin-bottom: 28px; text-align: center; }
+
+  .phone-shell {
+    width: 375px; min-height: 820px;
+    background: linear-gradient(162deg, #0d0818 0%, #0f0b1c 45%, #090a12 100%);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 40px 80px rgba(0,0,0,0.85), 0 0 100px rgba(139,92,246,0.07);
+    display: flex; flex-direction: column;
+  }
+  .orb-1 {
+    position: absolute; top: -90px; left: -70px; width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .status-bar { position: relative; z-index: 1; padding: 14px 24px 0; display: flex; justify-content: space-between; }
+  .status-time { font-size: 15px; font-weight: 600; color: #fff; }
+  .status-icons { font-size: 11px; color: rgba(255,255,255,0.4); display: flex; gap: 4px; }
+
+  .screen-header { position: relative; z-index: 1; padding: 18px 20px 0; display: flex; justify-content: space-between; align-items: flex-end; }
+  .screen-title { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.8px; }
+  .screen-date { font-size: 12px; color: rgba(255,255,255,0.28); padding-bottom: 3px; }
+
+  .scroll-content {
+    position: relative; z-index: 1; flex: 1;
+    padding: 14px 16px 108px;
+    display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+  }
+
+  /* ══ METRICS HERO ══ */
+  .metrics-hero {
+    background: rgba(139,92,246,0.09); border: 1px solid rgba(139,92,246,0.24);
+    border-radius: 20px; padding: 16px;
+    box-shadow: 0 0 50px rgba(139,92,246,0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+    position: relative; overflow: hidden;
+  }
+  .metrics-hero::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.6), transparent);
+  }
+  .hero-label { font-size: 9px; font-weight: 700; color: rgba(167,139,250,0.8); text-transform: uppercase; letter-spacing: 0.13em; margin-bottom: 14px; }
+  .hero-metrics-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hero-metric { display: flex; flex-direction: column; gap: 2px; }
+  .hm-value { font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1.5px; line-height: 1; }
+  .hm-unit { font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.4); margin-left: 2px; }
+  .hm-label { font-size: 9px; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.10em; font-weight: 600; margin-top: 2px; }
+  .hm-trend { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; font-size: 11px; font-weight: 700; color: #a78bfa; }
+  .hero-sparklines { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .sparkline-col { display: flex; flex-direction: column; gap: 4px; }
+  .sp-label { font-size: 8px; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ══ LOG CARD ══ */
+  .log-card {
+    background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.28);
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 0 30px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+  .log-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .log-header-title { font-size: 13px; font-weight: 800; color: #fff; }
+  .log-header-sub { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 1px; }
+  .log-collapse { font-size: 11px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); border-radius: 8px; padding: 3px 8px; }
+
+  .log-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+  .field-group { display: flex; flex-direction: column; gap: 8px; }
+  .group-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.12em; }
+  .group-divider { height: 1px; background: rgba(255,255,255,0.05); }
+
+  /* number inputs */
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .input-group { display: flex; flex-direction: column; gap: 5px; }
+  .input-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.10em; }
+  .input-field {
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -0.5px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .input-field .input-unit { font-size: 11px; font-weight: 400; color: rgba(255,255,255,0.3); }
+  .input-field.focused { border-color: rgba(139,92,246,0.55); background: rgba(139,92,246,0.08); }
+
+  /* ── SLIDERS ── */
+  .slider-row { display: flex; flex-direction: column; gap: 7px; }
+  .slider-label-row { display: flex; justify-content: space-between; align-items: center; }
+  .slider-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.65); }
+  .slider-val {
+    font-size: 13px; font-weight: 800; color: #a78bfa;
+    background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.22);
+    padding: 1px 8px; border-radius: 8px; min-width: 32px; text-align: center;
+  }
+  /* custom slider track */
+  .slider-track {
+    position: relative; height: 5px;
+    background: rgba(255,255,255,0.07); border-radius: 3px;
+  }
+  .slider-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  }
+  .slider-thumb {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #c4b5fd;
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.25), 0 2px 8px rgba(139,92,246,0.5);
+  }
+  /* scale labels */
+  .slider-scale { display: flex; justify-content: space-between; margin-top: 2px; }
+  .slider-scale span { font-size: 8px; color: rgba(255,255,255,0.18); }
+
+  /* toggle row */
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+  .toggle-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.75); }
+  .toggle-switch { width: 36px; height: 20px; border-radius: 10px; background: #8b5cf6; position: relative; box-shadow: 0 1px 6px rgba(139,92,246,0.4); }
+  .toggle-thumb { position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+  /* notes */
+  .notes-field {
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; color: rgba(255,255,255,0.5); min-height: 52px; font-style: italic;
+  }
+
+  /* save */
+  .save-btn {
+    background: linear-gradient(135deg, #9f75f7, #7c3aed);
+    border-radius: 12px; padding: 13px;
+    font-size: 14px; font-weight: 800; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(139,92,246,0.45);
+  }
+
+  /* ══ HISTORY BUTTON ══ */
+  .history-btn {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .hb-left { display: flex; flex-direction: column; gap: 2px; }
+  .hb-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7); }
+  .hb-sub { font-size: 10px; color: rgba(255,255,255,0.28); }
+  .hb-arrow { font-size: 16px; color: rgba(139,92,246,0.7); }
+
+  /* ── PILL NAV ── */
+  .nav-wrap { position: absolute; bottom: 0; left: 0; right: 0; z-index: 20; display: flex; justify-content: center; padding: 0 16px 18px; }
+  .pill-nav { width: 100%; background: rgba(14, 9, 26, 0.90); border: 1px solid rgba(139,92,246,0.22); border-radius: 36px; padding: 8px 6px; display: flex; align-items: center; gap: 2px; box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 24px; }
+  .nav-item.active { background: rgba(139,92,246,0.18); }
+  .nav-icon-wrap { font-size: 18px; line-height: 1; opacity: 0.28; }
+  .nav-item.active .nav-icon-wrap { opacity: 1; }
+  .nav-lbl { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.22); }
+  .nav-item.active .nav-lbl { color: #c4b5fd; font-weight: 700; }
+  .nav-log { flex: 1.4; display: flex; flex-direction: column; align-items: center; gap: 2px; background: linear-gradient(145deg, #9f75f7, #7c3aed); border-radius: 28px; padding: 10px 8px 8px; margin: -6px 2px; box-shadow: 0 4px 16px rgba(139,92,246,0.50), inset 0 1px 0 rgba(255,255,255,0.20); position: relative; z-index: 1; }
+  .nav-log-icon { font-size: 20px; line-height: 1; color: #fff; }
+  .nav-log-lbl { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.9); }
+</style>
+</head>
+<body>
+
+<div class="page-title">Body — v4</div>
+<div class="page-sub">Sliders for Energy, Hunger, Soreness</div>
+
+<div class="phone-shell">
+  <div class="orb-1"></div>
+
+  <div class="status-bar">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>▲▲▲</span><span>WiFi</span><span>▐▌</span></div>
+  </div>
+
+  <div class="screen-header">
+    <div class="screen-title">Body</div>
+    <div class="screen-date">Mon, June 2</div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- METRICS HERO -->
+    <div class="metrics-hero">
+      <div class="hero-label">Latest check-in · Jun 1</div>
+      <div class="hero-metrics-row">
+        <div class="hero-metric">
+          <div><span class="hm-value">82.4</span><span class="hm-unit">kg</span></div>
+          <div class="hm-label">Weight</div>
+          <div class="hm-trend">↓ 0.3 kg / week</div>
+        </div>
+        <div class="hero-metric">
+          <div><span class="hm-value">84</span><span class="hm-unit">cm</span></div>
+          <div class="hm-label">Waist</div>
+          <div class="hm-trend">↓ 0.5 cm / week</div>
+        </div>
+      </div>
+      <div class="hero-sparklines">
+        <div class="sparkline-col">
+          <div class="sp-label">Weight · 14 days</div>
+          <svg width="100%" height="32" viewBox="0 0 150 32" preserveAspectRatio="none">
+            <defs><linearGradient id="spW" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.20"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0,20 C12,20 20,18 30,17 C40,16 50,19 60,18 C70,17 80,15 90,14 C100,13 110,15 120,13 C130,11 140,12 150,10 L150,32 L0,32 Z" fill="url(#spW)"/>
+            <path d="M0,20 C12,20 20,18 30,17 C40,16 50,19 60,18 C70,17 80,15 90,14 C100,13 110,15 120,13 C130,11 140,12 150,10" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="150" cy="10" r="3" fill="#c4b5fd"/>
+          </svg>
+        </div>
+        <div class="sparkline-col">
+          <div class="sp-label">Waist · 14 days</div>
+          <svg width="100%" height="32" viewBox="0 0 150 32" preserveAspectRatio="none">
+            <defs><linearGradient id="spWa" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.20"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0,18 C15,18 25,20 40,19 C55,18 65,17 80,16 C95,15 105,17 120,15 C132,13 142,14 150,12 L150,32 L0,32 Z" fill="url(#spWa)"/>
+            <path d="M0,18 C15,18 25,20 40,19 C55,18 65,17 80,16 C95,15 105,17 120,15 C132,13 142,14 150,12" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="150" cy="12" r="3" fill="#c4b5fd"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- INLINE LOG FORM -->
+    <div class="log-card">
+      <div class="log-header">
+        <div>
+          <div class="log-header-title">Today's check-in</div>
+          <div class="log-header-sub">Mon, June 2</div>
+        </div>
+        <div class="log-collapse">Collapse ↑</div>
+      </div>
+
+      <div class="log-body">
+
+        <!-- MEASUREMENTS -->
+        <div class="field-group">
+          <div class="group-label">Measurements</div>
+          <div class="input-row">
+            <div class="input-group">
+              <div class="input-label">Weight</div>
+              <div class="input-field focused"><span>82.6</span><span class="input-unit">kg</span></div>
+            </div>
+            <div class="input-group">
+              <div class="input-label">Waist</div>
+              <div class="input-field"><span>83.8</span><span class="input-unit">cm</span></div>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-group">
+              <div class="input-label">Skinfold</div>
+              <div class="input-field"><span>12</span><span class="input-unit">mm</span></div>
+            </div>
+            <div class="input-group">
+              <div class="input-label">Sleep</div>
+              <div class="input-field"><span>7.5</span><span class="input-unit">hrs</span></div>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">Steps</div>
+            <div class="input-field"><span>8,420</span><span class="input-unit">steps</span></div>
+          </div>
+        </div>
+
+        <div class="group-divider"></div>
+
+        <!-- SCORES — sliders -->
+        <div class="field-group">
+          <div class="group-label">Daily scores</div>
+
+          <!-- Energy: 7/10 → fill = 60% (6 of 9 steps from left) -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <div class="slider-name">Energy</div>
+              <div class="slider-val">7</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width: 66.7%"></div>
+              <div class="slider-thumb" style="left: 66.7%"></div>
+            </div>
+            <div class="slider-scale"><span>1</span><span>5</span><span>10</span></div>
+          </div>
+
+          <!-- Hunger: 5/10 → fill = 44.4% -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <div class="slider-name">Hunger</div>
+              <div class="slider-val">5</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width: 44.4%"></div>
+              <div class="slider-thumb" style="left: 44.4%"></div>
+            </div>
+            <div class="slider-scale"><span>1</span><span>5</span><span>10</span></div>
+          </div>
+
+          <!-- Soreness: 3/10 → fill = 22.2% -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <div class="slider-name">Soreness</div>
+              <div class="slider-val">3</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width: 22.2%"></div>
+              <div class="slider-thumb" style="left: 22.2%"></div>
+            </div>
+            <div class="slider-scale"><span>1</span><span>5</span><span>10</span></div>
+          </div>
+        </div>
+
+        <div class="group-divider"></div>
+
+        <!-- TRAINING + NOTES -->
+        <div class="field-group">
+          <div class="toggle-row">
+            <div class="toggle-name">Training day</div>
+            <div class="toggle-switch"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">Notes</div>
+            <div class="notes-field">Felt strong today, good session...</div>
+          </div>
+        </div>
+
+        <div class="save-btn">Save check-in</div>
+
+      </div>
+    </div>
+
+    <!-- VIEW HISTORY BUTTON -->
+    <div class="history-btn">
+      <div class="hb-left">
+        <div class="hb-title">Check-in history</div>
+        <div class="hb-sub">47 days logged · tap to view all</div>
+      </div>
+      <div class="hb-arrow">→</div>
+    </div>
+
+  </div>
+
+  <!-- PILL NAV -->
+  <div class="nav-wrap">
+    <div class="pill-nav">
+      <div class="nav-item"><div class="nav-icon-wrap">⊞</div><div class="nav-lbl">Home</div></div>
+      <div class="nav-item active"><div class="nav-icon-wrap" style="opacity:1">◎</div><div class="nav-lbl" style="color:#c4b5fd;font-weight:700">Body</div></div>
+      <div class="nav-log"><div class="nav-log-icon">＋</div><div class="nav-log-lbl">Log</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">↗</div><div class="nav-lbl">Progress</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">⋯</div><div class="nav-lbl">More</div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

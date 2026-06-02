@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard v7</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #060810; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 48px;
+  }
+  .page-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #555; margin-bottom: 28px; text-align: center; }
+
+  .phone-shell {
+    width: 375px; min-height: 820px;
+    background: linear-gradient(162deg, #0d0818 0%, #0f0b1c 45%, #090a12 100%);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 40px 80px rgba(0,0,0,0.85), 0 0 100px rgba(139,92,246,0.07);
+    display: flex; flex-direction: column;
+  }
+  .orb-1 {
+    position: absolute; top: -90px; left: -70px; width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(139,92,246,0.20) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+  .orb-2 {
+    position: absolute; top: 360px; right: -70px; width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .status-bar {
+    position: relative; z-index: 1; padding: 14px 24px 0;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .status-time { font-size: 15px; font-weight: 600; color: #fff; }
+  .status-icons { font-size: 11px; color: rgba(255,255,255,0.4); display: flex; gap: 4px; }
+
+  .screen-header {
+    position: relative; z-index: 1; padding: 18px 20px 0;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .screen-title { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.8px; }
+  .screen-date { font-size: 12px; color: rgba(255,255,255,0.28); padding-bottom: 3px; }
+
+  .scroll-content {
+    position: relative; z-index: 1; flex: 1;
+    padding: 14px 16px 108px;
+    display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+  }
+
+  /* ── CARD 1: TODAY (now first) ── */
+  .today-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .today-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .today-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.10em; }
+  .today-badge {
+    font-size: 9px; font-weight: 700; color: #a78bfa;
+    background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.2);
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .today-cal-row {
+    display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px;
+  }
+  .today-cal { font-size: 36px; font-weight: 900; color: #fff; letter-spacing: -1.5px; line-height: 1; }
+  .today-cal-unit { font-size: 13px; color: rgba(255,255,255,0.35); font-weight: 400; }
+  .today-cal-remain { font-size: 11px; color: rgba(255,255,255,0.28); }
+  .cal-bar-track { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+  .cal-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #8b5cf6, #a78bfa); width: 72%; }
+  .cal-bar-labels {
+    display: flex; justify-content: space-between; font-size: 9px;
+    color: rgba(255,255,255,0.22); margin-bottom: 12px;
+  }
+  .zone-lbl { color: rgba(139,92,246,0.65); }
+  .macros-row { display: flex; gap: 8px; }
+  .macro-item { flex: 1; }
+  .macro-label-row {
+    display: flex; justify-content: space-between; font-size: 9px;
+    color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px;
+  }
+  .macro-val-sm { color: rgba(255,255,255,0.5); }
+  .macro-track { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; }
+  .macro-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+  /* ── CARD 2: CHART (now second) ── */
+  .chart-card {
+    background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.22);
+    border-radius: 20px; padding: 16px 16px 14px;
+    box-shadow: 0 0 50px rgba(139,92,246,0.11), inset 0 1px 0 rgba(255,255,255,0.07);
+    position: relative; overflow: hidden;
+  }
+  .chart-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.6), transparent);
+  }
+  .chart-top {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .chart-label {
+    font-size: 10px; font-weight: 700; color: rgba(167,139,250,0.85);
+    text-transform: uppercase; letter-spacing: 0.13em;
+  }
+  .summary-pill {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 20px; padding: 3px 10px;
+  }
+  .summary-dot { width: 5px; height: 5px; border-radius: 50%; background: #a78bfa; }
+  .summary-text { font-size: 10px; font-weight: 600; color: #c4b5fd; }
+  .chart-day-labels {
+    display: flex; justify-content: space-between; padding: 0 4px; margin-top: 5px;
+  }
+  .day-label { font-size: 9px; color: rgba(255,255,255,0.22); font-weight: 500; flex: 1; text-align: center; }
+  .day-label.today { color: #c4b5fd; font-weight: 700; }
+  .chart-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 12px 0; }
+  .chart-stats { display: flex; }
+  .chart-stat {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 0 4px; position: relative;
+  }
+  .chart-stat + .chart-stat::before {
+    content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 1px; height: 24px; background: rgba(255,255,255,0.07);
+  }
+  .cs-value { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; }
+  .cs-label { font-size: 8px; font-weight: 500; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── CARD 3: METRICS ── */
+  .metrics-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .metric-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.10em; }
+  .metric-value { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; margin-top: 6px; }
+  .metric-detail { font-size: 10px; color: rgba(255,255,255,0.28); margin-top: 3px; }
+
+  /* ── PILL NAV ── */
+  .nav-wrap {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+    display: flex; justify-content: center; padding: 0 16px 18px;
+  }
+  .pill-nav {
+    width: 100%; background: rgba(14, 9, 26, 0.90);
+    border: 1px solid rgba(139,92,246,0.22); border-radius: 36px; padding: 8px 6px;
+    display: flex; align-items: center; gap: 2px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 24px rgba(139,92,246,0.08);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 4px; border-radius: 24px;
+  }
+  .nav-item.active { background: rgba(139,92,246,0.18); }
+  .nav-icon-wrap { font-size: 18px; line-height: 1; opacity: 0.28; }
+  .nav-item.active .nav-icon-wrap { opacity: 1; }
+  .nav-lbl { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.22); }
+  .nav-item.active .nav-lbl { color: #c4b5fd; font-weight: 700; }
+  .nav-log {
+    flex: 1.4; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: linear-gradient(145deg, #9f75f7, #7c3aed);
+    border-radius: 28px; padding: 10px 8px 8px; margin: -6px 2px;
+    box-shadow: 0 4px 16px rgba(139,92,246,0.50), inset 0 1px 0 rgba(255,255,255,0.20);
+    position: relative; z-index: 1;
+  }
+  .nav-log-icon { font-size: 20px; line-height: 1; color: #fff; }
+  .nav-log-lbl { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.9); }
+</style>
+</head>
+<body>
+
+<div class="page-title">Dashboard — v7</div>
+<div class="page-sub">Today card first · Chart second · Metrics third</div>
+
+<div class="phone-shell">
+  <div class="orb-1"></div>
+  <div class="orb-2"></div>
+
+  <div class="status-bar">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>▲▲▲</span><span>WiFi</span><span>▐▌</span></div>
+  </div>
+
+  <div class="screen-header">
+    <div class="screen-title">Dashboard</div>
+    <div class="screen-date">Mon, June 2</div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- CARD 1: TODAY -->
+    <div class="today-card">
+      <div class="today-header">
+        <div class="today-label">Today</div>
+        <div class="today-badge">In zone</div>
+      </div>
+      <div class="today-cal-row">
+        <div class="today-cal">2,140</div>
+        <div class="today-cal-unit">kcal</div>
+        <div class="today-cal-remain">· 360 to zone</div>
+      </div>
+      <div class="cal-bar-track"><div class="cal-bar-fill"></div></div>
+      <div class="cal-bar-labels">
+        <span>0</span>
+        <span class="zone-lbl">▌ 2400–2600</span>
+        <span>3120</span>
+      </div>
+      <div class="macros-row">
+        <div class="macro-item">
+          <div class="macro-label-row"><span>Protein</span><span class="macro-val-sm">142g</span></div>
+          <div class="macro-track"><div class="macro-fill" style="width:79%"></div></div>
+        </div>
+        <div class="macro-item">
+          <div class="macro-label-row"><span>Carbs</span><span class="macro-val-sm">210g</span></div>
+          <div class="macro-track"><div class="macro-fill" style="width:84%"></div></div>
+        </div>
+        <div class="macro-item">
+          <div class="macro-label-row"><span>Fat</span><span class="macro-val-sm">55g</span></div>
+          <div class="macro-track"><div class="macro-fill" style="width:69%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD 2: CHART -->
+    <div class="chart-card">
+      <div class="chart-top">
+        <div class="chart-label">Last 7 days</div>
+        <div class="summary-pill">
+          <div class="summary-dot"></div>
+          <div class="summary-text">5 of 7 in zone</div>
+        </div>
+      </div>
+
+      <svg width="100%" height="90" viewBox="0 0 343 90" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.02"/>
+          </linearGradient>
+          <linearGradient id="lineG" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.55"/>
+            <stop offset="50%" stop-color="#a78bfa"/>
+            <stop offset="100%" stop-color="#c4b5fd" stop-opacity="0.85"/>
+          </linearGradient>
+          <clipPath id="clip"><rect x="0" y="0" width="343" height="90"/></clipPath>
+        </defs>
+        <rect x="0" y="28" width="343" height="13" fill="rgba(139,92,246,0.08)" rx="1"/>
+        <line x1="0" y1="28" x2="343" y2="28" stroke="rgba(139,92,246,0.25)" stroke-width="0.7" stroke-dasharray="3,4"/>
+        <line x1="0" y1="41" x2="343" y2="41" stroke="rgba(139,92,246,0.25)" stroke-width="0.7" stroke-dasharray="3,4"/>
+        <path d="M 24,33 C 40,33 57,62 73,62 C 89,62 106,36 122,36 C 138,36 155,22 171,22 C 187,22 204,33 220,33 C 236,33 253,56 269,54 C 286,52 302,55 318,55 L 318,90 L 24,90 Z" fill="url(#areaG)" clip-path="url(#clip)"/>
+        <path d="M 24,33 C 40,33 57,62 73,62 C 89,62 106,36 122,36 C 138,36 155,22 171,22 C 187,22 204,33 220,33 C 236,33 253,56 269,54 C 286,52 302,55 318,55" fill="none" stroke="url(#lineG)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#clip)"/>
+        <circle cx="24"  cy="33" r="2.5" fill="#a78bfa"/>
+        <circle cx="73"  cy="62" r="2.5" fill="rgba(255,255,255,0.18)"/>
+        <circle cx="122" cy="36" r="2.5" fill="#a78bfa"/>
+        <circle cx="171" cy="22" r="2.5" fill="#fb7185"/>
+        <circle cx="220" cy="33" r="2.5" fill="#a78bfa"/>
+        <circle cx="269" cy="54" r="2.5" fill="rgba(255,255,255,0.18)"/>
+        <circle cx="318" cy="55" r="4.5" fill="#c4b5fd" opacity="0.95"/>
+        <circle cx="318" cy="55" r="9"   fill="rgba(196,181,253,0.12)"/>
+      </svg>
+
+      <div class="chart-day-labels">
+        <div class="day-label">Tue</div>
+        <div class="day-label">Wed</div>
+        <div class="day-label">Thu</div>
+        <div class="day-label">Fri</div>
+        <div class="day-label">Sat</div>
+        <div class="day-label">Sun</div>
+        <div class="day-label today">Today</div>
+      </div>
+
+      <div class="chart-divider"></div>
+
+      <div class="chart-stats">
+        <div class="chart-stat">
+          <div class="cs-value" style="color:#fb7185">−0.3<span style="font-size:10px;font-weight:600"> kg</span></div>
+          <div class="cs-label">Trend/wk</div>
+        </div>
+        <div class="chart-stat">
+          <div class="cs-value" style="color:#a78bfa">91<span style="font-size:10px;font-weight:600">%</span></div>
+          <div class="cs-label">Adherence</div>
+        </div>
+        <div class="chart-stat">
+          <div class="cs-value" style="color:#fff">47</div>
+          <div class="cs-label">Days logged</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD 3: METRICS -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Weight trend</div>
+        <div class="metric-value" style="color:#fb7185">−0.3 kg</div>
+        <div class="metric-detail">per week</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Adherence</div>
+        <div class="metric-value" style="color:#a78bfa">91%</div>
+        <div class="metric-detail">last 14 days</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PILL NAV -->
+  <div class="nav-wrap">
+    <div class="pill-nav">
+      <div class="nav-item active">
+        <div class="nav-icon-wrap">⊞</div>
+        <div class="nav-lbl">Home</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon-wrap">◎</div>
+        <div class="nav-lbl">Body</div>
+      </div>
+      <div class="nav-log">
+        <div class="nav-log-icon">＋</div>
+        <div class="nav-log-lbl">Log</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon-wrap">↗</div>
+        <div class="nav-lbl">Progress</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon-wrap">⋯</div>
+        <div class="nav-lbl">More</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progress Screen</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #060810; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 48px;
+  }
+  .page-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #555; margin-bottom: 28px; text-align: center; }
+
+  .phone-shell {
+    width: 375px; min-height: 820px;
+    background: linear-gradient(162deg, #0d0818 0%, #0f0b1c 45%, #090a12 100%);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 40px 80px rgba(0,0,0,0.85), 0 0 100px rgba(139,92,246,0.07);
+    display: flex; flex-direction: column;
+  }
+  .orb-1 {
+    position: absolute; top: -90px; left: -70px; width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(139,92,246,0.16) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .status-bar { position: relative; z-index: 1; padding: 14px 24px 0; display: flex; justify-content: space-between; }
+  .status-time { font-size: 15px; font-weight: 600; color: #fff; }
+  .status-icons { font-size: 11px; color: rgba(255,255,255,0.4); display: flex; gap: 4px; }
+
+  .screen-header { position: relative; z-index: 1; padding: 18px 20px 0; display: flex; justify-content: space-between; align-items: flex-end; }
+  .screen-title { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.8px; }
+
+  .scroll-content {
+    position: relative; z-index: 1; flex: 1;
+    padding: 14px 16px 108px;
+    display: flex; flex-direction: column; gap: 12px; overflow: hidden;
+  }
+
+  /* ── RANGE SELECTOR ── */
+  .range-row { display: flex; gap: 6px; }
+  .range-chip {
+    flex: 1; padding: 8px 0; border-radius: 10px; text-align: center;
+    font-size: 12px; font-weight: 700;
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .range-chip.active {
+    background: rgba(139,92,246,0.20); color: #c4b5fd;
+    border-color: rgba(139,92,246,0.35);
+  }
+
+  /* ── SECTION GROUP LABEL ── */
+  .section-label {
+    font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25);
+    text-transform: uppercase; letter-spacing: 0.14em; padding: 0 2px;
+    margin-bottom: -4px;
+  }
+
+  /* ── CHART CARD ── */
+  .chart-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  /* featured chart (calories, weight) — violet tint */
+  .chart-card.featured {
+    background: rgba(139,92,246,0.07); border-color: rgba(139,92,246,0.20);
+    box-shadow: 0 0 30px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+
+  .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .chart-meta { display: flex; flex-direction: column; gap: 2px; }
+  .chart-name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; }
+  .chart-value { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: -1px; line-height: 1; margin-top: 2px; }
+  .chart-unit { font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.35); margin-left: 2px; }
+  .chart-trend {
+    display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;
+    font-size: 11px; font-weight: 700;
+  }
+  .trend-good { color: #a78bfa; }
+  .trend-neutral { color: rgba(255,255,255,0.3); }
+  .trend-warn { color: #fb7185; }
+
+  /* chart SVG area */
+  .chart-svg { width: 100%; overflow: visible; }
+
+  /* 2-col mini charts */
+  .chart-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mini-chart-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 12px;
+  }
+  .mini-chart-name { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; }
+  .mini-chart-value { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: -0.8px; margin: 3px 0 6px; }
+  .mini-chart-unit { font-size: 10px; color: rgba(255,255,255,0.3); }
+  .mini-trend { font-size: 10px; font-weight: 700; color: #a78bfa; margin-bottom: 6px; }
+
+  /* ── PILL NAV ── */
+  .nav-wrap { position: absolute; bottom: 0; left: 0; right: 0; z-index: 20; display: flex; justify-content: center; padding: 0 16px 18px; }
+  .pill-nav { width: 100%; background: rgba(14, 9, 26, 0.90); border: 1px solid rgba(139,92,246,0.22); border-radius: 36px; padding: 8px 6px; display: flex; align-items: center; gap: 2px; box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 24px; }
+  .nav-item.active { background: rgba(139,92,246,0.18); }
+  .nav-icon-wrap { font-size: 18px; line-height: 1; opacity: 0.28; }
+  .nav-item.active .nav-icon-wrap { opacity: 1; }
+  .nav-lbl { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.22); }
+  .nav-item.active .nav-lbl { color: #c4b5fd; font-weight: 700; }
+  .nav-log { flex: 1.4; display: flex; flex-direction: column; align-items: center; gap: 2px; background: linear-gradient(145deg, #9f75f7, #7c3aed); border-radius: 28px; padding: 10px 8px 8px; margin: -6px 2px; box-shadow: 0 4px 16px rgba(139,92,246,0.50), inset 0 1px 0 rgba(255,255,255,0.20); position: relative; z-index: 1; }
+  .nav-log-icon { font-size: 20px; line-height: 1; color: #fff; }
+  .nav-log-lbl { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.9); }
+
+  /* ANNOTATIONS */
+  .annotations { width: 375px; margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+  .annotation { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.15); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.55); line-height: 1.5; display: flex; gap: 8px; }
+  .annotation-dot { width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6; flex-shrink: 0; margin-top: 5px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Screen 4 of 6 — Progress</div>
+<div class="page-sub">8 charts · 3 grouped sections · 7d / 14d / 28d range</div>
+
+<div class="phone-shell">
+  <div class="orb-1"></div>
+
+  <div class="status-bar">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>▲▲▲</span><span>WiFi</span><span>▐▌</span></div>
+  </div>
+
+  <div class="screen-header">
+    <div class="screen-title">Progress</div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- RANGE SELECTOR -->
+    <div class="range-row">
+      <div class="range-chip">7d</div>
+      <div class="range-chip active">14d</div>
+      <div class="range-chip">28d</div>
+    </div>
+
+    <!-- ── BODY SECTION ── -->
+    <div class="section-label">Body</div>
+
+    <!-- Weight — featured full width -->
+    <div class="chart-card featured">
+      <div class="chart-header">
+        <div class="chart-meta">
+          <div class="chart-name">Weight</div>
+          <div><span class="chart-value">82.4</span><span class="chart-unit">kg</span></div>
+          <div class="chart-trend trend-good">↓ 0.3 kg / week</div>
+        </div>
+      </div>
+      <svg class="chart-svg" height="72" viewBox="0 0 343 72" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="wArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.01"/>
+          </linearGradient>
+          <linearGradient id="wLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#c4b5fd"/>
+          </linearGradient>
+          <clipPath id="wClip"><rect width="343" height="72"/></clipPath>
+        </defs>
+        <!-- data: 14 days of declining weight -->
+        <path d="M0,18 C18,19 30,22 50,24 C68,26 80,22 100,21 C120,20 135,24 155,22 C175,20 190,18 210,16 C228,14 242,17 262,15 C280,13 300,14 323,10 L343,10 L343,72 L0,72 Z" fill="url(#wArea)" clip-path="url(#wClip)"/>
+        <path d="M0,18 C18,19 30,22 50,24 C68,26 80,22 100,21 C120,20 135,24 155,22 C175,20 190,18 210,16 C228,14 242,17 262,15 C280,13 300,14 323,10" fill="none" stroke="url(#wLine)" stroke-width="1.8" stroke-linecap="round" clip-path="url(#wClip)"/>
+        <circle cx="323" cy="10" r="4" fill="#c4b5fd"/>
+        <circle cx="323" cy="10" r="8" fill="rgba(196,181,253,0.15)"/>
+      </svg>
+    </div>
+
+    <!-- Waist — featured full width -->
+    <div class="chart-card featured">
+      <div class="chart-header">
+        <div class="chart-meta">
+          <div class="chart-name">Waist</div>
+          <div><span class="chart-value">84</span><span class="chart-unit">cm</span></div>
+          <div class="chart-trend trend-good">↓ 0.5 cm / week</div>
+        </div>
+      </div>
+      <svg class="chart-svg" height="72" viewBox="0 0 343 72" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="waArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.20"/>
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.01"/>
+          </linearGradient>
+          <clipPath id="waClip"><rect width="343" height="72"/></clipPath>
+        </defs>
+        <path d="M0,15 C20,16 38,20 60,21 C80,22 100,19 120,20 C140,21 155,25 175,23 C195,21 212,19 232,17 C250,15 270,16 290,14 C308,12 325,13 343,11 L343,72 L0,72 Z" fill="url(#waArea)" clip-path="url(#waClip)"/>
+        <path d="M0,15 C20,16 38,20 60,21 C80,22 100,19 120,20 C140,21 155,25 175,23 C195,21 212,19 232,17 C250,15 270,16 290,14 C308,12 325,13 343,11" fill="none" stroke="url(#wLine)" stroke-width="1.8" stroke-linecap="round" clip-path="url(#waClip)"/>
+        <circle cx="343" cy="11" r="4" fill="#c4b5fd"/>
+        <circle cx="343" cy="11" r="8" fill="rgba(196,181,253,0.15)"/>
+      </svg>
+    </div>
+
+    <!-- ── NUTRITION SECTION ── -->
+    <div class="section-label">Nutrition</div>
+
+    <!-- Calories — featured full width -->
+    <div class="chart-card featured">
+      <div class="chart-header">
+        <div class="chart-meta">
+          <div class="chart-name">Calories</div>
+          <div><span class="chart-value">2,380</span><span class="chart-unit">kcal avg</span></div>
+          <div class="chart-trend trend-good">In zone 11 of 14 days</div>
+        </div>
+      </div>
+      <svg class="chart-svg" height="72" viewBox="0 0 343 72" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="cArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.20"/>
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.01"/>
+          </linearGradient>
+          <clipPath id="cClip"><rect width="343" height="72"/></clipPath>
+        </defs>
+        <!-- target zone band -->
+        <rect x="0" y="26" width="343" height="14" fill="rgba(139,92,246,0.09)" rx="1"/>
+        <line x1="0" y1="26" x2="343" y2="26" stroke="rgba(139,92,246,0.25)" stroke-width="0.7" stroke-dasharray="3,4"/>
+        <line x1="0" y1="40" x2="343" y2="40" stroke="rgba(139,92,246,0.25)" stroke-width="0.7" stroke-dasharray="3,4"/>
+        <path d="M0,32 C18,33 30,28 50,30 C68,32 80,44 100,46 C120,48 135,36 155,34 C175,32 190,30 210,32 C228,34 242,30 262,28 C280,26 300,30 323,32 L343,32 L343,72 L0,72 Z" fill="url(#cArea)" clip-path="url(#cClip)"/>
+        <path d="M0,32 C18,33 30,28 50,30 C68,32 80,44 100,46 C120,48 135,36 155,34 C175,32 190,30 210,32 C228,34 242,30 262,28 C280,26 300,30 323,32" fill="none" stroke="url(#wLine)" stroke-width="1.8" stroke-linecap="round" clip-path="url(#cClip)"/>
+        <circle cx="323" cy="32" r="4" fill="#c4b5fd"/>
+      </svg>
+    </div>
+
+    <!-- Protein / Carbs / Fat — 2-col pairs -->
+    <div class="chart-pair">
+      <div class="mini-chart-card">
+        <div class="mini-chart-name">Protein</div>
+        <div><span class="mini-chart-value">148</span><span class="mini-chart-unit">g avg</span></div>
+        <div class="mini-trend">↑ +6g vs target</div>
+        <svg width="100%" height="36" viewBox="0 0 140 36" preserveAspectRatio="none">
+          <defs><linearGradient id="pA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.25"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,26 C15,24 28,20 45,18 C58,16 72,22 88,20 C102,18 118,14 140,12 L140,36 L0,36 Z" fill="url(#pA)"/>
+          <path d="M0,26 C15,24 28,20 45,18 C58,16 72,22 88,20 C102,18 118,14 140,12" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="140" cy="12" r="3" fill="#c4b5fd"/>
+        </svg>
+      </div>
+      <div class="mini-chart-card">
+        <div class="mini-chart-name">Carbs</div>
+        <div><span class="mini-chart-value">224</span><span class="mini-chart-unit">g avg</span></div>
+        <div class="mini-trend" style="color:rgba(255,255,255,0.3)">→ on target</div>
+        <svg width="100%" height="36" viewBox="0 0 140 36" preserveAspectRatio="none">
+          <defs><linearGradient id="cbA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.20"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,22 C14,20 28,24 45,22 C60,20 74,18 90,20 C106,22 122,19 140,18 L140,36 L0,36 Z" fill="url(#cbA)"/>
+          <path d="M0,22 C14,20 28,24 45,22 C60,20 74,18 90,20 C106,22 122,19 140,18" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="140" cy="18" r="3" fill="#c4b5fd"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Fat — full width mini -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-meta">
+          <div class="chart-name">Fat</div>
+          <div><span class="chart-value">62</span><span class="chart-unit">g avg</span></div>
+          <div class="chart-trend trend-warn">↑ +2g over target</div>
+        </div>
+      </div>
+      <svg class="chart-svg" height="44" viewBox="0 0 343 44" preserveAspectRatio="none">
+        <defs><linearGradient id="fA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.18"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient><clipPath id="fC"><rect width="343" height="44"/></clipPath></defs>
+        <path d="M0,28 C22,26 40,22 65,24 C88,26 108,20 130,18 C152,16 172,22 195,20 C218,18 238,16 260,17 C282,18 305,20 323,19 L343,19 L343,44 L0,44 Z" fill="url(#fA)" clip-path="url(#fC)"/>
+        <path d="M0,28 C22,26 40,22 65,24 C88,26 108,20 130,18 C152,16 172,22 195,20 C218,18 238,16 260,17 C282,18 305,20 323,19" fill="none" stroke="url(#wLine)" stroke-width="1.5" stroke-linecap="round" clip-path="url(#fC)"/>
+        <circle cx="323" cy="19" r="3.5" fill="#c4b5fd"/>
+      </svg>
+    </div>
+
+    <!-- ── PERFORMANCE SECTION ── -->
+    <div class="section-label">Performance</div>
+
+    <div class="chart-pair">
+      <div class="mini-chart-card">
+        <div class="mini-chart-name">Adherence</div>
+        <div><span class="mini-chart-value">91</span><span class="mini-chart-unit">%</span></div>
+        <div class="mini-trend">↑ strong</div>
+        <svg width="100%" height="36" viewBox="0 0 140 36" preserveAspectRatio="none">
+          <defs><linearGradient id="adA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.25"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,28 C14,26 28,22 45,18 C58,14 72,16 88,14 C102,12 118,13 140,10 L140,36 L0,36 Z" fill="url(#adA)"/>
+          <path d="M0,28 C14,26 28,22 45,18 C58,14 72,16 88,14 C102,12 118,13 140,10" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="140" cy="10" r="3" fill="#c4b5fd"/>
+        </svg>
+      </div>
+      <div class="mini-chart-card">
+        <div class="mini-chart-name">Lifts</div>
+        <div><span class="mini-chart-value">8</span><span class="mini-chart-unit">sessions</span></div>
+        <div class="mini-trend" style="color:rgba(255,255,255,0.3)">→ consistent</div>
+        <svg width="100%" height="36" viewBox="0 0 140 36" preserveAspectRatio="none">
+          <defs><linearGradient id="lA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.20"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,20 C14,20 28,22 45,18 C58,14 72,20 88,18 C102,16 118,18 140,16 L140,36 L0,36 Z" fill="url(#lA)"/>
+          <path d="M0,20 C14,20 28,22 45,18 C58,14 72,20 88,18 C102,16 118,18 140,16" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="140" cy="16" r="3" fill="#c4b5fd"/>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PILL NAV — Progress active -->
+  <div class="nav-wrap">
+    <div class="pill-nav">
+      <div class="nav-item"><div class="nav-icon-wrap">⊞</div><div class="nav-lbl">Home</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">◎</div><div class="nav-lbl">Body</div></div>
+      <div class="nav-log"><div class="nav-log-icon">＋</div><div class="nav-log-lbl">Log</div></div>
+      <div class="nav-item active"><div class="nav-icon-wrap" style="opacity:1">↗</div><div class="nav-lbl" style="color:#c4b5fd;font-weight:700">Progress</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">⋯</div><div class="nav-lbl">More</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="annotations">
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Range selector</strong> — 7d / 14d / 28d glass chips at the top. Active chip gets violet tint + border. Switching range updates all charts.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">3 grouped sections</strong> — Body (weight + waist), Nutrition (calories + P/C/F), Performance (adherence + lifts). Section labels in 9px muted uppercase. Key metrics (weight, waist, calories) get full-width featured cards with violet glow; smaller metrics get 2-column mini cards.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Each chart card</strong> — metric name, current/avg value, trend indicator (good = violet, warn = red, neutral = muted), smooth SVG area chart. Calories chart shows the target zone band with dashed lines, same as Dashboard.</div>
+  </div>
+</div>
+
+</body>
+</html>

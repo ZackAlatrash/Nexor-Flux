@@ -109,9 +109,52 @@ _Date: 2026-06-02_
 - [x] Food / Today screen
 - [x] Body screen
 - [x] Progress screen
-- [ ] Food Library screen
-- [ ] Scanner screen
+- [x] Food Library screen
 - [ ] Settings / More screen
+
+---
+
+## Screen 5 — Food Library ✅ LOCKED
+
+**Accessed from:** "+ Add" button on any meal slot in the Food Log. Full-screen destination — no bottom pill nav.
+
+### Top Bar
+- Back button: 34×34px rounded square, `rgba(255,255,255,0.06)` bg, `rgba(255,255,255,0.09)` border
+- Title: slot name (17px/800 white) + remaining kcal sub (11px violet)
+- Camera scan button: 34×34px, `rgba(139,92,246,0.15)` bg, `rgba(139,92,246,0.25)` border
+
+### Search Field
+- Full width, `border-radius: 14px`
+- Default: `rgba(255,255,255,0.06)` bg, `rgba(255,255,255,0.10)` border
+- Focused: `rgba(139,92,246,0.07)` bg, `rgba(139,92,246,0.45)` border
+- Left search icon, 14px placeholder/input text
+
+### Category Chips (horizontal scroll)
+- All · Proteins · Carbs · Saved Meals · NEVO · Open Food Facts
+- Same glass chip style as Progress range selector
+- Active: `rgba(139,92,246,0.20)` bg, `rgba(139,92,246,0.35)` border, `#c4b5fd` text
+
+### Action Row (2-column grid)
+- "+ New food": `rgba(139,92,246,0.18)` bg, `rgba(139,92,246,0.32)` border, `#c4b5fd` text
+- "⚡ Quick add": `rgba(255,255,255,0.05)` bg, `rgba(255,255,255,0.09)` border, muted text
+- Both: `border-radius: 11px`, 12px/700
+
+### Section Label
+- "Results for X" or "Recent" — 9px / 700 / muted uppercase
+
+### Food List Card
+- `rgba(255,255,255,0.04)` bg / `rgba(255,255,255,0.07)` border / `border-radius: 14px`
+- Rows separated by `1px rgba(255,255,255,0.04)` bottom border
+
+### Food Row
+- Food name: 13px / 600 / white (ellipsis overflow)
+- Macros: 10px / `rgba(255,255,255,0.28)` — e.g. "per 100g · 31P 0C 3.6F"
+- kcal: 12px / 700 / `rgba(255,255,255,0.40)` (right-aligned)
+- "+" add button: 28×28px, `border-radius: 8px`, `#8b5cf6` bg, violet glow shadow
+
+### Saved Meal Row
+- Same as food row but: `rgba(139,92,246,0.04)` row bg tint
+- "Meal" tag: 8px/700, `rgba(139,92,246,0.12)` bg, `rgba(139,92,246,0.2)` border, violet text. Sits beside the food name inline.
 
 ---
 

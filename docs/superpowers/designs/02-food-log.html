@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food Screen v3</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #060810; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 48px;
+  }
+  .page-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #555; margin-bottom: 28px; text-align: center; }
+
+  .phone-shell {
+    width: 375px; min-height: 820px;
+    background: linear-gradient(162deg, #0d0818 0%, #0f0b1c 45%, #090a12 100%);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 40px 80px rgba(0,0,0,0.85), 0 0 100px rgba(139,92,246,0.07);
+    display: flex; flex-direction: column;
+  }
+  .orb-1 {
+    position: absolute; top: -90px; left: -70px; width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(139,92,246,0.16) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .status-bar {
+    position: relative; z-index: 1; padding: 14px 24px 0;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .status-time { font-size: 15px; font-weight: 600; color: #fff; }
+  .status-icons { font-size: 11px; color: rgba(255,255,255,0.4); display: flex; gap: 4px; }
+
+  .screen-header {
+    position: relative; z-index: 1; padding: 18px 20px 0;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .screen-title { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.8px; }
+  .screen-date { font-size: 12px; color: rgba(255,255,255,0.28); padding-bottom: 3px; }
+
+  .scroll-content {
+    position: relative; z-index: 1; flex: 1;
+    padding: 14px 16px 108px;
+    display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+  }
+
+  /* ── NUTRITION STRIP ── */
+  .nutrition-strip {
+    background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.20);
+    border-radius: 16px; padding: 12px 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    position: relative; overflow: hidden;
+  }
+  .nutrition-strip::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent);
+  }
+  .strip-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .strip-cal { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: -0.8px; }
+  .strip-cal-sub { font-size: 11px; color: rgba(255,255,255,0.3); }
+  .strip-badge {
+    font-size: 9px; font-weight: 700; color: #a78bfa;
+    background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.25);
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .strip-bar-track { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+  .strip-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #8b5cf6, #a78bfa); width: 72%; }
+
+  /* macros with progress bars */
+  .strip-macros { display: flex; gap: 8px; }
+  .strip-macro { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .sm-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .sm-label { font-size: 9px; color: rgba(255,255,255,0.30); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .sm-val { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+  .sm-track { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+  .sm-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  .sm-remain { font-size: 8px; color: rgba(255,255,255,0.22); }
+
+  /* ── MEALS HEADER ── */
+  .meals-header {
+    display: flex; justify-content: space-between; align-items: center; padding: 0 2px;
+  }
+  .meals-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 0.12em; }
+  .meals-edit { font-size: 11px; font-weight: 600; color: rgba(139,92,246,0.7); }
+
+  /* ── SLOT CARD ── */
+  .slot-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .slot-card.has-entries { border-color: rgba(139,92,246,0.18); background: rgba(139,92,246,0.04); }
+
+  .slot-header {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;
+  }
+  .slot-name-col { display: flex; flex-direction: column; gap: 1px; }
+  .slot-name { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+  .slot-cal { font-size: 10px; color: rgba(255,255,255,0.3); }
+  .slot-cal.has-food { color: #a78bfa; font-weight: 600; }
+  .slot-add-btn {
+    background: #8b5cf6; border: none; border-radius: 10px;
+    padding: 5px 12px; font-size: 11px; font-weight: 700; color: #fff;
+    display: flex; align-items: center; gap: 4px;
+    box-shadow: 0 2px 10px rgba(139,92,246,0.35); flex-shrink: 0;
+  }
+
+  /* ── ENTRIES ── */
+  .slot-entries { background: rgba(0,0,0,0.20); border-top: 1px solid rgba(255,255,255,0.05); }
+  .entry-row {
+    display: flex; align-items: center;
+    padding: 8px 12px 8px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04); gap: 8px;
+  }
+  .entry-row:last-child { border-bottom: none; }
+  .entry-row::before {
+    content: ''; display: block; flex-shrink: 0;
+    width: 2px; height: 28px; border-radius: 1px;
+    background: rgba(139,92,246,0.30); margin-right: 2px;
+  }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-macros { font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 1px; }
+  .entry-kcal { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.40); flex-shrink: 0; }
+  .entry-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+  .action-btn {
+    width: 26px; height: 26px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;
+  }
+  .action-edit { background: rgba(139,92,246,0.12); color: #a78bfa; }
+  .action-delete { background: rgba(251,113,133,0.10); color: rgba(251,113,133,0.6); }
+
+  /* EMPTY SLOT */
+  .slot-empty {
+    background: rgba(0,0,0,0.15); border-top: 1px solid rgba(255,255,255,0.04);
+    padding: 14px 18px; display: flex; align-items: center; gap: 8px;
+  }
+  .empty-line { flex: 1; height: 1px; background: rgba(255,255,255,0.05); border-radius: 1px; }
+  .empty-text { font-size: 10px; color: rgba(255,255,255,0.15); white-space: nowrap; }
+
+  /* ── ADD SLOT ── */
+  .add-slot-btn {
+    background: transparent; border: 1px dashed rgba(255,255,255,0.10);
+    border-radius: 14px; padding: 13px;
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.22);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  /* ── PILL NAV ── */
+  .nav-wrap {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+    display: flex; justify-content: center; padding: 0 16px 18px;
+  }
+  .pill-nav {
+    width: 100%; background: rgba(14, 9, 26, 0.90);
+    border: 1px solid rgba(139,92,246,0.22); border-radius: 36px; padding: 8px 6px;
+    display: flex; align-items: center; gap: 2px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 24px; }
+  .nav-icon-wrap { font-size: 18px; line-height: 1; opacity: 0.28; }
+  .nav-lbl { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.22); }
+  .nav-log {
+    flex: 1.4; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: linear-gradient(145deg, #9f75f7, #7c3aed);
+    border-radius: 28px; padding: 10px 8px 8px; margin: -6px 2px;
+    box-shadow: 0 4px 20px rgba(139,92,246,0.65), 0 0 0 2px rgba(196,181,253,0.25), inset 0 1px 0 rgba(255,255,255,0.20);
+    position: relative; z-index: 1;
+  }
+  .nav-log-icon { font-size: 20px; line-height: 1; color: #fff; }
+  .nav-log-lbl { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.9); }
+</style>
+</head>
+<body>
+
+<div class="page-title">Food Log — v3</div>
+<div class="page-sub">Macro progress bars added to nutrition strip</div>
+
+<div class="phone-shell">
+  <div class="orb-1"></div>
+
+  <div class="status-bar">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>▲▲▲</span><span>WiFi</span><span>▐▌</span></div>
+  </div>
+
+  <div class="screen-header">
+    <div class="screen-title">Food Log</div>
+    <div class="screen-date">Mon, June 2</div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- NUTRITION STRIP -->
+    <div class="nutrition-strip">
+      <div class="strip-top">
+        <div><span class="strip-cal">2,140</span><span class="strip-cal-sub"> kcal · 360 to zone</span></div>
+        <div class="strip-badge">In zone</div>
+      </div>
+      <div class="strip-bar-track"><div class="strip-bar-fill"></div></div>
+
+      <!-- Macros with progress bars -->
+      <div class="strip-macros">
+        <div class="strip-macro">
+          <div class="sm-top">
+            <div class="sm-label">Protein</div>
+            <div class="sm-val">142g</div>
+          </div>
+          <div class="sm-track"><div class="sm-fill" style="width:79%"></div></div>
+          <div class="sm-remain">38g to go</div>
+        </div>
+        <div class="strip-macro">
+          <div class="sm-top">
+            <div class="sm-label">Carbs</div>
+            <div class="sm-val">210g</div>
+          </div>
+          <div class="sm-track"><div class="sm-fill" style="width:84%"></div></div>
+          <div class="sm-remain">40g to go</div>
+        </div>
+        <div class="strip-macro">
+          <div class="sm-top">
+            <div class="sm-label">Fat</div>
+            <div class="sm-val">55g</div>
+          </div>
+          <div class="sm-track"><div class="sm-fill" style="width:69%"></div></div>
+          <div class="sm-remain">25g to go</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEALS HEADER -->
+    <div class="meals-header">
+      <div class="meals-label">Meals</div>
+      <div class="meals-edit">Reorder</div>
+    </div>
+
+    <!-- SLOT 1: BREAKFAST -->
+    <div class="slot-card has-entries">
+      <div class="slot-header">
+        <div class="slot-name-col">
+          <div class="slot-name">Breakfast</div>
+          <div class="slot-cal has-food">620 kcal</div>
+        </div>
+        <div class="slot-add-btn">＋ Add</div>
+      </div>
+      <div class="slot-entries">
+        <div class="entry-row">
+          <div class="entry-info">
+            <div class="entry-name">Greek Yogurt</div>
+            <div class="entry-macros">200g · 17P 9C 0F</div>
+          </div>
+          <div class="entry-kcal">130</div>
+          <div class="entry-actions">
+            <div class="action-btn action-edit">✎</div>
+            <div class="action-btn action-delete">✕</div>
+          </div>
+        </div>
+        <div class="entry-row">
+          <div class="entry-info">
+            <div class="entry-name">Oats with banana</div>
+            <div class="entry-macros">350g · 12P 68C 6F</div>
+          </div>
+          <div class="entry-kcal">490</div>
+          <div class="entry-actions">
+            <div class="action-btn action-edit">✎</div>
+            <div class="action-btn action-delete">✕</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLOT 2: LUNCH -->
+    <div class="slot-card has-entries">
+      <div class="slot-header">
+        <div class="slot-name-col">
+          <div class="slot-name">Lunch</div>
+          <div class="slot-cal has-food">482 kcal</div>
+        </div>
+        <div class="slot-add-btn">＋ Add</div>
+      </div>
+      <div class="slot-entries">
+        <div class="entry-row">
+          <div class="entry-info">
+            <div class="entry-name">Chicken breast</div>
+            <div class="entry-macros">200g · 46P 0C 6F</div>
+          </div>
+          <div class="entry-kcal">244</div>
+          <div class="entry-actions">
+            <div class="action-btn action-edit">✎</div>
+            <div class="action-btn action-delete">✕</div>
+          </div>
+        </div>
+        <div class="entry-row">
+          <div class="entry-info">
+            <div class="entry-name">Brown rice</div>
+            <div class="entry-macros">150g · 4P 44C 1F</div>
+          </div>
+          <div class="entry-kcal">196</div>
+          <div class="entry-actions">
+            <div class="action-btn action-edit">✎</div>
+            <div class="action-btn action-delete">✕</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLOT 3: DINNER (empty) -->
+    <div class="slot-card">
+      <div class="slot-header">
+        <div class="slot-name-col">
+          <div class="slot-name">Dinner</div>
+          <div class="slot-cal">empty</div>
+        </div>
+        <div class="slot-add-btn">＋ Add</div>
+      </div>
+      <div class="slot-empty">
+        <div class="empty-line"></div>
+        <div class="empty-text">nothing logged yet</div>
+        <div class="empty-line"></div>
+      </div>
+    </div>
+
+    <!-- SLOT 4: SNACKS -->
+    <div class="slot-card has-entries">
+      <div class="slot-header">
+        <div class="slot-name-col">
+          <div class="slot-name">Snacks</div>
+          <div class="slot-cal has-food">138 kcal</div>
+        </div>
+        <div class="slot-add-btn">＋ Add</div>
+      </div>
+      <div class="slot-entries">
+        <div class="entry-row">
+          <div class="entry-info">
+            <div class="entry-name">Protein shake</div>
+            <div class="entry-macros">300ml · 25P 5C 2F</div>
+          </div>
+          <div class="entry-kcal">138</div>
+          <div class="entry-actions">
+            <div class="action-btn action-edit">✎</div>
+            <div class="action-btn action-delete">✕</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD SLOT -->
+    <div class="add-slot-btn">
+      <span style="font-size:16px;opacity:0.5">＋</span>
+      Add meal slot
+    </div>
+
+  </div>
+
+  <!-- PILL NAV -->
+  <div class="nav-wrap">
+    <div class="pill-nav">
+      <div class="nav-item"><div class="nav-icon-wrap">⊞</div><div class="nav-lbl">Home</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">◎</div><div class="nav-lbl">Body</div></div>
+      <div class="nav-log">
+        <div class="nav-log-icon">＋</div>
+        <div class="nav-log-lbl">Log</div>
+      </div>
+      <div class="nav-item"><div class="nav-icon-wrap">↗</div><div class="nav-lbl">Progress</div></div>
+      <div class="nav-item"><div class="nav-icon-wrap">⋯</div><div class="nav-lbl">More</div></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food Library Screen</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #060810; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 48px;
+  }
+  .page-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: #555; margin-bottom: 28px; text-align: center; }
+
+  .phone-shell {
+    width: 375px; min-height: 820px;
+    background: linear-gradient(162deg, #0d0818 0%, #0f0b1c 45%, #090a12 100%);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 40px 80px rgba(0,0,0,0.85), 0 0 100px rgba(139,92,246,0.07);
+    display: flex; flex-direction: column;
+  }
+  .orb-1 {
+    position: absolute; top: -80px; left: -60px; width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .status-bar { position: relative; z-index: 1; padding: 14px 24px 0; display: flex; justify-content: space-between; }
+  .status-time { font-size: 15px; font-weight: 600; color: #fff; }
+  .status-icons { font-size: 11px; color: rgba(255,255,255,0.4); display: flex; gap: 4px; }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    position: relative; z-index: 1;
+    padding: 14px 16px 0;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .back-btn {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: rgba(255,255,255,0.7); flex-shrink: 0;
+  }
+  .top-title-col { flex: 1; }
+  .top-title { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+  .top-sub { font-size: 11px; color: rgba(139,92,246,0.75); margin-top: 1px; font-weight: 600; }
+  .scan-btn {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+
+  /* ── SEARCH FIELD ── */
+  .search-wrap {
+    position: relative; z-index: 1;
+    padding: 12px 16px 0;
+  }
+  .search-field {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px; padding: 11px 14px 11px 40px;
+    font-size: 14px; color: rgba(255,255,255,0.5);
+    display: flex; align-items: center; position: relative;
+  }
+  .search-field.focused { border-color: rgba(139,92,246,0.45); background: rgba(139,92,246,0.07); }
+  .search-icon {
+    position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+    font-size: 15px; color: rgba(255,255,255,0.25); pointer-events: none;
+  }
+  .search-text { margin-left: 6px; }
+  .search-cursor { display: inline-block; width: 1.5px; height: 14px; background: #a78bfa; margin-left: 1px; vertical-align: middle; }
+
+  /* ── CATEGORY CHIPS ── */
+  .chips-row {
+    position: relative; z-index: 1;
+    padding: 10px 16px 0;
+    display: flex; gap: 6px; overflow-x: hidden;
+  }
+  .cat-chip {
+    padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+    font-size: 11px; font-weight: 600;
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+  }
+  .cat-chip.active {
+    background: rgba(139,92,246,0.20); color: #c4b5fd;
+    border-color: rgba(139,92,246,0.35);
+  }
+
+  /* ── ACTION BUTTONS ── */
+  .action-row {
+    position: relative; z-index: 1;
+    padding: 10px 16px 0;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .action-btn {
+    border-radius: 11px; padding: 9px 0;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .action-btn.primary {
+    background: rgba(139,92,246,0.18); border: 1px solid rgba(139,92,246,0.32); color: #c4b5fd;
+  }
+  .action-btn.secondary {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); color: rgba(255,255,255,0.45);
+  }
+
+  /* ── LIST CONTENT ── */
+  .list-content {
+    position: relative; z-index: 1;
+    flex: 1; padding: 12px 16px 20px;
+    display: flex; flex-direction: column; gap: 0; overflow: hidden;
+  }
+
+  /* section header */
+  .list-section-label {
+    font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    padding: 8px 0 6px;
+  }
+
+  /* food list card */
+  .food-list-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    margin-bottom: 8px;
+  }
+
+  /* food row */
+  .food-row {
+    display: flex; align-items: center; padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04); gap: 10px;
+  }
+  .food-row:last-child { border-bottom: none; }
+
+  .food-info { flex: 1; min-width: 0; }
+  .food-name {
+    font-size: 13px; font-weight: 600; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .food-macros { font-size: 10px; color: rgba(255,255,255,0.28); margin-top: 1px; }
+
+  .food-kcal {
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.40);
+    flex-shrink: 0; min-width: 36px; text-align: right;
+  }
+  .food-add {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: #8b5cf6; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #fff; font-weight: 300; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(139,92,246,0.4);
+  }
+
+  /* saved meal row — slightly different style */
+  .food-row.meal-row { background: rgba(139,92,246,0.04); }
+  .meal-tag {
+    font-size: 8px; font-weight: 700; color: rgba(139,92,246,0.7);
+    background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.2);
+    padding: 1px 6px; border-radius: 6px; margin-left: 6px; flex-shrink: 0;
+  }
+
+  /* ANNOTATIONS */
+  .annotations { width: 375px; margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+  .annotation { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.15); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.55); line-height: 1.5; display: flex; gap: 8px; }
+  .annotation-dot { width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6; flex-shrink: 0; margin-top: 5px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Screen 5 of 6 — Food Library</div>
+<div class="page-sub">Opened from "+ Add" on a meal slot. No bottom nav.</div>
+
+<div class="phone-shell">
+  <div class="orb-1"></div>
+
+  <div class="status-bar">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>▲▲▲</span><span>WiFi</span><span>▐▌</span></div>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="back-btn">←</div>
+    <div class="top-title-col">
+      <div class="top-title">Add to Breakfast</div>
+      <div class="top-sub">1,880 kcal remaining to zone</div>
+    </div>
+    <div class="scan-btn">📷</div>
+  </div>
+
+  <!-- SEARCH FIELD -->
+  <div class="search-wrap">
+    <div class="search-field focused">
+      <span style="color:rgba(255,255,255,0.25);font-size:15px;position:absolute;left:14px">🔍</span>
+      <span class="search-text" style="color:rgba(255,255,255,0.6)">chicken</span>
+      <span class="search-cursor"></span>
+    </div>
+  </div>
+
+  <!-- CATEGORY CHIPS -->
+  <div class="chips-row">
+    <div class="cat-chip active">All</div>
+    <div class="cat-chip">Proteins</div>
+    <div class="cat-chip">Carbs</div>
+    <div class="cat-chip">Saved Meals</div>
+    <div class="cat-chip">NEVO</div>
+  </div>
+
+  <!-- ACTION BUTTONS -->
+  <div class="action-row">
+    <div class="action-btn primary">＋ New food</div>
+    <div class="action-btn secondary">⚡ Quick add</div>
+  </div>
+
+  <!-- LIST -->
+  <div class="list-content">
+
+    <!-- Search results for "chicken" -->
+    <div class="list-section-label">Results for "chicken"</div>
+
+    <div class="food-list-card">
+
+      <div class="food-row">
+        <div class="food-info">
+          <div class="food-name">Chicken breast, cooked</div>
+          <div class="food-macros">per 100g · 31P 0C 3.6F</div>
+        </div>
+        <div class="food-kcal">165</div>
+        <div class="food-add">＋</div>
+      </div>
+
+      <div class="food-row meal-row">
+        <div class="food-info">
+          <div style="display:flex;align-items:center">
+            <div class="food-name">Chicken & Rice Bowl</div>
+            <div class="meal-tag">Meal</div>
+          </div>
+          <div class="food-macros">1 serving · 58P 44C 8F</div>
+        </div>
+        <div class="food-kcal">482</div>
+        <div class="food-add">＋</div>
+      </div>
+
+      <div class="food-row">
+        <div class="food-info">
+          <div class="food-name">Chicken thigh, skinless</div>
+          <div class="food-macros">per 100g · 24P 0C 8F</div>
+        </div>
+        <div class="food-kcal">177</div>
+        <div class="food-add">＋</div>
+      </div>
+
+      <div class="food-row">
+        <div class="food-info">
+          <div class="food-name">Chicken breast, raw</div>
+          <div class="food-macros">per 100g · 23P 0C 1.2F</div>
+        </div>
+        <div class="food-kcal">108</div>
+        <div class="food-add">＋</div>
+      </div>
+
+      <div class="food-row">
+        <div class="food-info">
+          <div class="food-name">Chicken mince</div>
+          <div class="food-macros">per 100g · 19P 0C 7F</div>
+        </div>
+        <div class="food-kcal">141</div>
+        <div class="food-add">＋</div>
+      </div>
+
+      <div class="food-row">
+        <div class="food-info">
+          <div class="food-name">Chicken soup (homemade)</div>
+          <div class="food-macros">per 100g · 5P 4C 2F</div>
+        </div>
+        <div class="food-kcal">56</div>
+        <div class="food-add">＋</div>
+      </div>
+
+    </div>
+
+    <!-- NEVO source label -->
+    <div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.15);margin-top:2px">
+      Results from NEVO + saved foods
+    </div>
+
+  </div>
+
+</div>
+
+<div class="annotations">
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Top bar</strong> — back button (rounded square), slot name + remaining kcal in violet, camera scan button (violet tint). No bottom pill nav — this is a full-screen destination pushed from the Food Log.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Search field</strong> — glass input with violet focus state. Full-width, prominent. Searching shows results live below.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Category chips</strong> — horizontal scrollable row: All, Proteins, Carbs, Saved Meals, NEVO, Open Food Facts. Same glass chip style as Progress range selector.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-dot"></div>
+    <div><strong style="color:#c4b5fd">Food rows</strong> — name + macro string + kcal + violet "+" button. Saved meals get a violet "Meal" tag and a slight violet tint on the row. Tapping the row opens an amount picker; tapping "+" adds at default amount.</div>
+  </div>
+</div>
+
+</body>
+</html>

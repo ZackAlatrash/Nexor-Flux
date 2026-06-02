@@ -108,10 +108,42 @@ _Date: 2026-06-02_
 
 - [x] Food / Today screen
 - [x] Body screen
-- [ ] Progress screen
+- [x] Progress screen
 - [ ] Food Library screen
 - [ ] Scanner screen
 - [ ] Settings / More screen
+
+---
+
+## Screen 4 — Progress ✅ LOCKED
+
+**Nav tab:** Progress (fourth item, right of Log button).
+
+### Range Selector
+- 3 equal-flex chips: 7d / 14d / 28d
+- Inactive: `rgba(255,255,255,0.05)` bg, `rgba(255,255,255,0.07)` border, 35% white text
+- Active: `rgba(139,92,246,0.20)` bg, `rgba(139,92,246,0.35)` border, `#c4b5fd` text
+- `border-radius: 10px`, `font-size: 12px / 700`
+
+### Section Labels
+- 9px / 700 / `rgba(255,255,255,0.25)` / uppercase / `letter-spacing: 0.14em`
+- 3 sections: **Body** · **Nutrition** · **Performance**
+
+### Chart Cards — Full Width (featured)
+Used for: Weight, Waist, Calories
+- Background: `rgba(139,92,246,0.07)` / border `rgba(139,92,246,0.20)` / `border-radius: 18px`
+- Glow: `0 0 30px rgba(139,92,246,0.08)`
+- Header: metric name (11px uppercase muted) + current value (26px/900 white) + trend (11px/700, violet=good, red=warn, muted=neutral)
+- SVG smooth area chart: violet gradient area fill + violet gradient line (1.8px) + glowing end dot
+- Calories chart includes dashed target zone band (same as Dashboard)
+
+### Chart Cards — 2-column Mini
+Used for: Protein+Carbs pair, Adherence+Lifts pair
+- Background: `rgba(255,255,255,0.04)` / border `rgba(255,255,255,0.07)` / `border-radius: 14px`
+- Metric name (9px), value (20px/900), trend, small SVG sparkline (36px tall)
+
+### Fat Chart
+- Full width but shorter height (44px SVG) — sits between pairs
 
 ---
 

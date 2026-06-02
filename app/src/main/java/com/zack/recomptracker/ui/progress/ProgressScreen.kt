@@ -35,8 +35,8 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.FeaturedCard
 import com.zack.recomptracker.ui.component.GlassSurfaceCard
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.SparklineChart
-import com.zack.recomptracker.ui.component.MiniSparkline
+import com.zack.recomptracker.ui.component.charts.SparklineChart
+import com.zack.recomptracker.ui.component.charts.MiniSparkline
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet400

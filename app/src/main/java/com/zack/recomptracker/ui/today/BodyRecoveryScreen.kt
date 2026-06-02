@@ -48,7 +48,7 @@ import com.zack.recomptracker.ui.body.BodyCheckInFormState
 import com.zack.recomptracker.ui.component.FeaturedCard
 import com.zack.recomptracker.ui.component.GlassButtonClickable
 import com.zack.recomptracker.ui.component.GlassSurfaceCard
-import com.zack.recomptracker.ui.component.SparklineChart
+import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.theme.FeaturedBorder
 import com.zack.recomptracker.ui.theme.FeaturedSurface

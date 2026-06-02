@@ -208,4 +208,44 @@ class BarcodeScannerViewModelTest {
         assertEquals(LogMode.GRAMS, state.logMode)
         assertEquals("75", state.amountInput)
     }
+
+    @Test
+    fun `confirmLog in SERVING mode scales macros by servings times servingGrams`() = runTest {
+        // servingGrams=30g, 200kcal/100g; 2 servings = 60g = 0.6 scale → 120 kcal
+        val product = BarcodeProduct("Oats", 200, 8.0, 30.0, 4.0, "1 serving", 30.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        whenever(logRepository.addMealToSlot(any(), any())).thenReturn(1L)
+        val vm = viewModel()
+        vm.init(slotId = null, slotName = "")
+        vm.onBarcodeDetected("oats123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onLogModeChanged(LogMode.SERVING)
+        vm.onAmountChanged("2")
+        vm.confirmLog()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.scanState is ScanState.Logged)
+        val captor = org.mockito.kotlin.argumentCaptor<com.zack.recomptracker.data.repository.MealEntryInput>()
+        org.mockito.kotlin.verify(logRepository).addMealToSlot(captor.capture(), org.mockito.kotlin.isNull())
+        assertEquals(120, captor.firstValue.calories)          // 200 * (60/100)
+        assertEquals(60.0, captor.firstValue.amountGrams!!, 0.01)
+    }
+
+    @Test
+    fun `confirmLog in SERVING mode shows error when result is below 1g`() = runTest {
+        val product = BarcodeProduct("Oats", 200, 8.0, 30.0, 4.0, "1 serving", 30.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        val vm = viewModel()
+        vm.onBarcodeDetected("oats123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onLogModeChanged(LogMode.SERVING)
+        vm.onAmountChanged("0")
+        vm.confirmLog()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.scanState is ScanState.ProductFound)
+        assertEquals("Enter a valid amount (min 1g).", vm.uiState.value.message)
+    }
 }

@@ -103,16 +103,27 @@ class BarcodeScannerViewModel(
         _uiState.update { it.copy(scanState = current.copy(logMode = mode, amountInput = convertedInput)) }
     }
 
+    private fun resolveGrams(productState: ScanState.ProductFound): Double? {
+        return when (productState.logMode) {
+            LogMode.GRAMS -> productState.amountInput.toDoubleOrNull()
+            LogMode.SERVING -> {
+                val servings = productState.amountInput.toDoubleOrNull()
+                val servingGrams = productState.product.servingGrams
+                if (servings != null && servingGrams != null) servings * servingGrams else null
+            }
+        }
+    }
+
     fun confirmLog() {
         val state = _uiState.value
         val productState = state.scanState as? ScanState.ProductFound ?: return
         val product = productState.product
-        val grams = productState.amountInput.toDoubleOrNull()
-        if (grams == null || grams < 1.0) {
+        val actualGrams = resolveGrams(productState)
+        if (actualGrams == null || actualGrams < 1.0) {
             _uiState.update { it.copy(message = "Enter a valid amount (min 1g).") }
             return
         }
-        val scale = grams / 100.0
+        val scale = actualGrams / 100.0
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
@@ -123,7 +134,7 @@ class BarcodeScannerViewModel(
                     proteinG = product.proteinPer100g * scale,
                     carbsG = product.carbsPer100g * scale,
                     fatG = product.fatPer100g * scale,
-                    amountGrams = grams,
+                    amountGrams = actualGrams,
                     basePer100Calories = product.caloriesPer100g,
                     basePer100ProteinG = product.proteinPer100g,
                     basePer100CarbsG = product.carbsPer100g,
@@ -144,12 +155,12 @@ class BarcodeScannerViewModel(
         val state = _uiState.value
         val productState = state.scanState as? ScanState.ProductFound ?: return
         val product = productState.product
-        val grams = productState.amountInput.toDoubleOrNull()
-        if (grams == null || grams < 1.0) {
+        val actualGrams = resolveGrams(productState)
+        if (actualGrams == null || actualGrams < 1.0) {
             _uiState.update { it.copy(message = "Enter a valid amount (min 1g).") }
             return
         }
-        val scale = grams / 100.0
+        val scale = actualGrams / 100.0
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
@@ -160,7 +171,7 @@ class BarcodeScannerViewModel(
                     proteinG = product.proteinPer100g * scale,
                     carbsG = product.carbsPer100g * scale,
                     fatG = product.fatPer100g * scale,
-                    amountGrams = grams,
+                    amountGrams = actualGrams,
                     basePer100Calories = product.caloriesPer100g,
                     basePer100ProteinG = product.proteinPer100g,
                     basePer100CarbsG = product.carbsPer100g,

@@ -158,4 +158,54 @@ class BarcodeScannerViewModelTest {
         assertTrue(vm.uiState.value.scanState is ScanState.ProductFound)
         assertEquals("Enter a valid amount (min 1g).", vm.uiState.value.message)
     }
+
+    @Test
+    fun `onLogModeChanged GRAMS to SERVING converts amount correctly`() = runTest {
+        // servingGrams = 30.0; starting at 150g → 150/30 = 5.0 → "5"
+        val product = BarcodeProduct("Test", 100, 10.0, 20.0, 5.0, "1 portion", 30.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        val vm = viewModel()
+        vm.onBarcodeDetected("abc")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onAmountChanged("150")
+        vm.onLogModeChanged(LogMode.SERVING)
+
+        val state = vm.uiState.value.scanState as ScanState.ProductFound
+        assertEquals(LogMode.SERVING, state.logMode)
+        assertEquals("5", state.amountInput)
+    }
+
+    @Test
+    fun `onLogModeChanged GRAMS to SERVING trims trailing zeros`() = runTest {
+        // servingGrams = 30.0; starting at 100g → 100/30 = 3.333... → "3.33"
+        val product = BarcodeProduct("Test", 100, 10.0, 20.0, 5.0, "1 portion", 30.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        val vm = viewModel()
+        vm.onBarcodeDetected("abc")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onLogModeChanged(LogMode.SERVING)
+
+        val state = vm.uiState.value.scanState as ScanState.ProductFound
+        assertEquals("3.33", state.amountInput)
+    }
+
+    @Test
+    fun `onLogModeChanged SERVING to GRAMS converts amount correctly`() = runTest {
+        // servingGrams = 30.0; starting at 2.5 servings → 2.5*30 = 75g → "75"
+        val product = BarcodeProduct("Test", 100, 10.0, 20.0, 5.0, "1 portion", 30.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        val vm = viewModel()
+        vm.onBarcodeDetected("abc")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onLogModeChanged(LogMode.SERVING)
+        vm.onAmountChanged("2.5")
+        vm.onLogModeChanged(LogMode.GRAMS)
+
+        val state = vm.uiState.value.scanState as ScanState.ProductFound
+        assertEquals(LogMode.GRAMS, state.logMode)
+        assertEquals("75", state.amountInput)
+    }
 }

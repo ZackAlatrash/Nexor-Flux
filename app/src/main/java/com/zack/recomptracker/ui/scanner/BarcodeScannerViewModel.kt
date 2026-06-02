@@ -81,6 +81,28 @@ class BarcodeScannerViewModel(
         _uiState.update { it.copy(scanState = current.copy(amountInput = grams)) }
     }
 
+    fun onLogModeChanged(mode: LogMode) {
+        val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
+        if (current.logMode == mode) return
+        val servingGrams = current.product.servingGrams ?: return
+
+        val convertedInput = when (mode) {
+            LogMode.SERVING -> {
+                val grams = current.amountInput.toDoubleOrNull()
+                if (grams != null && grams > 0) {
+                    "%.2f".format(java.util.Locale.US, grams / servingGrams).trimEnd('0').trimEnd('.')
+                } else "1"
+            }
+            LogMode.GRAMS -> {
+                val servings = current.amountInput.toDoubleOrNull()
+                if (servings != null && servings > 0) {
+                    (servings * servingGrams).toInt().toString()
+                } else "100"
+            }
+        }
+        _uiState.update { it.copy(scanState = current.copy(logMode = mode, amountInput = convertedInput)) }
+    }
+
     fun confirmLog() {
         val state = _uiState.value
         val productState = state.scanState as? ScanState.ProductFound ?: return

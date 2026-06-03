@@ -85,6 +85,7 @@ fun NeutralCard(
 @Composable
 fun FrostedCard(
     modifier: Modifier = Modifier,
+    contentPadding: androidx.compose.ui.unit.Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val surface = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -118,7 +119,7 @@ fun FrostedCard(
                 )
             }
             .border(1.dp, FrostedBorder, RoundedCornerShape(CornerCard))
-            .padding(16.dp),
+            .padding(contentPadding),
         content = content,
     )
 }
@@ -211,10 +212,6 @@ fun GlassButton(
                     listOf(NavLogStart, NavLogEnd),
                 ),
             )
-            .drawBehind {
-                // Button glow
-                drawRect(color = Color(0x00000000))
-            }
             .padding(vertical = 13.dp),
         contentAlignment = Alignment.Center,
     ) {

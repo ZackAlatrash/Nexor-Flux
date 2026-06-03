@@ -50,9 +50,6 @@ import com.zack.recomptracker.ui.component.GlassButtonClickable
 import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.FrostedBorder
-import com.zack.recomptracker.ui.theme.FrostedSurface
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
@@ -324,13 +321,7 @@ private fun InlineLogFormCard(
         state.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(CornerCard))
-            .background(FrostedSurface)
-            .border(1.dp, FrostedBorder, RoundedCornerShape(CornerCard)),
-    ) {
+    FrostedCard(contentPadding = 0.dp) {
         // Header
         Row(
             modifier = Modifier

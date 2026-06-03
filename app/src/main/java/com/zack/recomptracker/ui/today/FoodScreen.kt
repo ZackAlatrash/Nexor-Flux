@@ -58,12 +58,12 @@ import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.Violet400
 import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -197,27 +197,10 @@ fun FoodContent(
                 }
 
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp))
-                            .clickable { showAddSlotDialog = true }
-                            .padding(13.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("＋", fontSize = 16.sp, color = Color(0x80FFFFFF))
-                            Text(
-                                "Add meal slot",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextVeryMuted,
-                            )
-                        }
-                    }
+                    LiquidSecondaryButton(
+                        text = "+ Add meal slot",
+                        onClick = { showAddSlotDialog = true },
+                    )
                 }
 
                 item { Spacer(Modifier.height(8.dp)) }
@@ -456,15 +439,11 @@ private fun LockedSlotCard(
                     color = if (hasEntries) Violet400 else TextMuted,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(CornerSmall))
-                    .background(Violet500)
-                    .clickable(onClick = onAddClick)
-                    .padding(horizontal = 12.dp, vertical = 5.dp),
-            ) {
-                Text("＋ Add", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
+            LiquidActionButton(
+                text = "＋ Add",
+                onClick = onAddClick,
+                isPrimary = true,
+            )
         }
 
         if (hasEntries) {

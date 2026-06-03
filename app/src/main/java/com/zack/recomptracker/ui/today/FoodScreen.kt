@@ -443,6 +443,7 @@ private fun LockedSlotCard(
                 text = "＋ Add",
                 onClick = onAddClick,
                 isPrimary = true,
+                small = true,
             )
         }
 

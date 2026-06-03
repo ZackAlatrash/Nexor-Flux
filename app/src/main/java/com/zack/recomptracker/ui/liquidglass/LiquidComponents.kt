@@ -63,6 +63,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceAtMost
 import androidx.compose.ui.util.fastCoerceIn
@@ -361,6 +362,7 @@ fun LiquidButton(
     isInteractive: Boolean = true,
     tint: Color = Color.Unspecified,
     surfaceColor: Color = Color.Unspecified,
+    buttonHeight: Dp = 48.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
     val animationScope = rememberCoroutineScope()
@@ -378,21 +380,26 @@ fun LiquidButton(
                 },
                 layerBlock = if (isInteractive) {
                     {
-                        val progress = interactiveHighlight.pressProgress
-                        val scale = lerp(1f, 1f + 4f.dp.toPx() / size.height, progress)
+                        val h = size.height
+                        val w = size.width
+                        // Guard against zero size (first draw during animated enter/exit).
+                        if (h > 0f && w > 0f) {
+                            val progress = interactiveHighlight.pressProgress
+                            val scale = lerp(1f, 1f + 4f.dp.toPx() / h, progress)
 
-                        val maxOffset = size.minDimension
-                        val initialDerivative = 0.05f
-                        val off = interactiveHighlight.offset
-                        translationX = maxOffset * tanh(initialDerivative * off.x / maxOffset)
-                        translationY = maxOffset * tanh(initialDerivative * off.y / maxOffset)
+                            val maxOffset = size.minDimension
+                            val initialDerivative = 0.05f
+                            val off = interactiveHighlight.offset
+                            translationX = maxOffset * tanh(initialDerivative * off.x / maxOffset)
+                            translationY = maxOffset * tanh(initialDerivative * off.y / maxOffset)
 
-                        val maxDragScale = 4f.dp.toPx() / size.height
-                        val offsetAngle = atan2(off.y, off.x)
-                        scaleX = scale + maxDragScale * abs(cos(offsetAngle) * off.x / size.maxDimension) *
-                                (size.width / size.height).fastCoerceAtMost(1f)
-                        scaleY = scale + maxDragScale * abs(sin(offsetAngle) * off.y / size.maxDimension) *
-                                (size.height / size.width).fastCoerceAtMost(1f)
+                            val maxDragScale = 4f.dp.toPx() / h
+                            val offsetAngle = atan2(off.y, off.x)
+                            scaleX = scale + maxDragScale * abs(cos(offsetAngle) * off.x / size.maxDimension) *
+                                    (w / h).fastCoerceAtMost(1f)
+                            scaleY = scale + maxDragScale * abs(sin(offsetAngle) * off.y / size.maxDimension) *
+                                    (h / w).fastCoerceAtMost(1f)
+                        }
                     }
                 } else null,
                 onDrawSurface = {
@@ -415,7 +422,7 @@ fun LiquidButton(
                     .then(interactiveHighlight.gestureModifier)
                 else Modifier
             )
-            .height(48.dp)
+            .height(buttonHeight)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
@@ -717,6 +724,7 @@ fun LiquidGlassButton(
     enabled: Boolean = true,
     tint: Color = Color.Unspecified,
     surfaceColor: Color = Color.White.copy(alpha = 0.14f),
+    buttonHeight: Dp = 48.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
     LiquidButton(
@@ -726,6 +734,7 @@ fun LiquidGlassButton(
         isInteractive = enabled,
         tint = tint,
         surfaceColor = surfaceColor,
+        buttonHeight = buttonHeight,
         content = content,
     )
 }
@@ -824,6 +833,7 @@ fun LiquidActionButton(
     modifier: Modifier = Modifier,
     isPrimary: Boolean = false,
     enabled: Boolean = true,
+    small: Boolean = false,
 ) {
     LiquidGlassButton(
         onClick = onClick,
@@ -831,6 +841,7 @@ fun LiquidActionButton(
         enabled = enabled,
         tint = if (isPrimary) Color(0xFF8B5CF6) else Color.Unspecified,
         surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.14f),
+        buttonHeight = if (small) 32.dp else 48.dp,
     ) {
         Text(
             text = text,

@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.zack.recomptracker"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.zack.recomptracker"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
 
@@ -61,7 +61,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.barcode.scanning)
-    implementation(libs.liquid.glass)
+    implementation(libs.backdrop)
+    implementation(libs.kyant.shapes)
 
     ksp(libs.androidx.room.compiler)
 

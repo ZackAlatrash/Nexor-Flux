@@ -12,7 +12,8 @@ room = "2.8.4"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 vico = "3.1.0"
-liquid = "1.1.1"
+backdrop = "2.0.0"
+kyantShapes = "1.2.0"
 healthConnect = "1.1.0-rc01"
 camerax = "1.4.1"
 mlkitBarcode = "17.3.0"
@@ -42,7 +43,8 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
-liquid-glass = { group = "io.github.fletchmckee.liquid", name = "liquid", version.ref = "liquid" }
+backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
+kyant-shapes = { group = "io.github.kyant0", name = "shapes", version.ref = "kyantShapes" }
 androidx-health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }

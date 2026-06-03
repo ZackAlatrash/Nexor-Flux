@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.component
 
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -46,8 +48,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
+import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.FeaturedBorder
 import com.zack.recomptracker.ui.theme.FeaturedSurface
+import com.zack.recomptracker.ui.theme.FrostedBorder
+import com.zack.recomptracker.ui.theme.FrostedSurface
+import com.zack.recomptracker.ui.theme.FrostedSurfaceFallback
 import com.zack.recomptracker.ui.theme.NavLogEnd
 import com.zack.recomptracker.ui.theme.NavLogStart
 import com.zack.recomptracker.ui.theme.TextFaint
@@ -55,6 +61,101 @@ import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
 import com.zack.recomptracker.ui.theme.Violet500
+
+// ── Neutral Card (workhorse — list rows, menus, form containers) ──────────────
+
+@Composable
+fun NeutralCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerCard))
+            .background(CardSurface)
+            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .padding(16.dp),
+        content = content,
+    )
+}
+
+// ── Frosted Card (M3 Expressive — primary data cards, featured charts) ────────
+
+@Composable
+fun FrostedCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val surface = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        FrostedSurface
+    } else {
+        FrostedSurfaceFallback
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerCard))
+            .drawBehind {
+                // Dark frosted fill
+                drawRect(color = surface)
+                // Top-edge catchlight — the glass shimmer
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color(0x4CFFFFFF),
+                            Color(0x4CFFFFFF),
+                            Color.Transparent,
+                        ),
+                        startX = size.width * 0.12f,
+                        endX   = size.width * 0.88f,
+                    ),
+                    start       = Offset(0f, 0.75f),
+                    end         = Offset(size.width, 0.75f),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+            .border(1.dp, FrostedBorder, RoundedCornerShape(CornerCard))
+            .padding(16.dp),
+        content = content,
+    )
+}
+
+// ── Tinted Card (reserved — AI features only, zero call sites) ────────────────
+
+@Composable
+fun TintedCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerCard))
+            .drawBehind {
+                drawRect(color = FeaturedSurface)
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            FeaturedBorder,
+                            FeaturedBorder,
+                            Color.Transparent,
+                        ),
+                        startX = size.width * 0.10f,
+                        endX   = size.width * 0.90f,
+                    ),
+                    start       = Offset(0f, 0.75f),
+                    end         = Offset(size.width, 0.75f),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+            .border(1.dp, FeaturedBorder, RoundedCornerShape(CornerCard))
+            .padding(16.dp),
+        content = content,
+    )
+}
 
 // ── Featured Card (violet-tinted) ────────────────────────────────────────────
 

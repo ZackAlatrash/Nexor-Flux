@@ -37,6 +37,7 @@ import androidx.navigation.compose.rememberNavController
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.zack.recomptracker.core.AppContainer
+import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTab
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTabs
 import com.zack.recomptracker.ui.navigation.AppNavGraph
@@ -96,6 +97,7 @@ fun RecompApp(container: AppContainer) {
         CompositionLocalProvider(
             LocalAppContainer provides container,
             LocalSnackbarHostState provides snackbarHostState,
+            LocalBackdrop provides backdrop,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
 

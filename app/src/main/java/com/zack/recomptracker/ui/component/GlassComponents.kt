@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -46,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -54,8 +53,6 @@ import com.zack.recomptracker.ui.theme.TintedSurface
 import com.zack.recomptracker.ui.theme.FrostedBorder
 import com.zack.recomptracker.ui.theme.FrostedSurface
 import com.zack.recomptracker.ui.theme.FrostedSurfaceFallback
-import com.zack.recomptracker.ui.theme.NavLogEnd
-import com.zack.recomptracker.ui.theme.NavLogStart
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
@@ -195,76 +192,6 @@ fun VioletBadge(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-// ── Violet Gradient Button ────────────────────────────────────────────────────
-
-@Composable
-fun GlassButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(NavLogStart, NavLogEnd),
-                ),
-            )
-            .padding(vertical = 13.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
-        )
-    }
-}
-
-// Clickable version using Modifier.clickable isn't available here without
-// additional setup — the caller wraps GlassButton in a clickable Box or uses
-// a Button with custom colors instead. We expose a helper for that:
-
-@Composable
-fun GlassButtonClickable(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    androidx.compose.material3.Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = Color.White,
-        ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(listOf(NavLogStart, NavLogEnd)),
-                    RoundedCornerShape(12.dp),
-                )
-                .padding(vertical = 13.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = text,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-            )
-        }
-    }
-}
 
 // ── Glass Input Field ─────────────────────────────────────────────────────────
 
@@ -489,9 +416,11 @@ fun ScoreStepper(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            StepButton(symbol = "−", enabled = value > range.first) {
-                onValueChange((value - 1).coerceAtLeast(range.first))
-            }
+            LiquidStepButton(
+                symbol = "−",
+                enabled = value > range.first,
+                onClick = { onValueChange((value - 1).coerceAtLeast(range.first)) },
+            )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -507,37 +436,15 @@ fun ScoreStepper(
                     color = Violet400,
                 )
             }
-            StepButton(symbol = "+", enabled = value < range.last) {
-                onValueChange((value + 1).coerceAtMost(range.last))
-            }
+            LiquidStepButton(
+                symbol = "+",
+                enabled = value < range.last,
+                onClick = { onValueChange((value + 1).coerceAtMost(range.last)) },
+            )
         }
     }
 }
 
-@Composable
-private fun StepButton(symbol: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .clip(CircleShape)
-            .background(Color(0x0FFFFFFF))
-            .border(1.dp, Color(0x1AFFFFFF), CircleShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = symbol,
-            fontSize = 16.sp,
-            color = if (enabled) Color(0x80FFFFFF) else Color(0x28FFFFFF),
-            lineHeight = 16.sp,
-        )
-    }
-}
 
 // ── Ambient Orb Helper ────────────────────────────────────────────────────────
 

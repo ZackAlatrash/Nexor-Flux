@@ -46,7 +46,6 @@ import com.zack.recomptracker.ui.body.BodyCheckInFormActions
 import com.zack.recomptracker.ui.body.BodyCheckInFormContent
 import com.zack.recomptracker.ui.body.BodyCheckInFormState
 import com.zack.recomptracker.ui.component.FrostedCard
-import com.zack.recomptracker.ui.component.GlassButtonClickable
 import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.SectionLabel

@@ -22,12 +22,13 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -140,59 +141,47 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         }
         item {
             SectionCard("Backup") {
-                Button(
+                LiquidPrimaryButton(
+                    text = "Export JSON backup",
                     onClick = { exportLauncher.launch("recomp-tracker-${LocalDate.now()}.json") },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Export JSON backup")
-                }
-                OutlinedButton(
+                )
+                LiquidSecondaryButton(
+                    text = "Import JSON backup",
                     onClick = { showImportConfirm = true },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Import JSON backup")
-                }
-                OutlinedButton(
+                )
+                LiquidSecondaryButton(
+                    text = "Export personal foods JSON",
                     onClick = { personalFoodsExportLauncher.launch("recomp-tracker-personal-foods-${LocalDate.now()}.json") },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Export personal foods JSON")
-                }
-                OutlinedButton(
+                )
+                LiquidSecondaryButton(
+                    text = "Import personal foods JSON",
                     onClick = { personalFoodsImportLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Import personal foods JSON")
-                }
+                )
             }
         }
         item {
             SectionCard("Dutch food catalog") {
                 Text("Import an official NEVO CSV export downloaded after accepting RIVM's conditions.")
-                Button(
+                LiquidPrimaryButton(
+                    text = if (state.nevoSourceVersion == null) "Import NEVO CSV" else "Replace NEVO CSV",
                     onClick = { nevoImportLauncher.launch(arrayOf("text/csv", "text/*", "*/*")) },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (state.nevoSourceVersion == null) "Import NEVO CSV" else "Replace NEVO CSV")
-                }
+                )
                 if (state.nevoSourceVersion != null) {
                     Text(
                         "Based on data from NEVO online version ${state.nevoSourceVersion}, RIVM, Bilthoven",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OutlinedButton(
+                    LiquidSecondaryButton(
+                        text = "Remove NEVO catalog",
                         onClick = { showRemoveNevoConfirm = true },
                         enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Remove NEVO catalog")
-                    }
+                    )
                 }
             }
         }
@@ -206,7 +195,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Button(
+                LiquidGlassButton(
                     onClick = { samsungFoodExportLauncher.launch(arrayOf("*/*")) },
                     enabled = !state.historicalFoodBusy,
                     modifier = Modifier.fillMaxWidth(),
@@ -244,20 +233,16 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         }
         item {
             SectionCard("Reset") {
-                OutlinedButton(
+                LiquidSecondaryButton(
+                    text = "Reset logs only",
                     onClick = { showResetLogsConfirm = true },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Reset logs only")
-                }
-                OutlinedButton(
+                )
+                LiquidSecondaryButton(
+                    text = "Reset all local data",
                     onClick = { showResetAllConfirm = true },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Reset all local data")
-                }
+                )
             }
         }
         item {
@@ -371,7 +356,7 @@ private fun HealthConnectSection(
                     dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     text = "Health Connect isn't installed on this device.",
                 )
-                Button(
+                LiquidGlassButton(
                     onClick = onInstall,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -404,17 +389,13 @@ private fun HealthConnectSection(
                 }
                 StatusRow(dotColor = dotColor, text = statusText)
                 if (enabled && hasPermissions) {
-                    Button(
+                    LiquidGlassButton(
                         onClick = onSyncNow,
                         enabled = !syncing,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (syncing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(8.dp))
                             Text("Syncing…")
                         } else {
@@ -424,13 +405,11 @@ private fun HealthConnectSection(
                         }
                     }
                 }
-                OutlinedButton(
+                LiquidSecondaryButton(
+                    text = if (importingFoods) "Scanning food history…" else "Import foods from Health Connect",
                     onClick = onImportFoods,
                     enabled = !importingFoods,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (importingFoods) "Scanning food history…" else "Import foods from Health Connect")
-                }
+                )
             }
         }
 

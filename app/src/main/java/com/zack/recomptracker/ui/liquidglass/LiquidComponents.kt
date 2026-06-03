@@ -33,11 +33,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -680,6 +688,146 @@ fun LiquidToggle(
                     }
                 )
                 .size(40.dp, 24.dp)
+        )
+    }
+}
+
+// ── Backdrop CompositionLocal ─────────────────────────────────────────────────
+
+private object EmptyBackdrop : Backdrop {
+    override val isCoordinatesDependent: Boolean = false
+    override fun DrawScope.drawBackdrop(
+        density: Density,
+        coordinates: LayoutCoordinates?,
+        layerBlock: (GraphicsLayerScope.() -> Unit)?
+    ) = Unit
+}
+
+// Expose the app-level backdrop so all glass buttons read from it automatically.
+// Updating the background source at the app root is enough to change the blur
+// content — no plumbing changes needed per screen.
+val LocalBackdrop = staticCompositionLocalOf<Backdrop> { EmptyBackdrop }
+
+// ── LiquidGlassButton (flexible base) ────────────────────────────────────────
+
+@Composable
+fun LiquidGlassButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    surfaceColor: Color = Color.White.copy(alpha = 0.10f),
+    content: @Composable RowScope.() -> Unit,
+) {
+    LiquidButton(
+        onClick = { if (enabled) onClick() },
+        backdrop = LocalBackdrop.current,
+        modifier = modifier.then(if (!enabled) Modifier.alpha(0.38f) else Modifier),
+        isInteractive = enabled,
+        surfaceColor = surfaceColor,
+        content = content,
+    )
+}
+
+// ── LiquidPrimaryButton ───────────────────────────────────────────────────────
+
+@Composable
+fun LiquidPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    LiquidGlassButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        surfaceColor = Color.White.copy(alpha = 0.10f),
+    ) {
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+    }
+}
+
+// ── LiquidSecondaryButton ─────────────────────────────────────────────────────
+
+@Composable
+fun LiquidSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    LiquidGlassButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        surfaceColor = Color.White.copy(alpha = 0.05f),
+    ) {
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.85f))
+    }
+}
+
+// ── LiquidStepButton ──────────────────────────────────────────────────────────
+
+@Composable
+fun LiquidStepButton(
+    symbol: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val backdrop = LocalBackdrop.current
+    val animationScope = rememberCoroutineScope()
+    val highlight = remember(animationScope) { InteractiveHighlight(animationScope) }
+
+    Box(
+        modifier
+            .size(32.dp)
+            .then(if (!enabled) Modifier.alpha(0.35f) else Modifier)
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { Capsule() },
+                effects = {
+                    vibrancy()
+                    blur(4.dp.toPx())
+                },
+                onDrawSurface = { drawRect(Color.White.copy(alpha = 0.10f)) }
+            )
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .then(if (enabled) highlight.modifier.then(highlight.gestureModifier) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = symbol, fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
+    }
+}
+
+// ── LiquidActionButton ────────────────────────────────────────────────────────
+
+// Compact (not full-width) glass button for inline action pairs, e.g.
+// "Add / Cancel" in list rows. isPrimary gives a subtle violet accent.
+@Composable
+fun LiquidActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isPrimary: Boolean = false,
+    enabled: Boolean = true,
+) {
+    LiquidGlassButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        surfaceColor = if (isPrimary) Color(0x1A8B5CF6) else Color.White.copy(alpha = 0.06f),
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (isPrimary) Color(0xFFc4b5fd) else Color.White.copy(alpha = 0.85f),
         )
     }
 }

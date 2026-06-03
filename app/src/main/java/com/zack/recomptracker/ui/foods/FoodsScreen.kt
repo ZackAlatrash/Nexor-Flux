@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -71,9 +71,7 @@ fun FoodsScreen(viewModel: FoodsViewModel) {
                     onCarbs = viewModel::updateFoodCarbs,
                     onFat = viewModel::updateFoodFat,
                 )
-                Button(onClick = viewModel::saveFood, modifier = Modifier.fillMaxWidth()) {
-                    Text("Save food")
-                }
+                LiquidPrimaryButton(text = "Save food", onClick = viewModel::saveFood)
             }
         }
         item {
@@ -96,9 +94,7 @@ fun FoodsScreen(viewModel: FoodsViewModel) {
                     onCarbs = viewModel::updateMealCarbs,
                     onFat = viewModel::updateMealFat,
                 )
-                Button(onClick = viewModel::saveMeal, modifier = Modifier.fillMaxWidth()) {
-                    Text("Save meal")
-                }
+                LiquidPrimaryButton(text = "Save meal", onClick = viewModel::saveMeal)
             }
         }
         item {

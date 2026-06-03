@@ -65,7 +65,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.ui.LocalSnackbarHostState
-import com.zack.recomptracker.ui.component.GlassButtonClickable
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -499,30 +500,12 @@ private fun GlassActionButton(
     isPrimary: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(CornerSmall))
-            .background(if (isPrimary) Color(0x2E8B5CF6) else Color(0x0DFFFFFF))
-            .border(
-                1.dp,
-                if (isPrimary) Color(0x528B5CF6) else Color(0x17FFFFFF),
-                RoundedCornerShape(CornerSmall),
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(vertical = 9.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isPrimary) Violet300 else Color(0x73FFFFFF),
-        )
-    }
+    LiquidActionButton(
+        text = text,
+        onClick = onClick,
+        isPrimary = isPrimary,
+        modifier = modifier,
+    )
 }
 
 // ── Glass Food Row ────────────────────────────────────────────────────────────
@@ -770,7 +753,7 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                 AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
             }
             MessageText(state.message, state.messageKind)
-            GlassButtonClickable(
+            LiquidPrimaryButton(
                 text = if (state.editingEntryId == null) {
                     if (state.slotId != null) "Add to ${state.slotName}" else "Add"
                 } else "Save",
@@ -904,7 +887,7 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
                 NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
             }
             MessageText(state.message, state.messageKind)
-            GlassButtonClickable(
+            LiquidPrimaryButton(
                 text = if (state.editingFoodId != null) "Update food" else "Save food",
                 onClick = viewModel::saveNewFood,
             )
@@ -945,7 +928,7 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
                 NumberField("Fat", state.quickAddFat, viewModel::onQuickAddFatChanged, Modifier.weight(1f), "g")
             }
             MessageText(state.message, state.messageKind)
-            GlassButtonClickable(text = "Add", onClick = viewModel::confirmQuickAdd)
+            LiquidPrimaryButton(text = "Add", onClick = viewModel::confirmQuickAdd)
         }
     }
 }

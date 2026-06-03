@@ -26,14 +26,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -121,9 +122,10 @@ fun BarcodeScannerScreen(
                         "Camera permission is required to scan barcodes.",
                         color = Color.White,
                     )
-                    Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
-                    }
+                    LiquidPrimaryButton(
+                        text = "Grant Permission",
+                        onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    )
                 }
             }
         }
@@ -256,7 +258,7 @@ private fun ScanErrorOverlay(message: String, onRetry: () -> Unit) {
             modifier = Modifier.padding(24.dp),
         ) {
             Text(message, color = Color.White, fontWeight = FontWeight.SemiBold)
-            Button(onClick = onRetry) { Text("Scan Again") }
+            LiquidPrimaryButton(text = "Scan Again", onClick = onRetry)
         }
     }
 }
@@ -324,16 +326,10 @@ private fun ProductFoundSheet(
             singleLine = true,
         )
         MessageText(message, MessageKind.ERROR)
-        Button(onClick = onLogAndSave, modifier = Modifier.fillMaxWidth()) {
-            Text("Log & Save to Library")
-        }
+        LiquidPrimaryButton(text = "Log & Save to Library", onClick = onLogAndSave)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onLogOnly, modifier = Modifier.weight(1f)) {
-                Text("Log Only", fontSize = 12.sp)
-            }
-            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
-                Text("Cancel", fontSize = 12.sp)
-            }
+            LiquidSecondaryButton(text = "Log Only", onClick = onLogOnly, modifier = Modifier.weight(1f))
+            LiquidSecondaryButton(text = "Cancel", onClick = onCancel, modifier = Modifier.weight(1f))
         }
     }
 }

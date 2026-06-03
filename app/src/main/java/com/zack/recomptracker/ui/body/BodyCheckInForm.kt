@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.zack.recomptracker.ui.component.GlassButtonClickable
 import com.zack.recomptracker.ui.component.GlassInputField
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.component.GlassTextArea
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.ScoreStepper
@@ -132,6 +132,6 @@ fun BodyCheckInFormContent(
             minLines = 2,
         )
 
-        GlassButtonClickable(text = saveLabel, onClick = actions.onSave)
+        LiquidPrimaryButton(text = saveLabel, onClick = actions.onSave)
     }
 }

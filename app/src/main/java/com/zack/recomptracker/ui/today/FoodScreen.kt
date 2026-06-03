@@ -50,11 +50,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
-import com.zack.recomptracker.ui.component.CalorieProgressBar
+import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.NumberField
+import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
+import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
@@ -288,14 +291,7 @@ private fun NutritionStrip(state: TodayUiState) {
         else     -> " kcal · ${zoneLow - cal} to zone"
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-    ) {
+    FrostedCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -440,9 +436,9 @@ private fun LockedSlotCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(CornerCard))
             .background(cardBg)
-            .border(1.dp, cardBorder, RoundedCornerShape(16.dp)),
+            .border(1.dp, cardBorder, RoundedCornerShape(CornerCard)),
     ) {
         // Slot header
         Row(
@@ -469,7 +465,7 @@ private fun LockedSlotCard(
             }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(CornerSmall))
                     .background(Violet500)
                     .clickable(onClick = onAddClick)
                     .padding(horizontal = 12.dp, vertical = 5.dp),
@@ -685,9 +681,9 @@ private fun EditModeSlotCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(CornerCard))
             .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

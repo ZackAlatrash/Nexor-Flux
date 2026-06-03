@@ -160,47 +160,6 @@ fun TintedCard(
     )
 }
 
-// ── Featured Card (violet-tinted) ────────────────────────────────────────────
-
-@Composable
-fun FeaturedCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .drawBehind {
-                // Ambient glow
-                drawRect(color = Color(0x1E8B5CF6))
-            }
-            .background(FeaturedSurface)
-            .border(1.dp, FeaturedBorder, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        content = content,
-    )
-}
-
-// ── Surface Card (neutral glass) ──────────────────────────────────────────────
-
-@Composable
-fun GlassSurfaceCard(
-    modifier: Modifier = Modifier,
-    cornerRadius: Int = 16,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(cornerRadius.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(cornerRadius.dp))
-            .padding(16.dp),
-        content = content,
-    )
-}
-
 // ── Section Label ─────────────────────────────────────────────────────────────
 
 @Composable

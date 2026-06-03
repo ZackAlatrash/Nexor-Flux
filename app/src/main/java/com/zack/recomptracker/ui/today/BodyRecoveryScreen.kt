@@ -45,13 +45,14 @@ import com.zack.recomptracker.ui.LocalSnackbarHostState
 import com.zack.recomptracker.ui.body.BodyCheckInFormActions
 import com.zack.recomptracker.ui.body.BodyCheckInFormContent
 import com.zack.recomptracker.ui.body.BodyCheckInFormState
-import com.zack.recomptracker.ui.component.FeaturedCard
+import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.GlassButtonClickable
-import com.zack.recomptracker.ui.component.GlassSurfaceCard
+import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.theme.FeaturedBorder
-import com.zack.recomptracker.ui.theme.FeaturedSurface
+import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.FrostedBorder
+import com.zack.recomptracker.ui.theme.FrostedSurface
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
@@ -189,7 +190,7 @@ private fun MetricsHeroCard(state: TodayUiState) {
 
     val showSparklines = state.weightSparkline14d.isNotEmpty() || state.waistSparkline14d.isNotEmpty()
 
-    FeaturedCard {
+    FrostedCard {
         Text(
             text = checkInLabel,
             fontSize = 9.sp,
@@ -326,9 +327,9 @@ private fun InlineLogFormCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color(0x0F8B5CF6))
-            .border(1.dp, Color(0x478B5CF6), RoundedCornerShape(18.dp)),
+            .clip(RoundedCornerShape(CornerCard))
+            .background(FrostedSurface)
+            .border(1.dp, FrostedBorder, RoundedCornerShape(CornerCard)),
     ) {
         // Header
         Row(
@@ -393,13 +394,12 @@ private fun InlineLogFormCard(
 
 @Composable
 private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
-    GlassSurfaceCard(
+    NeutralCard(
         modifier = Modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
             onClick = onClick,
         ),
-        cornerRadius = 14,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

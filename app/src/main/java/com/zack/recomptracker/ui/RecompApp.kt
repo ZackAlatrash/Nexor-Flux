@@ -113,7 +113,7 @@ fun RecompApp(container: AppContainer) {
             ) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    containerColor = Color.Transparent,
+                    containerColor = Color.Transparent, // load-bearing: Liquid Glass samples through this
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                 ) { innerPadding ->
                     AppNavGraph(

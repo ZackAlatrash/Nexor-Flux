@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
@@ -37,8 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -58,10 +57,15 @@ import com.zack.recomptracker.ui.navigation.TopLevelDestination
 import com.zack.recomptracker.ui.theme.BgDeep
 import com.zack.recomptracker.ui.theme.BgDark
 import com.zack.recomptracker.ui.theme.BgMid
+import com.zack.recomptracker.ui.theme.CornerPill
 import com.zack.recomptracker.ui.theme.NavLogEnd
 import com.zack.recomptracker.ui.theme.NavLogStart
 import com.zack.recomptracker.ui.theme.RecompTrackerTheme
 import com.zack.recomptracker.ui.theme.Violet300
+import io.github.fletchmckee.liquid.LiquidState
+import io.github.fletchmckee.liquid.liquefiable
+import io.github.fletchmckee.liquid.liquid
+import io.github.fletchmckee.liquid.rememberLiquidState
 
 val LocalAppContainer = compositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
@@ -87,6 +91,7 @@ fun RecompApp(container: AppContainer) {
         val navController = rememberNavController()
         val snackbarHostState = remember { SnackbarHostState() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+        val liquidState = rememberLiquidState()
 
         CompositionLocalProvider(
             LocalAppContainer provides container,
@@ -103,7 +108,8 @@ fun RecompApp(container: AppContainer) {
                                 1f    to BgDark,
                             ),
                         ),
-                    ),
+                    )
+                    .liquefiable(liquidState),
             ) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -125,6 +131,7 @@ fun RecompApp(container: AppContainer) {
                     ) {
                         CompactPillNav(
                             currentRoute = currentRoute,
+                            liquidState  = liquidState,
                             onNavigate = { route ->
                                 navController.navigate(route) {
                                     popUpTo(TopLevelDestination.Home.route) { saveState = true }
@@ -148,20 +155,19 @@ fun RecompApp(container: AppContainer) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compact Pill Navigation — iOS tab bar aesthetic
+// Compact Pill Navigation — Liquid Glass aesthetic
 //
-// Design principles (from Apple HIG):
-//  • ~49dp effective content height — same as iOS standard tab bar
-//  • 20dp corner radius — tight pill, not a puffy capsule
-//  • Single 1px top-edge catchlight as the primary glass detail
-//  • Dark material fill (~80 % opacity) — no heavy gradient stacking
-//  • Minimal border (15 % white) — lets the shadow do the edge work
+// Design principles:
+//  • Full semicircle ends (CornerPill = 100.dp) — true capsule shape
+//  • Liquid Glass effect via FletchMcKee/liquid library
+//  • liquefiable() on the root background Box; liquid() on the pill Row
 //  • Icons 20dp / labels 10sp / 2dp gap — compact, Apple-tight
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun CompactPillNav(
     currentRoute: String?,
+    liquidState: LiquidState,
     onNavigate: (String) -> Unit,
     onLogClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -169,67 +175,12 @@ private fun CompactPillNav(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            // 16dp side margins, 16dp bottom lift — keeps it tight like iOS
+            // 16dp side margins, 16dp bottom lift
             .padding(horizontal = 16.dp, vertical = 16.dp)
-            .drawBehind {
-                // 20dp radius — refined pill, not a puffy sausage
-                val r = 20.dp.toPx()
-
-                // ── Shadow — subtle, violet-tinted ────────────────────────────
-                drawIntoCanvas { canvas ->
-                    val shadowPaint = android.graphics.Paint().apply {
-                        isAntiAlias = true
-                        color       = android.graphics.Color.argb(80, 2, 0, 18)
-                        maskFilter  = BlurMaskFilter(20.dp.toPx(), BlurMaskFilter.Blur.NORMAL)
-                    }
-                    canvas.nativeCanvas.drawRoundRect(
-                        6.dp.toPx(), 8.dp.toPx(),
-                        size.width - 6.dp.toPx(), size.height + 4.dp.toPx(),
-                        r, r, shadowPaint,
-                    )
-                }
-
-                // ── Material fill — dark, clean, 82 % opacity (iOS .systemChromeMaterial) ──
-                drawRoundRect(
-                    color        = Color(0xD10A061A),
-                    cornerRadius = CornerRadius(r),
-                )
-
-                // ── Very subtle top luminance wash ────────────────────────────
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0x12FFFFFF), Color(0x00FFFFFF)),
-                        endY   = size.height * 0.40f,
-                    ),
-                    cornerRadius = CornerRadius(r),
-                )
-
-                // ── Border — 15 % white, iOS standard outline ─────────────────
-                drawRoundRect(
-                    color        = Color(0x26FFFFFF),
-                    cornerRadius = CornerRadius(r),
-                    style        = Stroke(0.7.dp.toPx()),
-                )
-
-                // ── Top-edge catchlight — the primary glass detail ────────────
-                // One crisp 1dp bright line across the top of the pill.
-                // Apple's UIVisualEffectView produces exactly this artifact.
-                drawLine(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color(0x66FFFFFF),
-                            Color(0x80FFFFFF),
-                            Color(0x66FFFFFF),
-                            Color.Transparent,
-                        ),
-                        startX = r,
-                        endX   = size.width - r,
-                    ),
-                    start       = Offset(r, 0.75.dp.toPx()),
-                    end         = Offset(size.width - r, 0.75.dp.toPx()),
-                    strokeWidth = 1.dp.toPx(),
-                )
+            .liquid(liquidState) {
+                shape = RoundedCornerShape(CornerPill)
+                frost = 12.dp
+                edge  = 0.6f
             }
             // Inner horizontal padding; vertical settled by item padding below
             .padding(horizontal = 2.dp),

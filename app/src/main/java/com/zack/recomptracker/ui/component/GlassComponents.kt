@@ -100,6 +100,7 @@ fun FrostedCard(
                 // Dark frosted fill
                 drawRect(color = surface)
                 // Top-edge catchlight — the glass shimmer
+                val shimmerY = 1.dp.toPx() / 2f
                 drawLine(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
@@ -111,8 +112,8 @@ fun FrostedCard(
                         startX = size.width * 0.12f,
                         endX   = size.width * 0.88f,
                     ),
-                    start       = Offset(0f, 0.75f),
-                    end         = Offset(size.width, 0.75f),
+                    start       = Offset(0f, shimmerY),
+                    end         = Offset(size.width, shimmerY),
                     strokeWidth = 1.dp.toPx(),
                 )
             }
@@ -135,10 +136,12 @@ fun TintedCard(
             .clip(RoundedCornerShape(CornerCard))
             .drawBehind {
                 drawRect(color = FeaturedSurface)
+                val shimmerY = 1.dp.toPx() / 2f
                 drawLine(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
+                            // violet shimmer — intentional for the branded AI tier
                             FeaturedBorder,
                             FeaturedBorder,
                             Color.Transparent,
@@ -146,8 +149,8 @@ fun TintedCard(
                         startX = size.width * 0.10f,
                         endX   = size.width * 0.90f,
                     ),
-                    start       = Offset(0f, 0.75f),
-                    end         = Offset(size.width, 0.75f),
+                    start       = Offset(0f, shimmerY),
+                    end         = Offset(size.width, shimmerY),
                     strokeWidth = 1.dp.toPx(),
                 )
             }

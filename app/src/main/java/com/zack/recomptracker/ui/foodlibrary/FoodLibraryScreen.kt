@@ -70,6 +70,11 @@ import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.theme.CardBorder
+import com.zack.recomptracker.ui.theme.CardSurface
+import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.CornerChip
+import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.NavLogEnd
 import com.zack.recomptracker.ui.theme.NavLogStart
 import com.zack.recomptracker.ui.theme.TextMuted
@@ -131,12 +136,12 @@ fun FoodLibraryScreen(
                 val isActive = state.category == cat
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(CornerChip))
                         .background(if (isActive) Color(0x338B5CF6) else Color(0x0DFFFFFF))
                         .border(
                             1.dp,
                             if (isActive) Color(0x598B5CF6) else Color(0x14FFFFFF),
-                            RoundedCornerShape(20.dp),
+                            RoundedCornerShape(CornerChip),
                         )
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -207,9 +212,9 @@ fun FoodLibraryScreen(
                         items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
+                                    .clip(RoundedCornerShape(CornerChip))
                                     .background(Color(0x0DFFFFFF))
-                                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(20.dp))
+                                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerChip))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -237,9 +242,9 @@ fun FoodLibraryScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0x0AFFFFFF))
-                                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp)),
+                                    .clip(RoundedCornerShape(CornerCard))
+                                    .background(CardSurface)
+                                    .border(1.dp, CardBorder, RoundedCornerShape(CornerCard)),
                             ) {
                                 state.filteredFoods.forEachIndexed { index, item ->
                                     if (index > 0) {
@@ -271,9 +276,9 @@ fun FoodLibraryScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0x0AFFFFFF))
-                                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp)),
+                                .clip(RoundedCornerShape(CornerCard))
+                                .background(CardSurface)
+                                .border(1.dp, CardBorder, RoundedCornerShape(CornerCard)),
                         ) {
                             state.filteredMeals.forEachIndexed { index, meal ->
                                 if (index > 0) {
@@ -496,12 +501,12 @@ private fun GlassActionButton(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(CornerSmall))
             .background(if (isPrimary) Color(0x2E8B5CF6) else Color(0x0DFFFFFF))
             .border(
                 1.dp,
                 if (isPrimary) Color(0x528B5CF6) else Color(0x17FFFFFF),
-                RoundedCornerShape(11.dp),
+                RoundedCornerShape(CornerSmall),
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

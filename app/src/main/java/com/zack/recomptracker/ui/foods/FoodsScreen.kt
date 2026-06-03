@@ -11,7 +11,7 @@ import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -159,8 +159,8 @@ private fun SavedFoodRow(
             Text("${food.servingName} - ${food.calories} kcal")
             Text("${food.proteinG.formatOneDecimal()}P ${food.carbsG.formatOneDecimal()}C ${food.fatG.formatOneDecimal()}F")
         }
-        TextButton(onClick = { onAdd(food) }) { Text("Add") }
-        TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete") }
+        LiquidActionButton(text = "Add", onClick = { onAdd(food) }, isPrimary = true)
+        LiquidActionButton(text = "Delete", onClick = { showDeleteConfirm = true }, isPrimary = false)
     }
     if (showDeleteConfirm) {
         ConfirmDialog(
@@ -190,8 +190,8 @@ private fun SavedMealRow(
             Text("${MealType.fromStored(meal.mealType).label} - ${meal.calories} kcal")
             Text("${meal.proteinG.formatOneDecimal()}P ${meal.carbsG.formatOneDecimal()}C ${meal.fatG.formatOneDecimal()}F")
         }
-        TextButton(onClick = { onAdd(meal) }) { Text("Add") }
-        TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete") }
+        LiquidActionButton(text = "Add", onClick = { onAdd(meal) }, isPrimary = true)
+        LiquidActionButton(text = "Delete", onClick = { showDeleteConfirm = true }, isPrimary = false)
     }
     if (showDeleteConfirm) {
         ConfirmDialog(

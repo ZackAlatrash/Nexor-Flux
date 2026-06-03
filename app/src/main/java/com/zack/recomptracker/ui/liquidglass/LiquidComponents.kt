@@ -715,7 +715,8 @@ fun LiquidGlassButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    surfaceColor: Color = Color.White.copy(alpha = 0.10f),
+    tint: Color = Color.Unspecified,
+    surfaceColor: Color = Color.White.copy(alpha = 0.14f),
     content: @Composable RowScope.() -> Unit,
 ) {
     LiquidButton(
@@ -723,6 +724,7 @@ fun LiquidGlassButton(
         backdrop = LocalBackdrop.current,
         modifier = modifier.then(if (!enabled) Modifier.alpha(0.38f) else Modifier),
         isInteractive = enabled,
+        tint = tint,
         surfaceColor = surfaceColor,
         content = content,
     )
@@ -730,6 +732,9 @@ fun LiquidGlassButton(
 
 // ── LiquidPrimaryButton ───────────────────────────────────────────────────────
 
+// Violet-tinted glass pill — visible on dark backgrounds, Apple glass feel.
+// The tint drives BlendMode.Hue + a 75 % fill inside LiquidButton so the
+// button reads as a solid violet glass pill even without strong backdrop blur.
 @Composable
 fun LiquidPrimaryButton(
     text: String,
@@ -741,7 +746,8 @@ fun LiquidPrimaryButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        surfaceColor = Color.White.copy(alpha = 0.10f),
+        tint = Color(0xFF8B5CF6),           // Violet500 — gives the button clear identity
+        surfaceColor = Color.White.copy(alpha = 0.08f),
     ) {
         Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
     }
@@ -749,6 +755,8 @@ fun LiquidPrimaryButton(
 
 // ── LiquidSecondaryButton ─────────────────────────────────────────────────────
 
+// Clear glass pill for secondary actions — no color tint but enough surface
+// opacity to be visible against the dark app background.
 @Composable
 fun LiquidSecondaryButton(
     text: String,
@@ -760,9 +768,9 @@ fun LiquidSecondaryButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        surfaceColor = Color.White.copy(alpha = 0.05f),
+        surfaceColor = Color.White.copy(alpha = 0.14f),
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.85f))
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.90f))
     }
 }
 
@@ -790,7 +798,7 @@ fun LiquidStepButton(
                     vibrancy()
                     blur(4.dp.toPx())
                 },
-                onDrawSurface = { drawRect(Color.White.copy(alpha = 0.10f)) }
+                onDrawSurface = { drawRect(Color.White.copy(alpha = 0.18f)) }
             )
             .clickable(
                 interactionSource = null,
@@ -821,7 +829,8 @@ fun LiquidActionButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        surfaceColor = if (isPrimary) Color(0x1A8B5CF6) else Color.White.copy(alpha = 0.06f),
+        tint = if (isPrimary) Color(0xFF8B5CF6) else Color.Unspecified,
+        surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.14f),
     ) {
         Text(
             text = text,

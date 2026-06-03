@@ -41,6 +41,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.theme.CardBorder
+import com.zack.recomptracker.ui.theme.CardSurface
+import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
@@ -147,7 +150,7 @@ fun MoreScreen(
             // ── Appearance ────────────────────────────────────────────────────
             item { SectionLabel("Appearance") }
             item {
-                SettingsCard {
+                MenuCard {
                     SettingRow(
                         emoji = "🔤",
                         title = "Font",
@@ -165,7 +168,7 @@ fun MoreScreen(
             // ── App ───────────────────────────────────────────────────────────
             item { SectionLabel("App") }
             item {
-                SettingsCard {
+                MenuCard {
                     SettingRow(
                         emoji = "❤️",
                         title = "Health Connect",
@@ -239,9 +242,9 @@ private fun MenuCard(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0x0AFFFFFF))
-            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(16.dp)),
+            .clip(RoundedCornerShape(CornerCard))
+            .background(CardSurface)
+            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard)),
     ) {
         content()
     }
@@ -286,20 +289,7 @@ private fun MenuRow(
     }
 }
 
-// ── Settings Card ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun SettingsCard(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0x0AFFFFFF))
-            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(16.dp)),
-    ) {
-        content()
-    }
-}
+// ── Settings Row ──────────────────────────────────────────────────────────────
 
 @Composable
 private fun SettingRow(
@@ -421,12 +411,12 @@ private fun DataActionCard(
     val alpha = if (enabled) 1f else 0.5f
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isPrimary) Color(0x1F8B5CF6) else Color(0x0DFFFFFF))
+            .clip(RoundedCornerShape(CornerCard))
+            .background(if (isPrimary) Color(0x1F8B5CF6) else CardSurface)
             .border(
                 1.dp,
-                if (isPrimary) Color(0x388B5CF6) else Color(0x17FFFFFF),
-                RoundedCornerShape(12.dp),
+                if (isPrimary) Color(0x388B5CF6) else CardBorder,
+                RoundedCornerShape(CornerCard),
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

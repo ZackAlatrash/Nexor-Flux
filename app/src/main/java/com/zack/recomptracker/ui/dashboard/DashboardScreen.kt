@@ -41,13 +41,10 @@ import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.CalorieZoneBar
+import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.ErrorRed
-import com.zack.recomptracker.ui.theme.FeaturedBorder
-import com.zack.recomptracker.ui.theme.FeaturedSurface
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.Violet300
@@ -162,15 +159,7 @@ private fun TodayCard(state: DashboardUiState) {
     val carbsFrac   = safeFrac(state.todayTotals.carbsG,   prefs.targetCarbsG)
     val fatFrac     = safeFrac(state.todayTotals.fatG,     prefs.targetFatG)
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
+    FrostedCard {
         // Header row
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -335,15 +324,7 @@ private fun MacroBarItem(
 private fun SevenDayChartCard(state: DashboardUiState) {
     val inZone = state.inZoneDays7
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(FeaturedSurface)
-            .border(1.dp, FeaturedBorder, RoundedCornerShape(20.dp))
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
+    FrostedCard {
         var scrubCalories by remember { mutableStateOf<Float?>(null) }
 
         // Header

@@ -16,8 +16,8 @@ val BgDark = Color(0xFF090A12)
 // Card surfaces — rgba values converted to ARGB
 val CardSurface     = Color(0x0AFFFFFF)  // rgba(255,255,255,0.04)
 val CardBorder      = Color(0x12FFFFFF)  // rgba(255,255,255,0.07)
-val FeaturedSurface = Color(0x148B5CF6)  // rgba(139,92,246,0.08)
-val FeaturedBorder  = Color(0x388B5CF6)  // rgba(139,92,246,0.22)
+val TintedSurface = Color(0x148B5CF6)  // rgba(139,92,246,0.08) — used by TintedCard (AI features)
+val TintedBorder  = Color(0x388B5CF6)  // rgba(139,92,246,0.22)
 
 // Text alpha variants
 val TextMuted     = Color(0x47FFFFFF)  // rgba(255,255,255,0.28)

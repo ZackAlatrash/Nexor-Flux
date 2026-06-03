@@ -49,8 +49,8 @@ import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.FeaturedBorder
-import com.zack.recomptracker.ui.theme.FeaturedSurface
+import com.zack.recomptracker.ui.theme.TintedBorder
+import com.zack.recomptracker.ui.theme.TintedSurface
 import com.zack.recomptracker.ui.theme.FrostedBorder
 import com.zack.recomptracker.ui.theme.FrostedSurface
 import com.zack.recomptracker.ui.theme.FrostedSurfaceFallback
@@ -136,15 +136,15 @@ fun TintedCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
             .drawBehind {
-                drawRect(color = FeaturedSurface)
+                drawRect(color = TintedSurface)
                 val shimmerY = 1.dp.toPx() / 2f
                 drawLine(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
                             // violet shimmer — intentional for the branded AI tier
-                            FeaturedBorder,
-                            FeaturedBorder,
+                            TintedBorder,
+                            TintedBorder,
                             Color.Transparent,
                         ),
                         startX = size.width * 0.10f,
@@ -155,7 +155,7 @@ fun TintedCard(
                     strokeWidth = 1.dp.toPx(),
                 )
             }
-            .border(1.dp, FeaturedBorder, RoundedCornerShape(CornerCard))
+            .border(1.dp, TintedBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
         content = content,
     )

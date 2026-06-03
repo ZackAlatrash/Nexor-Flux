@@ -302,9 +302,9 @@ fun FoodLibraryScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(Color(0x0DFFFFFF))
-                            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(11.dp))
+                            .clip(RoundedCornerShape(CornerSmall))
+                            .background(CardSurface)
+                            .border(1.dp, CardBorder, RoundedCornerShape(CornerSmall))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -797,9 +797,9 @@ private fun AmountStepper(
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(CornerSmall))
                 .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(12.dp))
+                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerSmall))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -825,9 +825,9 @@ private fun AmountStepper(
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(CornerSmall))
                 .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(12.dp))
+                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerSmall))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,

@@ -54,6 +54,7 @@ import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -311,15 +312,7 @@ private fun NutritionStrip(state: TodayUiState) {
                     color = Color(0x4DFFFFFF),
                 )
             }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0x268B5CF6))
-                    .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-            ) {
-                Text(text = badgeText, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Violet400)
-            }
+            VioletBadge(text = badgeText)
         }
         Spacer(Modifier.height(8.dp))
 

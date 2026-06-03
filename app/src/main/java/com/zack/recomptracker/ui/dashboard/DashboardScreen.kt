@@ -42,6 +42,7 @@ import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.CalorieZoneBar
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -173,20 +174,7 @@ private fun TodayCard(state: DashboardUiState) {
                 color = TextMuted,
                 letterSpacing = 0.10.sp,
             )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0x1F8B5CF6))
-                    .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = badgeText,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Violet400,
-                )
-            }
+            VioletBadge(text = badgeText)
         }
         Spacer(Modifier.height(10.dp))
 

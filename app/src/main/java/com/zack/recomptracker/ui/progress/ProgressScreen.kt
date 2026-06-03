@@ -34,11 +34,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.component.FeaturedCard
-import com.zack.recomptracker.ui.component.GlassSurfaceCard
+import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.charts.MiniSparkline
+import com.zack.recomptracker.ui.theme.CardBorder
+import com.zack.recomptracker.ui.theme.CardSurface
+import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet400
@@ -123,12 +127,12 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isActive) Color(0x338B5CF6) else Color(0x0DFFFFFF))
+                    .clip(RoundedCornerShape(CornerSmall))
+                    .background(if (isActive) Color(0x338B5CF6) else CardSurface)
                     .border(
                         1.dp,
-                        if (isActive) Color(0x598B5CF6) else Color(0x12FFFFFF),
-                        RoundedCornerShape(10.dp),
+                        if (isActive) Color(0x598B5CF6) else CardBorder,
+                        RoundedCornerShape(CornerSmall),
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -153,7 +157,7 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun FeaturedChartCard(series: ChartSeries) {
     var scrubValue by remember { mutableStateOf<Float?>(null) }
-    FeaturedCard {
+    FrostedCard {
         ChartHeader(series, overrideValue = scrubValue)
         Spacer(Modifier.height(10.dp))
         if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
@@ -174,7 +178,7 @@ private fun FeaturedChartCard(series: ChartSeries) {
 
 @Composable
 private fun ShortChartCard(series: ChartSeries) {
-    GlassSurfaceCard(cornerRadius = 18) {
+    NeutralCard {
         ChartHeader(series)
         Spacer(Modifier.height(8.dp))
         if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
@@ -202,9 +206,9 @@ private fun MiniChartPair(left: ChartSeries, right: ChartSeries) {
 private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0x0AFFFFFF))
-            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(CornerCard))
+            .background(CardSurface)
+            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {

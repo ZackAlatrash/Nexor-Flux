@@ -91,31 +91,47 @@ fun RecompApp(container: AppContainer) {
         val snackbarHostState = remember { SnackbarHostState() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
-        // The LayerBackdrop captures the background for glass sampling.
-        val backdrop = rememberLayerBackdrop()
+        // Two separate backdrops to avoid a circular GraphicsLayer read:
+        //   contentBackdrop — records the gradient only; provided via LocalBackdrop so
+        //     glass buttons inside screens sample the gradient without reading a layer
+        //     that is currently recording them (which caused crashes on enter/exit).
+        //   navBackdrop — records gradient + full app content; used by the nav bar so
+        //     it can blur the live content scrolling behind it, restoring the glass effect.
+        val contentBackdrop = rememberLayerBackdrop()
+        val navBackdrop     = rememberLayerBackdrop()
 
         CompositionLocalProvider(
             LocalAppContainer provides container,
             LocalSnackbarHostState provides snackbarHostState,
-            LocalBackdrop provides backdrop,
+            LocalBackdrop provides contentBackdrop,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
 
-                // Layer 1 — background captured into the backdrop GraphicsLayer.
+                // Layer 1+2 — navBackdrop records both the gradient and the app content.
+                // Inside it, contentBackdrop records the gradient only.
+                // Glass buttons in screens read contentBackdrop (gradient, no circular read).
+                // The nav bar (outside this box) reads navBackdrop (gradient + content).
                 Box(
                     modifier = Modifier
-                        .layerBackdrop(backdrop)
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0f    to BgDeep,
-                                    0.45f to BgMid,
-                                    1f    to BgDark,
+                        .layerBackdrop(navBackdrop)
+                        .fillMaxSize(),
+                ) {
+                    // Gradient captured into contentBackdrop (renders before Scaffold below).
+                    Box(
+                        modifier = Modifier
+                            .layerBackdrop(contentBackdrop)
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0f    to BgDeep,
+                                        0.45f to BgMid,
+                                        1f    to BgDark,
+                                    ),
                                 ),
                             ),
-                        ),
-                ) {
+                    )
+
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = Color.Transparent,
@@ -128,7 +144,7 @@ fun RecompApp(container: AppContainer) {
                     }
                 }
 
-                // Layer 2 — liquid glass nav bar (sibling to the backdrop layer).
+                // Layer 3 — liquid glass nav bar (outside navBackdrop, reads from it).
                 if (currentRoute in topLevelRoutes) {
                     Box(
                         modifier = Modifier
@@ -146,7 +162,7 @@ fun RecompApp(container: AppContainer) {
                                     restoreState = true
                                 }
                             },
-                            backdrop = backdrop,
+                            backdrop = navBackdrop,
                             tabsCount = 5,
                             accentColor = Violet300,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),

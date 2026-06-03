@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,6 +45,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -187,102 +189,124 @@ fun FoodLibraryScreen(
         }
 
         // ── Food List ─────────────────────────────────────────────────────────
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-        ) {
-            if (state.offSearchLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(color = Violet400)
-                    }
-                }
-            }
+        // filteredFoods / filteredMeals / recentFoods are pre-computed by the ViewModel
+        // (via withComputedFields()) whenever filtering inputs change — no main-thread
+        // work here, just reading pre-computed fields from state.
+        val filteredFoods = state.filteredFoods
+        val filteredMeals = state.filteredMeals
 
-            if (state.recentFoods.isNotEmpty() && state.query.isBlank()) {
-                item {
-                    SectionLabel("Recents", modifier = Modifier.padding(vertical = 8.dp))
-                }
-                item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(CornerChip))
-                                    .background(Color(0x0DFFFFFF))
-                                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerChip))
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) { viewModel.requestLogFood(food) }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                            ) {
-                                Text(food.name, fontSize = 12.sp, color = Color(0xBFFFFFFF))
-                            }
+        // key(state.category) forces the LazyColumn to be fully recreated on every
+        // category switch. This prevents stale item keys from persisting across
+        // transitions and eliminates the crash caused by key-space conflicts when
+        // the category changes the visible item set.
+        key(state.category) {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                if (state.offSearchLoading) {
+                    item(key = "loading") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = Violet400)
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
                 }
-            }
 
-            if (state.category != FoodCategory.MEALS) {
-                when {
-                    state.filteredFoods.isEmpty() && !state.offSearchLoading -> {
-                        item {
-                            EmptyStateLabel(state.category)
-                        }
+                if (state.recentFoods.isNotEmpty() && state.query.isBlank()) {
+                    item(key = "recents_header") {
+                        SectionLabel("Recents", modifier = Modifier.padding(vertical = 8.dp))
                     }
-                    else -> {
-                        item {
-                            // Food list wrapped in glass card
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(CornerCard))
-                                    .background(CardSurface)
-                                    .border(1.dp, CardBorder, RoundedCornerShape(CornerCard)),
-                            ) {
-                                state.filteredFoods.forEachIndexed { index, item ->
-                                    if (index > 0) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(1.dp)
-                                                .background(Color(0x0AFFFFFF)),
-                                        )
-                                    }
-                                    GlassFoodRow(
-                                        item = item,
-                                        onLog = { viewModel.requestLogFood(item.food) },
-                                        onEdit = if (item.sourceLabel == null) {
-                                            { viewModel.openEditFood(item.food) }
-                                        } else null,
-                                    )
+                    item(key = "recents_row") {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(CornerChip))
+                                        .background(Color(0x0DFFFFFF))
+                                        .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerChip))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                        ) { viewModel.requestLogFood(food) }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                ) {
+                                    Text(food.name, fontSize = 12.sp, color = Color(0xBFFFFFFF))
                                 }
                             }
                         }
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
-            }
 
-            if (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS) {
-                if (state.filteredMeals.isNotEmpty()) {
-                    item { Spacer(Modifier.height(8.dp)) }
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(CornerCard))
-                                .background(CardSurface)
-                                .border(1.dp, CardBorder, RoundedCornerShape(CornerCard)),
-                        ) {
-                            state.filteredMeals.forEachIndexed { index, meal ->
-                                if (index > 0) {
+                if (state.category != FoodCategory.MEALS) {
+                    if (filteredFoods.isEmpty() && !state.offSearchLoading) {
+                        item(key = "empty_state") { EmptyStateLabel(state.category) }
+                    } else {
+                        itemsIndexed(
+                            items = filteredFoods,
+                            key = { _, item -> item.key },
+                        ) { index, item ->
+                            val isFirst = index == 0
+                            val isLast = index == filteredFoods.lastIndex
+                            val topCorner = if (isFirst) CornerCard else 0.dp
+                            val bottomCorner = if (isLast) CornerCard else 0.dp
+                            val shape = RoundedCornerShape(
+                                topStart = topCorner, topEnd = topCorner,
+                                bottomStart = bottomCorner, bottomEnd = bottomCorner,
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(shape)
+                                    .background(CardSurface),
+                            ) {
+                                if (!isFirst) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(1.dp)
+                                            .background(Color(0x0AFFFFFF)),
+                                    )
+                                }
+                                GlassFoodRow(
+                                    item = item,
+                                    onLog = { viewModel.requestLogFood(item.food) },
+                                    onEdit = if (item.sourceLabel == null) {
+                                        { viewModel.openEditFood(item.food) }
+                                    } else null,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS) {
+                    if (filteredMeals.isNotEmpty()) {
+                        item(key = "meals_spacer") { Spacer(Modifier.height(8.dp)) }
+                        itemsIndexed(
+                            items = filteredMeals,
+                            key = { _, meal -> meal.id },
+                        ) { index, meal ->
+                            val isFirst = index == 0
+                            val isLast = index == filteredMeals.lastIndex
+                            val topCorner = if (isFirst) CornerCard else 0.dp
+                            val bottomCorner = if (isLast) CornerCard else 0.dp
+                            val shape = RoundedCornerShape(
+                                topStart = topCorner, topEnd = topCorner,
+                                bottomStart = bottomCorner, bottomEnd = bottomCorner,
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(shape)
+                                    .background(CardSurface),
+                            ) {
+                                if (!isFirst) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -295,35 +319,35 @@ fun FoodLibraryScreen(
                         }
                     }
                 }
-            }
 
-            if (slotId != null) {
-                item {
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(CornerSmall))
-                            .background(CardSurface)
-                            .border(1.dp, CardBorder, RoundedCornerShape(CornerSmall))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) { viewModel.openSaveMealDialog() }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "Save slot as meal",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Violet300,
-                        )
+                if (slotId != null) {
+                    item(key = "save_slot") {
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(CornerSmall))
+                                .background(CardSurface)
+                                .border(1.dp, CardBorder, RoundedCornerShape(CornerSmall))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { viewModel.openSaveMealDialog() }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "Save slot as meal",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Violet300,
+                            )
+                        }
                     }
                 }
-            }
 
-            item { Spacer(Modifier.height(24.dp)) }
+                item(key = "bottom_spacer") { Spacer(Modifier.height(24.dp)) }
+            }
         }
     }
 
@@ -666,7 +690,7 @@ private fun EmptyStateLabel(category: FoodCategory) {
     ) {
         Text(
             text = when (category) {
-                FoodCategory.NEVO -> "No NEVO foods imported yet.\nGo to More → Settings → Import NEVO CSV."
+                FoodCategory.NEVO -> "Search above to find NEVO foods.\nImport the CSV via More → Settings."
                 FoodCategory.OFF -> "Use the search bar above to find\nproducts from Open Food Facts."
                 else -> "No foods found."
             },

@@ -39,7 +39,6 @@ import com.zack.recomptracker.ui.component.ToggleRow
 import java.time.Instant
 import java.time.ZoneOffset
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanScreen(viewModel: PlanViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()

@@ -11,6 +11,8 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.camera.view.PreviewView
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -65,7 +67,6 @@ import com.google.mlkit.vision.common.InputImage
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BarcodeScannerScreen(
     viewModel: BarcodeScannerViewModel,
@@ -352,13 +353,25 @@ private fun CameraPreview(onBarcodeDetected: (String) -> Unit) {
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
+    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
+    // Shared state so DisposableEffect can unbind what LaunchedEffect bound
+    val closed = remember { AtomicBoolean(false) }
+    val providerHolder = remember { arrayOfNulls<ProcessCameraProvider>(1) }
 
-    DisposableEffect(Unit) {
-        onDispose { barcodeScanner.close() }
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            closed.set(true)
+            providerHolder[0]?.unbindAll()
+            barcodeScanner.close()
+            analysisExecutor.shutdown()
+        }
     }
 
     LaunchedEffect(lifecycleOwner) {
-        val cameraProvider = ProcessCameraProvider.awaitInstance(context)
+        val provider = ProcessCameraProvider.awaitInstance(context)
+        if (closed.get()) return@LaunchedEffect
+        providerHolder[0] = provider
+
         val preview = Preview.Builder().build()
             .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
@@ -366,12 +379,16 @@ private fun CameraPreview(onBarcodeDetected: (String) -> Unit) {
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
 
-        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
-            processImageProxy(barcodeScanner, imageProxy, onBarcodeDetected)
+        imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy ->
+            if (!closed.get()) {
+                processImageProxy(barcodeScanner, imageProxy, onBarcodeDetected)
+            } else {
+                imageProxy.close()
+            }
         }
 
-        cameraProvider.unbindAll()
-        cameraProvider.bindToLifecycle(
+        provider.unbindAll()
+        provider.bindToLifecycle(
             lifecycleOwner,
             CameraSelector.DEFAULT_BACK_CAMERA,
             preview,

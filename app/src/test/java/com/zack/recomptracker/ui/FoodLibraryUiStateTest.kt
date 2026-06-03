@@ -33,6 +33,7 @@ class FoodLibraryUiStateTest {
     @Test
     fun emptyQueryShowsOnlyPersonalFoods() {
         val state = FoodLibraryUiState(allFoods = listOf(personal), allCatalogFoods = listOf(nevo))
+            .withComputedFields()
 
         assertEquals(listOf("personal_1"), state.filteredFoods.map { it.key })
     }
@@ -43,7 +44,7 @@ class FoodLibraryUiStateTest {
             query = "yog",
             allFoods = listOf(personal),
             allCatalogFoods = listOf(nevo),
-        )
+        ).withComputedFields()
 
         assertEquals(listOf("personal_1", "catalog_2"), state.filteredFoods.map { it.key })
         assertEquals("NEVO", state.filteredFoods.last().sourceLabel)
@@ -171,7 +172,7 @@ class FoodLibraryUiStateTest {
             entryServingName = "scoop",
             entryServingGrams = 30.0,
         )
-        val state = FoodLibraryUiState(recentEntries = listOf(recentEntry))
+        val state = FoodLibraryUiState(recentEntries = listOf(recentEntry)).withComputedFields()
         val recent = state.recentFoods.single()
         assertEquals("Whey", recent.name)
         assertEquals(120, recent.calories)

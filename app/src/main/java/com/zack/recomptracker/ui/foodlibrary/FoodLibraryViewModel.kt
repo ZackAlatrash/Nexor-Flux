@@ -73,87 +73,12 @@ data class FoodLibraryUiState(
     val quickAddFat: String = "",
     val offSearchResults: List<com.zack.recomptracker.data.local.entity.SavedFoodEntity> = emptyList(),
     val offSearchLoading: Boolean = false,
+    // Pre-computed by the ViewModel whenever filtering inputs change — never computed
+    // on the main thread during recomposition, preventing jank and ANR-style crashes.
+    val filteredFoods: List<FoodLibraryItem> = emptyList(),
+    val filteredMeals: List<SavedMealEntity> = emptyList(),
+    val recentFoods: List<SavedFoodEntity> = emptyList(),
 ) {
-    val filteredFoods: List<FoodLibraryItem>
-        get() {
-            val q = query.trim().lowercase()
-
-            // OFF tab: show results from Open Food Facts search.
-            if (category == FoodCategory.OFF) {
-                return offSearchResults.mapIndexed { i, food ->
-                    FoodLibraryItem(key = "off_${food.name}_$i", food = food, sourceLabel = "Open Food Facts")
-                }
-            }
-
-            // NEVO tab: show the full catalog, searchable, no personal foods mixed in.
-            if (category == FoodCategory.NEVO) {
-                return allCatalogFoods
-                    .filter { q.isEmpty() || it.name.lowercase().contains(q) }
-                    .map { food ->
-                        FoodLibraryItem(
-                            key = "catalog_${food.id}",
-                            food = SavedFoodEntity(
-                                name = food.name,
-                                servingName = food.servingName,
-                                calories = food.calories,
-                                proteinG = food.proteinG,
-                                carbsG = food.carbsG,
-                                fatG = food.fatG,
-                            ),
-                            sourceLabel = "NEVO",
-                        )
-                    }
-            }
-
-            // All / Proteins / Carbs / Meals tabs: personal foods always shown,
-            // catalog foods only appear when searching.
-            val personal = allFoods.filter { food ->
-                (q.isEmpty() || food.name.lowercase().contains(q)) &&
-                    food.matchesCategory()
-            }.map { food -> FoodLibraryItem(key = "personal_${food.id}", food = food) }
-            val catalog = if (q.isEmpty()) {
-                emptyList()
-            } else {
-                allCatalogFoods.filter { food ->
-                    food.name.lowercase().contains(q) &&
-                        SavedFoodEntity(
-                            name = food.name,
-                            servingName = food.servingName,
-                            calories = food.calories,
-                            proteinG = food.proteinG,
-                            carbsG = food.carbsG,
-                            fatG = food.fatG,
-                        ).matchesCategory()
-                }.map { food ->
-                    FoodLibraryItem(
-                        key = "catalog_${food.id}",
-                        food = SavedFoodEntity(
-                            name = food.name,
-                            servingName = food.servingName,
-                            calories = food.calories,
-                            proteinG = food.proteinG,
-                            carbsG = food.carbsG,
-                            fatG = food.fatG,
-                        ),
-                        sourceLabel = food.source,
-                    )
-                }
-            }
-            return personal + catalog
-        }
-
-    private fun SavedFoodEntity.matchesCategory(): Boolean = when (category) {
-        FoodCategory.PROTEINS -> proteinG >= carbsG && proteinG >= fatG
-        FoodCategory.CARBS -> carbsG >= proteinG && carbsG > fatG
-        FoodCategory.ALL, FoodCategory.MEALS, FoodCategory.NEVO, FoodCategory.OFF -> true
-    }
-
-    val filteredMeals: List<SavedMealEntity>
-        get() {
-            val q = query.trim().lowercase()
-            return allMeals.filter { q.isEmpty() || it.name.lowercase().contains(q) }
-        }
-
     val canUseServings: Boolean
         get() = (pendingFood?.householdServingGrams ?: 0.0) >= 1.0 &&
             !pendingFood?.householdServingName.isNullOrBlank()
@@ -185,19 +110,84 @@ data class FoodLibraryUiState(
             )
         }
 
-    val recentFoods: List<SavedFoodEntity>
-        get() = recentEntries.map { e ->
-            SavedFoodEntity(
-                name = e.name,
-                servingName = e.entryServingName ?: "100g",
-                calories = e.basePer100Calories ?: 0,
-                proteinG = e.basePer100ProteinG ?: 0.0,
-                carbsG = e.basePer100CarbsG ?: 0.0,
-                fatG = e.basePer100FatG ?: 0.0,
-                householdServingName = e.entryServingName,
-                householdServingGrams = e.entryServingGrams,
-            )
+    fun withComputedFields(): FoodLibraryUiState {
+        val q = query.trim().lowercase()
+        return copy(
+            filteredFoods = computeFilteredFoods(q),
+            filteredMeals = allMeals.filter { q.isEmpty() || it.name.lowercase().contains(q) },
+            recentFoods = recentEntries.map { e ->
+                SavedFoodEntity(
+                    name = e.name,
+                    servingName = e.entryServingName ?: "100g",
+                    calories = e.basePer100Calories ?: 0,
+                    proteinG = e.basePer100ProteinG ?: 0.0,
+                    carbsG = e.basePer100CarbsG ?: 0.0,
+                    fatG = e.basePer100FatG ?: 0.0,
+                    householdServingName = e.entryServingName,
+                    householdServingGrams = e.entryServingGrams,
+                )
+            },
+        )
+    }
+
+    private fun computeFilteredFoods(q: String): List<FoodLibraryItem> {
+        val cat = this.category
+        fun SavedFoodEntity.matchesCat(): Boolean = when (cat) {
+            FoodCategory.PROTEINS -> proteinG >= carbsG && proteinG >= fatG
+            FoodCategory.CARBS -> carbsG >= proteinG && carbsG > fatG
+            else -> true
         }
+
+        if (cat == FoodCategory.OFF) {
+            return offSearchResults.mapIndexed { i, food ->
+                FoodLibraryItem(key = "off_${food.name}_$i", food = food, sourceLabel = "Open Food Facts")
+            }
+        }
+
+        // NEVO: require a search term — the catalog can have thousands of entries.
+        if (cat == FoodCategory.NEVO) {
+            if (q.isEmpty()) return emptyList()
+            return allCatalogFoods
+                .filter { it.name.lowercase().contains(q) }
+                .map { food ->
+                    FoodLibraryItem(
+                        key = "catalog_${food.id}",
+                        food = SavedFoodEntity(
+                            name = food.name, servingName = food.servingName,
+                            calories = food.calories, proteinG = food.proteinG,
+                            carbsG = food.carbsG, fatG = food.fatG,
+                        ),
+                        sourceLabel = "NEVO",
+                    )
+                }
+        }
+
+        val personal = allFoods.filter { food ->
+            (q.isEmpty() || food.name.lowercase().contains(q)) && food.matchesCat()
+        }.map { food -> FoodLibraryItem(key = "personal_${food.id}", food = food) }
+
+        val catalog = if (q.isEmpty()) emptyList() else {
+            allCatalogFoods.filter { food ->
+                food.name.lowercase().contains(q) &&
+                    SavedFoodEntity(
+                        name = food.name, servingName = food.servingName,
+                        calories = food.calories, proteinG = food.proteinG,
+                        carbsG = food.carbsG, fatG = food.fatG,
+                    ).matchesCat()
+            }.map { food ->
+                FoodLibraryItem(
+                    key = "catalog_${food.id}",
+                    food = SavedFoodEntity(
+                        name = food.name, servingName = food.servingName,
+                        calories = food.calories, proteinG = food.proteinG,
+                        carbsG = food.carbsG, fatG = food.fatG,
+                    ),
+                    sourceLabel = food.source,
+                )
+            }
+        }
+        return personal + catalog
+    }
 }
 
 class FoodLibraryViewModel(
@@ -250,13 +240,13 @@ class FoodLibraryViewModel(
                         allCatalogFoods = data.catalogFoods,
                         allMeals = data.meals,
                         remainingCalories = (data.prefs.calorieZoneLowerBound - data.eatenCalories).coerceAtLeast(0),
-                    )
+                    ).withComputedFields()
                 }
             }
         }
         viewModelScope.launch {
             logRepository.observeRecentFoods().collect { recents ->
-                _uiState.update { it.copy(recentEntries = recents) }
+                _uiState.update { it.copy(recentEntries = recents).withComputedFields() }
             }
         }
     }
@@ -265,7 +255,7 @@ class FoodLibraryViewModel(
         offSearchJob?.cancel()
         val q = _uiState.value.query.trim()
         if (q.isBlank()) {
-            _uiState.update { it.copy(offSearchResults = emptyList(), offSearchLoading = false, message = null) }
+            _uiState.update { it.copy(offSearchResults = emptyList(), offSearchLoading = false, message = null).withComputedFields() }
             return
         }
         offSearchJob = viewModelScope.launch {
@@ -275,14 +265,14 @@ class FoodLibraryViewModel(
     }
 
     fun onQueryChanged(q: String) {
-        _uiState.update { it.copy(query = q, message = null) }
+        _uiState.update { it.copy(query = q, message = null).withComputedFields() }
         if (_uiState.value.category == FoodCategory.OFF) {
             triggerOffSearch()
         }
     }
 
     fun onCategoryChanged(c: FoodCategory) {
-        _uiState.update { it.copy(category = c) }
+        _uiState.update { it.copy(category = c).withComputedFields() }
         if (c == FoodCategory.OFF && _uiState.value.query.isNotBlank()) {
             triggerOffSearch()
         }
@@ -619,7 +609,7 @@ class FoodLibraryViewModel(
                     },
                     message = if (products.isEmpty()) "No products found for '$q'." else null,
                     messageKind = MessageKind.INFO,
-                )
+                ).withComputedFields()
             }
         }
     }

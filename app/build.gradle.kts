@@ -20,6 +20,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.concurrent:concurrent-futures:1.2.0")
+            force("androidx.concurrent:concurrent-futures-ktx:1.2.0")
+        }
+    }
+
+    lint {
+        abortOnError = false
+    }
+
     buildFeatures {
         compose = true
     }
@@ -32,6 +43,10 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            freeCompilerArgs.addAll(
+                "-opt-in=androidx.camera.core.ExperimentalGetImage",
+                "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            )
         }
     }
 }

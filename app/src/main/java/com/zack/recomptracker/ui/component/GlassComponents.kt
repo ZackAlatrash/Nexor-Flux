@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
@@ -97,12 +96,10 @@ fun FrostedCard(
                 shape = { RoundedRectangle(CornerCard) },
                 effects = {
                     vibrancy()
-                    blur(8f.dp.toPx())
-                    lens(12f.dp.toPx(), 24f.dp.toPx())
+                    blur(20f.dp.toPx())
                 },
                 onDrawSurface = {
-                    // Light frosted tint — makes card visibly lighter than dark background
-                    drawRect(Color(0x1AFFFFFF))
+                    drawRect(Color(0x33000000))
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
                         brush = Brush.horizontalGradient(
@@ -144,8 +141,7 @@ fun TintedCard(
                 shape = { RoundedRectangle(CornerCard) },
                 effects = {
                     vibrancy()
-                    blur(8f.dp.toPx())
-                    lens(12f.dp.toPx(), 24f.dp.toPx())
+                    blur(20f.dp.toPx())
                 },
                 onDrawSurface = {
                     drawRect(TintedSurface)

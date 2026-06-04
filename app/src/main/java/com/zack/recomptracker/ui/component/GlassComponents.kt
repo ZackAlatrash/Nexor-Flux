@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ui.component
 
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -44,6 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.shapes.RoundedRectangle
+import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
@@ -51,8 +54,6 @@ import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.TintedBorder
 import com.zack.recomptracker.ui.theme.TintedSurface
 import com.zack.recomptracker.ui.theme.FrostedBorder
-import com.zack.recomptracker.ui.theme.FrostedSurface
-import com.zack.recomptracker.ui.theme.FrostedSurfaceFallback
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
@@ -85,36 +86,38 @@ fun FrostedCard(
     contentPadding: androidx.compose.ui.unit.Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val surface = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        FrostedSurface
-    } else {
-        FrostedSurfaceFallback
-    }
+    val backdrop = LocalBackdrop.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .drawBehind {
-                // Dark frosted fill
-                drawRect(color = surface)
-                // Top-edge catchlight — the glass shimmer
-                val shimmerY = 1.dp.toPx() / 2f
-                drawLine(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color(0x4CFFFFFF),
-                            Color(0x4CFFFFFF),
-                            Color.Transparent,
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { RoundedRectangle(CornerCard) },
+                effects = {
+                    vibrancy()
+                    blur(20f.dp.toPx())
+                },
+                onDrawSurface = {
+                    drawRect(Color(0x33000000))
+                    val shimmerY = 1.dp.toPx() / 2f
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0x33FFFFFF),
+                                Color(0x33FFFFFF),
+                                Color.Transparent,
+                            ),
+                            startX = size.width * 0.12f,
+                            endX   = size.width * 0.88f,
                         ),
-                        startX = size.width * 0.12f,
-                        endX   = size.width * 0.88f,
-                    ),
-                    start       = Offset(0f, shimmerY),
-                    end         = Offset(size.width, shimmerY),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
+                        start       = Offset(0f, shimmerY),
+                        end         = Offset(size.width, shimmerY),
+                        strokeWidth = 1.dp.toPx(),
+                    )
+                }
+            )
             .border(1.dp, FrostedBorder, RoundedCornerShape(CornerCard))
             .padding(contentPadding),
         content = content,
@@ -128,30 +131,38 @@ fun TintedCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val backdrop = LocalBackdrop.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .drawBehind {
-                drawRect(color = TintedSurface)
-                val shimmerY = 1.dp.toPx() / 2f
-                drawLine(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            // violet shimmer — intentional for the branded AI tier
-                            TintedBorder,
-                            TintedBorder,
-                            Color.Transparent,
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { RoundedRectangle(CornerCard) },
+                effects = {
+                    vibrancy()
+                    blur(20f.dp.toPx())
+                },
+                onDrawSurface = {
+                    drawRect(TintedSurface)
+                    val shimmerY = 1.dp.toPx() / 2f
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                TintedBorder,
+                                TintedBorder,
+                                Color.Transparent,
+                            ),
+                            startX = size.width * 0.10f,
+                            endX   = size.width * 0.90f,
                         ),
-                        startX = size.width * 0.10f,
-                        endX   = size.width * 0.90f,
-                    ),
-                    start       = Offset(0f, shimmerY),
-                    end         = Offset(size.width, shimmerY),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
+                        start       = Offset(0f, shimmerY),
+                        end         = Offset(size.width, shimmerY),
+                        strokeWidth = 1.dp.toPx(),
+                    )
+                }
+            )
             .border(1.dp, TintedBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
         content = content,

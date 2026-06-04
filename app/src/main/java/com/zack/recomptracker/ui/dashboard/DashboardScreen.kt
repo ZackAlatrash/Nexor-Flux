@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,9 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
@@ -58,14 +62,18 @@ import java.util.Locale
 @Composable
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
+    onCheckIn: () -> Unit,
+    onLogFood: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeDashboardContent(state = state)
+    HomeDashboardContent(state = state, onCheckIn = onCheckIn, onLogFood = onLogFood)
 }
 
 @Composable
 fun HomeDashboardContent(
     state: DashboardUiState,
+    onCheckIn: () -> Unit,
+    onLogFood: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -96,11 +104,43 @@ fun HomeDashboardContent(
             ScreenHeader(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp))
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 4.dp,
+                    bottom = FloatingNavHeight + 72.dp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state) }
+                item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }
                 item { SevenDayChartCard(state) }
+            }
+        }
+
+        // Floating liquid glass pill buttons above the nav bar
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = FloatingNavHeight + 12.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                LiquidPrimaryButton(
+                    text = "Daily Check-In",
+                    onClick = onCheckIn,
+                    modifier = Modifier.weight(1f),
+                )
+                LiquidSecondaryButton(
+                    text = "Log Food",
+                    onClick = onLogFood,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -468,6 +508,105 @@ private fun ChartStat(
             color = TextMuted,
             letterSpacing = 0.08.sp,
         )
+    }
+}
+
+// ── Card: MOTIVATIONAL MESSAGE ────────────────────────────────────────────────
+
+@Composable
+private fun MotivationalCard(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0x247C3AED), Color(0x106D28D9)),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+                ),
+            )
+            .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+    ) {
+        Column {
+            Text(
+                text = "“$message”",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFEDE9FE),
+                lineHeight = 19.sp,
+                letterSpacing = (-0.2).sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Refreshes each session",
+                fontSize = 10.sp,
+                color = Color(0x8CA78BFA),
+            )
+        }
+    }
+}
+
+// ── Stat Tiles Row ────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatTilesRow(
+    adherencePercent: Double,
+    weightTrendKgPerWeek: Double,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StatTile(
+            value = adherencePercent.formatPercent(),
+            label = "Adherence",
+            valueColor = Violet400,
+            modifier = Modifier.weight(1f),
+        )
+        StatTile(
+            value = "${weightTrendKgPerWeek.formatSignedOneDecimal()} kg",
+            label = "Trend / week",
+            valueColor = if (weightTrendKgPerWeek <= 0.0) ErrorRed else Color(0xFF4ADE80),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun StatTile(
+    value: String,
+    label: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0x0AFFFFFF))
+            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 11.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = value,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                color = valueColor,
+                letterSpacing = (-0.5).sp,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = label,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextMuted,
+                letterSpacing = 0.06.sp,
+            )
+        }
     }
 }
 

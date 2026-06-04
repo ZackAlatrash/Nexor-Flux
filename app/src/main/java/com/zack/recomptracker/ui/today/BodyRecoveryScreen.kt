@@ -1,8 +1,6 @@
 package com.zack.recomptracker.ui.today
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,10 +22,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,15 +44,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.LocalSnackbarHostState
 import com.zack.recomptracker.ui.body.BodyCheckInFormActions
-import com.zack.recomptracker.ui.body.BodyCheckInFormContent
 import com.zack.recomptracker.ui.body.BodyCheckInFormState
+import com.zack.recomptracker.ui.body.BodyCheckInSheet
+import com.zack.recomptracker.ui.body.CheckInSection
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.NeutralCard
-import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.charts.SparklineChart
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
+import com.zack.recomptracker.ui.theme.Violet500
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -88,6 +93,7 @@ fun BodyRecoveryScreen(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BodyRecoveryContent(
     state: TodayUiState,
@@ -110,15 +116,17 @@ fun BodyRecoveryContent(
         message = state.message,
     )
 
+    var showSheet by remember { mutableStateOf(false) }
+    var initialSection by remember { mutableIntStateOf(0) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val hasData = state.bodyWeightKg.isNotEmpty() || state.waistCm.isNotEmpty()
+
     Box(modifier = modifier.fillMaxSize()) {
-        // Ambient orb
         Box(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(
-                    Brush.radialGradient(listOf(Color(0x2E8B5CF6), Color.Transparent)),
-                ),
+                .background(Brush.radialGradient(listOf(Color(0x2E8B5CF6), Color.Transparent))),
         )
 
         LazyColumn(
@@ -126,28 +134,53 @@ fun BodyRecoveryContent(
                 start = 16.dp,
                 end = 16.dp,
                 top = 4.dp,
-                bottom = FloatingNavHeight + 16.dp,
+                bottom = FloatingNavHeight + 80.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item { ScreenHeader(state) }
+            item { MetricsHeroCard(state) }
             item {
-                ScreenHeader(state)
+                MetricTilesCard(formState) { section ->
+                    initialSection = section
+                    showSheet = true
+                }
             }
             item {
-                MetricsHeroCard(state)
+                RecoveryBandCard(formState) {
+                    initialSection = 1
+                    showSheet = true
+                }
             }
-            item {
-                InlineLogFormCard(formState, actions)
-            }
-            item {
-                HistoryButton(
-                    daysLogged = state.totalDaysLogged,
-                    onClick = onViewHistory,
-                )
-            }
+            item { HistoryButton(daysLogged = state.totalDaysLogged, onClick = onViewHistory) }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = FloatingNavHeight + 12.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
+            LiquidPrimaryButton(
+                text = if (hasData) "Edit check-in" else "Log today",
+                onClick = { initialSection = 0; showSheet = true },
+            )
         }
     }
+
+    if (showSheet) {
+        BodyCheckInSheet(
+            state = formState,
+            actions = actions,
+            onDismiss = { showSheet = false },
+            initialSection = initialSection,
+            sheetState = sheetState,
+        )
+    }
 }
+
+// ── Screen Header ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun ScreenHeader(state: TodayUiState) {
@@ -168,11 +201,7 @@ private fun ScreenHeader(state: TodayUiState) {
             color = Color.White,
             letterSpacing = (-0.8).sp,
         )
-        Text(
-            text = dateStr,
-            fontSize = 12.sp,
-            color = TextMuted,
-        )
+        Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
     }
 }
 
@@ -180,31 +209,23 @@ private fun ScreenHeader(state: TodayUiState) {
 
 @Composable
 private fun MetricsHeroCard(state: TodayUiState) {
-    val checkInLabel = state.lastLogDate?.let { d ->
-        "LATEST CHECK-IN · ${d.format(DateTimeFormatter.ofPattern("MMM d"))}"
+    val checkInLabel = state.lastLogDate?.let {
+        "LATEST CHECK-IN · ${it.format(DateTimeFormatter.ofPattern("MMM d"))}"
     } ?: "NO CHECK-INS YET"
-
     val showSparklines = state.weightSparkline14d.isNotEmpty() || state.waistSparkline14d.isNotEmpty()
 
     FrostedCard {
         Text(
             text = checkInLabel,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xCCA78BFA),
-            letterSpacing = 0.13.sp,
+            fontSize = 9.sp, fontWeight = FontWeight.Bold,
+            color = Color(0xCCA78BFA), letterSpacing = 0.13.sp,
         )
         Spacer(Modifier.height(14.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Max),
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
             MetricColumn(
                 value = state.lastLogWeightKg?.let { "%.1f".format(it) } ?: "—",
-                unit = "kg",
-                label = "WEIGHT",
+                unit = "kg", label = "WEIGHT",
                 trend = state.weightChange7d?.let {
                     val sign = if (it <= 0) "↓" else "↑"
                     "$sign ${String.format(Locale.US, "%.1f", Math.abs(it))} kg / week"
@@ -213,16 +234,10 @@ private fun MetricsHeroCard(state: TodayUiState) {
                 showSparklineSlot = showSparklines,
                 modifier = Modifier.weight(1f).padding(end = 12.dp),
             )
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .background(Color(0x0FFFFFFF)),
-            )
+            Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(Color(0x0FFFFFFF)))
             MetricColumn(
                 value = state.lastLogWaistCm?.let { "%.1f".format(it) } ?: "—",
-                unit = "cm",
-                label = "WAIST",
+                unit = "cm", label = "WAIST",
                 trend = state.waistChange7d?.let {
                     val sign = if (it <= 0) "↓" else "↑"
                     "$sign ${String.format(Locale.US, "%.1f", Math.abs(it))} cm / week"
@@ -249,54 +264,30 @@ private fun MetricColumn(
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 text = value,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                letterSpacing = (-1.5).sp,
-                lineHeight = 36.sp,
+                fontSize = 36.sp, fontWeight = FontWeight.Black,
+                color = Color.White, letterSpacing = (-1.5).sp, lineHeight = 36.sp,
             )
             if (value != "—") {
                 Text(
-                    text = unit,
-                    fontSize = 13.sp,
-                    color = Color(0x66FFFFFF),
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    text = unit, fontSize = 13.sp,
+                    color = Color(0x66FFFFFF), modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
         }
-        Text(
-            text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextMuted,
-            letterSpacing = 0.10.sp,
-        )
+        Text(text = label, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = TextMuted, letterSpacing = 0.10.sp)
         if (trend.isNotEmpty()) {
-            Text(
-                text = trend,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Violet400,
-            )
+            Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Violet400)
         }
         if (showSparklineSlot) {
             Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color(0x0FFFFFFF)),
-            )
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0x0FFFFFFF)))
             Spacer(Modifier.height(8.dp))
             if (sparklineValues.isNotEmpty()) {
                 val minVal = remember(sparklineValues) { sparklineValues.min() }
                 val maxVal = remember(sparklineValues) { sparklineValues.max() }
                 SparklineChart(values = sparklineValues, height = 64.dp, showGlowDot = true)
                 Spacer(Modifier.height(3.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("%.1f".format(minVal), fontSize = 8.sp, color = Color(0x28FFFFFF))
                     Text("14 days", fontSize = 8.sp, color = Color(0x20FFFFFF))
                     Text("%.1f".format(maxVal), fontSize = 8.sp, color = Color(0x28FFFFFF))
@@ -308,75 +299,140 @@ private fun MetricColumn(
     }
 }
 
-// ── Inline Log Form Card ──────────────────────────────────────────────────────
+// ── Metric Tiles Card ─────────────────────────────────────────────────────────
 
 @Composable
-private fun InlineLogFormCard(
+private fun MetricTilesCard(
     state: BodyCheckInFormState,
-    actions: BodyCheckInFormActions,
+    onTileClick: (section: Int) -> Unit,
 ) {
-    var collapsed by remember { mutableStateOf(true) }
-    val dateStr = remember(state.date) {
-        state.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+    FrostedCard {
+        SectionLabel("Today")
+        Spacer(Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile("Weight", state.bodyWeightKg.ifEmpty { null }, "kg", Modifier.weight(1f)) { onTileClick(0) }
+            MetricTile("Waist", state.waistCm.ifEmpty { null }, "cm", Modifier.weight(1f)) { onTileClick(0) }
+            MetricTile("Skinfold", state.waistSkinfoldMm.ifEmpty { null }, "mm", Modifier.weight(1f)) { onTileClick(0) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile("Sleep", state.sleepHours.ifEmpty { null }, "hrs", Modifier.weight(1f)) { onTileClick(0) }
+            MetricTile("Steps", state.steps.ifEmpty { null }, "", Modifier.weight(1f)) { onTileClick(0) }
+            MetricTile("Training", if (state.trained) "Yes" else null, "", Modifier.weight(1f)) { onTileClick(2) }
+        }
     }
+}
 
-    FrostedCard(contentPadding = 0.dp) {
-        // Header
+@Composable
+private fun MetricTile(
+    label: String,
+    value: String?,
+    unit: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val empty = value == null
+    val valueAlpha by animateFloatAsState(if (empty) 0.28f else 1f, label = "tileAlpha_$label")
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(CornerSmall))
+            .background(if (empty) Color(0x08FFFFFF) else Color(0x148B5CF6))
+            .border(
+                1.dp,
+                if (empty) Color(0x0DFFFFFF) else Color(0x2E8B5CF6),
+                RoundedCornerShape(CornerSmall),
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(text = label, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = TextMuted, letterSpacing = 0.10.sp)
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = value ?: "—",
+                fontSize = if (empty) 17.sp else 19.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White.copy(alpha = valueAlpha),
+                letterSpacing = (-0.5).sp,
+                lineHeight = 20.sp,
+            )
+            if (unit.isNotEmpty() && !empty) {
+                Text(text = unit, fontSize = 8.sp, color = Color(0x4CFFFFFF), modifier = Modifier.padding(bottom = 2.dp))
+            }
+        }
+    }
+}
+
+// ── Recovery Band Card ────────────────────────────────────────────────────────
+
+@Composable
+private fun RecoveryBandCard(state: BodyCheckInFormState, onClick: () -> Unit) {
+    NeutralCard(
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick,
+        ),
+    ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { collapsed = !collapsed }
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    text = "Today's check-in",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                )
-                Text(
-                    text = dateStr,
-                    fontSize = 10.sp,
-                    color = Color(0x4CFFFFFF),
-                )
-            }
+            SectionLabel("Recovery")
+            Text(text = "tap to edit →", fontSize = 8.sp, color = Color(0x30FFFFFF))
+        }
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ScoreBar("Energy", state.energyScore)
+            ScoreBar("Hunger", state.hungerScore)
+            ScoreBar("Soreness", state.sorenessScore)
+        }
+    }
+}
+
+@Composable
+private fun ScoreBar(label: String, score: Int) {
+    val fraction by animateFloatAsState(targetValue = score / 10f, label = "bar_$label")
+    val (barStart, barEnd, numColor) = when {
+        score <= 4 -> Triple(Color(0xFFEF4444), Color(0xFFF97316), Color(0xFFEF4444))
+        score <= 6 -> Triple(Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFF59E0B))
+        else -> Triple(Violet500, Violet300, Violet400)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+            color = Color(0xA6FFFFFF), modifier = Modifier.width(58.dp),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(5.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color(0x12FFFFFF)),
+        ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x0FFFFFFF))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            ) {
-                Text(
-                    text = if (collapsed) "Expand ↓" else "Collapse ↑",
-                    fontSize = 11.sp,
-                    color = Color(0x4CFFFFFF),
-                )
-            }
+                    .fillMaxWidth(fraction)
+                    .height(5.dp)
+                    .background(
+                        Brush.horizontalGradient(listOf(barStart, barEnd)),
+                        RoundedCornerShape(3.dp),
+                    ),
+            )
         }
-
-        // Animated form body — tighter padding when expanded
-        AnimatedVisibility(
-            visible = !collapsed,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                BodyCheckInFormContent(
-                    state = state,
-                    actions = actions,
-                    saveLabel = "Save check-in",
-                )
-            }
-        }
+        Text(
+            text = "$score", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+            color = numColor, modifier = Modifier.width(18.dp),
+        )
     }
 }
 
@@ -399,21 +455,11 @@ private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Check-in history",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xBFFFFFFF),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xBFFFFFFF),
                 )
-                Text(
-                    text = "$daysLogged days logged · tap to view all",
-                    fontSize = 10.sp,
-                    color = TextMuted,
-                )
+                Text(text = "$daysLogged days logged · tap to view all", fontSize = 10.sp, color = TextMuted)
             }
-            Text(
-                text = "→",
-                fontSize = 16.sp,
-                color = Color(0xB38B5CF6),
-            )
+            Text("→", fontSize = 16.sp, color = Color(0xB38B5CF6))
         }
     }
 }

@@ -181,8 +181,8 @@ class LogRepository(
     }
 
     suspend fun deleteSlot(id: Long) {
+        mealEntryDao.deleteBySlotId(id)
         mealSlotDao.deleteById(id)
-        mealEntryDao.clearSlotId(id)
     }
 
     suspend fun reorderSlots(orderedIds: List<Long>) {

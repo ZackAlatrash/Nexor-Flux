@@ -23,6 +23,7 @@ import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryScreen
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.today.BodyRecoveryScreen
+import com.zack.recomptracker.ui.today.FoodLogViewModel
 import com.zack.recomptracker.ui.today.FoodScreen
 import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.ui.body.BodyEditViewModel
@@ -91,16 +92,16 @@ fun AppNavGraph(
         }
         composable(Routes.Food) {
             FoodScreen(
-                viewModel = viewModel<TodayViewModel>(factory = factory),
-                onAddToSlot = { slotId, slotName ->
+                viewModel = viewModel<FoodLogViewModel>(factory = factory),
+                onAddToSlot = { slotId, slotName, date ->
                     navController.navigate(
-                        "${Routes.FoodLibrary}?slotId=$slotId&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}"
+                        "${Routes.FoodLibrary}?slotId=$slotId&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&date=$date"
                     )
                 },
                 onBrowseLibrary = { navController.navigate(Routes.FoodLibrary) },
-                onEditEntryAmount = { slotId, slotName, entryId ->
+                onEditEntryAmount = { slotId, slotName, entryId, date ->
                     navController.navigate(
-                        "${Routes.FoodLibrary}?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&editEntryId=$entryId"
+                        "${Routes.FoodLibrary}?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&editEntryId=$entryId&date=$date"
                     )
                 },
             )
@@ -155,7 +156,7 @@ fun AppNavGraph(
             FoodsScreen(viewModel<FoodsViewModel>(factory = factory))
         }
         composable(
-            route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}",
+            route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}&date={date}",
             arguments = listOf(
                 androidx.navigation.navArgument("slotId") {
                     type = androidx.navigation.NavType.LongType
@@ -169,6 +170,10 @@ fun AppNavGraph(
                     type = androidx.navigation.NavType.LongType
                     defaultValue = -1L
                 },
+                androidx.navigation.navArgument("date") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = ""
+                },
             ),
         ) { backStackEntry ->
             val slotId = backStackEntry.arguments?.getLong("slotId")?.takeIf { it != -1L }
@@ -177,12 +182,14 @@ fun AppNavGraph(
                 "UTF-8"
             )
             val editEntryId = backStackEntry.arguments?.getLong("editEntryId")?.takeIf { it != -1L }
+            val logDate = backStackEntry.arguments?.getString("date").orEmpty()
             FoodLibraryScreen(
-                viewModel = viewModel<FoodLibraryViewModel>(factory = factory),
-                slotId = slotId,
-                slotName = slotName,
-                onBack = { navController.popBackStack() },
+                viewModel   = viewModel<FoodLibraryViewModel>(factory = factory),
+                slotId      = slotId,
+                slotName    = slotName,
+                onBack      = { navController.popBackStack() },
                 editEntryId = editEntryId,
+                logDate     = logDate,
                 onScanBarcode = {
                     navController.navigate(Routes.barcodeScanner(slotId, slotName))
                 },

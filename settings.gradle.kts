@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "RecompTracker"
 include(":app")
+include(":macrobenchmark")

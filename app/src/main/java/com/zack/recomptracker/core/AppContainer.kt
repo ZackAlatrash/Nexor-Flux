@@ -28,6 +28,7 @@ import com.zack.recomptracker.ui.more.MoreViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
+import com.zack.recomptracker.ui.today.FoodLogViewModel
 import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
@@ -66,6 +67,11 @@ private class AppViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
         return when (modelClass) {
+            FoodLogViewModel::class.java -> FoodLogViewModel(
+                logRepository = container.logRepository,
+                planRepository = container.planRepository,
+                dateProvider = container.dateProvider,
+            )
             TodayViewModel::class.java -> TodayViewModel(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,

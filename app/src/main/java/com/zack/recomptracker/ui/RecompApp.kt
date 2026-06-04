@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -40,13 +38,10 @@ import com.zack.recomptracker.core.AppContainer
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTab
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTabs
-import com.zack.recomptracker.ui.component.AuroraBackground
+import com.zack.recomptracker.ui.component.GlassOrbBackground
 import com.zack.recomptracker.ui.navigation.AppNavGraph
 import com.zack.recomptracker.ui.navigation.Routes
 import com.zack.recomptracker.ui.navigation.TopLevelDestination
-import com.zack.recomptracker.ui.theme.BgDeep
-import com.zack.recomptracker.ui.theme.BgDark
-import com.zack.recomptracker.ui.theme.BgMid
 import com.zack.recomptracker.ui.theme.RecompTrackerTheme
 import com.zack.recomptracker.ui.theme.Violet300
 
@@ -117,24 +112,33 @@ fun RecompApp(container: AppContainer) {
                         .layerBackdrop(navBackdrop)
                         .fillMaxSize(),
                 ) {
-                    // Gradient + aurora captured into contentBackdrop.
+                    // Background captured into contentBackdrop.
                     // Glass composables inside AppNavGraph read this backdrop and blur over it.
                     Box(
                         modifier = Modifier
                             .layerBackdrop(contentBackdrop)
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0f    to BgDeep,
-                                        0.45f to BgMid,
-                                        1f    to BgDark,
-                                    ),
-                                ),
-                            ),
+                            .fillMaxSize(),
                     ) {
-                        AuroraBackground()
+                        GlassOrbBackground()
                     }
+
+                    // Previous gradient + aurora background (kept for reference):
+                    // Box(
+                    //     modifier = Modifier
+                    //         .layerBackdrop(contentBackdrop)
+                    //         .fillMaxSize()
+                    //         .background(
+                    //             Brush.verticalGradient(
+                    //                 colorStops = arrayOf(
+                    //                     0f    to BgDeep,
+                    //                     0.45f to BgMid,
+                    //                     1f    to BgDark,
+                    //                 ),
+                    //             ),
+                    //         ),
+                    // ) {
+                    //     AuroraBackground()
+                    // }
 
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),

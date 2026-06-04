@@ -196,17 +196,13 @@ fun FoodLibraryScreen(
         val filteredFoods = state.filteredFoods
         val filteredMeals = state.filteredMeals
 
-        // key(state.category) forces the LazyColumn to be fully recreated on every
-        // category switch. This prevents stale item keys from persisting across
-        // transitions and eliminates the crash caused by key-space conflicts when
-        // the category changes the visible item set.
-        key(state.category) {
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
+        val category = state.category
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
                 if (state.offSearchLoading) {
-                    item(key = "loading") {
+                    item(key = "${category}_loading") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -219,10 +215,10 @@ fun FoodLibraryScreen(
                 }
 
                 if (state.recentFoods.isNotEmpty() && state.query.isBlank()) {
-                    item(key = "recents_header") {
+                    item(key = "${category}_recents_header") {
                         SectionLabel("Recents", modifier = Modifier.padding(vertical = 8.dp))
                     }
-                    item(key = "recents_row") {
+                    item(key = "${category}_recents_row") {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(state.recentFoods, key = { "recent_${it.name}" }) { food ->
                                 Box(
@@ -244,13 +240,13 @@ fun FoodLibraryScreen(
                     }
                 }
 
-                if (state.category != FoodCategory.MEALS) {
+                if (category != FoodCategory.MEALS) {
                     if (filteredFoods.isEmpty() && !state.offSearchLoading) {
-                        item(key = "empty_state") { EmptyStateLabel(state.category) }
+                        item(key = "${category}_empty_state") { EmptyStateLabel(category) }
                     } else {
                         itemsIndexed(
                             items = filteredFoods,
-                            key = { _, item -> item.key },
+                            key = { _, item -> "${category}_${item.key}" },
                         ) { index, item ->
                             val isFirst = index == 0
                             val isLast = index == filteredFoods.lastIndex
@@ -286,12 +282,12 @@ fun FoodLibraryScreen(
                     }
                 }
 
-                if (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS) {
+                if (category == FoodCategory.ALL || category == FoodCategory.MEALS) {
                     if (filteredMeals.isNotEmpty()) {
-                        item(key = "meals_spacer") { Spacer(Modifier.height(8.dp)) }
+                        item(key = "${category}_meals_spacer") { Spacer(Modifier.height(8.dp)) }
                         itemsIndexed(
                             items = filteredMeals,
-                            key = { _, meal -> meal.id },
+                            key = { _, meal -> "${category}_${meal.id}" },
                         ) { index, meal ->
                             val isFirst = index == 0
                             val isLast = index == filteredMeals.lastIndex
@@ -322,7 +318,7 @@ fun FoodLibraryScreen(
                 }
 
                 if (slotId != null) {
-                    item(key = "save_slot") {
+                    item(key = "${category}_save_slot") {
                         Spacer(Modifier.height(12.dp))
                         Box(
                             modifier = Modifier
@@ -347,8 +343,7 @@ fun FoodLibraryScreen(
                     }
                 }
 
-                item(key = "bottom_spacer") { Spacer(Modifier.height(24.dp)) }
-            }
+                item(key = "${category}_bottom_spacer") { Spacer(Modifier.height(24.dp)) }
         }
     }
 

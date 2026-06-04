@@ -225,6 +225,14 @@ class LogRepository(
         )
     }
 
+    fun observeWeekCalories(start: LocalDate, end: LocalDate): Flow<Map<LocalDate, Int>> =
+        mealEntryDao.observeBetween(start.toString(), end.toString())
+            .map { entries ->
+                entries
+                    .groupBy { LocalDate.parse(it.date) }
+                    .mapValues { (_, dayEntries) -> dayEntries.sumOf { it.calories } }
+            }
+
     fun observeRecentFoods(limit: Int = RecentFoods.DEFAULT_LIMIT): Flow<List<MealEntryEntity>> =
         mealEntryDao.observeFoodLibraryEntries().map { RecentFoods.fromEntries(it, limit) }
 

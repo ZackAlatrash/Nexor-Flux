@@ -43,3 +43,5 @@ data class MealEntryInput(
     val entryServingGrams: Double? = null,
     val loggedByServings: Boolean = false,
 )
+
+data class DayCalorieSummary(val date: LocalDate, val calories: Int)

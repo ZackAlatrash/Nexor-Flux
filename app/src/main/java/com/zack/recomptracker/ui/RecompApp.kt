@@ -40,6 +40,7 @@ import com.zack.recomptracker.core.AppContainer
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTab
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTabs
+import com.zack.recomptracker.ui.component.AuroraBackground
 import com.zack.recomptracker.ui.navigation.AppNavGraph
 import com.zack.recomptracker.ui.navigation.Routes
 import com.zack.recomptracker.ui.navigation.TopLevelDestination
@@ -116,7 +117,8 @@ fun RecompApp(container: AppContainer) {
                         .layerBackdrop(navBackdrop)
                         .fillMaxSize(),
                 ) {
-                    // Gradient captured into contentBackdrop (renders before Scaffold below).
+                    // Gradient + aurora captured into contentBackdrop.
+                    // Glass composables inside AppNavGraph read this backdrop and blur over it.
                     Box(
                         modifier = Modifier
                             .layerBackdrop(contentBackdrop)
@@ -130,7 +132,9 @@ fun RecompApp(container: AppContainer) {
                                     ),
                                 ),
                             ),
-                    )
+                    ) {
+                        AuroraBackground()
+                    }
 
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),

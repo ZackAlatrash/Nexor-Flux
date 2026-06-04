@@ -44,10 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val AmbientOrbDefaultBrush = Brush.radialGradient(
-    listOf(Color(0x338B5CF6), Color.Transparent)
-)
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
@@ -65,6 +61,10 @@ import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
 import com.zack.recomptracker.ui.theme.Violet500
+
+private val AmbientOrbDefaultBrush = Brush.radialGradient(
+    listOf(Color(0x338B5CF6), Color.Transparent)
+)
 
 // ── Neutral Card (workhorse — list rows, menus, form containers) ──────────────
 

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -482,10 +483,8 @@ private fun MotivationalCard(message: String) {
             .background(
                 Brush.linearGradient(
                     colors = listOf(Color(0x247C3AED), Color(0x106D28D9)),
-                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(
-                        Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY,
-                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
                 ),
             )
             .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(16.dp))
@@ -515,7 +514,7 @@ private fun MotivationalCard(message: String) {
 @Composable
 private fun StatTilesRow(
     adherencePercent: Double,
-    weightTrendKgPerWeek: Double,
+    daysLogged: Int,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -528,9 +527,9 @@ private fun StatTilesRow(
             modifier = Modifier.weight(1f),
         )
         StatTile(
-            value = "${weightTrendKgPerWeek.formatSignedOneDecimal()} kg",
-            label = "Trend / week",
-            valueColor = if (weightTrendKgPerWeek <= 0.0) ErrorRed else Color(0xFF4ADE80),
+            value = "$daysLogged",
+            label = "Days logged",
+            valueColor = Color.White,
             modifier = Modifier.weight(1f),
         )
     }

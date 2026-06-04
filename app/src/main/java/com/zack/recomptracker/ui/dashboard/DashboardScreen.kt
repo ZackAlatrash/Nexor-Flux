@@ -114,7 +114,7 @@ fun HomeDashboardContent(
             ) {
                 item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state) }
-                item { StatTilesRow(state.adherencePercent, state.daysLogged) }
+                item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }
                 item { SevenDayChartCard(state) }
             }
         }
@@ -127,7 +127,10 @@ fun HomeDashboardContent(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
                 LiquidPrimaryButton(
                     text = "Daily Check-In",
                     onClick = onCheckIn,
@@ -550,7 +553,7 @@ private fun MotivationalCard(message: String) {
 @Composable
 private fun StatTilesRow(
     adherencePercent: Double,
-    daysLogged: Int,
+    weightTrendKgPerWeek: Double,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -563,9 +566,9 @@ private fun StatTilesRow(
             modifier = Modifier.weight(1f),
         )
         StatTile(
-            value = "$daysLogged",
-            label = "Days logged",
-            valueColor = Color.White,
+            value = "${weightTrendKgPerWeek.formatSignedOneDecimal()} kg",
+            label = "Trend / week",
+            valueColor = if (weightTrendKgPerWeek <= 0.0) ErrorRed else Color(0xFF4ADE80),
             modifier = Modifier.weight(1f),
         )
     }

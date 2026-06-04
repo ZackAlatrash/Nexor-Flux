@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.dashboard
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,5 +24,11 @@ class DashboardViewModelMessagesTest {
     fun defaultUiStateHasEmptyMessage() {
         val state = DashboardUiState()
         assertTrue("Default motivationalMessage should be empty", state.motivationalMessage.isEmpty())
+    }
+
+    @Test
+    fun allMessagesAreUnique() {
+        val messages = DashboardViewModel.MOTIVATIONAL_MESSAGES
+        assertEquals(messages.size, messages.toSet().size)
     }
 }

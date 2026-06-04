@@ -52,13 +52,13 @@ data class DashboardUiState(
     val daysLogged: Int = 0,
     val last7DaysCalories: List<DayCalories> = emptyList(),
     val inZoneDays7: Int = 0,
-    val motivationalMessage: String = "",
     val result: AdjustmentResult = AdjustmentResult(
         verdict = AdjustmentVerdict.WAIT_FOR_DATA,
         recommendedCalorieChange = 0,
         reasonCodes = listOf("NO_DATA"),
         summary = "Log today to start building a review window.",
     ),
+    val motivationalMessage: String = "",   // display-only, at end
 )
 
 class DashboardViewModel(

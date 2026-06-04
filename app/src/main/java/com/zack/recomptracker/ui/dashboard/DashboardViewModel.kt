@@ -75,6 +75,14 @@ class DashboardViewModel(
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()
 
+    // Cached AdjustmentEngine — recreated only when thresholds change, not on every meal add
+    private var cachedEngineThresholds: AdjustmentThresholds? = null
+    private var cachedEngine: AdjustmentEngine = adjustmentEngine
+
+    // Guard state for persistWeeklyReview — skips the DB write when verdict hasn't changed
+    private var lastPersistedVerdict: AdjustmentVerdict? = null
+    private var lastPersistedChange: Int = Int.MIN_VALUE
+
     init {
         viewModelScope.launch {
             combine(
@@ -128,13 +136,16 @@ class DashboardViewModel(
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }
             ?.toInt()
             ?: 4
-        val result = AdjustmentEngine(
-            AdjustmentThresholds(
-                weightTrendThresholdKgPerWeek = preferences.weightTrendThresholdKgPerWeek,
-                waistIncreaseThresholdCmAcrossTwoWeeks = preferences.waistIncreaseThresholdCm,
-                adherenceMinimumPercent = preferences.adherenceMinimumPercent,
-            ),
-        ).evaluate(
+        val thresholds = AdjustmentThresholds(
+            weightTrendThresholdKgPerWeek = preferences.weightTrendThresholdKgPerWeek,
+            waistIncreaseThresholdCmAcrossTwoWeeks = preferences.waistIncreaseThresholdCm,
+            adherenceMinimumPercent = preferences.adherenceMinimumPercent,
+        )
+        if (thresholds != cachedEngineThresholds) {
+            cachedEngineThresholds = thresholds
+            cachedEngine = AdjustmentEngine(thresholds)
+        }
+        val result = cachedEngine.evaluate(
             AdjustmentInput(
                 daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
                 adherencePercent = adherence,
@@ -182,13 +193,18 @@ class DashboardViewModel(
     }
 
     private suspend fun persistWeeklyReview(state: DashboardUiState) {
+        val verdict = state.result.verdict
+        val change = state.result.recommendedCalorieChange
+        if (verdict == lastPersistedVerdict && change == lastPersistedChange) return
+        lastPersistedVerdict = verdict
+        lastPersistedChange = change
         val today = dateProvider.today()
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         logRepository.saveWeeklyReview(
             WeeklyReviewEntity(
                 weekStart = weekStart.toString(),
-                verdict = state.result.verdict.name,
-                recommendedCalorieChange = state.result.recommendedCalorieChange,
+                verdict = verdict.name,
+                recommendedCalorieChange = change,
                 reasonCodes = state.result.reasonCodes.joinToString(","),
                 generatedAt = Instant.now().toString(),
             ),

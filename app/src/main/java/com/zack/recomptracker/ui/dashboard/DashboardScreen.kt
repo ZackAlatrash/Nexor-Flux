@@ -46,6 +46,9 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
@@ -59,14 +62,18 @@ import java.util.Locale
 @Composable
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
+    onCheckIn: () -> Unit,
+    onLogFood: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeDashboardContent(state = state)
+    HomeDashboardContent(state = state, onCheckIn = onCheckIn, onLogFood = onLogFood)
 }
 
 @Composable
 fun HomeDashboardContent(
     state: DashboardUiState,
+    onCheckIn: () -> Unit,
+    onLogFood: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -97,11 +104,40 @@ fun HomeDashboardContent(
             ScreenHeader(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp))
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 4.dp,
+                    bottom = FloatingNavHeight + 72.dp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state) }
+                item { StatTilesRow(state.adherencePercent, state.daysLogged) }
                 item { SevenDayChartCard(state) }
+            }
+        }
+
+        // Floating liquid glass pill buttons above the nav bar
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = FloatingNavHeight + 12.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                LiquidPrimaryButton(
+                    text = "Daily Check-In",
+                    onClick = onCheckIn,
+                    modifier = Modifier.weight(1f),
+                )
+                LiquidSecondaryButton(
+                    text = "Log Food",
+                    onClick = onLogFood,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }

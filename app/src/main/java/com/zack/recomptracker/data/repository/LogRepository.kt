@@ -48,6 +48,8 @@ class LogRepository(
 
     fun observeDailyLogs(): Flow<List<DailyLogEntity>> = dailyLogDao.observeAll()
     fun observeMealEntries(): Flow<List<MealEntryEntity>> = mealEntryDao.observeAll()
+    fun observeMealEntriesSince(startDate: LocalDate): Flow<List<MealEntryEntity>> =
+        mealEntryDao.observeBetween(startDate.toString(), "9999-12-31")
     fun observeSavedFoods(): Flow<List<SavedFoodEntity>> = savedFoodDao.observeAll()
     fun observeSavedMeals(): Flow<List<SavedMealEntity>> = savedMealDao.observeAll()
     fun observePerformances(): Flow<List<LiftPerformanceEntity>> = performanceDao.observeAll()

@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -89,15 +90,18 @@ class DashboardViewModel(
     private var lastPersistedChange: Int = Int.MIN_VALUE
 
     init {
+        val windowStart = dateProvider.today().minusDays(27)
         viewModelScope.launch {
             combine(
                 logRepository.observeDailyLogs(),
-                logRepository.observeMealEntries(),
+                logRepository.observeMealEntriesSince(windowStart),
                 logRepository.observePerformances(),
                 planRepository.preferences,
             ) { logs, meals, performances, preferences ->
                 buildState(logs, meals, performances, preferences)
-            }.collect { state ->
+            }
+            .debounce(300L)
+            .collect { state ->
                 _uiState.value = state
                 persistWeeklyReview(state)
             }

@@ -36,7 +36,8 @@ import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 
 class AppContainer(context: Context) {
     val dateProvider: DateProvider = SystemDateProvider()
-    val database: RecompDatabase = RecompDatabase.create(context)
+    private val _database by lazy { RecompDatabase.create(context) }
+    val database: RecompDatabase get() = _database
     private val appPreferences = AppPreferences(context.applicationContext)
     val uiPreferences = UiPreferences(context.applicationContext)
     val planRepository = PlanRepository(appPreferences)

@@ -48,7 +48,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.ui.component.WeekCalorieStrip
@@ -93,7 +92,6 @@ fun FoodScreen(
         onBrowseLibrary   = onBrowseLibrary,
         onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
         onSelectDate      = viewModel::selectDate,
-        onTodayClick      = { viewModel.selectDate(viewModel.today) },
     )
 }
 
@@ -115,7 +113,6 @@ fun FoodContent(
     onBrowseLibrary: () -> Unit,
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
     onSelectDate: (LocalDate) -> Unit,
-    onTodayClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAddSlotDialog by remember { mutableStateOf(false) }
@@ -136,10 +133,8 @@ fun FoodContent(
 
         Column(modifier = Modifier.fillMaxSize()) {
             FoodScreenHeader(
-                date          = state.selectedDate,
-                showTodayPill = !state.isToday,
-                onTodayClick  = onTodayClick,
-                modifier      = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                date     = state.selectedDate,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
             )
 
             LazyColumn(
@@ -148,12 +143,14 @@ fun FoodContent(
             ) {
                 item {
                     WeekCalorieStrip(
-                        weekData      = state.weekSummary,
-                        selectedDate  = state.selectedDate,
-                        today         = state.today,
-                        targetLow     = state.target.calorieZoneLowerBound,
-                        targetHigh    = state.target.calorieZoneUpperBound,
-                        onDaySelected = onSelectDate,
+                        weekData       = state.weekSummary,
+                        selectedDate   = state.selectedDate,
+                        today          = state.today,
+                        targetCalories = state.target.targetCalories,
+                        targetLow      = state.target.calorieZoneLowerBound,
+                        targetHigh     = state.target.calorieZoneUpperBound,
+                        onDaySelected  = onSelectDate,
+                        onTodayClick   = { onSelectDate(state.today) },
                     )
                 }
 
@@ -258,8 +255,6 @@ fun FoodContent(
 @Composable
 private fun FoodScreenHeader(
     date: LocalDate,
-    showTodayPill: Boolean,
-    onTodayClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dateStr = remember(date) {
@@ -277,28 +272,7 @@ private fun FoodScreenHeader(
             color = Color.White,
             letterSpacing = (-0.8).sp,
         )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
-            if (showTodayPill) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0x208B5CF6))
-                        .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(10.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onTodayClick,
-                        )
-                        .padding(horizontal = 10.dp, vertical = 3.dp),
-                ) {
-                    Text(text = "Today", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Violet400)
-                }
-            }
-        }
+        Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
     }
 }
 

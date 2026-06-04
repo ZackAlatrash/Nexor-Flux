@@ -1,5 +1,10 @@
 package com.zack.recomptracker.ui.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -13,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
@@ -38,21 +45,28 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
+private val STRIP_BAR_HEIGHT = 60.dp
+
 @Composable
 fun WeekCalorieStrip(
     weekData: List<DayCalorieSummary>,
     selectedDate: LocalDate,
     today: LocalDate,
+    targetCalories: Int,
     targetLow: Int,
     targetHigh: Int,
     onDaySelected: (LocalDate) -> Unit,
+    onTodayClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (weekData.isEmpty()) return
 
     val scaleMax = (targetHigh * 1.3f).toInt().coerceAtLeast(1)
-    val zoneLowFrac  = (targetLow.toFloat()  / scaleMax).coerceIn(0f, 1f)
-    val zoneHighFrac = (targetHigh.toFloat() / scaleMax).coerceIn(0f, 1f)
+    val zoneLowFrac   = (targetLow.toFloat()     / scaleMax).coerceIn(0f, 1f)
+    val zoneHighFrac  = (targetHigh.toFloat()    / scaleMax).coerceIn(0f, 1f)
+    val targetFrac    = (targetCalories.toFloat() / scaleMax).coerceIn(0f, 1f)
+
+    val yTargetDp = STRIP_BAR_HEIGHT * (1f - targetFrac)
 
     Column(
         modifier = modifier
@@ -60,42 +74,71 @@ fun WeekCalorieStrip(
             .background(Color(0x0D000000), RoundedCornerShape(14.dp))
             .border(1.dp, Color(0x0FFFFFFF), RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
+        // Bar area + zone label overlays
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp)
-                .drawBehind {
-                    val dash = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
-                    val yHigh = size.height * (1f - zoneHighFrac)
-                    val yLow  = size.height * (1f - zoneLowFrac)
-                    drawLine(
-                        color = Color(0x408B5CF6),
-                        start = Offset(0f, yHigh), end = Offset(size.width, yHigh),
-                        strokeWidth = 1.dp.toPx(), pathEffect = dash,
-                    )
-                    drawLine(
-                        color = Color(0x258B5CF6),
-                        start = Offset(0f, yLow), end = Offset(size.width, yLow),
-                        strokeWidth = 1.dp.toPx(), pathEffect = dash,
-                    )
-                },
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Bottom,
+                .height(STRIP_BAR_HEIGHT),
         ) {
-            weekData.forEach { summary ->
-                WeekBarItem(
-                    summary    = summary,
-                    isSelected = summary.date == selectedDate,
-                    scaleMax   = scaleMax,
-                    targetLow  = targetLow,
-                    targetHigh = targetHigh,
-                    onSelected = { onDaySelected(summary.date) },
-                    modifier   = Modifier.weight(1f),
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .drawBehind {
+                        val dash = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
+                        val labelGap = 32.dp.toPx()
+                        val yHigh   = size.height * (1f - zoneHighFrac)
+                        val yLow    = size.height * (1f - zoneLowFrac)
+                        val yTarget = size.height * (1f - targetFrac)
+
+                        // Colored zone band
+                        drawRect(
+                            color   = Color(0x128B5CF6),
+                            topLeft = Offset(0f, yHigh),
+                            size    = Size(size.width, yLow - yHigh),
+                        )
+
+                        // Single target line
+                        drawLine(
+                            color       = Color(0x608B5CF6),
+                            start       = Offset(0f, yTarget),
+                            end         = Offset(size.width - labelGap, yTarget),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect  = dash,
+                        )
+                    },
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                weekData.forEach { summary ->
+                    WeekBarItem(
+                        summary    = summary,
+                        isSelected = summary.date == selectedDate,
+                        scaleMax   = scaleMax,
+                        targetLow  = targetLow,
+                        targetHigh = targetHigh,
+                        onSelected = { onDaySelected(summary.date) },
+                        modifier   = Modifier.weight(1f),
+                    )
+                }
             }
+
+            // Single calorie target label, pinned to the right edge of the target line
+            Text(
+                text = "$targetCalories",
+                fontSize = 7.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0x808B5CF6),
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(y = yTargetDp - 9.dp),
+            )
         }
 
+        // Day-of-week labels
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -113,6 +156,35 @@ fun WeekCalorieStrip(
                     color = if (sel) Violet400 else Color(0xFF555555),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        // Today pill — slides in below the day labels when viewing a past day
+        AnimatedVisibility(
+            visible = selectedDate != today,
+            enter = fadeIn(tween(200)) + expandVertically(tween(220), expandFrom = Alignment.Top),
+            exit  = fadeOut(tween(150)) + shrinkVertically(tween(170), shrinkTowards = Alignment.Top),
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0x1A8B5CF6))
+                    .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(20.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onTodayClick,
+                    )
+                    .padding(horizontal = 18.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Today",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Violet400,
                 )
             }
         }
@@ -134,12 +206,10 @@ private fun WeekBarItem(
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
     val barColor = when {
-        empty -> Color.White.copy(alpha = if (isSelected) 0.18f else 0.07f)
-        summary.calories in targetLow..targetHigh ->
-            Violet400.copy(alpha = if (isSelected) 1f else 0.50f)
-        summary.calories > targetHigh ->
-            Color(0xFFF97316).copy(alpha = if (isSelected) 1f else 0.50f)
-        else -> Violet300.copy(alpha = if (isSelected) 0.80f else 0.30f)
+        empty -> Color.White.copy(alpha = if (isSelected) 0.18f else 0.10f)
+        summary.calories in targetLow..targetHigh -> Violet400
+        summary.calories > targetHigh -> Color(0xFFF97316)
+        else -> Violet300.copy(alpha = 0.75f)
     }
 
     Box(

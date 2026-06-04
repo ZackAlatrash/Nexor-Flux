@@ -471,6 +471,107 @@ private fun ChartStat(
     }
 }
 
+// ── Card: MOTIVATIONAL MESSAGE ────────────────────────────────────────────────
+
+@Composable
+private fun MotivationalCard(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0x247C3AED), Color(0x106D28D9)),
+                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(
+                        Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY,
+                    ),
+                ),
+            )
+            .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+    ) {
+        Column {
+            Text(
+                text = "“$message”",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFEDE9FE),
+                lineHeight = 19.sp,
+                letterSpacing = (-0.2).sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Refreshes each session",
+                fontSize = 10.sp,
+                color = Color(0x8CA78BFA),
+            )
+        }
+    }
+}
+
+// ── Stat Tiles Row ────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatTilesRow(
+    adherencePercent: Double,
+    weightTrendKgPerWeek: Double,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StatTile(
+            value = adherencePercent.formatPercent(),
+            label = "Adherence",
+            valueColor = Violet400,
+            modifier = Modifier.weight(1f),
+        )
+        StatTile(
+            value = "${weightTrendKgPerWeek.formatSignedOneDecimal()} kg",
+            label = "Trend / week",
+            valueColor = if (weightTrendKgPerWeek <= 0.0) ErrorRed else Color(0xFF4ADE80),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun StatTile(
+    value: String,
+    label: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0x0AFFFFFF))
+            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 11.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = value,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                color = valueColor,
+                letterSpacing = (-0.5).sp,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = label,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextMuted,
+                letterSpacing = 0.06.sp,
+            )
+        }
+    }
+}
+
 // ── Legacy Stats sub-screen (accessible via More → Stats) ─────────────────────
 
 @Composable

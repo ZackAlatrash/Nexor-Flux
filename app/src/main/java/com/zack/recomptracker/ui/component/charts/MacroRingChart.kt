@@ -49,7 +49,9 @@ fun MacroRingChart(
     ringSize: Dp = 120.dp,
     strokeWidth: Dp = 10.dp,
 ) {
-    val (targetProtein, targetCarbs, targetFat) = macroSweepAngles(proteinKcal, carbsKcal, fatKcal)
+    val (targetProtein, targetCarbs, targetFat) = remember(proteinKcal, carbsKcal, fatKcal) {
+        macroSweepAngles(proteinKcal, carbsKcal, fatKcal)
+    }
 
     var proteinTarget by remember { mutableFloatStateOf(0f) }
     var carbsTarget   by remember { mutableFloatStateOf(0f) }

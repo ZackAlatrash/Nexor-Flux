@@ -59,6 +59,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+private val AmbientOrbBrush1 = Brush.radialGradient(listOf(Color(0x338B5CF6), Color.Transparent))
+private val AmbientOrbBrush2 = Brush.radialGradient(listOf(Color(0x14a78bfa), Color.Transparent))
+
 @Composable
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
@@ -82,22 +85,14 @@ fun HomeDashboardContent(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0x338B5CF6), Color.Transparent),
-                    ),
-                ),
+                .background(AmbientOrbBrush1),
         )
         // Ambient orb 2 — right-center secondary bloom
         Box(
             modifier = Modifier
                 .size(220.dp)
                 .offset(x = 200.dp, y = 260.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0x14a78bfa), Color.Transparent),
-                    ),
-                ),
+                .background(AmbientOrbBrush2),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {

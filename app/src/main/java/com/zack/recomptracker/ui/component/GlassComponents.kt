@@ -26,6 +26,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,11 +38,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+private val AmbientOrbDefaultBrush = Brush.radialGradient(
+    listOf(Color(0x338B5CF6), Color.Transparent)
+)
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
@@ -87,10 +93,19 @@ fun FrostedCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
+    var cardWidth by remember { mutableIntStateOf(0) }
+    val shimmerBrush = remember(cardWidth) {
+        Brush.horizontalGradient(
+            colors = listOf(Color.Transparent, Color(0x33FFFFFF), Color(0x33FFFFFF), Color.Transparent),
+            startX = cardWidth * 0.12f,
+            endX   = cardWidth * 0.88f,
+        )
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
+            .onSizeChanged { cardWidth = it.width }
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { RoundedRectangle(CornerCard) },
@@ -102,16 +117,7 @@ fun FrostedCard(
                     drawRect(Color(0x33000000))
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color(0x33FFFFFF),
-                                Color(0x33FFFFFF),
-                                Color.Transparent,
-                            ),
-                            startX = size.width * 0.12f,
-                            endX   = size.width * 0.88f,
-                        ),
+                        brush = shimmerBrush,
                         start       = Offset(0f, shimmerY),
                         end         = Offset(size.width, shimmerY),
                         strokeWidth = 1.dp.toPx(),
@@ -132,10 +138,19 @@ fun TintedCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
+    var cardWidth by remember { mutableIntStateOf(0) }
+    val shimmerBrush = remember(cardWidth) {
+        Brush.horizontalGradient(
+            colors = listOf(Color.Transparent, TintedBorder, TintedBorder, Color.Transparent),
+            startX = cardWidth * 0.10f,
+            endX   = cardWidth * 0.90f,
+        )
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
+            .onSizeChanged { cardWidth = it.width }
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { RoundedRectangle(CornerCard) },
@@ -147,16 +162,7 @@ fun TintedCard(
                     drawRect(TintedSurface)
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                TintedBorder,
-                                TintedBorder,
-                                Color.Transparent,
-                            ),
-                            startX = size.width * 0.10f,
-                            endX   = size.width * 0.90f,
-                        ),
+                        brush = shimmerBrush,
                         start       = Offset(0f, shimmerY),
                         end         = Offset(size.width, shimmerY),
                         strokeWidth = 1.dp.toPx(),
@@ -470,10 +476,6 @@ fun AmbientOrb(
         modifier = modifier
             .size(size.dp)
             .offset(x = offsetX.dp, y = offsetY.dp)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0x338B5CF6), Color.Transparent),
-                ),
-            ),
+            .background(AmbientOrbDefaultBrush),
     )
 }

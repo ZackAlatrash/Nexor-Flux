@@ -18,9 +18,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clipToBounds
+import kotlin.math.abs
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -40,8 +40,8 @@ private const val MAX_TILT = 0.09f
 private const val IMAGE_SCALE = 1.14f
 // Max parallax shift in dp at full tilt
 private const val PARALLAX_DP = 24f
-// Blur radius — softens the orbs into dreamy bokeh shapes
-private val BLUR_RADIUS = 18.dp
+// Minimum tilt delta that triggers a state update — prevents 60 Hz recompositions from tiny noise
+private const val TILT_THRESHOLD = 0.004f
 
 @Composable
 fun GlassOrbBackground(modifier: Modifier = Modifier) {
@@ -66,14 +66,18 @@ fun GlassOrbBackground(modifier: Modifier = Modifier) {
         val sensor = sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
-                rawTiltX = (event.values[0] * TILT_SCALE).coerceIn(-MAX_TILT, MAX_TILT)
-                rawTiltY = (event.values[1] * TILT_SCALE).coerceIn(-MAX_TILT, MAX_TILT)
+                val newX = (event.values[0] * TILT_SCALE).coerceIn(-MAX_TILT, MAX_TILT)
+                val newY = (event.values[1] * TILT_SCALE).coerceIn(-MAX_TILT, MAX_TILT)
+                if (abs(newX - rawTiltX) > TILT_THRESHOLD || abs(newY - rawTiltY) > TILT_THRESHOLD) {
+                    rawTiltX = newX
+                    rawTiltY = newY
+                }
             }
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> sm?.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
+                Lifecycle.Event.ON_RESUME -> sm?.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
                 Lifecycle.Event.ON_PAUSE  -> sm?.unregisterListener(listener)
                 else -> Unit
             }
@@ -94,12 +98,11 @@ fun GlassOrbBackground(modifier: Modifier = Modifier) {
             .clipToBounds(),
     ) {
         Image(
-            painter = painterResource(R.drawable.bg_glass_orbs),
+            painter = painterResource(R.drawable.bg_glass_orbs_blurred),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .blur(BLUR_RADIUS)
                 .graphicsLayer {
                     clip = false
                     scaleX = IMAGE_SCALE

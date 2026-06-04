@@ -69,6 +69,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+private val FoodScreenOrbBrush = Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent))
+
 @Composable
 fun FoodScreen(
     viewModel: FoodLogViewModel,
@@ -124,11 +126,7 @@ fun FoodContent(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0x298B5CF6), Color.Transparent),
-                    ),
-                ),
+                .background(FoodScreenOrbBrush),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {

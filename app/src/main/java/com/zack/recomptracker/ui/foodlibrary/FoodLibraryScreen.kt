@@ -94,9 +94,10 @@ fun FoodLibraryScreen(
     slotName: String,
     onBack: () -> Unit,
     editEntryId: Long? = null,
+    logDate: String = "",
     onScanBarcode: () -> Unit,
 ) {
-    LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId) }
+    LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId, logDate) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     val snackbarHostState = LocalSnackbarHostState.current

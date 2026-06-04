@@ -13,6 +13,7 @@ import com.zack.recomptracker.domain.food.FoodMacros
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.ui.component.MessageKind
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -205,9 +206,11 @@ class FoodLibraryViewModel(
     val loggedEvent: SharedFlow<String> = _loggedEvent
 
     private var initialized = false
+    private var logDate: LocalDate = dateProvider.today()
     private var offSearchJob: Job? = null
 
-    fun init(slotId: Long?, slotName: String, editEntryId: Long? = null) {
+    fun init(slotId: Long?, slotName: String, editEntryId: Long? = null, logDateStr: String = "") {
+        logDate = if (logDateStr.isNotEmpty()) LocalDate.parse(logDateStr) else dateProvider.today()
         _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }) }
         if (editEntryId != null && _uiState.value.editingEntryId != editEntryId) {
             _uiState.update { it.copy(editingEntryId = editEntryId) }
@@ -354,7 +357,7 @@ class FoodLibraryViewModel(
             if (editingId == null) {
                 logRepository.addMealToSlot(
                     input = MealEntryInput(
-                        date = dateProvider.today(),
+                        date = logDate,
                         mealType = MealEntryTypes.FOOD_LIBRARY,
                         name = food.name,
                         calories = preview.calories,
@@ -412,7 +415,7 @@ class FoodLibraryViewModel(
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
-                    date = dateProvider.today(),
+                    date = logDate,
                     mealType = meal.mealType,
                     name = meal.name,
                     calories = meal.calories,
@@ -523,7 +526,7 @@ class FoodLibraryViewModel(
         if (s.saveMealName.isBlank()) return
         viewModelScope.launch {
             val slotEntries = logRepository.getMealEntriesForSlot(
-                date = dateProvider.today().toString(),
+                date = logDate.toString(),
                 slotId = s.slotId,
             )
             if (slotEntries.isEmpty()) {
@@ -568,7 +571,7 @@ class FoodLibraryViewModel(
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
-                    date = dateProvider.today(),
+                    date = logDate,
                     mealType = MealEntryTypes.QUICK_ADD,
                     name = s.quickAddName.ifBlank { "Quick add" },
                     calories = cal,

@@ -307,16 +307,17 @@ class FoodLibraryViewModel(
             householdServingName = entry.entryServingName,
             householdServingGrams = entry.entryServingGrams,
         )
-        val useServings = entry.loggedByServings ||
-            (entry.entryServingGrams != null && entry.entryServingName != null)
+        val servingGrams = entry.entryServingGrams
+        val useServings = (entry.loggedByServings && servingGrams != null) ||
+            (servingGrams != null && entry.entryServingName != null)
         _uiState.update {
             it.copy(
                 showAmountSheet = true,
                 pendingFood = base,
                 editingEntryId = entry.id,
                 amountMode = if (useServings) AmountMode.SERVINGS else AmountMode.GRAMS,
-                servingsValue = if (useServings && entry.entryServingGrams!! >= 1.0) {
-                    val servings = ((entry.amountGrams ?: 0.0) / entry.entryServingGrams!!).coerceAtLeast(1.0)
+                servingsValue = if (useServings && servingGrams != null && servingGrams >= 1.0) {
+                    val servings = ((entry.amountGrams ?: 0.0) / servingGrams).coerceAtLeast(1.0)
                     if (servings == servings.toLong().toDouble()) servings.toLong().toString() else servings.toString()
                 } else "1",
                 gramsValue = (entry.amountGrams ?: 100.0).toInt().toString(),

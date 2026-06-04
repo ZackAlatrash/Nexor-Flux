@@ -34,6 +34,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -68,6 +69,8 @@ import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private val FoodScreenOrbBrush = Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent))
 
 @Composable
 fun FoodScreen(
@@ -124,11 +127,7 @@ fun FoodContent(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color(0x298B5CF6), Color.Transparent),
-                    ),
-                ),
+                .background(FoodScreenOrbBrush),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -484,20 +483,22 @@ private fun LockedSlotCard(
                     },
             ) {
                 slotWithEntries.entries.forEachIndexed { i, entry ->
-                    if (i > 0) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(Color(0x0AFFFFFF)),
+                    key(entry.id) {
+                        if (i > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0x0AFFFFFF)),
+                            )
+                        }
+                        SlotEntryRow(
+                            entry = entry,
+                            onDelete = onDeleteEntry,
+                            onEditAmount = { onEditEntryAmount(entry.id) },
+                            onEditMacros = onEditMacros,
                         )
                     }
-                    SlotEntryRow(
-                        entry = entry,
-                        onDelete = onDeleteEntry,
-                        onEditAmount = { onEditEntryAmount(entry.id) },
-                        onEditMacros = onEditMacros,
-                    )
                 }
             }
         } else {

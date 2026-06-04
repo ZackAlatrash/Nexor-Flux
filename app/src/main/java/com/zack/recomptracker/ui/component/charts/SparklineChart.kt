@@ -103,6 +103,13 @@ fun SparklineChart(
 
     val progress = drawInProgress.value
 
+    // Memoize range values — avoids two full-list scans every animation frame
+    val minVal = remember(values) { values.min() }
+    val maxVal = remember(values) { values.max() }
+    // Reuse Path objects across frames — reset+rebuild inside Canvas instead of allocating new ones
+    val linePath = remember(values) { Path() }
+    val areaPath = remember(values) { Path() }
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -114,8 +121,6 @@ fun SparklineChart(
         val sidePad = 4.dp.toPx()
         val usableW = w - 2 * sidePad
         val n = values.size
-        val minVal = values.min()
-        val maxVal = values.max()
         val range = (maxVal - minVal).coerceAtLeast(1f)
         val paddedMin = minVal - range * 0.10f
         val paddedMax = maxVal + range * 0.10f
@@ -151,21 +156,19 @@ fun SparklineChart(
             drawLine(dashColor, Offset(0f, zLowY),  Offset(w, zLowY),  0.7.dp.toPx(), pathEffect = dash)
         }
 
-        // Build bezier paths
-        val linePath = Path().apply {
-            moveTo(pts[0].x, pts[0].y)
-            for (i in 1 until pts.size) {
-                val p0 = pts[i - 1]; val p1 = pts[i]
-                val midX = (p0.x + p1.x) / 2f
-                cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
-            }
+        // Build bezier paths — reuse remembered Path objects, reset their contents each frame
+        linePath.reset()
+        linePath.moveTo(pts[0].x, pts[0].y)
+        for (i in 1 until pts.size) {
+            val p0 = pts[i - 1]; val p1 = pts[i]
+            val midX = (p0.x + p1.x) / 2f
+            linePath.cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
         }
-        val areaPath = Path().apply {
-            addPath(linePath)
-            lineTo(pts.last().x, h)
-            lineTo(pts.first().x, h)
-            close()
-        }
+        areaPath.reset()
+        areaPath.addPath(linePath)
+        areaPath.lineTo(pts.last().x, h)
+        areaPath.lineTo(pts.first().x, h)
+        areaPath.close()
 
         val clipRight = w * progress
 

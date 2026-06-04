@@ -16,6 +16,7 @@ import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
+import androidx.compose.runtime.Immutable
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.adherence.NutritionDay
@@ -30,12 +31,18 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
+@Immutable
 data class DayCalories(
     val label: String,
     val calories: Int,
@@ -50,7 +57,7 @@ data class DashboardUiState(
     val waistTrendCmPerWeek: Double = 0.0,
     val adherencePercent: Double = 0.0,
     val daysLogged: Int = 0,
-    val last7DaysCalories: List<DayCalories> = emptyList(),
+    val last7DaysCalories: ImmutableList<DayCalories> = persistentListOf(),
     val inZoneDays7: Int = 0,
     val result: AdjustmentResult = AdjustmentResult(
         verdict = AdjustmentVerdict.WAIT_FOR_DATA,
@@ -61,6 +68,7 @@ data class DashboardUiState(
     val motivationalMessage: String = "",   // display-only, at end
 )
 
+@OptIn(FlowPreview::class)
 class DashboardViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
@@ -75,16 +83,27 @@ class DashboardViewModel(
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()
 
+    // Cached AdjustmentEngine — recreated only when thresholds change, not on every meal add
+    private var cachedEngineThresholds: AdjustmentThresholds? = null
+    private var cachedEngine: AdjustmentEngine = adjustmentEngine
+
+    // Guard state for persistWeeklyReview — skips the DB write when verdict hasn't changed
+    private var lastPersistedVerdict: AdjustmentVerdict? = null
+    private var lastPersistedChange: Int = Int.MIN_VALUE
+
     init {
+        val windowStart = dateProvider.today().minusDays(27)
         viewModelScope.launch {
             combine(
                 logRepository.observeDailyLogs(),
-                logRepository.observeMealEntries(),
+                logRepository.observeMealEntriesSince(windowStart),
                 logRepository.observePerformances(),
                 planRepository.preferences,
             ) { logs, meals, performances, preferences ->
                 buildState(logs, meals, performances, preferences)
-            }.collect { state ->
+            }
+            .debounce(300L)
+            .collect { state ->
                 _uiState.value = state
                 persistWeeklyReview(state)
             }
@@ -128,13 +147,16 @@ class DashboardViewModel(
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }
             ?.toInt()
             ?: 4
-        val result = AdjustmentEngine(
-            AdjustmentThresholds(
-                weightTrendThresholdKgPerWeek = preferences.weightTrendThresholdKgPerWeek,
-                waistIncreaseThresholdCmAcrossTwoWeeks = preferences.waistIncreaseThresholdCm,
-                adherenceMinimumPercent = preferences.adherenceMinimumPercent,
-            ),
-        ).evaluate(
+        val thresholds = AdjustmentThresholds(
+            weightTrendThresholdKgPerWeek = preferences.weightTrendThresholdKgPerWeek,
+            waistIncreaseThresholdCmAcrossTwoWeeks = preferences.waistIncreaseThresholdCm,
+            adherenceMinimumPercent = preferences.adherenceMinimumPercent,
+        )
+        if (thresholds != cachedEngineThresholds) {
+            cachedEngineThresholds = thresholds
+            cachedEngine = AdjustmentEngine(thresholds)
+        }
+        val result = cachedEngine.evaluate(
             AdjustmentInput(
                 daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
                 adherencePercent = adherence,
@@ -153,7 +175,7 @@ class DashboardViewModel(
                 calories = mealsByDate[date].orEmpty().macroTotals().calories,
                 isToday = date == today,
             )
-        }
+        }.toImmutableList()
         val inZoneDays7 = if (preferences.calorieZoneLowerBound > 0) {
             last7DaysCalories.count {
                 it.calories > 0 &&
@@ -182,13 +204,18 @@ class DashboardViewModel(
     }
 
     private suspend fun persistWeeklyReview(state: DashboardUiState) {
+        val verdict = state.result.verdict
+        val change = state.result.recommendedCalorieChange
+        if (verdict == lastPersistedVerdict && change == lastPersistedChange) return
+        lastPersistedVerdict = verdict
+        lastPersistedChange = change
         val today = dateProvider.today()
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         logRepository.saveWeeklyReview(
             WeeklyReviewEntity(
                 weekStart = weekStart.toString(),
-                verdict = state.result.verdict.name,
-                recommendedCalorieChange = state.result.recommendedCalorieChange,
+                verdict = verdict.name,
+                recommendedCalorieChange = change,
                 reasonCodes = state.result.reasonCodes.joinToString(","),
                 generatedAt = Instant.now().toString(),
             ),

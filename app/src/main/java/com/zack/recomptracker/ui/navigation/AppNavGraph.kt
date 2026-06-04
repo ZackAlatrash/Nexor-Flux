@@ -1,5 +1,10 @@
 package com.zack.recomptracker.ui.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -66,12 +71,21 @@ fun AppNavGraph(
     modifier: Modifier = Modifier,
 ) {
     val factory = LocalAppContainer.current.viewModelFactory
+    // Shared transition specs: fade for top-level tabs, slide+fade for sub-screens
+    val tabEnter = fadeIn(tween(220))
+    val tabExit  = fadeOut(tween(200))
+    val screenEnter = slideInVertically(tween(280)) { it / 16 } + fadeIn(tween(280))
+    val screenExit  = slideOutVertically(tween(220)) { it / 16 } + fadeOut(tween(220))
     NavHost(
         navController = navController,
         startDestination = TopLevelDestination.Home.route,
         modifier = modifier,
     ) {
-        composable(TopLevelDestination.Home.route) {
+        composable(
+            route = TopLevelDestination.Home.route,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
             HomeDashboardScreen(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
                 onCheckIn = {
@@ -90,7 +104,11 @@ fun AppNavGraph(
                 },
             )
         }
-        composable(Routes.Food) {
+        composable(
+            route = Routes.Food,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
             FoodScreen(
                 viewModel = viewModel<FoodLogViewModel>(factory = factory),
                 onAddToSlot = { slotId, slotName, date ->
@@ -106,16 +124,28 @@ fun AppNavGraph(
                 },
             )
         }
-        composable(TopLevelDestination.Body.route) {
+        composable(
+            route = TopLevelDestination.Body.route,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
             BodyRecoveryScreen(
                 viewModel = viewModel<TodayViewModel>(factory = factory),
                 onViewHistory = { navController.navigate(Routes.BodyHistory) },
             )
         }
-        composable(TopLevelDestination.Progress.route) {
+        composable(
+            route = TopLevelDestination.Progress.route,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
             ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
         }
-        composable(Routes.BodyHistory) {
+        composable(
+            route = Routes.BodyHistory,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
             BodyHistoryScreen(
                 viewModel = viewModel<BodyHistoryViewModel>(factory = factory),
                 onEditDay = { date -> navController.navigate(Routes.bodyEdit(date)) },
@@ -129,22 +159,40 @@ fun AppNavGraph(
                     type = androidx.navigation.NavType.StringType
                 },
             ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
         ) {
             BodyEditScreen(
                 viewModel = viewModel<BodyEditViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Routes.Stats) {
+        composable(
+            route = Routes.Stats,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
             DashboardScreen(viewModel<DashboardViewModel>(factory = factory))
         }
-        composable(Routes.Charts) {
+        composable(
+            route = Routes.Charts,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
             ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
         }
-        composable(Routes.Plan) {
+        composable(
+            route = Routes.Plan,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
             PlanScreen(viewModel<PlanViewModel>(factory = factory))
         }
-        composable(TopLevelDestination.More.route) {
+        composable(
+            route = TopLevelDestination.More.route,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
             MoreScreen(
                 viewModel      = viewModel<MoreViewModel>(factory = factory),
                 onStatsClick   = { navController.navigate(Routes.Stats) },
@@ -152,7 +200,11 @@ fun AppNavGraph(
                 onPlanClick    = { navController.navigate(Routes.Plan) },
             )
         }
-        composable(Routes.Foods) {
+        composable(
+            route = Routes.Foods,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
             FoodsScreen(viewModel<FoodsViewModel>(factory = factory))
         }
         composable(
@@ -175,6 +227,8 @@ fun AppNavGraph(
                     defaultValue = ""
                 },
             ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
         ) { backStackEntry ->
             val slotId = backStackEntry.arguments?.getLong("slotId")?.takeIf { it != -1L }
             val slotName = java.net.URLDecoder.decode(
@@ -207,6 +261,8 @@ fun AppNavGraph(
                     defaultValue = ""
                 },
             ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
         ) { backStackEntry ->
             val slotId = backStackEntry.arguments?.getLong("slotId")?.takeIf { it != -1L }
             val slotName = java.net.URLDecoder.decode(
@@ -219,7 +275,11 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Routes.Settings) {
+        composable(
+            route = Routes.Settings,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
             SettingsScreen(viewModel<SettingsViewModel>(factory = factory))
         }
     }

@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.today
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.model.MacroTotals
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@Stable
 data class MealSlotWithEntries(
     val slot: MealSlotEntity,
     val entries: List<MealEntryEntity>,

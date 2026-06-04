@@ -4,4 +4,10 @@
         <item name="android:navigationBarColor">#FAFCFC</item>
         <item name="android:statusBarColor">#FAFCFC</item>
     </style>
+
+    <style name="Theme.RecompTracker.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.RecompTracker</item>
+    </style>
 </resources>

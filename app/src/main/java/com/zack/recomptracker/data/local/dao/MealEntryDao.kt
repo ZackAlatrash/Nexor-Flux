@@ -50,6 +50,9 @@ interface MealEntryDao {
     @Query("DELETE FROM meal_entries")
     suspend fun deleteAll()
 
+    @Query("DELETE FROM meal_entries WHERE slotId = :slotId")
+    suspend fun deleteBySlotId(slotId: Long)
+
     @Query("UPDATE meal_entries SET slotId = NULL WHERE slotId = :slotId")
     suspend fun clearSlotId(slotId: Long)
 

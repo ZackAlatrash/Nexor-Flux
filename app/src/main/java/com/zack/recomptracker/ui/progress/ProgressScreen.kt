@@ -47,6 +47,8 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet400
 
+private val ProgressOrbBrush = Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent))
+
 @Composable
 fun ProgressScreen(viewModel: ProgressViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -56,9 +58,7 @@ fun ProgressScreen(viewModel: ProgressViewModel) {
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(
-                    Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent)),
-                ),
+                .background(ProgressOrbBrush),
         )
 
         LazyColumn(

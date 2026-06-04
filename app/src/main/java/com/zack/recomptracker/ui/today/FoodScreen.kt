@@ -34,6 +34,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -482,20 +483,22 @@ private fun LockedSlotCard(
                     },
             ) {
                 slotWithEntries.entries.forEachIndexed { i, entry ->
-                    if (i > 0) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(Color(0x0AFFFFFF)),
+                    key(entry.id) {
+                        if (i > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0x0AFFFFFF)),
+                            )
+                        }
+                        SlotEntryRow(
+                            entry = entry,
+                            onDelete = onDeleteEntry,
+                            onEditAmount = { onEditEntryAmount(entry.id) },
+                            onEditMacros = onEditMacros,
                         )
                     }
-                    SlotEntryRow(
-                        entry = entry,
-                        onDelete = onDeleteEntry,
-                        onEditAmount = { onEditEntryAmount(entry.id) },
-                        onEditMacros = onEditMacros,
-                    )
                 }
             }
         } else {

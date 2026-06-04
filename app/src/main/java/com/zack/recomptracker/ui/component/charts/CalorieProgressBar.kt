@@ -4,7 +4,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -27,6 +29,13 @@ fun CalorieProgressBar(
         animationSpec = ChartDefaults.AnimSpec.progressBar,
         label         = "calorieFill",
     )
+    // Mutable cache for stripe X positions — rebuilt only when zone bounds or canvas size change
+    val stripeCache = remember {
+        object {
+            var lastKey: Long = Long.MIN_VALUE
+            var positions: FloatArray = FloatArray(0)
+        }
+    }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -45,15 +54,22 @@ fun CalorieProgressBar(
             clipRect(left = zoneLeft, top = 0f, right = zoneRight, bottom = h) {
                 val stripeW = 4.dp.toPx()
                 val step    = 7.dp.toPx()
-                var x = zoneLeft - h
-                while (x < zoneRight + h) {
+                // Rebuild stripe positions only when zone bounds or height change
+                val cacheKey = (zoneLeft.toBits().toLong() shl 32) xor zoneRight.toBits().toLong() xor h.toBits().toLong()
+                if (stripeCache.lastKey != cacheKey) {
+                    stripeCache.lastKey = cacheKey
+                    val positions = mutableListOf<Float>()
+                    var x = zoneLeft - h
+                    while (x < zoneRight + h) { positions.add(x); x += step }
+                    stripeCache.positions = positions.toFloatArray()
+                }
+                stripeCache.positions.forEach { x ->
                     drawLine(
                         color       = Color(0x608B5CF6),
                         start       = Offset(x, 0f),
                         end         = Offset(x + h, h),
                         strokeWidth = stripeW,
                     )
-                    x += step
                 }
             }
         }

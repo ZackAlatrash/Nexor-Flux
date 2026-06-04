@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.collections.immutable)
     implementation(libs.vico.compose.m3)
     implementation(libs.androidx.health.connect)
     implementation(libs.androidx.camera.camera2)

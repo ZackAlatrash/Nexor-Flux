@@ -1,5 +1,6 @@
 package com.zack.recomptracker.data.repository
 
+import androidx.compose.runtime.Immutable
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
@@ -44,4 +45,5 @@ data class MealEntryInput(
     val loggedByServings: Boolean = false,
 )
 
+@Immutable
 data class DayCalorieSummary(val date: LocalDate, val calories: Int)

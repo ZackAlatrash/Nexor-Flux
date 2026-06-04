@@ -11,6 +11,9 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,9 +28,9 @@ data class FoodLogUiState(
     val today: LocalDate,
     val target: PlanPreferences = PlanPreferences(),
     val totals: MacroTotals = MacroTotals(),
-    val slots: List<MealSlotWithEntries> = emptyList(),
+    val slots: ImmutableList<MealSlotWithEntries> = persistentListOf(),
     val slotsEditMode: Boolean = false,
-    val weekSummary: List<DayCalorieSummary> = emptyList(),
+    val weekSummary: ImmutableList<DayCalorieSummary> = persistentListOf(),
     val message: String? = null,
 ) {
     val isToday: Boolean get() = selectedDate == today
@@ -59,7 +62,7 @@ class FoodLogViewModel(
                 val slottedEntries = slots.map { slot ->
                     val entries = slotMap[slot.id].orEmpty()
                     MealSlotWithEntries(slot = slot, entries = entries, totals = entries.macroTotals())
-                }
+                }.toImmutableList()
                 _uiState.update {
                     it.copy(
                         selectedDate = day.date,
@@ -76,7 +79,7 @@ class FoodLogViewModel(
                 val summaries = (0..6).map { i ->
                     val d = today.minusDays((6 - i).toLong())
                     DayCalorieSummary(date = d, calories = weekMap[d] ?: 0)
-                }
+                }.toImmutableList()
                 _uiState.update { it.copy(weekSummary = summaries) }
             }
         }

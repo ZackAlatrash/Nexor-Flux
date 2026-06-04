@@ -16,6 +16,7 @@ import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
+import androidx.compose.runtime.Immutable
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.adherence.NutritionDay
@@ -30,12 +31,16 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
+@Immutable
 data class DayCalories(
     val label: String,
     val calories: Int,
@@ -50,7 +55,7 @@ data class DashboardUiState(
     val waistTrendCmPerWeek: Double = 0.0,
     val adherencePercent: Double = 0.0,
     val daysLogged: Int = 0,
-    val last7DaysCalories: List<DayCalories> = emptyList(),
+    val last7DaysCalories: ImmutableList<DayCalories> = persistentListOf(),
     val inZoneDays7: Int = 0,
     val result: AdjustmentResult = AdjustmentResult(
         verdict = AdjustmentVerdict.WAIT_FOR_DATA,
@@ -164,7 +169,7 @@ class DashboardViewModel(
                 calories = mealsByDate[date].orEmpty().macroTotals().calories,
                 isToday = date == today,
             )
-        }
+        }.toImmutableList()
         val inZoneDays7 = if (preferences.calorieZoneLowerBound > 0) {
             last7DaysCalories.count {
                 it.calories > 0 &&

@@ -43,9 +43,9 @@ private data class AuroraPool(
 )
 
 private val POOLS = listOf(
-    AuroraPool(0.30f, 0.25f, 0.18f, 0.14f, 0.19f, 0.23f, 0.00f, 0.85f, Color(0x737C3AED), 0.8f),
-    AuroraPool(0.70f, 0.70f, 0.15f, 0.18f, 0.14f, 0.17f, 2.09f, 0.75f, Color(0x664F46E5), 1.0f),
-    AuroraPool(0.50f, 0.50f, 0.14f, 0.12f, 0.26f, 0.21f, 4.19f, 0.65f, Color(0x596D28D9), 1.2f),
+    AuroraPool(0.30f, 0.25f, 0.18f, 0.14f, 0.19f, 0.23f, 0.00f, 0.85f, Color(0x3D7C3AED), 0.8f),
+    AuroraPool(0.70f, 0.70f, 0.15f, 0.18f, 0.14f, 0.17f, 2.09f, 0.75f, Color(0x334F46E5), 1.0f),
+    AuroraPool(0.50f, 0.50f, 0.14f, 0.12f, 0.26f, 0.21f, 4.19f, 0.65f, Color(0x296D28D9), 1.2f),
 )
 
 // How much the raw rotation-vector reading maps to a pool offset fraction

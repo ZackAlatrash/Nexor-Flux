@@ -52,6 +52,7 @@ data class DashboardUiState(
     val daysLogged: Int = 0,
     val last7DaysCalories: List<DayCalories> = emptyList(),
     val inZoneDays7: Int = 0,
+    val motivationalMessage: String = "",
     val result: AdjustmentResult = AdjustmentResult(
         verdict = AdjustmentVerdict.WAIT_FOR_DATA,
         recommendedCalorieChange = 0,
@@ -70,6 +71,9 @@ class DashboardViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    // Picked once at ViewModel construction — stable for the whole session.
+    private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()
 
     init {
         viewModelScope.launch {
@@ -172,6 +176,7 @@ class DashboardViewModel(
             daysLogged = loggedDates.size,
             last7DaysCalories = last7DaysCalories,
             inZoneDays7 = inZoneDays7,
+            motivationalMessage = todayMessage,
             result = result,
         )
     }
@@ -193,6 +198,31 @@ class DashboardViewModel(
     private fun DailyLogEntity.localDate(): LocalDate = LocalDate.parse(date)
     private fun MealEntryEntity.localDate(): LocalDate = LocalDate.parse(date)
     private fun LiftPerformanceEntity.localDate(): LocalDate = LocalDate.parse(date)
+
+    companion object {
+        val MOTIVATIONAL_MESSAGES: List<String> = listOf(
+            "Small daily improvements lead to stunning long-term results.",
+            "Discipline is the bridge between goals and accomplishment.",
+            "You don't have to be extreme, just consistent.",
+            "Progress, not perfection.",
+            "Every rep, every meal — it all compounds.",
+            "The body achieves what the mind believes.",
+            "Eat well. Move well. Sleep well. Repeat.",
+            "Trust the process — the data doesn't lie.",
+            "One more logged day. One step closer.",
+            "Recomposition is a marathon, not a sprint.",
+            "Fuel your body like you mean it.",
+            "You showed up today. That's already a win.",
+            "Strong is built one decision at a time.",
+            "Consistency beats intensity every time.",
+            "Log it, track it, own it.",
+            "Your future self will thank you.",
+            "Build habits, not excuses.",
+            "The scale tells one story. The trend tells the truth.",
+            "Focus on what you can control today.",
+            "Every check-in is a data point in your favour.",
+        )
+    }
 }
 
 private operator fun ClosedRange<LocalDate>.contains(date: LocalDate): Boolean =

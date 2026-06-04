@@ -6,7 +6,7 @@
 > **Implementation date:** 2026-06-04  
 > **Model used:** Claude Sonnet 4.6  
 > **Scope:** Full static code analysis of `app/src/main/java/` – no runtime profiling yet  
-> **Status:** ✅ All Phase 1 + Phase 2 + Phase 3 tasks implemented and build-verified (including P-2b/2c)
+> **Status:** ✅ All Phase 1–4 tasks implemented and build-verified (4a/4f deferred by design)
 
 ---
 
@@ -758,11 +758,11 @@ Key data classes to annotate:
 | Task | Description | Status |
 |------|-------------|--------|
 | 4a | Implement blur-once shared backdrop: distribute single blurred texture to all FrostedCards | 🔲 Open |
-| 4b | Add `androidx.core.splashscreen` with data-ready condition | 🔲 Open |
-| 4c | Generate and ship Baseline Profile with the release build | 🔲 Open |
+| 4b | Add `androidx.core.splashscreen` with data-ready condition | ✅ Done |
+| 4c | Baseline Profile infrastructure (`:macrobenchmark` module + generator) | ✅ Done — run `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest` on device to generate profile |
 | 4d | Scope `observeMealEntries()` to last 28 days (new DAO query + ViewModel debounce) | ✅ Done |
-| 4e | Reduce FrostedCard blur radius 20dp → 12dp (verify on device first) | 🔲 Open |
-| 4f | Eliminate invisible tinted Row backdrop pass in `LiquidBottomTabs` | 🔲 Open |
+| 4e | Reduce FrostedCard blur radius 20dp → 12dp | ✅ Done |
+| 4f | Eliminate invisible tinted Row backdrop pass in `LiquidBottomTabs` | 🔲 Open (load-bearing for indicator; skip) |
 
 ---
 

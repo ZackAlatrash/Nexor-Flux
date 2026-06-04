@@ -26,3 +26,7 @@
 # Health Connect
 -keep class androidx.health.** { *; }
 -dontwarn androidx.health.**
+
+# Baseline Profile installer
+-keep class androidx.profileinstaller.** { *; }
+-dontwarn androidx.profileinstaller.**

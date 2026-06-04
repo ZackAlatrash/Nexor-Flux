@@ -111,7 +111,7 @@ fun FrostedCard(
                 shape = { RoundedRectangle(CornerCard) },
                 effects = {
                     vibrancy()
-                    blur(20f.dp.toPx())
+                    blur(12f.dp.toPx())
                 },
                 onDrawSurface = {
                     drawRect(Color(0x33000000))

@@ -48,8 +48,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.ui.component.WeekCalorieStrip
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.NumberField
@@ -70,14 +72,14 @@ import java.util.Locale
 
 @Composable
 fun FoodScreen(
-    viewModel: TodayViewModel,
-    onAddToSlot: (slotId: Long, slotName: String) -> Unit,
+    viewModel: FoodLogViewModel,
+    onAddToSlot: (slotId: Long, slotName: String, date: LocalDate) -> Unit,
     onBrowseLibrary: () -> Unit,
-    onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
+    onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long, date: LocalDate) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     FoodContent(
-        state = state,
+        state   = state,
         actions = FoodActions(
             onToggleEditMode = viewModel::toggleEditMode,
             onAddSlot        = viewModel::addSlot,
@@ -87,9 +89,11 @@ fun FoodScreen(
             onDeleteMeal     = viewModel::deleteMeal,
             onEditMacros     = viewModel::updateMealMacros,
         ),
-        onAddToSlot       = onAddToSlot,
+        onAddToSlot       = { slotId, slotName -> onAddToSlot(slotId, slotName, state.selectedDate) },
         onBrowseLibrary   = onBrowseLibrary,
-        onEditEntryAmount = onEditEntryAmount,
+        onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
+        onSelectDate      = viewModel::selectDate,
+        onTodayClick      = { viewModel.selectDate(viewModel.today) },
     )
 }
 
@@ -105,11 +109,13 @@ data class FoodActions(
 
 @Composable
 fun FoodContent(
-    state: TodayUiState,
+    state: FoodLogUiState,
     actions: FoodActions,
     onAddToSlot: (slotId: Long, slotName: String) -> Unit,
     onBrowseLibrary: () -> Unit,
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    onTodayClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAddSlotDialog by remember { mutableStateOf(false) }
@@ -129,13 +135,28 @@ fun FoodContent(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed screen header
-            FoodScreenHeader(date = state.date, modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp))
+            FoodScreenHeader(
+                date          = state.selectedDate,
+                showTodayPill = !state.isToday,
+                onTodayClick  = onTodayClick,
+                modifier      = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            )
 
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                item {
+                    WeekCalorieStrip(
+                        weekData      = state.weekSummary,
+                        selectedDate  = state.selectedDate,
+                        today         = state.today,
+                        targetLow     = state.target.calorieZoneLowerBound,
+                        targetHigh    = state.target.calorieZoneUpperBound,
+                        onDaySelected = onSelectDate,
+                    )
+                }
+
                 // Nutrition strip
                 item { NutritionStrip(state) }
 
@@ -235,7 +256,12 @@ fun FoodContent(
 }
 
 @Composable
-private fun FoodScreenHeader(date: LocalDate, modifier: Modifier = Modifier) {
+private fun FoodScreenHeader(
+    date: LocalDate,
+    showTodayPill: Boolean,
+    onTodayClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val dateStr = remember(date) {
         date.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
@@ -251,14 +277,35 @@ private fun FoodScreenHeader(date: LocalDate, modifier: Modifier = Modifier) {
             color = Color.White,
             letterSpacing = (-0.8).sp,
         )
-        Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
+            if (showTodayPill) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0x208B5CF6))
+                        .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(10.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onTodayClick,
+                        )
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                ) {
+                    Text(text = "Today", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Violet400)
+                }
+            }
+        }
     }
 }
 
 // ── Nutrition Strip ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NutritionStrip(state: TodayUiState) {
+private fun NutritionStrip(state: FoodLogUiState) {
     val cal     = state.totals.calories
     val target  = state.target
     val zoneLow = target.calorieZoneLowerBound

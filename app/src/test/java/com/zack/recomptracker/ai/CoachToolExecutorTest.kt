@@ -130,4 +130,100 @@ class CoachToolExecutorTest {
         assertTrue("Should mention new target", result.contains("2700"))
         assertFalse("Old target should have been replaced", savedPrefs?.targetCalories == 2550)
     }
+
+    @Test
+    fun `log_meal only requires name and calories, ignores extra keys`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.observeDay(fixedDate)).thenReturn(flowOf(emptyDayLog()))
+        whenever(logRepo.addMeal(any())).thenReturn(1L)
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_meal", mapOf("name" to "Rice", "calories" to "400"))
+
+        assertTrue("Should succeed", result.contains("\"success\":true"))
+        assertTrue("Should echo name", result.contains("Rice"))
+        assertTrue("Should echo calories", result.contains("400"))
+    }
+
+    @Test
+    fun `log_meal without name returns error JSON`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_meal", mapOf("calories" to "400"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+    }
+
+    @Test
+    fun `log_metric weight_kg saves weight and returns success`() = runTest {
+        var saved: DailyMetricsInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.observeDay(fixedDate)).thenReturn(flowOf(emptyDayLog()))
+        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
+            saved = inv.getArgument(0); Unit
+        }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "weight_kg", "value" to "82.5"))
+
+        assertTrue("Should succeed", result.contains("\"success\":true"))
+        assertTrue("Should echo metric", result.contains("weight_kg"))
+        assertTrue("Should echo value", result.contains("82.5"))
+        assertTrue("Weight should be saved", saved?.bodyWeightKg == 82.5)
+    }
+
+    @Test
+    fun `log_metric sleep_hours saves sleep and returns success`() = runTest {
+        var saved: DailyMetricsInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.observeDay(fixedDate)).thenReturn(flowOf(emptyDayLog()))
+        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
+            saved = inv.getArgument(0); Unit
+        }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "sleep_hours", "value" to "7.5"))
+
+        assertTrue("Should succeed", result.contains("\"success\":true"))
+        assertTrue("Sleep should be saved", saved?.sleepHours == 7.5)
+    }
+
+    @Test
+    fun `log_metric unknown metric returns error JSON`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "mood", "value" to "9"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+        assertTrue("Should mention metric name", result.contains("mood"))
+    }
+
+    @Test
+    fun `log_metric non-numeric value returns error JSON`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "weight_kg", "value" to "heavy"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+    }
+
+    @Test
+    fun `log_daily_metrics is now an unknown tool`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_daily_metrics", mapOf("weight_kg" to "80.0"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+    }
 }

@@ -14,17 +14,19 @@ class CoachToolExecutor(
 ) {
 
     suspend fun execute(name: String, args: Map<String, String>): String = when (name) {
-        "get_today_summary" -> getTodaySummary()
+        "get_today_summary" -> getTodaySummary(args)
         "get_weekly_trends" -> getWeeklyTrends()
         "get_plan" -> getPlan()
         "log_meal" -> logMeal(args)
-        "log_daily_metrics" -> logDailyMetrics(args)
+        "log_metric" -> logMetric(args)
         "update_calorie_target" -> updateCalorieTarget(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
-    private suspend fun getTodaySummary(): String {
-        val today = dateProvider.today()
+    private suspend fun getTodaySummary(args: Map<String, String> = emptyMap()): String {
+        val today = args["date"]?.let {
+            try { java.time.LocalDate.parse(it) } catch (_: Exception) { null }
+        } ?: dateProvider.today()
         val dayLog = logRepository.observeDay(today).first()
         val mealsJson = dayLog.meals.joinToString(separator = ",") { meal ->
             """{"name":"${meal.name.esc()}","calories":${meal.calories},"protein_g":${meal.proteinG},"carbs_g":${meal.carbsG},"fat_g":${meal.fatG},"meal_type":"${meal.mealType.esc()}"}"""
@@ -62,43 +64,48 @@ class CoachToolExecutor(
         val today = dateProvider.today()
         val name = args["name"] ?: return """{"error":"log_meal requires 'name'"}"""
         val calories = args["calories"]?.toIntOrNull() ?: 0
-        val proteinG = args["protein_g"]?.toDoubleOrNull() ?: 0.0
-        val carbsG = args["carbs_g"]?.toDoubleOrNull() ?: 0.0
-        val fatG = args["fat_g"]?.toDoubleOrNull() ?: 0.0
-        val mealType = args["meal_type"] ?: "Snack"
         logRepository.addMeal(
             MealEntryInput(
                 date = today,
-                mealType = mealType,
+                mealType = "Snack",
                 name = name,
                 calories = calories,
-                proteinG = proteinG,
-                carbsG = carbsG,
-                fatG = fatG,
+                proteinG = 0.0,
+                carbsG = 0.0,
+                fatG = 0.0,
             ),
         )
         return """{"success":true,"logged":"${name.esc()}","calories":$calories}"""
     }
 
-    private suspend fun logDailyMetrics(args: Map<String, String>): String {
+    private val validMetrics = setOf(
+        "weight_kg", "waist_cm", "sleep_hours",
+        "energy_score", "hunger_score", "soreness_score",
+    )
+
+    private suspend fun logMetric(args: Map<String, String>): String {
+        val metric = args["metric"] ?: return """{"error":"log_metric requires 'metric'"}"""
+        if (metric !in validMetrics) return """{"error":"unknown metric '${metric.esc()}'"}"""
+        val value = args["value"]?.toDoubleOrNull()
+            ?: return """{"error":"log_metric requires a numeric 'value'"}"""
         val today = dateProvider.today()
         val existing = logRepository.observeDay(today).first().dailyLog
         logRepository.saveDailyMetrics(
             DailyMetricsInput(
                 date = today,
-                bodyWeightKg = args["weight_kg"]?.toDoubleOrNull() ?: existing?.bodyWeightKg,
-                waistCm = args["waist_cm"]?.toDoubleOrNull() ?: existing?.waistCm,
-                waistSkinfoldMm = args["waist_skinfold_mm"]?.toDoubleOrNull() ?: existing?.waistSkinfoldMm,
-                steps = args["steps"]?.toIntOrNull() ?: existing?.steps,
-                sleepHours = args["sleep_hours"]?.toDoubleOrNull() ?: existing?.sleepHours,
-                energyScore = args["energy_score"]?.toIntOrNull() ?: existing?.energyScore,
-                hungerScore = args["hunger_score"]?.toIntOrNull() ?: existing?.hungerScore,
-                sorenessScore = args["soreness_score"]?.toIntOrNull() ?: existing?.sorenessScore,
-                trained = args["trained"]?.toBooleanStrictOrNull() ?: existing?.trained ?: false,
-                notes = args["notes"] ?: existing?.notes ?: "",
+                bodyWeightKg = if (metric == "weight_kg") value else existing?.bodyWeightKg,
+                waistCm = if (metric == "waist_cm") value else existing?.waistCm,
+                waistSkinfoldMm = existing?.waistSkinfoldMm,
+                steps = existing?.steps,
+                sleepHours = if (metric == "sleep_hours") value else existing?.sleepHours,
+                energyScore = if (metric == "energy_score") value.toInt() else existing?.energyScore,
+                hungerScore = if (metric == "hunger_score") value.toInt() else existing?.hungerScore,
+                sorenessScore = if (metric == "soreness_score") value.toInt() else existing?.sorenessScore,
+                trained = existing?.trained ?: false,
+                notes = existing?.notes ?: "",
             ),
         )
-        return """{"success":true,"date":"$today"}"""
+        return """{"success":true,"metric":"${metric.esc()}","value":$value}"""
     }
 
     private suspend fun updateCalorieTarget(args: Map<String, String>): String {

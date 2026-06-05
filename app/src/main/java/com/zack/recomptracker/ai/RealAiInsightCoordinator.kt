@@ -5,7 +5,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.os.StatFs
-import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,31 +95,31 @@ class RealAiInsightCoordinator(
         _state.value = AiInsightState.ModelMissing
     }
 
-    override fun onAiCardVisible(result: AdjustmentResult) {
-        if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
+    override fun onAiCardVisible(context: InsightContext) {
+        if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
         if (_state.value != AiInsightState.ModelReady) return
-        val key = result.key()
+        val key = context.result.key()
         if (key == lastGeneratedKey) return
         lastGeneratedKey = key
-        scope.launch { generate(result) }
+        scope.launch { generate(context) }
     }
 
-    override fun retryGeneration(result: AdjustmentResult) {
+    override fun retryGeneration(context: InsightContext) {
         if (_state.value !is AiInsightState.Ready && _state.value != AiInsightState.ModelReady) return
         lastGeneratedKey = null
         _state.value = AiInsightState.ModelReady
-        onAiCardVisible(result)
+        onAiCardVisible(context)
     }
 
     private val promptBuilder = InsightPromptBuilder()
 
-    private suspend fun generate(result: AdjustmentResult) {
+    private suspend fun generate(context: InsightContext) {
         _state.value = AiInsightState.LoadingModel
         try {
             val service = serviceHolder.getOrCreateService()
             withContext(Dispatchers.IO) { service.initialize() }
             _state.value = AiInsightState.Generating("")
-            val prompt = promptBuilder.buildWeeklySummaryPrompt(result)
+            val prompt = promptBuilder.buildWeeklySummaryPrompt(context.result)
             val text = withContext(Dispatchers.IO) { service.generateExplanation(prompt) }
             val words = text.trim().split(" ")
             val sb = StringBuilder()

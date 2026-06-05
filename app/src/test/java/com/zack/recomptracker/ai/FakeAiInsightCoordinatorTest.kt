@@ -1,7 +1,10 @@
 package com.zack.recomptracker.ai
 
+import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
+import com.zack.recomptracker.domain.adjustment.PerformanceTrend
+import com.zack.recomptracker.domain.adjustment.RecoveryTrend
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -18,11 +21,6 @@ class FakeAiInsightCoordinatorTest {
 
     private val aiEnabledFlow = MutableStateFlow(false)
 
-    /**
-     * Creates a coordinator scope that shares the test dispatcher (so advanceUntilIdle works)
-     * but has its own SupervisorJob (so cancelling it doesn't affect the test scope, avoiding
-     * UncompletedCoroutinesError from the long-lived collect loop).
-     */
     private fun makeCoordinatorScope(parentContext: kotlin.coroutines.CoroutineContext) =
         CoroutineScope(parentContext + SupervisorJob())
 
@@ -38,6 +36,30 @@ class FakeAiInsightCoordinatorTest {
         recommendedCalorieChange = 0,
         reasonCodes = listOf("INSUFFICIENT_DATA"),
         summary = "Wait.",
+    )
+
+    private fun baseInput() = AdjustmentInput(
+        daysLogged = 14,
+        adherencePercent = 91.0,
+        weeksSincePhaseStart = 3,
+        weightTrendKgPerWeek = 0.0,
+        waistTrendCmPerWeek = 0.0,
+        performanceTrend = PerformanceTrend.STABLE,
+        recoveryTrend = RecoveryTrend.OK,
+    )
+
+    private fun holdContext() = InsightContext(
+        result = holdResult(),
+        input = baseInput(),
+        targetCalories = 2550,
+        targetProteinG = 165,
+    )
+
+    private fun waitContext() = InsightContext(
+        result = waitResult(),
+        input = baseInput(),
+        targetCalories = 2550,
+        targetProteinG = 165,
     )
 
     @Test
@@ -100,7 +122,7 @@ class FakeAiInsightCoordinatorTest {
         advanceUntilIdle()
         c.requestDownload()
         advanceUntilIdle()
-        c.onAiCardVisible(waitResult())
+        c.onAiCardVisible(waitContext())
         advanceUntilIdle()
         cs.cancel()
         assertEquals(AiInsightState.ModelReady, c.state.value)
@@ -116,7 +138,7 @@ class FakeAiInsightCoordinatorTest {
         advanceUntilIdle()
         c.requestDownload()
         advanceUntilIdle()
-        c.onAiCardVisible(holdResult())
+        c.onAiCardVisible(holdContext())
         advanceUntilIdle()
         cs.cancel()
         assertTrue("Expected Ready state", c.state.value is AiInsightState.Ready)
@@ -132,10 +154,11 @@ class FakeAiInsightCoordinatorTest {
         advanceUntilIdle()
         c.requestDownload()
         advanceUntilIdle()
-        c.onAiCardVisible(holdResult())
+        val ctx = holdContext()
+        c.onAiCardVisible(ctx)
         advanceUntilIdle()
         val firstText = (c.state.value as AiInsightState.Ready).text
-        c.onAiCardVisible(holdResult())
+        c.onAiCardVisible(ctx)
         advanceUntilIdle()
         val secondText = (c.state.value as AiInsightState.Ready).text
         cs.cancel()
@@ -153,10 +176,10 @@ class FakeAiInsightCoordinatorTest {
         advanceUntilIdle()
         c.requestDownload()
         advanceUntilIdle()
-        val result = holdResult()
-        c.onAiCardVisible(result)
+        val ctx = holdContext()
+        c.onAiCardVisible(ctx)
         advanceUntilIdle()
-        c.retryGeneration(result)
+        c.retryGeneration(ctx)
         advanceUntilIdle()
         cs.cancel()
         assertTrue("Expected Ready after retry", c.state.value is AiInsightState.Ready)

@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.InsightContext
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -86,14 +87,45 @@ class DashboardViewModel(
     val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
 
     fun onAiCardVisible(result: AdjustmentResult) {
-        aiInsightCoordinator.onAiCardVisible(result)
+        val ctx = InsightContext(
+            result = result,
+            input = AdjustmentInput(
+                daysLogged = _uiState.value.daysLogged,
+                adherencePercent = _uiState.value.adherencePercent,
+                weeksSincePhaseStart = 0,
+                weightTrendKgPerWeek = _uiState.value.weightTrendKgPerWeek,
+                waistTrendCmPerWeek = _uiState.value.waistTrendCmPerWeek,
+                performanceTrend = com.zack.recomptracker.domain.adjustment.PerformanceTrend.UNKNOWN,
+                recoveryTrend = com.zack.recomptracker.domain.adjustment.RecoveryTrend.UNKNOWN,
+            ),
+            targetCalories = _uiState.value.preferences.targetCalories,
+            targetProteinG = _uiState.value.preferences.targetProteinG,
+        )
+        aiInsightCoordinator.onAiCardVisible(ctx)
     }
 
     fun requestModelDownload() = aiInsightCoordinator.requestDownload()
 
     fun cancelDownload() = aiInsightCoordinator.cancelDownload()
 
-    fun retryGeneration() = aiInsightCoordinator.retryGeneration(_uiState.value.result)
+    fun retryGeneration() {
+        val result = _uiState.value.result
+        val ctx = InsightContext(
+            result = result,
+            input = AdjustmentInput(
+                daysLogged = _uiState.value.daysLogged,
+                adherencePercent = _uiState.value.adherencePercent,
+                weeksSincePhaseStart = 0,
+                weightTrendKgPerWeek = _uiState.value.weightTrendKgPerWeek,
+                waistTrendCmPerWeek = _uiState.value.waistTrendCmPerWeek,
+                performanceTrend = com.zack.recomptracker.domain.adjustment.PerformanceTrend.UNKNOWN,
+                recoveryTrend = com.zack.recomptracker.domain.adjustment.RecoveryTrend.UNKNOWN,
+            ),
+            targetCalories = _uiState.value.preferences.targetCalories,
+            targetProteinG = _uiState.value.preferences.targetProteinG,
+        )
+        aiInsightCoordinator.retryGeneration(ctx)
+    }
 
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()

@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ai
 
-import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -35,43 +34,35 @@ class FakeAiInsightCoordinator(
     override fun requestDownload() {
         if (_state.value != AiInsightState.ModelMissing) return
         scope.launch {
-            for (i in 1..5) {
-                _state.value = AiInsightState.Downloading(i / 5f)
-                delay(60L)
-            }
+            for (i in 1..5) { _state.value = AiInsightState.Downloading(i / 5f); delay(60L) }
             _state.value = AiInsightState.ModelReady
         }
     }
 
-    override fun cancelDownload() {
-        _state.value = AiInsightState.ModelMissing
-    }
+    override fun cancelDownload() { _state.value = AiInsightState.ModelMissing }
 
-    override fun deleteModel() {
-        lastGeneratedKey = null
-        _state.value = AiInsightState.ModelMissing
-    }
+    override fun deleteModel() { lastGeneratedKey = null; _state.value = AiInsightState.ModelMissing }
 
-    override fun onAiCardVisible(result: AdjustmentResult) {
-        if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
+    override fun onAiCardVisible(context: InsightContext) {
+        if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
         if (_state.value != AiInsightState.ModelReady) return
-        val key = result.key()
+        val key = context.result.key()
         if (key == lastGeneratedKey) return
         lastGeneratedKey = key
-        scope.launch { generate(result) }
+        scope.launch { generate(context) }
     }
 
-    override fun retryGeneration(result: AdjustmentResult) {
+    override fun retryGeneration(context: InsightContext) {
         if (_state.value !is AiInsightState.Ready && _state.value != AiInsightState.ModelReady) return
         lastGeneratedKey = null
         _state.value = AiInsightState.ModelReady
-        onAiCardVisible(result)
+        onAiCardVisible(context)
     }
 
-    private suspend fun generate(result: AdjustmentResult) {
+    private suspend fun generate(context: InsightContext) {
         _state.value = AiInsightState.LoadingModel
         delay(300L)
-        val explanation = buildExplanation(result)
+        val explanation = buildExplanation(context)
         val words = explanation.split(" ")
         val sb = StringBuilder()
         for (word in words) {
@@ -83,34 +74,32 @@ class FakeAiInsightCoordinator(
         _state.value = AiInsightState.Ready(sb.toString())
     }
 
-    private fun buildExplanation(result: AdjustmentResult): String =
-        when (result.reasonCodes.firstOrNull()) {
+    private fun buildExplanation(context: InsightContext): String =
+        when (context.result.reasonCodes.firstOrNull()) {
             "INSUFFICIENT_DATA" ->
                 "You need at least 14 logged days before a verdict can be made. " +
                 "Keep logging consistently to unlock your first calorie recommendation."
             "LOW_ADHERENCE" ->
                 "Logging consistency has been below the threshold this period. " +
-                "Improve tracking accuracy before changing your calorie target — " +
-                "the data needs to be reliable for the engine to act on it."
+                "Improve tracking accuracy before changing your calorie target."
             "EARLY_SCALE_JUMP" ->
-                "Your weight jumped in the first week, which often reflects water or glycogen shifts rather than real fat gain. " +
-                "Holding calories while monitoring waist trend gives a clearer picture before acting."
+                "Your weight jumped in the first week, which often reflects water or glycogen shifts. " +
+                "Holding calories while monitoring waist gives a clearer picture."
             "LOSING_WITH_POOR_RECOVERY" ->
                 "Weight is trending down while performance or recovery is suffering. " +
-                "Adding calories will support muscle maintenance and training quality — " +
-                "losing weight at the cost of performance is not the goal."
+                "Adding calories will support muscle maintenance and training quality."
             "GAINING_WITH_WAIST_INCREASE" ->
-                "Both weight and waist are trending upward, which points to fat accumulation rather than lean gains. " +
+                "Both weight and waist are trending upward, pointing to fat accumulation. " +
                 "A small calorie reduction will help redirect the trend without a harsh cut."
             "MAINTENANCE_TREND" ->
                 "Weight, waist, and performance are all stable this period. " +
                 "Your current intake is working — no adjustment is needed this week."
             "WEIGHT_UP_WAIST_STABLE_PERFORMANCE_UP" ->
                 "Weight is rising but waist is stable and performance is improving. " +
-                "This pattern points to lean mass gains, not fat accumulation. Holding calories is the right call."
+                "This pattern points to lean mass gains, not fat accumulation."
             "NO_CLEAR_CHANGE_SIGNAL" ->
                 "No strong signal emerged this week to justify a calorie change. " +
-                "Staying at current intake gives you another review period of data to work with."
-            else -> result.summary
+                "Staying at current intake gives you another review period of data."
+            else -> context.result.summary
         }
 }

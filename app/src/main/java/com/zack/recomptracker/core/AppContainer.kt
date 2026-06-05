@@ -19,6 +19,7 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.GemmaServiceHolder
 import com.zack.recomptracker.ai.RealAiInsightCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.ui.body.BodyEditViewModel
@@ -65,10 +66,12 @@ class AppContainer(context: Context) {
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val gemmaServiceHolder = GemmaServiceHolder(context)
     val aiInsightCoordinator: AiInsightCoordinator = RealAiInsightCoordinator(
         context = context,
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         scope = appScope,
+        serviceHolder = gemmaServiceHolder,
     )
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)
 }

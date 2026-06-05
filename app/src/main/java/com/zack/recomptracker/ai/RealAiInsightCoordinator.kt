@@ -16,12 +16,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 class RealAiInsightCoordinator(
     private val context: Context,
     private val aiEnabledFlow: Flow<Boolean>,
     private val scope: CoroutineScope,
+    private val serviceHolder: GemmaServiceHolder,
 ) : AiInsightCoordinator {
 
     private val _state = MutableStateFlow<AiInsightState>(AiInsightState.Disabled)
@@ -29,8 +29,6 @@ class RealAiInsightCoordinator(
 
     private var lastGeneratedKey: String? = null
     private var downloadId: Long = -1L
-    private val modelFile: File
-        get() = File(context.getExternalFilesDir(null), "ai/gemma-4-E2B-it.litertlm")
 
     private val modelUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
     private val requiredFreeBytes = 3L * 1024 * 1024 * 1024
@@ -41,7 +39,7 @@ class RealAiInsightCoordinator(
                 if (!enabled) {
                     _state.value = AiInsightState.Disabled
                 } else if (_state.value == AiInsightState.Disabled) {
-                    _state.value = if (modelFile.exists()) AiInsightState.ModelReady
+                    _state.value = if (serviceHolder.modelFile.exists()) AiInsightState.ModelReady
                     else AiInsightState.ModelMissing
                 }
             }
@@ -50,11 +48,8 @@ class RealAiInsightCoordinator(
 
     override fun requestDownload() {
         if (_state.value != AiInsightState.ModelMissing) return
-        if (!hasSufficientStorage()) {
-            _state.value = AiInsightState.DownloadFailed
-            return
-        }
-        modelFile.parentFile?.mkdirs()
+        if (!hasSufficientStorage()) { _state.value = AiInsightState.DownloadFailed; return }
+        serviceHolder.modelFile.parentFile?.mkdirs()
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(modelUrl))
             .setTitle("Gemma 4 E2B — AI Explanation Model")
@@ -62,7 +57,6 @@ class RealAiInsightCoordinator(
             .setDestinationInExternalFilesDir(context, null, "ai/gemma-4-E2B-it.litertlm")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setAllowedOverRoaming(false)
-
         downloadId = dm.enqueue(request)
         _state.value = AiInsightState.Downloading(null)
         scope.launch { pollDownloadProgress(dm) }
@@ -74,39 +68,31 @@ class RealAiInsightCoordinator(
             val query = DownloadManager.Query().setFilterById(downloadId)
             val cursor = withContext(Dispatchers.IO) { dm.query(query) }
             if (!cursor.moveToFirst()) { cursor.close(); break }
-
             val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
             val bytesDownloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
             val bytesTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
             cursor.close()
-
             when (status) {
                 DownloadManager.STATUS_RUNNING -> {
                     val progress = if (bytesTotal > 0) bytesDownloaded.toFloat() / bytesTotal.toFloat() else null
                     _state.value = AiInsightState.Downloading(progress)
                 }
-                DownloadManager.STATUS_SUCCESSFUL -> {
-                    _state.value = AiInsightState.ModelReady
-                    break
-                }
-                DownloadManager.STATUS_FAILED -> {
-                    _state.value = AiInsightState.DownloadFailed
-                    break
-                }
+                DownloadManager.STATUS_SUCCESSFUL -> { _state.value = AiInsightState.ModelReady; break }
+                DownloadManager.STATUS_FAILED -> { _state.value = AiInsightState.DownloadFailed; break }
             }
         }
     }
 
     override fun cancelDownload() {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        dm.remove(downloadId)
-        downloadId = -1L
+        dm.remove(downloadId); downloadId = -1L
         _state.value = AiInsightState.ModelMissing
     }
 
     override fun deleteModel() {
         lastGeneratedKey = null
-        modelFile.delete()
+        serviceHolder.modelFile.delete()
+        serviceHolder.release()
         _state.value = AiInsightState.ModelMissing
     }
 
@@ -127,22 +113,15 @@ class RealAiInsightCoordinator(
     }
 
     private val promptBuilder = InsightPromptBuilder()
-    private var gemmaService: GemmaInsightService? = null
 
     private suspend fun generate(result: AdjustmentResult) {
         _state.value = AiInsightState.LoadingModel
         try {
-            val service = gemmaService ?: GemmaInsightService(
-                modelPath = modelFile.absolutePath,
-                cacheDir = context.cacheDir.absolutePath,
-            ).also { gemmaService = it }
-
+            val service = serviceHolder.getOrCreateService()
             withContext(Dispatchers.IO) { service.initialize() }
-
             _state.value = AiInsightState.Generating("")
             val prompt = promptBuilder.buildWeeklySummaryPrompt(result)
             val text = withContext(Dispatchers.IO) { service.generateExplanation(prompt) }
-
             val words = text.trim().split(" ")
             val sb = StringBuilder()
             for (word in words) {

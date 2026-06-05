@@ -19,14 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,11 +36,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -66,6 +67,8 @@ import com.zack.recomptracker.ui.theme.Violet400
 import com.zack.recomptracker.ui.theme.Violet500
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -121,6 +124,22 @@ fun FoodContent(
     var showAddSlotDialog by remember { mutableStateOf(false) }
     var newSlotName by remember { mutableStateOf("") }
 
+    val currentSlots by rememberUpdatedState(state.slots)
+    val currentOnReorderSlots by rememberUpdatedState(actions.onReorderSlots)
+
+    val listState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromKey = from.key as Long
+        val toKey   = to.key   as Long
+        val ids     = currentSlots.map { it.slot.id }.toMutableList()
+        val fromIdx = ids.indexOf(fromKey)
+        val toIdx   = ids.indexOf(toKey)
+        if (fromIdx >= 0 && toIdx >= 0) {
+            ids.add(toIdx, ids.removeAt(fromIdx))
+            currentOnReorderSlots(ids)
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         // Ambient orb — top-left
         Box(
@@ -137,6 +156,7 @@ fun FoodContent(
             )
 
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -182,33 +202,24 @@ fun FoodContent(
                 }
 
                 items(state.slots, key = { it.slot.id }) { slotWithEntries ->
-                    val index = state.slots.indexOf(slotWithEntries)
-                    if (state.slotsEditMode) {
-                        EditModeSlotCard(
-                            slotWithEntries = slotWithEntries,
-                            canMoveUp = index > 0,
-                            canMoveDown = index < state.slots.lastIndex,
-                            onMoveUp = {
-                                val ids = state.slots.map { it.slot.id }.toMutableList()
-                                val i = ids.indexOf(slotWithEntries.slot.id)
-                                if (i > 0) { ids.add(i - 1, ids.removeAt(i)); actions.onReorderSlots(ids) }
-                            },
-                            onMoveDown = {
-                                val ids = state.slots.map { it.slot.id }.toMutableList()
-                                val i = ids.indexOf(slotWithEntries.slot.id)
-                                if (i < ids.lastIndex) { ids.add(i + 1, ids.removeAt(i)); actions.onReorderSlots(ids) }
-                            },
-                            onRename = { actions.onRenameSlot(slotWithEntries.slot.id, it) },
-                            onDelete = { actions.onDeleteSlot(slotWithEntries.slot.id) },
-                        )
-                    } else {
-                        LockedSlotCard(
-                            slotWithEntries   = slotWithEntries,
-                            onAddClick        = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
-                            onDeleteEntry     = actions.onDeleteMeal,
-                            onEditEntryAmount = { entryId -> onEditEntryAmount(slotWithEntries.slot.id, slotWithEntries.slot.name, entryId) },
-                            onEditMacros      = actions.onEditMacros,
-                        )
+                    ReorderableItem(reorderState, key = slotWithEntries.slot.id) { isDragging ->
+                        if (state.slotsEditMode) {
+                            EditModeSlotCard(
+                                slotWithEntries    = slotWithEntries,
+                                isDragging         = isDragging,
+                                dragHandleModifier = Modifier.draggableHandle(),
+                                onRename           = { actions.onRenameSlot(slotWithEntries.slot.id, it) },
+                                onDelete           = { actions.onDeleteSlot(slotWithEntries.slot.id) },
+                            )
+                        } else {
+                            LockedSlotCard(
+                                slotWithEntries   = slotWithEntries,
+                                onAddClick        = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
+                                onDeleteEntry     = actions.onDeleteMeal,
+                                onEditEntryAmount = { entryId -> onEditEntryAmount(slotWithEntries.slot.id, slotWithEntries.slot.name, entryId) },
+                                onEditMacros      = actions.onEditMacros,
+                            )
+                        }
                     }
                 }
 
@@ -661,53 +672,64 @@ private fun MacroEditDialog(
 @Composable
 private fun EditModeSlotCard(
     slotWithEntries: MealSlotWithEntries,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
+    isDragging: Boolean,
+    dragHandleModifier: Modifier,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
-    var showRename by remember { mutableStateOf(false) }
-    var renameValue by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
+    var showRename        by remember { mutableStateOf(false) }
+    var renameValue       by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    val cardScale by animateFloatAsState(
+        targetValue   = if (isDragging) 1.02f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        label         = "dragScale",
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX          = cardScale
+                scaleY          = cardScale
+                shadowElevation = if (isDragging) 24f else 0f
+            }
             .clip(RoundedCornerShape(CornerCard))
             .background(CardSurface)
             .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column {
-            IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Default.KeyboardArrowUp,
-                    contentDescription = "Move up",
-                    tint = if (canMoveUp) Violet400 else Color(0x33FFFFFF),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Move down",
-                    tint = if (canMoveDown) Violet400 else Color(0x33FFFFFF),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
+        // ── Drag handle ───────────────────────────────────────────────────────
+        Box(
+            modifier = dragHandleModifier
+                .size(width = 32.dp, height = 44.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x14FFFFFF))
+                .border(1.dp, Color(0x0FFFFFFF), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector        = Icons.Default.DragHandle,
+                contentDescription = "Drag to reorder",
+                tint               = Color(0x47FFFFFF),
+                modifier           = Modifier.size(18.dp),
+            )
         }
+
+        // ── Slot info ─────────────────────────────────────────────────────────
         Column(modifier = Modifier.weight(1f)) {
             Text(slotWithEntries.slot.name, fontWeight = FontWeight.SemiBold, color = Color.White)
             Text(
                 "${slotWithEntries.entries.size} items · ${slotWithEntries.totals.calories} kcal",
                 fontSize = 11.sp,
-                color = TextMuted,
+                color    = TextMuted,
             )
         }
+
+        // ── Actions ───────────────────────────────────────────────────────────
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
                 modifier = Modifier
@@ -738,9 +760,9 @@ private fun EditModeSlotCard(
             title = { Text("Rename slot") },
             text = {
                 OutlinedTextField(
-                    value = renameValue,
+                    value         = renameValue,
                     onValueChange = { renameValue = it },
-                    singleLine = true,
+                    singleLine    = true,
                 )
             },
             confirmButton = {
@@ -758,12 +780,12 @@ private fun EditModeSlotCard(
         else
             "\"${slotWithEntries.slot.name}\" will be removed."
         ConfirmDialog(
-            title = "Delete slot?",
-            body = bodyText,
-            confirmLabel = "Delete",
+            title         = "Delete slot?",
+            body          = bodyText,
+            confirmLabel  = "Delete",
             isDestructive = true,
-            onConfirm = { onDelete(); showDeleteConfirm = false },
-            onDismiss = { showDeleteConfirm = false },
+            onConfirm     = { onDelete(); showDeleteConfirm = false },
+            onDismiss     = { showDeleteConfirm = false },
         )
     }
 }

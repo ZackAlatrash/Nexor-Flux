@@ -83,9 +83,8 @@ fun FoodScreen(
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long, date: LocalDate) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    FoodContent(
-        state   = state,
-        actions = FoodActions(
+    val actions = remember {
+        FoodActions(
             onToggleEditMode = viewModel::toggleEditMode,
             onAddSlot        = viewModel::addSlot,
             onRenameSlot     = viewModel::renameSlot,
@@ -93,7 +92,11 @@ fun FoodScreen(
             onReorderSlots   = viewModel::reorderSlots,
             onDeleteMeal     = viewModel::deleteMeal,
             onEditMacros     = viewModel::updateMealMacros,
-        ),
+        )
+    }
+    FoodContent(
+        state   = state,
+        actions = actions,
         onAddToSlot       = { slotId, slotName -> onAddToSlot(slotId, slotName, state.selectedDate) },
         onBrowseLibrary   = onBrowseLibrary,
         onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
@@ -202,8 +205,8 @@ fun FoodContent(
                 }
 
                 items(state.slots, key = { it.slot.id }) { slotWithEntries ->
-                    ReorderableItem(reorderState, key = slotWithEntries.slot.id) { isDragging ->
-                        if (state.slotsEditMode) {
+                    if (state.slotsEditMode) {
+                        ReorderableItem(reorderState, key = slotWithEntries.slot.id) { isDragging ->
                             EditModeSlotCard(
                                 slotWithEntries    = slotWithEntries,
                                 isDragging         = isDragging,
@@ -211,15 +214,15 @@ fun FoodContent(
                                 onRename           = { actions.onRenameSlot(slotWithEntries.slot.id, it) },
                                 onDelete           = { actions.onDeleteSlot(slotWithEntries.slot.id) },
                             )
-                        } else {
-                            LockedSlotCard(
-                                slotWithEntries   = slotWithEntries,
-                                onAddClick        = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
-                                onDeleteEntry     = actions.onDeleteMeal,
-                                onEditEntryAmount = { entryId -> onEditEntryAmount(slotWithEntries.slot.id, slotWithEntries.slot.name, entryId) },
-                                onEditMacros      = actions.onEditMacros,
-                            )
                         }
+                    } else {
+                        LockedSlotCard(
+                            slotWithEntries   = slotWithEntries,
+                            onAddClick        = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
+                            onDeleteEntry     = actions.onDeleteMeal,
+                            onEditEntryAmount = { entryId -> onEditEntryAmount(slotWithEntries.slot.id, slotWithEntries.slot.name, entryId) },
+                            onEditMacros      = actions.onEditMacros,
+                        )
                     }
                 }
 
@@ -681,19 +684,15 @@ private fun EditModeSlotCard(
     var renameValue       by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val cardScale by animateFloatAsState(
-        targetValue   = if (isDragging) 1.02f else 1f,
-        animationSpec = tween(durationMillis = 150),
-        label         = "dragScale",
-    )
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
-                scaleX          = cardScale
-                scaleY          = cardScale
-                shadowElevation = if (isDragging) 24f else 0f
+                if (isDragging) {
+                    scaleX          = 1.02f
+                    scaleY          = 1.02f
+                    shadowElevation = 24f
+                }
             }
             .clip(RoundedCornerShape(CornerCard))
             .background(CardSurface)

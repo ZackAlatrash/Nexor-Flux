@@ -1,13 +1,43 @@
 package com.zack.recomptracker.ai
 
-data class InsightAvailability(
-    val available: Boolean,
-    val reason: String,
-)
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-class GemmaInsightService {
-    fun availability(): InsightAvailability = InsightAvailability(
-        available = false,
-        reason = "Gemma is intentionally excluded from MVP calorie decisions. Add a local-only summary layer after the rule engine is proven.",
-    )
+class GemmaInsightService(
+    private val modelPath: String,
+    private val cacheDir: String,
+) {
+    private var engine: Engine? = null
+
+    suspend fun initialize() = withContext(Dispatchers.IO) {
+        if (engine != null) return@withContext
+        val config = EngineConfig(
+            modelPath = modelPath,
+            backend = Backend.CPU(),
+            cacheDir = cacheDir,
+        )
+        val e = Engine(config)
+        e.initialize()
+        engine = e
+    }
+
+    suspend fun generateExplanation(prompt: String): String = withContext(Dispatchers.IO) {
+        val e = engine ?: error("GemmaInsightService not initialized — call initialize() first.")
+        e.createConversation().use { conversation ->
+            val response = conversation.sendMessage(prompt)
+            response.contents.contents
+                .filterIsInstance<Content.Text>()
+                .joinToString("") { it.text }
+                .trim()
+        }
+    }
+
+    fun release() {
+        engine?.close()
+        engine = null
+    }
 }

@@ -46,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.GemmaInsightService
+
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 import com.zack.recomptracker.domain.foodimport.identity
@@ -125,8 +125,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             viewModel.onNutritionPermissionRequestConsumed()
         }
     }
-
-    val gemma = GemmaInsightService().availability()
 
     LazyColumn(
         modifier = Modifier.padding(16.dp),
@@ -243,12 +241,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     onClick = { showResetAllConfirm = true },
                     enabled = !state.busy,
                 )
-            }
-        }
-        item {
-            SectionCard("Gemma status") {
-                Text(if (gemma.available) "Available" else "Not enabled")
-                Text(gemma.reason)
             }
         }
     }

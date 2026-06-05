@@ -126,9 +126,34 @@ class RealAiInsightCoordinator(
         onAiCardVisible(result)
     }
 
-    // Inference implemented in Task 12 — will be replaced with GemmaInsightService call.
+    private val promptBuilder = InsightPromptBuilder()
+    private var gemmaService: GemmaInsightService? = null
+
     private suspend fun generate(result: AdjustmentResult) {
-        _state.value = AiInsightState.Error("Inference not yet implemented — wired in Task 12.")
+        _state.value = AiInsightState.LoadingModel
+        try {
+            val service = gemmaService ?: GemmaInsightService(
+                modelPath = modelFile.absolutePath,
+                cacheDir = context.cacheDir.absolutePath,
+            ).also { gemmaService = it }
+
+            withContext(Dispatchers.IO) { service.initialize() }
+
+            _state.value = AiInsightState.Generating("")
+            val prompt = promptBuilder.buildWeeklySummaryPrompt(result)
+            val text = withContext(Dispatchers.IO) { service.generateExplanation(prompt) }
+
+            val words = text.trim().split(" ")
+            val sb = StringBuilder()
+            for (word in words) {
+                if (sb.isNotEmpty()) sb.append(" ")
+                sb.append(word)
+                _state.value = AiInsightState.Generating(sb.toString())
+            }
+            _state.value = AiInsightState.Ready(sb.toString())
+        } catch (e: Exception) {
+            _state.value = AiInsightState.Error("Something went wrong — try again.")
+        }
     }
 
     private fun hasSufficientStorage(): Boolean {

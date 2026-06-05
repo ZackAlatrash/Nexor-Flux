@@ -19,7 +19,7 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.zack.recomptracker.ai.AiInsightCoordinator
-import com.zack.recomptracker.ai.FakeAiInsightCoordinator
+import com.zack.recomptracker.ai.RealAiInsightCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -65,7 +65,8 @@ class AppContainer(context: Context) {
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val aiInsightCoordinator: AiInsightCoordinator = FakeAiInsightCoordinator(
+    val aiInsightCoordinator: AiInsightCoordinator = RealAiInsightCoordinator(
+        context = context,
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         scope = appScope,
     )

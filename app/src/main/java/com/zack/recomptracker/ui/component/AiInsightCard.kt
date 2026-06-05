@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -59,13 +60,11 @@ fun AiInsightCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val context = LocalContext.current
-    val animationsEnabled = remember {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f,
-        ) > 0f
-    }
+    val animationsEnabled = Settings.Global.getFloat(
+        context.contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1f,
+    ) > 0f
     val effectiveMode = if (animationsEnabled) borderMode else AiBorderMode.Static
 
     val infiniteTransition = rememberInfiniteTransition(label = "aiComet")
@@ -90,7 +89,9 @@ fun AiInsightCard(
     )
 
     var readyComplete by remember { mutableStateOf(false) }
-    if (effectiveMode != AiBorderMode.Ready) readyComplete = false
+    LaunchedEffect(effectiveMode) {
+        if (effectiveMode != AiBorderMode.Ready) readyComplete = false
+    }
 
     val readyFadeAlpha by animateFloatAsState(
         targetValue = if (effectiveMode == AiBorderMode.Ready && !readyComplete) 1f else 0f,
@@ -140,7 +141,7 @@ fun AiInsightCard(
                     cometPhase = cometPhase,
                     pulseAlpha = pulseAlpha,
                     readyFadeAlpha = readyFadeAlpha,
-                    cornerPx = cornerDp.value * density,
+                    cornerPx = cornerDp.toPx(),
                 )
             }
             .padding(16.dp),

@@ -103,7 +103,7 @@ class CoachToolExecutorTest {
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute(
             "log_meal",
-            mapOf("name" to "Oatmeal", "calories" to "350", "protein_g" to "12.0"),
+            mapOf("name" to "Oatmeal", "calories" to "350"),
         )
 
         assertTrue("Should be success", result.contains("true"))
@@ -153,6 +153,17 @@ class CoachToolExecutorTest {
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("log_meal", mapOf("calories" to "400"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+    }
+
+    @Test
+    fun `log_meal without calories returns error JSON`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_meal", mapOf("name" to "Banana"))
 
         assertTrue("Should contain error key", result.contains("\"error\""))
     }
@@ -214,6 +225,57 @@ class CoachToolExecutorTest {
         val result = executor.execute("log_metric", mapOf("metric" to "weight_kg", "value" to "heavy"))
 
         assertTrue("Should contain error key", result.contains("\"error\""))
+    }
+
+    @Test
+    fun `log_metric energy_score rejects fractional values`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "energy_score", "value" to "8.9"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+        assertTrue("Should mention must be whole number", result.contains("whole number"))
+    }
+
+    @Test
+    fun `log_metric hunger_score rejects fractional values`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "hunger_score", "value" to "5.5"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+    }
+
+    @Test
+    fun `log_metric soreness_score rejects fractional values`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "soreness_score", "value" to "3.2"))
+
+        assertTrue("Should contain error key", result.contains("\"error\""))
+    }
+
+    @Test
+    fun `log_metric energy_score accepts whole numbers`() = runTest {
+        var saved: DailyMetricsInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.observeDay(fixedDate)).thenReturn(flowOf(emptyDayLog()))
+        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
+            saved = inv.getArgument(0); Unit
+        }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("log_metric", mapOf("metric" to "energy_score", "value" to "8.0"))
+
+        assertTrue("Should succeed", result.contains("\"success\":true"))
+        assertTrue("Should save as integer", saved?.energyScore == 8)
     }
 
     @Test

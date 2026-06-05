@@ -5,6 +5,7 @@ import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 
 class CoachToolExecutor(
@@ -25,7 +26,7 @@ class CoachToolExecutor(
 
     private suspend fun getTodaySummary(args: Map<String, String> = emptyMap()): String {
         val today = args["date"]?.let {
-            try { java.time.LocalDate.parse(it) } catch (_: Exception) { null }
+            try { LocalDate.parse(it) } catch (_: Exception) { null }
         } ?: dateProvider.today()
         val dayLog = logRepository.observeDay(today).first()
         val mealsJson = dayLog.meals.joinToString(separator = ",") { meal ->
@@ -63,7 +64,8 @@ class CoachToolExecutor(
     private suspend fun logMeal(args: Map<String, String>): String {
         val today = dateProvider.today()
         val name = args["name"] ?: return """{"error":"log_meal requires 'name'"}"""
-        val calories = args["calories"]?.toIntOrNull() ?: 0
+        val calories = args["calories"]?.toIntOrNull()
+            ?: return """{"error":"log_meal requires 'calories'"}"""
         logRepository.addMeal(
             MealEntryInput(
                 date = today,
@@ -83,11 +85,16 @@ class CoachToolExecutor(
         "energy_score", "hunger_score", "soreness_score",
     )
 
+    private val scoreMetrics = setOf("energy_score", "hunger_score", "soreness_score")
+
     private suspend fun logMetric(args: Map<String, String>): String {
         val metric = args["metric"] ?: return """{"error":"log_metric requires 'metric'"}"""
         if (metric !in validMetrics) return """{"error":"unknown metric '${metric.esc()}'"}"""
         val value = args["value"]?.toDoubleOrNull()
             ?: return """{"error":"log_metric requires a numeric 'value'"}"""
+        if (metric in scoreMetrics && value != kotlin.math.floor(value)) {
+            return """{"error":"$metric must be a whole number"}"""
+        }
         val today = dateProvider.today()
         val existing = logRepository.observeDay(today).first().dailyLog
         logRepository.saveDailyMetrics(

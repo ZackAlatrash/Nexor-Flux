@@ -147,9 +147,6 @@ fun RecompApp(container: AppContainer) {
                     }
                 }
 
-                // Toast overlay — always above nav
-                ToastOverlay()
-
                 // Layer 3 — liquid glass nav bar (outside navBackdrop, reads from it).
                 if (currentRoute in topLevelRoutes) {
                     Box(
@@ -270,6 +267,9 @@ fun RecompApp(container: AppContainer) {
                         }
                     }
                 }
+
+                // Toast overlay — always above nav
+                ToastOverlay()
             }
         }
     }

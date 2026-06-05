@@ -30,7 +30,7 @@ class RealAiInsightCoordinator(
     private var lastGeneratedKey: String? = null
     private var downloadId: Long = -1L
     private val modelFile: File
-        get() = File(context.filesDir, "ai/gemma-4-E2B-it.litertlm")
+        get() = File(context.getExternalFilesDir(null), "ai/gemma-4-E2B-it.litertlm")
 
     private val modelUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
     private val requiredFreeBytes = 3L * 1024 * 1024 * 1024
@@ -59,7 +59,7 @@ class RealAiInsightCoordinator(
         val request = DownloadManager.Request(Uri.parse(modelUrl))
             .setTitle("Gemma 4 E2B — AI Explanation Model")
             .setDescription("Downloading for on-device AI features (~2.6 GB)")
-            .setDestinationUri(Uri.fromFile(modelFile))
+            .setDestinationInExternalFilesDir(context, null, "ai/gemma-4-E2B-it.litertlm")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setAllowedOverRoaming(false)
 

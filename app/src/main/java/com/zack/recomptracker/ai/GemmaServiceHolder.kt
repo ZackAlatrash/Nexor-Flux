@@ -11,12 +11,14 @@ class GemmaServiceHolder(private val context: Context) {
 
     private var _service: GemmaInsightService? = null
 
+    @Synchronized
     fun getOrCreateService(): GemmaInsightService =
         _service ?: GemmaInsightService(
             modelPath = modelFile.absolutePath,
             cacheDir = context.cacheDir.absolutePath,
         ).also { _service = it }
 
+    @Synchronized
     fun release() {
         _service?.release()
         _service = null

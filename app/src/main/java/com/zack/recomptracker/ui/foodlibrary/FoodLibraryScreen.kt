@@ -66,7 +66,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.domain.food.FoodScaling
-import com.zack.recomptracker.ui.LocalSnackbarHostState
+import com.zack.recomptracker.ui.toast.LocalToastController
+import com.zack.recomptracker.ui.toast.ToastMessage
+import com.zack.recomptracker.ui.toast.ToastType
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.component.MessageKind
@@ -100,10 +102,10 @@ fun FoodLibraryScreen(
     LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId, logDate) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val snackbarHostState = LocalSnackbarHostState.current
+    val toastController = LocalToastController.current
     LaunchedEffect(viewModel) {
         viewModel.loggedEvent.collect { message ->
-            snackbarHostState.showSnackbar(message)
+            toastController.show(ToastMessage(message, ToastType.Success))
         }
     }
 

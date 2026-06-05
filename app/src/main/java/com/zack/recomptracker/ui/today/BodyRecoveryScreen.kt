@@ -42,7 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.LocalSnackbarHostState
+import com.zack.recomptracker.ui.toast.LocalToastController
+import com.zack.recomptracker.ui.toast.ToastMessage
+import com.zack.recomptracker.ui.toast.ToastType
 import com.zack.recomptracker.ui.body.BodyCheckInFormActions
 import com.zack.recomptracker.ui.body.BodyCheckInFormState
 import com.zack.recomptracker.ui.body.BodyCheckInSheet
@@ -67,10 +69,10 @@ fun BodyRecoveryScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = LocalSnackbarHostState.current
+    val toastController = LocalToastController.current
     LaunchedEffect(viewModel) {
         viewModel.savedEvent.collect {
-            snackbarHostState.showSnackbar("Check-in saved")
+            toastController.show(ToastMessage("Check-in saved", ToastType.Success))
         }
     }
     BodyRecoveryContent(

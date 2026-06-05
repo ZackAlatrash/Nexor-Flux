@@ -30,7 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ui.LocalSnackbarHostState
+import com.zack.recomptracker.ui.toast.LocalToastController
+import com.zack.recomptracker.ui.toast.ToastMessage
+import com.zack.recomptracker.ui.toast.ToastType
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -59,10 +61,10 @@ fun PlanScreen(viewModel: PlanViewModel) {
             datePickerState.selectedDateMillis = initialDateMillis
         }
     }
-    val snackbarHostState = LocalSnackbarHostState.current
+    val toastController = LocalToastController.current
     LaunchedEffect(viewModel) {
         viewModel.savedEvent.collect {
-            snackbarHostState.showSnackbar("Plan saved")
+            toastController.show(ToastMessage("Plan saved", ToastType.Success))
         }
     }
     LazyColumn(

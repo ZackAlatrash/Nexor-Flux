@@ -15,14 +15,11 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,12 +41,11 @@ import com.zack.recomptracker.ui.navigation.Routes
 import com.zack.recomptracker.ui.navigation.TopLevelDestination
 import com.zack.recomptracker.ui.theme.RecompTrackerTheme
 import com.zack.recomptracker.ui.theme.Violet300
+import com.zack.recomptracker.ui.toast.LocalToastController
+import com.zack.recomptracker.ui.toast.ToastController
+import com.zack.recomptracker.ui.toast.ToastOverlay
 
 val LocalAppContainer = compositionLocalOf<AppContainer> { error("AppContainer not provided") }
-
-val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> {
-    error("No SnackbarHostState provided")
-}
 
 // Bottom padding screens add so content isn't hidden under the floating nav.
 val FloatingNavHeight: Dp = 80.dp
@@ -84,7 +80,7 @@ private val tabRoutes = listOf(
 fun RecompApp(container: AppContainer) {
     RecompTrackerTheme {
         val navController = rememberNavController()
-        val snackbarHostState = remember { SnackbarHostState() }
+        val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
         // Two separate backdrops to avoid a circular GraphicsLayer read:
@@ -98,7 +94,7 @@ fun RecompApp(container: AppContainer) {
 
         CompositionLocalProvider(
             LocalAppContainer provides container,
-            LocalSnackbarHostState provides snackbarHostState,
+            LocalToastController provides toastController,
             LocalBackdrop provides contentBackdrop,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -143,7 +139,6 @@ fun RecompApp(container: AppContainer) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = Color.Transparent,
-                        snackbarHost = { SnackbarHost(snackbarHostState) },
                     ) { innerPadding ->
                         AppNavGraph(
                             navController = navController,
@@ -151,6 +146,9 @@ fun RecompApp(container: AppContainer) {
                         )
                     }
                 }
+
+                // Toast overlay — always above nav
+                ToastOverlay()
 
                 // Layer 3 — liquid glass nav bar (outside navBackdrop, reads from it).
                 if (currentRoute in topLevelRoutes) {

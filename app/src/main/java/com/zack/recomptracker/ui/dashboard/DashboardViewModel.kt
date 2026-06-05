@@ -69,6 +69,7 @@ data class DashboardUiState(
         summary = "Log today to start building a review window.",
     ),
     val motivationalMessage: String = "",   // display-only, at end
+    val adjustmentInput: AdjustmentInput? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -87,21 +88,16 @@ class DashboardViewModel(
     val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
 
     fun onAiCardVisible(result: AdjustmentResult) {
-        val ctx = InsightContext(
-            result = result,
-            input = AdjustmentInput(
-                daysLogged = _uiState.value.daysLogged,
-                adherencePercent = _uiState.value.adherencePercent,
-                weeksSincePhaseStart = 0,
-                weightTrendKgPerWeek = _uiState.value.weightTrendKgPerWeek,
-                waistTrendCmPerWeek = _uiState.value.waistTrendCmPerWeek,
-                performanceTrend = com.zack.recomptracker.domain.adjustment.PerformanceTrend.UNKNOWN,
-                recoveryTrend = com.zack.recomptracker.domain.adjustment.RecoveryTrend.UNKNOWN,
-            ),
-            targetCalories = _uiState.value.preferences.targetCalories,
-            targetProteinG = _uiState.value.preferences.targetProteinG,
+        val state = _uiState.value
+        val input = state.adjustmentInput ?: return
+        aiInsightCoordinator.onAiCardVisible(
+            InsightContext(
+                result = result,
+                input = input,
+                targetCalories = state.preferences.targetCalories,
+                targetProteinG = state.preferences.targetProteinG,
+            )
         )
-        aiInsightCoordinator.onAiCardVisible(ctx)
     }
 
     fun requestModelDownload() = aiInsightCoordinator.requestDownload()
@@ -109,22 +105,16 @@ class DashboardViewModel(
     fun cancelDownload() = aiInsightCoordinator.cancelDownload()
 
     fun retryGeneration() {
-        val result = _uiState.value.result
-        val ctx = InsightContext(
-            result = result,
-            input = AdjustmentInput(
-                daysLogged = _uiState.value.daysLogged,
-                adherencePercent = _uiState.value.adherencePercent,
-                weeksSincePhaseStart = 0,
-                weightTrendKgPerWeek = _uiState.value.weightTrendKgPerWeek,
-                waistTrendCmPerWeek = _uiState.value.waistTrendCmPerWeek,
-                performanceTrend = com.zack.recomptracker.domain.adjustment.PerformanceTrend.UNKNOWN,
-                recoveryTrend = com.zack.recomptracker.domain.adjustment.RecoveryTrend.UNKNOWN,
-            ),
-            targetCalories = _uiState.value.preferences.targetCalories,
-            targetProteinG = _uiState.value.preferences.targetProteinG,
+        val state = _uiState.value
+        val input = state.adjustmentInput ?: return
+        aiInsightCoordinator.retryGeneration(
+            InsightContext(
+                result = state.result,
+                input = input,
+                targetCalories = state.preferences.targetCalories,
+                targetProteinG = state.preferences.targetProteinG,
+            )
         )
-        aiInsightCoordinator.retryGeneration(ctx)
     }
 
     // Picked once at ViewModel construction — stable for the whole session.
@@ -203,17 +193,16 @@ class DashboardViewModel(
             cachedEngineThresholds = thresholds
             cachedEngine = AdjustmentEngine(thresholds)
         }
-        val result = cachedEngine.evaluate(
-            AdjustmentInput(
-                daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
-                adherencePercent = adherence,
-                weeksSincePhaseStart = weeksSincePhaseStart,
-                weightTrendKgPerWeek = weightTrend,
-                waistTrendCmPerWeek = waistTrend,
-                performanceTrend = trendCalculator.performanceTrend(performancePoints),
-                recoveryTrend = trendCalculator.recoveryTrend(recoveryPoints),
-            ),
+        val adjustmentInput = AdjustmentInput(
+            daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
+            adherencePercent = adherence,
+            weeksSincePhaseStart = weeksSincePhaseStart,
+            weightTrendKgPerWeek = weightTrend,
+            waistTrendCmPerWeek = waistTrend,
+            performanceTrend = trendCalculator.performanceTrend(performancePoints),
+            recoveryTrend = trendCalculator.recoveryTrend(recoveryPoints),
         )
+        val result = cachedEngine.evaluate(adjustmentInput)
 
         val last7DaysCalories = (0..6).map { offset ->
             val date = last7Start.plusDays(offset.toLong())
@@ -247,6 +236,7 @@ class DashboardViewModel(
             inZoneDays7 = inZoneDays7,
             motivationalMessage = todayMessage,
             result = result,
+            adjustmentInput = adjustmentInput,
         )
     }
 

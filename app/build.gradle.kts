@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.backdrop)
     implementation(libs.kyant.shapes)
     implementation(libs.reorderable)
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
 
     ksp(libs.androidx.room.compiler)
 

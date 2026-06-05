@@ -62,6 +62,7 @@ fun MoreScreen(
     onStatsClick: () -> Unit,
     onChartsClick: () -> Unit,
     onPlanClick: () -> Unit,
+    onProgressClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -135,6 +136,13 @@ fun MoreScreen(
                         title = "Charts",
                         detail = "Weight, waist, nutrition and lifts",
                         onClick = onChartsClick,
+                        showDivider = true,
+                    )
+                    MenuRow(
+                        emoji = "📉",
+                        title = "Progress",
+                        detail = "Trends and adherence history",
+                        onClick = onProgressClick,
                         showDivider = false,
                     )
                 }

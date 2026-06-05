@@ -119,7 +119,7 @@ class RealAiInsightCoordinator(
             val service = serviceHolder.getOrCreateService()
             withContext(Dispatchers.IO) { service.initialize() }
             _state.value = AiInsightState.Generating("")
-            val prompt = promptBuilder.buildWeeklySummaryPrompt(context.result)
+            val prompt = promptBuilder.buildWeeklySummaryPrompt(context)
             val text = withContext(Dispatchers.IO) { service.generateExplanation(prompt) }
             val words = text.trim().split(" ")
             val sb = StringBuilder()

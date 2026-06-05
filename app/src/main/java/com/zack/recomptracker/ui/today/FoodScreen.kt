@@ -172,12 +172,11 @@ fun FoodContent(
                             color = TextMuted,
                             letterSpacing = 0.12.sp,
                         )
-                        Text(
-                            text = if (state.slotsEditMode) "Done" else "Reorder",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xB38B5CF6),
-                            modifier = Modifier.clickable(onClick = actions.onToggleEditMode),
+                        LiquidActionButton(
+                            text = if (state.slotsEditMode) "Done" else "Edit",
+                            onClick = actions.onToggleEditMode,
+                            isPrimary = false,
+                            small = true,
                         )
                     }
                 }

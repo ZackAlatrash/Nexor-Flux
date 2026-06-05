@@ -525,7 +525,7 @@ private fun MotivationalCard(message: String) {
             .padding(14.dp),
     ) {
         Text(
-            text = "“$message”",
+            text = message,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFFEDE9FE),

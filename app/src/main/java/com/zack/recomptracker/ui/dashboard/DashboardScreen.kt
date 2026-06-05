@@ -34,10 +34,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.core.util.formatPercent
 import com.zack.recomptracker.core.util.formatSignedOneDecimal
+import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
+import com.zack.recomptracker.ui.component.AiBadge
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
@@ -50,6 +58,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.theme.ErrorRed
+import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.Violet300
@@ -602,6 +611,10 @@ private fun StatTile(
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.result) {
+        viewModel.onAiCardVisible(state.result)
+    }
     LazyColumn(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -619,6 +632,15 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
                 Text("Change: ${state.result.recommendedCalorieChange} kcal/day")
                 Text("Reasons: ${state.result.reasonCodes.joinToString()}")
             }
+        }
+        item {
+            AiInsightSection(
+                result = state.result,
+                aiState = aiState,
+                onDownload = viewModel::requestModelDownload,
+                onCancel = viewModel::cancelDownload,
+                onRetry = viewModel::retryGeneration,
+            )
         }
         item {
             SectionCard("Current targets") {
@@ -669,6 +691,178 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
                 StatRow("Adherence", state.adherencePercent.formatPercent())
                 StatRow("Logged days", state.daysLogged.toString())
             }
+        }
+    }
+}
+
+@Composable
+private fun AiInsightSection(
+    result: AdjustmentResult,
+    aiState: AiInsightState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
+        if (aiState != AiInsightState.Disabled) {
+            Text(
+                text = "AI explanations appear once a weekly verdict is ready.",
+                fontSize = 11.sp,
+                color = TextMuted,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+        return
+    }
+
+    when (aiState) {
+        AiInsightState.Disabled -> Unit
+
+        AiInsightState.ModelMissing -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Understand the reasoning behind this verdict.",
+                    fontSize = 13.sp,
+                    color = TextMuted,
+                )
+                Text(
+                    text = "Requires a ~2.6 GB download · Wi-Fi recommended",
+                    fontSize = 11.sp,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.Button(onClick = onDownload) {
+                    Text("Download Model")
+                }
+            }
+        }
+
+        is AiInsightState.Downloading -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(10.dp))
+                val progress = aiState.progress
+                if (progress != null) {
+                    Text(
+                        text = "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text("Downloading…", fontSize = 11.sp, color = TextMuted)
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(onClick = onCancel) {
+                    Text("Cancel", fontSize = 11.sp)
+                }
+            }
+        }
+
+        AiInsightState.DownloadFailed -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(8.dp))
+                Text("Download failed — check your connection.", fontSize = 13.sp, color = TextMuted)
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.Button(onClick = onDownload) { Text("Retry") }
+            }
+        }
+
+        AiInsightState.ModelReady,
+        AiInsightState.LoadingModel -> {
+            AiInsightCard(borderMode = AiBorderMode.Preparing) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = Violet400,
+                    )
+                    Text("Preparing model…", fontSize = 13.sp, color = TextMuted)
+                }
+            }
+        }
+
+        is AiInsightState.Generating -> {
+            AiInsightCard(borderMode = AiBorderMode.Generating) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = aiState.partialText,
+                    fontSize = 14.sp,
+                    color = Color.White,
+                    lineHeight = 20.sp,
+                )
+            }
+        }
+
+        is AiInsightState.Ready -> {
+            AiInsightCard(borderMode = AiBorderMode.Ready) {
+                AiCardHeader(title = "Why this verdict", showRefresh = true, onRefresh = onRetry)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = aiState.text,
+                    fontSize = 14.sp,
+                    color = Color.White,
+                    lineHeight = 20.sp,
+                )
+            }
+        }
+
+        is AiInsightState.Error -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(8.dp))
+                Text("Something went wrong.", fontSize = 13.sp, color = TextMuted)
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiCardHeader(
+    title: String,
+    showRefresh: Boolean,
+    onRefresh: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title.uppercase(),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextFaint,
+            letterSpacing = 0.14.sp,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showRefresh) {
+                androidx.compose.material3.IconButton(onClick = onRefresh) {
+                    Text("↺", fontSize = 14.sp, color = Violet400)
+                }
+            }
+            AiBadge()
         }
     }
 }

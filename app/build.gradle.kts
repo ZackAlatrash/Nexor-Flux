@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.backdrop)
     implementation(libs.kyant.shapes)
+    implementation(libs.reorderable)
 
     ksp(libs.androidx.room.compiler)
 

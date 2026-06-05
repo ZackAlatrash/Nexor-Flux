@@ -18,8 +18,13 @@ import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.FakeAiInsightCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.ui.body.BodyEditViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
@@ -59,6 +64,11 @@ class AppContainer(context: Context) {
     val adjustmentEngine = AdjustmentEngine()
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val aiInsightCoordinator: AiInsightCoordinator = FakeAiInsightCoordinator(
+        aiEnabledFlow = uiPreferences.aiInsightsEnabled,
+        scope = appScope,
+    )
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)
 }
 
@@ -86,6 +96,7 @@ private class AppViewModelFactory(
                 trendCalculator = container.trendCalculator,
                 adherenceCalculator = container.adherenceCalculator,
                 adjustmentEngine = container.adjustmentEngine,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             ProgressViewModel::class.java -> ProgressViewModel(
                 logRepository = container.logRepository,

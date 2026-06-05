@@ -12,6 +12,8 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -76,9 +78,22 @@ class DashboardViewModel(
     private val trendCalculator: TrendCalculator,
     private val adherenceCalculator: AdherenceCalculator,
     private val adjustmentEngine: AdjustmentEngine,
+    private val aiInsightCoordinator: AiInsightCoordinator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
+
+    fun onAiCardVisible(result: AdjustmentResult) {
+        aiInsightCoordinator.onAiCardVisible(result)
+    }
+
+    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
+
+    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
+
+    fun retryGeneration() = aiInsightCoordinator.retryGeneration(_uiState.value.result)
 
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()

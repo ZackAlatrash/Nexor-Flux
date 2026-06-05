@@ -47,7 +47,7 @@ fun ToastOverlay(modifier: Modifier = Modifier) {
     var currentToast by remember { mutableStateOf<ToastMessage?>(null) }
     var visible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(controller) {
+    LaunchedEffect(Unit) {
         controller.messages.collect { message ->
             if (visible) {
                 visible = false
@@ -55,11 +55,6 @@ fun ToastOverlay(modifier: Modifier = Modifier) {
             }
             currentToast = message
             visible = true
-        }
-    }
-
-    LaunchedEffect(visible) {
-        if (visible) {
             delay(3000L)
             visible = false
             delay(300L)

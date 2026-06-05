@@ -524,22 +524,14 @@ private fun MotivationalCard(message: String) {
             .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
-        Column {
-            Text(
-                text = "“$message”",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFEDE9FE),
-                lineHeight = 19.sp,
-                letterSpacing = (-0.2).sp,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Refreshes each session",
-                fontSize = 10.sp,
-                color = Color(0x8CA78BFA),
-            )
-        }
+        Text(
+            text = "“$message”",
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFEDE9FE),
+            lineHeight = 24.sp,
+            letterSpacing = (-0.3).sp,
+        )
     }
 }
 

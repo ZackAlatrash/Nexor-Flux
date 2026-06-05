@@ -48,6 +48,7 @@ class LogRepositoryWeekCaloriesTest {
             override suspend fun deleteForDate(date: String) = Unit
             override suspend fun deleteAll() = Unit
             override suspend fun clearSlotId(slotId: Long) = Unit
+            override suspend fun deleteBySlotId(slotId: Long) = Unit
             override suspend fun getById(id: Long): MealEntryEntity? = null
         }
         return LogRepository(

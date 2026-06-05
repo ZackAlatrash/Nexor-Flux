@@ -19,9 +19,13 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.CoachCoordinator
+import com.zack.recomptracker.ai.CoachToolExecutor
 import com.zack.recomptracker.ai.GemmaServiceHolder
 import com.zack.recomptracker.ai.RealAiInsightCoordinator
+import com.zack.recomptracker.ai.RealCoachCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
+import com.zack.recomptracker.ui.coach.CoachViewModel
 import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +76,17 @@ class AppContainer(context: Context) {
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         scope = appScope,
         serviceHolder = gemmaServiceHolder,
+    )
+    val coachCoordinator: CoachCoordinator = RealCoachCoordinator(
+        serviceHolder = gemmaServiceHolder,
+        insightCoordinator = aiInsightCoordinator,
+        toolExecutor = CoachToolExecutor(
+            logRepository = logRepository,
+            planRepository = planRepository,
+            dateProvider = dateProvider,
+        ),
+        planRepository = planRepository,
+        scope = appScope,
     )
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)
 }
@@ -146,6 +161,9 @@ private class AppViewModelFactory(
                 hcRepository = container.healthConnectRepository,
                 backupRepository = container.backupRepository,
                 aiInsightCoordinator = container.aiInsightCoordinator,
+            )
+            CoachViewModel::class.java -> CoachViewModel(
+                coachCoordinator = container.coachCoordinator,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

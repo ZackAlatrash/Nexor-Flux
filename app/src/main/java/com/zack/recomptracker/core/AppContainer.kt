@@ -142,6 +142,7 @@ private class AppViewModelFactory(
                 uiPreferences = container.uiPreferences,
                 hcRepository = container.healthConnectRepository,
                 backupRepository = container.backupRepository,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

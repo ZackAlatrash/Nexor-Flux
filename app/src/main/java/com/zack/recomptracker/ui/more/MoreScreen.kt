@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -38,12 +39,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.AiBadge
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
@@ -59,6 +65,7 @@ fun MoreScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -202,6 +209,18 @@ fun MoreScreen(
                 }
             }
 
+            // AI model card — only when AI Insights is on and model needs attention
+            if (aiState != AiInsightState.Disabled) {
+                item {
+                    AiModelSection(
+                        aiState = aiState,
+                        onDownload = viewModel::requestModelDownload,
+                        onCancel = viewModel::cancelDownload,
+                        onDelete = viewModel::deleteModel,
+                    )
+                }
+            }
+
             // ── Data ─────────────────────────────────────────────────────────
             item { SectionLabel("Data") }
             item {
@@ -232,6 +251,137 @@ fun MoreScreen(
                 }
             }
         }
+    }
+}
+
+// ── AI Model Section ──────────────────────────────────────────────────────────
+
+@Composable
+private fun AiModelSection(
+    aiState: AiInsightState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    when (aiState) {
+        AiInsightState.Disabled -> Unit
+
+        AiInsightState.ModelMissing -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiModelHeader()
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Download the on-device model to get AI explanations on the Stats screen.",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    lineHeight = 17.sp,
+                )
+                Text(
+                    "~2.6 GB · Wi-Fi recommended",
+                    fontSize = 10.sp,
+                    color = TextFaint,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.Button(onClick = onDownload) {
+                    Text("Download Model", fontSize = 13.sp)
+                }
+            }
+        }
+
+        is AiInsightState.Downloading -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiModelHeader()
+                Spacer(Modifier.height(8.dp))
+                val progress = aiState.progress
+                if (progress != null) {
+                    Text(
+                        "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text("Downloading…", fontSize = 11.sp, color = TextMuted)
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(onClick = onCancel) {
+                    Text("Cancel", fontSize = 12.sp)
+                }
+            }
+        }
+
+        AiInsightState.DownloadFailed -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiModelHeader()
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Download failed — check your connection and try again.",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                )
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.material3.Button(onClick = onDownload) {
+                    Text("Retry Download", fontSize = 13.sp)
+                }
+            }
+        }
+
+        AiInsightState.ModelReady,
+        AiInsightState.LoadingModel,
+        is AiInsightState.Generating,
+        is AiInsightState.Ready,
+        is AiInsightState.Error -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiModelHeader()
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(Color(0xFF4ADE80)),
+                        )
+                        Text("Model ready · 2.6 GB", fontSize = 12.sp, color = TextMuted)
+                    }
+                    androidx.compose.material3.TextButton(onClick = onDelete) {
+                        Text("Delete", fontSize = 12.sp, color = Color(0xFFFC8181))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiModelHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "AI MODEL",
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextFaint,
+            letterSpacing = 0.14.sp,
+        )
+        AiBadge()
     }
 }
 

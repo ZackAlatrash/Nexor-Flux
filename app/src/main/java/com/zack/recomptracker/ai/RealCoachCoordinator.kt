@@ -13,12 +13,15 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.PlanRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 /**
  * Drives the multi-turn AI coach conversation on top of LiteRT-LM.
@@ -42,6 +45,7 @@ class RealCoachCoordinator(
 
     private val mutableHistory = mutableListOf<ChatMessage>()
     private var conversation: Conversation? = null
+    private var turnCount = 0
 
     init {
         scope.launch {
@@ -74,6 +78,7 @@ class RealCoachCoordinator(
     override fun clearHistory() {
         mutableHistory.clear()
         clearConversation()
+        turnCount = 0
         if (_state.value != CoachState.Unavailable) _state.value = CoachState.Ready
     }
 
@@ -83,13 +88,21 @@ class RealCoachCoordinator(
         try {
             val service = serviceHolder.getOrCreateService()
             withContext(Dispatchers.IO) { service.initialize() }
+
+            if (turnCount >= MAX_TURNS) {
+                clearConversation()
+                turnCount = 0
+            }
             val conv = conversation ?: createConversation(service).also { conversation = it }
 
-            var response = withContext(Dispatchers.IO) { conv.sendMessage(userText) }
+            var response = withTimeout(TIMEOUT_MS) {
+                withContext(Dispatchers.IO) { conv.sendMessage(userText) }
+            }
 
-            // Manual tool-call loop: keep resolving tool calls until the model replies with text.
-            while (true) {
+            var toolIterations = 0
+            while (toolIterations < MAX_TOOL_ITERATIONS) {
                 val toolCall = response.toolCalls.firstOrNull() ?: break
+                toolIterations++
                 _state.value = CoachState.Thinking(
                     mutableHistory.toList(),
                     toolStatus = toolStatusText(toolCall.name),
@@ -99,22 +112,36 @@ class RealCoachCoordinator(
                     toolExecutor.execute(toolCall.name, argsMap)
                 }
                 val toolResponse = Contents.of(Content.ToolResponse(toolCall.name, toolResult))
-                response = withContext(Dispatchers.IO) { conv.sendMessage(toolResponse) }
+                response = withTimeout(TIMEOUT_MS) {
+                    withContext(Dispatchers.IO) { conv.sendMessage(toolResponse) }
+                }
+            }
+            if (toolIterations >= MAX_TOOL_ITERATIONS && response.toolCalls.isNotEmpty()) {
+                clearConversation()
+                turnCount = 0
+                _state.value = CoachState.Error(mutableHistory.toList(), "Something went wrong — try again.")
+                return
             }
 
-            // Stream the final text word-by-word so the UI can animate it.
             val fullText = extractText(response)
             val words = fullText.split(" ")
             val sb = StringBuilder()
             for (word in words) {
-                if (sb.isNotEmpty()) sb.append(" ")
-                sb.append(word)
+                sb.append(if (sb.isEmpty()) word else " $word")
                 _state.value = CoachState.Responding(mutableHistory.toList(), partial = sb.toString())
+                delay(STREAM_DELAY_MS)
             }
             val finalText = sb.toString()
             mutableHistory.add(ChatMessage(Role.Assistant, finalText))
+            turnCount++
             _state.value = CoachState.Idle(mutableHistory.toList())
+        } catch (e: TimeoutCancellationException) {
+            clearConversation()
+            turnCount = 0
+            _state.value = CoachState.Error(mutableHistory.toList(), "Took too long — try again.")
         } catch (e: Exception) {
+            clearConversation()
+            turnCount = 0
             _state.value = CoachState.Error(mutableHistory.toList(), "Something went wrong — try again.")
         }
     }
@@ -177,6 +204,11 @@ class RealCoachCoordinator(
     }
 
     private companion object {
+        private const val TIMEOUT_MS = 45_000L
+        private const val MAX_TOOL_ITERATIONS = 5
+        private const val MAX_TURNS = 20
+        private const val STREAM_DELAY_MS = 35L
+
         /**
          * Tool schemas advertised to the model. Parameter names match the keys read by
          * [CoachToolExecutor]. [SchemaTool.execute] is never invoked because tool calls are

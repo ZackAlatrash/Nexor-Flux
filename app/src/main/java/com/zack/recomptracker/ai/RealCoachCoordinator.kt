@@ -151,7 +151,7 @@ class RealCoachCoordinator(
         appendLine("- get_today_summary(date?): Fetches a specific day's food log and macros. If 'date' is omitted it returns today. Pass date as YYYY-MM-DD.")
         appendLine("- get_weekly_trends: Returns the last 7 days of calorie data.")
         appendLine("- get_plan: Returns current calorie and macro targets.")
-        appendLine("- log_meal, log_daily_metrics, update_calorie_target: Write tools (require confirmation).")
+        appendLine("- log_meal, log_metric, update_calorie_target: Write tools (require confirmation).")
         appendLine()
         appendLine("Rules:")
         appendLine("1. Be concise: 1-3 sentences per response unless the user explicitly asks for detail.")

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -79,6 +80,14 @@ class UiPreferences(private val context: Context) {
     val selectedFont: kotlinx.coroutines.flow.Flow<String> = context.uiDataStore.data.map { it[Keys.SelectedFont] ?: "default" }
     val aiInsightsEnabled: kotlinx.coroutines.flow.Flow<Boolean> = context.uiDataStore.data.map { it[Keys.AiInsightsEnabled] ?: false }
 
+    /**
+     * The DownloadManager ID of an in-progress model download. Persisted so that if
+     * the app process is killed mid-download, the coordinator can resume progress
+     * polling on next launch. -1L means no active download.
+     */
+    val pendingDownloadId: kotlinx.coroutines.flow.Flow<Long> =
+        context.uiDataStore.data.map { it[Keys.PendingDownloadId] ?: -1L }
+
     suspend fun setFont(font: String) {
         context.uiDataStore.edit { it[Keys.SelectedFont] = font }
     }
@@ -87,8 +96,19 @@ class UiPreferences(private val context: Context) {
         context.uiDataStore.edit { it[Keys.AiInsightsEnabled] = enabled }
     }
 
+    /**
+     * Persists [id] so it survives process death. Pass -1L to clear.
+     */
+    suspend fun setPendingDownloadId(id: Long) {
+        context.uiDataStore.edit { prefs ->
+            if (id == -1L) prefs.remove(Keys.PendingDownloadId)
+            else prefs[Keys.PendingDownloadId] = id
+        }
+    }
+
     private object Keys {
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
+        val PendingDownloadId = longPreferencesKey("pending_download_id")
     }
 }

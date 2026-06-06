@@ -7,6 +7,8 @@ sealed class AiInsightState {
     object ModelMissing : AiInsightState()
     data class Downloading(val progress: Float?) : AiInsightState()
     object DownloadFailed : AiInsightState()
+    /** SHA-256 and size verification running after a completed download. */
+    object ModelVerifying : AiInsightState()
     object ModelReady : AiInsightState()
     object LoadingModel : AiInsightState()
     data class Generating(val partialText: String) : AiInsightState()

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ai.ChatMessage
 import com.zack.recomptracker.ai.CoachState
+import com.zack.recomptracker.ai.PendingCoachAction
 import com.zack.recomptracker.ai.Role
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AiBadge
@@ -84,11 +85,14 @@ fun CoachScreen(viewModel: CoachViewModel) {
         is CoachState.Thinking -> s.history
         is CoachState.Responding -> s.history
         is CoachState.Error -> s.history
+        is CoachState.AwaitingConfirmation -> s.history
         else -> emptyList()
     }
 
     val available = state !is CoachState.Unavailable
-    val busy = state is CoachState.Thinking || state is CoachState.Responding
+    val busy = state is CoachState.Thinking ||
+        state is CoachState.Responding ||
+        state is CoachState.AwaitingConfirmation
     val canSend = available && !busy && inputText.isNotBlank()
     val canClear = state is CoachState.Idle || state is CoachState.Error
 
@@ -176,7 +180,22 @@ fun CoachScreen(viewModel: CoachViewModel) {
                     partialResponse = null,
                     errorMessage = s.message,
                 )
+                is CoachState.AwaitingConfirmation -> ChatContent(
+                    history = s.history,
+                    thinkingStatus = null,
+                    partialResponse = null,
+                    errorMessage = null,
+                )
             }
+        }
+
+        val awaitingConfirmation = state as? CoachState.AwaitingConfirmation
+        if (awaitingConfirmation != null) {
+            ConfirmationBar(
+                action = awaitingConfirmation.pendingAction,
+                onConfirm = { viewModel.confirmPendingAction() },
+                onCancel = { viewModel.cancelPendingAction() },
+            )
         }
 
         // Input bar
@@ -330,8 +349,8 @@ private fun ChatContent(
         (if (thinkingStatus != null || partialResponse != null) 1 else 0) +
         (if (errorMessage != null) 1 else 0)
 
-    // Scroll to bottom only when a new user/assistant message appears.
-    // Streaming partial updates would re-fire this every token and jank the scroll.
+    // Scroll to bottom only when a committed message is added (history.size changes).
+    // The coach emits the full response in one shot, so this fires exactly once per turn.
     LaunchedEffect(history.size) {
         if (history.isNotEmpty()) {
             listState.animateScrollToItem(history.size - 1)
@@ -405,6 +424,74 @@ private fun ChatContent(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmationBar(
+    action: PendingCoachAction,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AiInsightCard(
+            borderMode = AiBorderMode.Preparing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = action.displayText,
+                color = Color.White,
+                fontSize = 14.sp,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = FloatingNavHeight),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = false,
+                onClick = onCancel,
+                label = {
+                    Text(
+                        text = "Cancel",
+                        color = androidx.compose.ui.graphics.Color(0xFFEF5350),
+                        fontSize = 14.sp,
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = TintedSurface,
+                    selectedContainerColor = TintedSurface,
+                ),
+                border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f)),
+            )
+            FilterChip(
+                selected = false,
+                onClick = onConfirm,
+                label = {
+                    Text(
+                        text = "Confirm",
+                        color = androidx.compose.ui.graphics.Color(0xFF66BB6A),
+                        fontSize = 14.sp,
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = TintedSurface,
+                    selectedContainerColor = TintedSurface,
+                ),
+                border = BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF66BB6A).copy(alpha = 0.5f)),
+            )
         }
     }
 }

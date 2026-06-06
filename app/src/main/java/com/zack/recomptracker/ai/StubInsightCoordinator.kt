@@ -32,7 +32,7 @@ class StubInsightCoordinator(
     }
 
     override fun requestDownload() {
-        if (_state.value != AiInsightState.ModelMissing) return
+        if (_state.value != AiInsightState.ModelMissing && _state.value != AiInsightState.DownloadFailed) return
         scope.launch {
             for (i in 1..5) { _state.value = AiInsightState.Downloading(i / 5f); delay(60L) }
             _state.value = AiInsightState.ModelReady
@@ -53,7 +53,8 @@ class StubInsightCoordinator(
     }
 
     override fun retryGeneration(context: InsightContext) {
-        if (_state.value !is AiInsightState.Ready && _state.value != AiInsightState.ModelReady) return
+        if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
+        if (_state.value !is AiInsightState.Ready && _state.value != AiInsightState.ModelReady && _state.value !is AiInsightState.Error) return
         lastGeneratedKey = null
         _state.value = AiInsightState.ModelReady
         onAiCardVisible(context)
@@ -62,6 +63,7 @@ class StubInsightCoordinator(
     private suspend fun generate(context: InsightContext) {
         _state.value = AiInsightState.LoadingModel
         delay(300L)
+        if (_state.value !is AiInsightState.LoadingModel) return
         val explanation = buildExplanation(context)
         val words = explanation.split(" ")
         val sb = StringBuilder()
@@ -71,7 +73,9 @@ class StubInsightCoordinator(
             _state.value = AiInsightState.Generating(sb.toString())
             delay(60L)
         }
-        _state.value = AiInsightState.Ready(sb.toString())
+        if (_state.value is AiInsightState.Generating) {
+            _state.value = AiInsightState.Ready(sb.toString())
+        }
     }
 
     private fun buildExplanation(context: InsightContext): String =

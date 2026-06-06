@@ -288,4 +288,45 @@ class CoachToolExecutorTest {
 
         assertTrue("Should contain error key", result.contains("\"error\""))
     }
+
+    @Test
+    fun `get_weekly_trends returns JSON with week_start, daily_calories and adherence`() = runTest {
+        val today = LocalDate.of(2026, 6, 5)
+        val start = today.minusDays(6) // 2026-05-30
+        val calorieMap = mapOf(
+            LocalDate.of(2026, 5, 30) to 2400,
+            LocalDate.of(2026, 5, 31) to 2300,
+            LocalDate.of(2026, 6, 1) to 0,   // not logged
+            LocalDate.of(2026, 6, 2) to 2550,
+            LocalDate.of(2026, 6, 3) to 2200,
+            LocalDate.of(2026, 6, 4) to 2600,
+            LocalDate.of(2026, 6, 5) to 2450,
+        )
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.observeWeekCalories(start, today)).thenReturn(flowOf(calorieMap))
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("get_weekly_trends", emptyMap())
+
+        assertTrue("Should contain week_start", result.contains("2026-05-30"))
+        assertTrue("Should contain week_end", result.contains("2026-06-05"))
+        assertTrue("Should contain adherence_percent", result.contains("adherence_percent"))
+        // 6 out of 7 days logged → 85%
+        assertTrue("Should have correct adherence", result.contains("85"))
+    }
+
+    @Test
+    fun `get_today_summary with date arg uses that date`() = runTest {
+        val pastDate = LocalDate.of(2026, 6, 4)
+        val dayLog = emptyDayLog(pastDate)
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.observeDay(pastDate)).thenReturn(flowOf(dayLog))
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("get_today_summary", mapOf("date" to "2026-06-04"))
+
+        assertTrue("Should use the given date", result.contains("2026-06-04"))
+    }
 }

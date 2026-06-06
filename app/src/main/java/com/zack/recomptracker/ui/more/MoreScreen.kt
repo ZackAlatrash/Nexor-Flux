@@ -341,6 +341,23 @@ private fun AiModelSection(
             }
         }
 
+        AiInsightState.ModelVerifying -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiModelHeader()
+                Spacer(Modifier.height(6.dp))
+                androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text("Verifying download…", fontSize = 12.sp, color = TextMuted)
+                }
+            }
+        }
+
         AiInsightState.ModelReady,
         AiInsightState.LoadingModel,
         is AiInsightState.Generating,

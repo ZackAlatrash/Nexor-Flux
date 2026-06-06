@@ -62,19 +62,24 @@ class CoachToolExecutor(
     }
 
     private suspend fun logMeal(args: Map<String, String>): String {
-        val today = dateProvider.today()
         val name = args["name"] ?: return """{"error":"log_meal requires 'name'"}"""
         val calories = args["calories"]?.toIntOrNull()
             ?: return """{"error":"log_meal requires 'calories'"}"""
+        val mealType = args["meal_type"]
+            ?.takeIf { it in setOf("Breakfast", "Lunch", "Dinner", "Snack") }
+            ?: "Snack"
+        val proteinG = args["protein_g"]?.toDoubleOrNull() ?: 0.0
+        val carbsG = args["carbs_g"]?.toDoubleOrNull() ?: 0.0
+        val fatG = args["fat_g"]?.toDoubleOrNull() ?: 0.0
         logRepository.addMeal(
             MealEntryInput(
-                date = today,
-                mealType = "Snack",
+                date = dateProvider.today(),
+                mealType = mealType,
                 name = name,
                 calories = calories,
-                proteinG = 0.0,
-                carbsG = 0.0,
-                fatG = 0.0,
+                proteinG = proteinG,
+                carbsG = carbsG,
+                fatG = fatG,
             ),
         )
         return """{"success":true,"logged":"${name.esc()}","calories":$calories}"""
@@ -95,6 +100,15 @@ class CoachToolExecutor(
         if (metric in scoreMetrics && value != kotlin.math.floor(value)) {
             return """{"error":"$metric must be a whole number"}"""
         }
+        val rangeError = when (metric) {
+            "energy_score", "hunger_score", "soreness_score" ->
+                if (value.toInt() !in 1..10) "$metric must be between 1 and 10" else null
+            "weight_kg" -> if (value !in 20.0..300.0) "weight_kg must be between 20 and 300" else null
+            "waist_cm" -> if (value !in 40.0..200.0) "waist_cm must be between 40 and 200" else null
+            "sleep_hours" -> if (value !in 0.0..24.0) "sleep_hours must be between 0 and 24" else null
+            else -> null
+        }
+        if (rangeError != null) return """{"error":"$rangeError"}"""
         val today = dateProvider.today()
         val existing = logRepository.observeDay(today).first().dailyLog
         logRepository.saveDailyMetrics(
@@ -118,10 +132,17 @@ class CoachToolExecutor(
     private suspend fun updateCalorieTarget(args: Map<String, String>): String {
         val newTarget = args["target_calories"]?.toIntOrNull()
             ?: return """{"error":"update_calorie_target requires 'target_calories'"}"""
+        if (newTarget < 500 || newTarget > 6_000) {
+            return """{"error":"target_calories must be between 500 and 6000"}"""
+        }
         val prefs = planRepository.preferences.first()
         planRepository.save(prefs.copy(targetCalories = newTarget))
         return """{"success":true,"new_target_calories":$newTarget}"""
     }
 
-    private fun String.esc() = replace("\"", "\\\"")
+    private fun String.esc() = replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
 }

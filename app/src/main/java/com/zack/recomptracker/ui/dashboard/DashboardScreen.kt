@@ -778,6 +778,24 @@ private fun AiInsightSection(
             }
         }
 
+        AiInsightState.ModelVerifying -> {
+            AiInsightCard(borderMode = AiBorderMode.Static) {
+                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = Violet400,
+                    )
+                    Text("Verifying download…", fontSize = 13.sp, color = TextMuted)
+                }
+            }
+        }
+
         AiInsightState.ModelReady,
         AiInsightState.LoadingModel -> {
             AiInsightCard(borderMode = AiBorderMode.Preparing) {

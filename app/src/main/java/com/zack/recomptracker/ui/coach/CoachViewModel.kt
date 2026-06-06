@@ -14,4 +14,8 @@ class CoachViewModel(
     fun sendMessage(text: String) = coachCoordinator.sendMessage(text)
 
     fun clearHistory() = coachCoordinator.clearHistory()
+
+    fun confirmPendingAction() = coachCoordinator.confirmPendingAction()
+
+    fun cancelPendingAction() = coachCoordinator.cancelPendingAction()
 }

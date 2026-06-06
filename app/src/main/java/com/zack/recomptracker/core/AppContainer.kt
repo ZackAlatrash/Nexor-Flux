@@ -76,6 +76,7 @@ class AppContainer(context: Context) {
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         scope = appScope,
         serviceHolder = gemmaServiceHolder,
+        uiPreferences = uiPreferences,
     )
     val coachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
         serviceHolder = gemmaServiceHolder,

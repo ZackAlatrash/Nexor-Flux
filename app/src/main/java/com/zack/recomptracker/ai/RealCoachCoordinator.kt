@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
@@ -46,6 +48,7 @@ class RealCoachCoordinator(
     private val mutableHistory = mutableListOf<ChatMessage>()
     private var conversation: Conversation? = null
     private var turnCount = 0
+    private val turnLock = Mutex()
 
     init {
         scope.launch {
@@ -83,66 +86,78 @@ class RealCoachCoordinator(
     }
 
     private suspend fun handleMessage(userText: String) {
-        mutableHistory.add(ChatMessage(Role.User, userText))
-        _state.value = CoachState.Thinking(mutableHistory.toList())
-        try {
-            val service = serviceHolder.getOrCreateService()
-            withContext(Dispatchers.IO) { service.initialize() }
+        turnLock.withLock {
+            mutableHistory.add(ChatMessage(Role.User, userText))
+            _state.value = CoachState.Thinking(mutableHistory.toList())
+            try {
+                val service = serviceHolder.getOrCreateService()
+                withContext(Dispatchers.IO) { service.initialize() }
 
-            if (turnCount >= MAX_TURNS) {
+                if (turnCount >= MAX_TURNS) {
+                    clearConversation()
+                    turnCount = 0
+                }
+                val conv = conversation ?: createConversation(service).also { conversation = it }
+
+                var response = withTimeout(TIMEOUT_MS) {
+                    withContext(Dispatchers.IO) { conv.sendMessage(userText) }
+                }
+
+                var toolIterations = 0
+                while (toolIterations < MAX_TOOL_ITERATIONS) {
+                    val toolCall = response.toolCalls.firstOrNull() ?: break
+                    toolIterations++
+                    _state.value = CoachState.Thinking(
+                        mutableHistory.toList(),
+                        toolStatus = toolStatusText(toolCall.name),
+                    )
+                    val argsMap = toolCall.arguments.mapValues { (_, value) -> value.toString() }
+                    val toolResult = withContext(Dispatchers.IO) {
+                        toolExecutor.execute(toolCall.name, argsMap)
+                    }
+                    val toolResponse = Contents.of(Content.ToolResponse(toolCall.name, toolResult))
+                    response = withTimeout(TIMEOUT_MS) {
+                        withContext(Dispatchers.IO) { conv.sendMessage(toolResponse) }
+                    }
+                }
+                if (toolIterations >= MAX_TOOL_ITERATIONS && response.toolCalls.isNotEmpty()) {
+                    mutableHistory.removeLastOrNull()
+                    clearConversation()
+                    turnCount = 0
+                    _state.value = CoachState.Error(mutableHistory.toList(), "Something went wrong — try again.")
+                    return@withLock
+                }
+
+                val fullText = extractText(response)
+                if (fullText.isEmpty()) {
+                    mutableHistory.removeLastOrNull()
+                    clearConversation()
+                    turnCount = 0
+                    _state.value = CoachState.Error(mutableHistory.toList(), "Something went wrong — try again.")
+                    return@withLock
+                }
+                val words = fullText.split(" ")
+                val sb = StringBuilder()
+                for (word in words) {
+                    sb.append(if (sb.isEmpty()) word else " $word")
+                    _state.value = CoachState.Responding(mutableHistory.toList(), partial = sb.toString())
+                    delay(STREAM_DELAY_MS)
+                }
+                val finalText = sb.toString()
+                mutableHistory.add(ChatMessage(Role.Assistant, finalText))
+                turnCount++
+                _state.value = CoachState.Idle(mutableHistory.toList())
+            } catch (e: TimeoutCancellationException) {
+                mutableHistory.removeLastOrNull()
                 clearConversation()
                 turnCount = 0
-            }
-            val conv = conversation ?: createConversation(service).also { conversation = it }
-
-            var response = withTimeout(TIMEOUT_MS) {
-                withContext(Dispatchers.IO) { conv.sendMessage(userText) }
-            }
-
-            var toolIterations = 0
-            while (toolIterations < MAX_TOOL_ITERATIONS) {
-                val toolCall = response.toolCalls.firstOrNull() ?: break
-                toolIterations++
-                _state.value = CoachState.Thinking(
-                    mutableHistory.toList(),
-                    toolStatus = toolStatusText(toolCall.name),
-                )
-                val argsMap = toolCall.arguments.mapValues { (_, value) -> value.toString() }
-                val toolResult = withContext(Dispatchers.IO) {
-                    toolExecutor.execute(toolCall.name, argsMap)
-                }
-                val toolResponse = Contents.of(Content.ToolResponse(toolCall.name, toolResult))
-                response = withTimeout(TIMEOUT_MS) {
-                    withContext(Dispatchers.IO) { conv.sendMessage(toolResponse) }
-                }
-            }
-            if (toolIterations >= MAX_TOOL_ITERATIONS && response.toolCalls.isNotEmpty()) {
+                _state.value = CoachState.Error(mutableHistory.toList(), "Took too long — try again.")
+            } catch (e: Exception) {
+                mutableHistory.removeLastOrNull()
                 clearConversation()
                 turnCount = 0
                 _state.value = CoachState.Error(mutableHistory.toList(), "Something went wrong — try again.")
-                return
             }
-
-            val fullText = extractText(response)
-            val words = fullText.split(" ")
-            val sb = StringBuilder()
-            for (word in words) {
-                sb.append(if (sb.isEmpty()) word else " $word")
-                _state.value = CoachState.Responding(mutableHistory.toList(), partial = sb.toString())
-                delay(STREAM_DELAY_MS)
-            }
-            val finalText = sb.toString()
-            mutableHistory.add(ChatMessage(Role.Assistant, finalText))
-            turnCount++
-            _state.value = CoachState.Idle(mutableHistory.toList())
-        } catch (e: TimeoutCancellationException) {
-            clearConversation()
-            turnCount = 0
-            _state.value = CoachState.Error(mutableHistory.toList(), "Took too long — try again.")
-        } catch (e: Exception) {
-            clearConversation()
-            turnCount = 0
-            _state.value = CoachState.Error(mutableHistory.toList(), "Something went wrong — try again.")
         }
     }
 

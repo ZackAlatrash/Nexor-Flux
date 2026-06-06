@@ -8,6 +8,7 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.OpenApiTool
 import com.google.ai.edge.litertlm.ToolProvider
 import com.google.ai.edge.litertlm.tool
+import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.PlanRepository
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,7 @@ class RealCoachCoordinator(
     private val insightCoordinator: AiInsightCoordinator,
     private val toolExecutor: CoachToolExecutor,
     private val planRepository: PlanRepository,
+    private val dateProvider: DateProvider,
     private val scope: CoroutineScope,
 ) : CoachCoordinator {
 
@@ -120,8 +122,9 @@ class RealCoachCoordinator(
     private suspend fun createConversation(service: GemmaInsightService): Conversation {
         val toolProviders: List<ToolProvider> = COACH_TOOLS.map { tool(it) }
         val prefs = planRepository.preferences.first()
+        val today = dateProvider.today()
         val config = ConversationConfig(
-            systemInstruction = Contents.of(buildSystemPrompt(prefs)),
+            systemInstruction = Contents.of(buildSystemPrompt(prefs, today)),
             tools = toolProviders,
             automaticToolCalling = false,
         )
@@ -134,19 +137,31 @@ class RealCoachCoordinator(
             .joinToString("") { it.text }
             .trim()
 
-    private fun buildSystemPrompt(prefs: PlanPreferences): String = buildString {
+    private fun buildSystemPrompt(prefs: PlanPreferences, today: java.time.LocalDate): String = buildString {
         appendLine("You are a personal nutrition and fitness coach embedded in a body recomposition tracking app.")
+        appendLine()
+        appendLine("Today's date: $today (${today.dayOfWeek})")
+        appendLine("Yesterday: ${today.minusDays(1)}")
         appendLine()
         appendLine("Current plan:")
         appendLine("- Calorie target: ${prefs.targetCalories} kcal/day")
         appendLine("- Protein: ${prefs.targetProteinG}g | Carbs: ${prefs.targetCarbsG}g | Fat: ${prefs.targetFatG}g")
         appendLine()
+        appendLine("Available tools:")
+        appendLine("- get_today_summary(date?): Fetches a specific day's food log and macros. If 'date' is omitted it returns today. Pass date as YYYY-MM-DD.")
+        appendLine("- get_weekly_trends: Returns the last 7 days of calorie data.")
+        appendLine("- get_plan: Returns current calorie and macro targets.")
+        appendLine("- log_meal, log_daily_metrics, update_calorie_target: Write tools (require confirmation).")
+        appendLine()
         appendLine("Rules:")
         appendLine("1. Be concise: 1-3 sentences per response unless the user explicitly asks for detail.")
-        appendLine("2. Use tools when asked for specific numbers (weight, today's food, trends) — do not guess.")
-        appendLine("3. Before calling any write tool (log_meal, log_daily_metrics, update_calorie_target),")
-        appendLine("   tell the user what you are about to write and wait for their confirmation.")
-        appendLine("4. Never fabricate data. If unsure, say so and offer to fetch it with a tool.")
+        appendLine("2. Always use tools for specific numbers — never guess or invent data.")
+        appendLine("   - 'today' → get_today_summary (no date arg)")
+        appendLine("   - 'yesterday' → get_today_summary(date=\"${today.minusDays(1)}\")")
+        appendLine("   - a named day or date → get_today_summary with that date")
+        appendLine("   - weekly patterns → get_weekly_trends")
+        appendLine("3. Before calling any write tool, tell the user what you will write and wait for confirmation.")
+        appendLine("4. Never fabricate data. If you don't have it, say so.")
         append("5. Stay focused on nutrition, body composition, training, and recovery.")
     }
 
@@ -155,7 +170,7 @@ class RealCoachCoordinator(
         "get_weekly_trends" -> "Reading your weekly trends…"
         "get_plan" -> "Reading your plan…"
         "log_meal" -> "Logging meal…"
-        "log_daily_metrics" -> "Saving daily metrics…"
+        "log_metric" -> "Saving metric…"
         "update_calorie_target" -> "Updating calorie target…"
         else -> "Running tool…"
     }
@@ -173,7 +188,7 @@ class RealCoachCoordinator(
          */
         val COACH_TOOLS: List<OpenApiTool> = listOf(
             SchemaTool(
-                """{"name":"get_today_summary","description":"Get today's food log, macro totals, and daily metrics.","parameters":{"type":"object","properties":{},"required":[]}}""",
+                """{"name":"get_today_summary","description":"Get a specific day's food log, macro totals, and daily metrics. Omit 'date' for today.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"ISO date YYYY-MM-DD. Omit for today."}},"required":[]}}""",
             ),
             SchemaTool(
                 """{"name":"get_weekly_trends","description":"Get last 7 days calorie history and adherence.","parameters":{"type":"object","properties":{},"required":[]}}""",
@@ -182,10 +197,10 @@ class RealCoachCoordinator(
                 """{"name":"get_plan","description":"Get the user's current calorie and macro targets.","parameters":{"type":"object","properties":{},"required":[]}}""",
             ),
             SchemaTool(
-                """{"name":"log_meal","description":"Add a meal to today's food log.","parameters":{"type":"object","properties":{"name":{"type":"string"},"calories":{"type":"integer"},"protein_g":{"type":"number"},"carbs_g":{"type":"number"},"fat_g":{"type":"number"},"meal_type":{"type":"string"}},"required":["name","calories"]}}""",
+                """{"name":"log_meal","description":"Add a meal to today's food log.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Food name or description"},"calories":{"type":"integer","description":"Calories in kcal"}},"required":["name","calories"]}}""",
             ),
             SchemaTool(
-                """{"name":"log_daily_metrics","description":"Record today's body metrics (weight, waist, sleep, energy, hunger, soreness).","parameters":{"type":"object","properties":{"weight_kg":{"type":"number"},"waist_cm":{"type":"number"},"sleep_hours":{"type":"number"},"energy_score":{"type":"integer"},"hunger_score":{"type":"integer"},"soreness_score":{"type":"integer"}},"required":[]}}""",
+                """{"name":"log_metric","description":"Record a body or recovery metric for today.","parameters":{"type":"object","properties":{"metric":{"type":"string","description":"One of: weight_kg, waist_cm, sleep_hours, energy_score, hunger_score, soreness_score"},"value":{"type":"number","description":"The numeric value to record"}},"required":["metric","value"]}}""",
             ),
             SchemaTool(
                 """{"name":"update_calorie_target","description":"Update the daily calorie target.","parameters":{"type":"object","properties":{"target_calories":{"type":"integer"}},"required":["target_calories"]}}""",

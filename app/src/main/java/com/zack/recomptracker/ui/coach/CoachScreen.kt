@@ -32,11 +32,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +74,10 @@ private val suggestions = listOf(
 fun CoachScreen(viewModel: CoachViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val haptic = LocalHapticFeedback.current
 
     val history = when (val s = state) {
         is CoachState.Idle -> s.history
@@ -81,13 +96,14 @@ fun CoachScreen(viewModel: CoachViewModel) {
         if (canSend) {
             viewModel.sendMessage(inputText.trim())
             inputText = ""
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            keyboardController?.hide()
+            focusManager.clearFocus()
         }
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding(),
+        modifier = Modifier.fillMaxSize(),
     ) {
         // Header
         Row(
@@ -108,12 +124,18 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 onClick = {
                     viewModel.clearHistory()
                     inputText = ""
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 },
                 enabled = canClear,
+                modifier = Modifier.semantics {
+                    role = androidx.compose.ui.semantics.Role.Button
+                    contentDescription = "Clear conversation"
+                    stateDescription = if (canClear) "Available" else "Disabled"
+                },
             ) {
                 Icon(
                     imageVector = Icons.Default.RestartAlt,
-                    contentDescription = "Clear conversation",
+                    contentDescription = null,
                     tint = if (canClear) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f),
                 )
             }
@@ -173,7 +195,9 @@ fun CoachScreen(viewModel: CoachViewModel) {
             OutlinedTextField(
                 value = inputText,
                 onValueChange = { inputText = it },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
                 placeholder = {
                     Text(
                         text = if (available) "Ask the coach…" else "Download model first",
@@ -183,6 +207,10 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 enabled = available && !busy,
                 maxLines = 4,
                 shape = RoundedCornerShape(16.dp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = { sendCurrent() },
+                ),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
@@ -199,10 +227,15 @@ fun CoachScreen(viewModel: CoachViewModel) {
             IconButton(
                 onClick = { sendCurrent() },
                 enabled = canSend,
+                modifier = Modifier.semantics {
+                    role = androidx.compose.ui.semantics.Role.Button
+                    contentDescription = "Send message"
+                    stateDescription = if (canSend) "Ready" else "Disabled"
+                },
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
+                    contentDescription = null,
                     tint = if (canSend) Color.White else Color.White.copy(alpha = 0.25f),
                 )
             }
@@ -265,7 +298,12 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
                 },
                 modifier = Modifier
                     .padding(vertical = 4.dp)
-                    .widthIn(max = 320.dp),
+                    .widthIn(max = 320.dp)
+                    .semantics {
+                        role = androidx.compose.ui.semantics.Role.Button
+                        contentDescription = "Suggested prompt"
+                        stateDescription = suggestion
+                    },
                 shape = RoundedCornerShape(20.dp),
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = TintedSurface,
@@ -286,14 +324,17 @@ private fun ChatContent(
     errorMessage: String?,
 ) {
     val listState = rememberLazyListState()
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val totalItems = history.size +
         (if (thinkingStatus != null || partialResponse != null) 1 else 0) +
         (if (errorMessage != null) 1 else 0)
 
-    LaunchedEffect(totalItems, partialResponse) {
-        if (totalItems > 0) {
-            listState.animateScrollToItem(totalItems - 1)
+    // Scroll to bottom only when a new user/assistant message appears.
+    // Streaming partial updates would re-fire this every token and jank the scroll.
+    LaunchedEffect(history.size) {
+        if (history.isNotEmpty()) {
+            listState.animateScrollToItem(history.size - 1)
         }
     }
 
@@ -301,17 +342,35 @@ private fun ChatContent(
         state = listState,
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 12.dp)
+            .imePadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            top = 8.dp,
+            bottom = 8.dp,
+        ),
     ) {
         items(history) { message ->
             ChatBubble(message = message)
         }
 
-        // Thinking indicator
-        if (thinkingStatus != null) {
-            item {
+        // Single live in-progress item: prefers streaming response, falls back to thinking.
+        // Keyed by a stable id so updates don't recreate the card on every token.
+        if (partialResponse != null) {
+            item(key = "live-response") {
+                AiInsightCard(
+                    borderMode = AiBorderMode.Generating,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = partialResponse,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+        } else if (thinkingStatus != null) {
+            item(key = "live-thinking") {
                 AiInsightCard(
                     borderMode = AiBorderMode.Preparing,
                     modifier = Modifier.fillMaxWidth(),
@@ -333,31 +392,18 @@ private fun ChatContent(
             }
         }
 
-        // Partial / streaming response
-        if (partialResponse != null) {
-            item {
+        if (errorMessage != null) {
+            item(key = "live-error") {
                 AiInsightCard(
-                    borderMode = AiBorderMode.Generating,
+                    borderMode = AiBorderMode.Static,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        text = partialResponse,
-                        color = Color.White,
+                        text = errorMessage,
+                        color = ErrorRed,
                         fontSize = 14.sp,
                     )
                 }
-            }
-        }
-
-        // Error message
-        if (errorMessage != null) {
-            item {
-                Text(
-                    text = errorMessage,
-                    color = ErrorRed,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-                )
             }
         }
     }

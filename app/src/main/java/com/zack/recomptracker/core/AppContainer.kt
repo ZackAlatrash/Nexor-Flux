@@ -22,8 +22,8 @@ import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.CoachCoordinator
 import com.zack.recomptracker.ai.CoachToolExecutor
 import com.zack.recomptracker.ai.GemmaServiceHolder
-import com.zack.recomptracker.ai.RealAiInsightCoordinator
-import com.zack.recomptracker.ai.RealCoachCoordinator
+import com.zack.recomptracker.ai.GemmaCoachCoordinator
+import com.zack.recomptracker.ai.GemmaInsightCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.ui.coach.CoachViewModel
 import com.zack.recomptracker.ui.body.BodyEditViewModel
@@ -71,13 +71,13 @@ class AppContainer(context: Context) {
     val adherenceCalculator = AdherenceCalculator()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val gemmaServiceHolder = GemmaServiceHolder(context)
-    val aiInsightCoordinator: AiInsightCoordinator = RealAiInsightCoordinator(
+    val aiInsightCoordinator: AiInsightCoordinator = GemmaInsightCoordinator(
         context = context,
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         scope = appScope,
         serviceHolder = gemmaServiceHolder,
     )
-    val coachCoordinator: CoachCoordinator = RealCoachCoordinator(
+    val coachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
         serviceHolder = gemmaServiceHolder,
         insightCoordinator = aiInsightCoordinator,
         toolExecutor = CoachToolExecutor(
@@ -86,6 +86,7 @@ class AppContainer(context: Context) {
             dateProvider = dateProvider,
         ),
         planRepository = planRepository,
+        dateProvider = dateProvider,
         scope = appScope,
     )
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)

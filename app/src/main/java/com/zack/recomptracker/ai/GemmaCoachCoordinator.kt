@@ -33,7 +33,7 @@ import kotlinx.coroutines.withTimeout
  * through [CoachToolExecutor], and feeds the JSON results back as [Content.ToolResponse] until the
  * model produces a plain-text answer.
  */
-class RealCoachCoordinator(
+class GemmaCoachCoordinator(
     private val serviceHolder: GemmaServiceHolder,
     private val insightCoordinator: AiInsightCoordinator,
     private val toolExecutor: CoachToolExecutor,

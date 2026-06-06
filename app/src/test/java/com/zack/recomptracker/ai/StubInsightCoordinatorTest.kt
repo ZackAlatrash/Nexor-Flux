@@ -17,7 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class FakeAiInsightCoordinatorTest {
+class StubInsightCoordinatorTest {
 
     private val aiEnabledFlow = MutableStateFlow(false)
 
@@ -66,7 +66,7 @@ class FakeAiInsightCoordinatorTest {
     fun `initial state is Disabled when toggle is off`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         cs.cancel()
         assertEquals(AiInsightState.Disabled, c.state.value)
@@ -76,7 +76,7 @@ class FakeAiInsightCoordinatorTest {
     fun `enabling toggle transitions to ModelMissing`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()
@@ -88,7 +88,7 @@ class FakeAiInsightCoordinatorTest {
     fun `disabling toggle returns to Disabled from any state`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()
@@ -102,7 +102,7 @@ class FakeAiInsightCoordinatorTest {
     fun `requestDownload transitions through Downloading to ModelReady`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()
@@ -116,7 +116,7 @@ class FakeAiInsightCoordinatorTest {
     fun `onAiCardVisible with WAIT_FOR_DATA does not trigger generation`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()
@@ -132,7 +132,7 @@ class FakeAiInsightCoordinatorTest {
     fun `onAiCardVisible with real verdict transitions to Ready`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()
@@ -148,7 +148,7 @@ class FakeAiInsightCoordinatorTest {
     fun `onAiCardVisible with same key does not re-generate`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()
@@ -170,7 +170,7 @@ class FakeAiInsightCoordinatorTest {
     fun `retryGeneration re-runs even for cached key`() = runTest {
         aiEnabledFlow.value = false
         val cs = makeCoordinatorScope(coroutineContext)
-        val c = FakeAiInsightCoordinator(aiEnabledFlow, cs)
+        val c = StubInsightCoordinator(aiEnabledFlow, cs)
         advanceUntilIdle()
         aiEnabledFlow.value = true
         advanceUntilIdle()

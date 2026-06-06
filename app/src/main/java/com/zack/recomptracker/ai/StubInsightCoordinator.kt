@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class FakeAiInsightCoordinator(
+class StubInsightCoordinator(
     private val aiEnabledFlow: Flow<Boolean>,
     private val scope: CoroutineScope,
 ) : AiInsightCoordinator {

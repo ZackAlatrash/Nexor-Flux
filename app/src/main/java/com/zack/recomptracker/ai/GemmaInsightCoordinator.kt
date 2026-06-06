@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class RealAiInsightCoordinator(
+class GemmaInsightCoordinator(
     private val context: Context,
     private val aiEnabledFlow: Flow<Boolean>,
     private val scope: CoroutineScope,

@@ -140,7 +140,8 @@ class RealCoachCoordinator(
     private fun buildSystemPrompt(prefs: PlanPreferences, today: java.time.LocalDate): String = buildString {
         val yesterday = today.minusDays(1)
         appendLine("You are a nutrition coach in a body recomposition tracking app.")
-        appendLine("Today: $today (${today.dayOfWeek}) | Yesterday: $yesterday")
+        val dayName = today.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercaseChar() }
+        appendLine("Today: $today ($dayName) | Yesterday: $yesterday")
         appendLine()
         appendLine("Plan: ${prefs.targetCalories} kcal | P ${prefs.targetProteinG}g | C ${prefs.targetCarbsG}g | F ${prefs.targetFatG}g")
         appendLine()
@@ -155,7 +156,7 @@ class RealCoachCoordinator(
         appendLine("Rules:")
         appendLine("1. Be concise: 1–3 sentences unless detail is asked for.")
         appendLine("2. Always call a tool before quoting any numbers — never guess.")
-        appendLine("3. Yesterday = get_today_summary(date=\"$yesterday\"). Named days = compute the date and use get_today_summary.")
+        appendLine("3. Today = get_today_summary() (no date). Yesterday = get_today_summary(date=\"$yesterday\"). Named days = compute the date and call get_today_summary.")
         appendLine("4. Before any write tool: state what you'll log and wait for the user to confirm.")
         append("5. Stay on topic: nutrition, body composition, training, recovery only.")
     }

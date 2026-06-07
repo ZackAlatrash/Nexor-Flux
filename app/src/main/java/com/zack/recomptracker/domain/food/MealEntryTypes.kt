@@ -4,4 +4,5 @@ package com.zack.recomptracker.domain.food
 object MealEntryTypes {
     const val FOOD_LIBRARY: String = "FOOD_LIBRARY"
     const val QUICK_ADD: String = "QUICK_ADD"
+    const val RECIPE: String = "RECIPE"
 }

@@ -153,7 +153,9 @@ Legacy `saved_meals` table is left untouched. No data migration required.
 | `core/AppContainer.kt` | Add `recipeRepository`; add `RecipeBuilderViewModel` to factory |
 | `ui/navigation/AppNavGraph.kt` | Add `Routes.RecipeBuilder` route |
 | `ui/foodlibrary/FoodLibraryViewModel.kt` | Add recipe flows; `logRecipe()`; picker mode result handler; upgrade `confirmSaveMeal()` |
-| `ui/foodlibrary/FoodLibraryScreen.kt` | Recipes section in MEALS tab; recipe rows with ✎/+ buttons; picker mode `onConfirm` callback |
+| `ui/foodlibrary/FoodLibraryScreen.kt` | Recipes section in MEALS tab; recipe rows with ✎/+ buttons; picker mode `onConfirm` callback; pass `pickerMode` to barcode scanner nav; observe `scanned_food` from savedStateHandle |
+| `ui/scanner/BarcodeScannerScreen.kt` | Picker mode branch: on scan success, write food to savedStateHandle and navigate back instead of logging |
+| `ui/scanner/BarcodeScannerViewModel.kt` | Picker mode flag; `onPickerScanSuccess()` that emits food without logging |
 | `domain/food/MealEntryTypes.kt` | Add `const val RECIPE = "RECIPE"` |
 
 ---
@@ -228,10 +230,26 @@ Key actions:
 
 When `pickerMode = true`:
 - Top bar title changes to "Add Ingredient"
+- The existing camera/scan button remains visible and navigates to `BarcodeScannerScreen` with `pickerMode = true`
 - Confirming an amount in AmountSheet calls `onIngredientPicked(RecipeIngredientEntity)` instead of `logRepository.addMealToSlot()`
 - `onIngredientPicked` writes the result to `navController.previousBackStackEntry?.savedStateHandle?.set("picked_ingredient", ingredient)` then navigates back
 
 When `pickerMode = false` (default): behaviour unchanged.
+
+### Barcode scan in picker mode
+
+`Routes.barcodeScanner()` gains a `pickerMode: Boolean` parameter. When `pickerMode = true`:
+
+- `BarcodeScannerScreen` scans a food and, instead of logging it, writes it to `navController.previousBackStackEntry?.savedStateHandle?.set("scanned_food", food)` and navigates back to `FoodLibraryScreen`.
+- `FoodLibraryScreen` (in picker mode) observes `savedStateHandle["scanned_food"]` and immediately opens the AmountSheet for the scanned food — same path as tapping a food from the list.
+- The user sets the amount → confirms → ingredient returned to RecipeBuilderScreen via `"picked_ingredient"`.
+
+This means the full flow "scan barcode → set amount → add to recipe" works with no new screens, just the same picker mode flag threaded through two levels.
+
+**Modified files for this addition:**
+- `ui/navigation/AppNavGraph.kt` — `pickerMode` added to the barcode scanner route arguments
+- `ui/scanner/BarcodeScannerScreen.kt` / `BarcodeScannerViewModel.kt` — picker mode branch on scan success
+- `ui/foodlibrary/FoodLibraryScreen.kt` — pass `pickerMode` to barcode scanner nav call; observe `scanned_food` from savedStateHandle
 
 ---
 

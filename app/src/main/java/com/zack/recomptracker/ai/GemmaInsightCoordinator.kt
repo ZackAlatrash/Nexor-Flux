@@ -33,131 +33,128 @@ class GemmaInsightCoordinator(
     private val _state = MutableStateFlow<AiInsightState>(AiInsightState.Disabled)
     override val state: StateFlow<AiInsightState> = _state.asStateFlow()
 
+    private val _selectedModel = MutableStateFlow(ModelVariant.GEMMA_2B)
+    override val selectedModel: StateFlow<ModelVariant> = _selectedModel.asStateFlow()
+
     @Volatile private var lastGeneratedKey: String? = null
     @Volatile private var downloadId: Long = -1L
 
-    private val modelUrl =
-        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
-    private val requiredFreeBytes = 3L * 1024 * 1024 * 1024
-
     init {
-        // Observe AI-enabled toggle
+        // Load saved model selection (fast DataStore read; default GEMMA_2B until loaded).
+        scope.launch {
+            _selectedModel.value = uiPreferences.selectedModelVariant.first()
+        }
+
+        // React to AI-enabled toggle.
         scope.launch {
             aiEnabledFlow.collect { enabled ->
                 if (!enabled) {
+                    cancelActiveDownloadSilently()
                     _state.value = AiInsightState.Disabled
                 } else if (_state.value == AiInsightState.Disabled) {
-                    if (serviceHolder.modelFile.exists()) {
-                        _state.value = AiInsightState.ModelVerifying
-                        scope.launch { runIntegrityCheck(fullCheck = false) }
-                    } else {
-                        // Attempt to resume a download that survived a previous process death.
-                        val savedId = uiPreferences.pendingDownloadId.first()
-                        if (savedId != -1L) {
-                            downloadId = savedId
-                            val dm =
-                                context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                            _state.value = AiInsightState.Downloading(null)
-                            scope.launch { pollDownloadProgress(dm) }
-                        } else {
-                            _state.value = AiInsightState.ModelMissing
-                        }
-                    }
+                    initializeForCurrentVariant()
                 }
             }
         }
     }
 
+    override fun setSelectedModel(variant: ModelVariant) {
+        if (_selectedModel.value == variant) return
+        scope.launch {
+            uiPreferences.setSelectedModel(variant)
+            _selectedModel.value = variant
+            if (_state.value != AiInsightState.Disabled) {
+                cancelActiveDownloadSilently()
+                lastGeneratedKey = null
+                serviceHolder.release()
+                initializeForCurrentVariant()
+            }
+        }
+    }
+
+    // ── Download ───────────────────────────────────────────────────────────────
+
     override fun requestDownload() {
         if (_state.value != AiInsightState.ModelMissing && _state.value != AiInsightState.DownloadFailed) return
-        if (!hasSufficientStorage()) {
+        val variant = _selectedModel.value
+        if (!hasSufficientStorage(variant)) {
             _state.value = AiInsightState.DownloadFailed
             return
         }
-        serviceHolder.modelFile.parentFile?.mkdirs()
+        val modelFile = serviceHolder.modelFileFor(variant)
+        modelFile.parentFile?.mkdirs()
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val request = DownloadManager.Request(Uri.parse(modelUrl))
-            .setTitle("Gemma 4 E2B — AI Explanation Model")
-            .setDescription("Downloading for on-device AI features (~2.6 GB)")
-            .setDestinationInExternalFilesDir(context, null, "ai/gemma-4-E2B-it.litertlm")
+        val request = DownloadManager.Request(Uri.parse(variant.downloadUrl))
+            .setTitle("${variant.displayName} — AI Model")
+            .setDescription("Downloading for on-device AI features (~${variant.displaySizeGb})")
+            .setDestinationInExternalFilesDir(context, null, "ai/${variant.fileName}")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setAllowedOverRoaming(false)
         downloadId = dm.enqueue(request)
         _state.value = AiInsightState.Downloading(null)
-        // Persist the ID so process-death recovery works.
         scope.launch {
             uiPreferences.setPendingDownloadId(downloadId)
-            pollDownloadProgress(dm)
+            pollDownloadProgress(dm, variant)
         }
     }
 
-    private suspend fun pollDownloadProgress(dm: DownloadManager) {
+    private suspend fun pollDownloadProgress(dm: DownloadManager, variant: ModelVariant) {
         while (true) {
             delay(1000L)
+            if (_selectedModel.value != variant) break
             val query = DownloadManager.Query().setFilterById(downloadId)
             val cursor = withContext(Dispatchers.IO) { dm.query(query) }
-            if (!cursor.moveToFirst()) {
-                cursor.close()
-                break
-            }
-            val status =
-                cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            val bytesDownloaded =
-                cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-            val bytesTotal =
-                cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+            if (!cursor.moveToFirst()) { cursor.close(); break }
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            val bytesDownloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+            val bytesTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
             cursor.close()
 
             when (status) {
                 DownloadManager.STATUS_RUNNING -> {
-                    val progress =
-                        if (bytesTotal > 0) bytesDownloaded.toFloat() / bytesTotal.toFloat()
-                        else null
+                    val progress = if (bytesTotal > 0) bytesDownloaded.toFloat() / bytesTotal.toFloat() else null
                     _state.value = AiInsightState.Downloading(progress)
                 }
-
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     clearPendingDownloadId()
-                    _state.value = AiInsightState.ModelVerifying
-                    scope.launch { runIntegrityCheck() }
+                    if (_selectedModel.value == variant) {
+                        _state.value = AiInsightState.ModelVerifying
+                        scope.launch { runIntegrityCheck(variant) }
+                    }
                     break
                 }
-
                 DownloadManager.STATUS_FAILED -> {
                     clearPendingDownloadId()
-                    _state.value = AiInsightState.DownloadFailed
+                    if (_selectedModel.value == variant) {
+                        _state.value = AiInsightState.DownloadFailed
+                    }
                     break
                 }
             }
         }
     }
+
+    // ── Integrity ──────────────────────────────────────────────────────────────
 
     /**
      * [fullCheck] = true (post-download): verifies size AND SHA-256.
      * [fullCheck] = false (launch): verifies size only — avoids a 10–30 s hash on every cold start.
      */
-    private suspend fun runIntegrityCheck(fullCheck: Boolean = true) {
-        val passed = withContext(Dispatchers.IO) { verifyModel(fullCheck) }
+    private suspend fun runIntegrityCheck(variant: ModelVariant, fullCheck: Boolean = true) {
+        val passed = withContext(Dispatchers.IO) { verifyModel(variant, fullCheck) }
         if (_state.value != AiInsightState.ModelVerifying) return
+        if (_selectedModel.value != variant) return
         if (passed) {
             _state.value = AiInsightState.ModelReady
         } else {
-            // Delete the corrupt/partial file and let the user retry.
-            serviceHolder.modelFile.delete()
+            serviceHolder.modelFileFor(variant).delete()
             _state.value = AiInsightState.DownloadFailed
         }
     }
 
-    /**
-     * Returns true only if the model file exists, has the expected byte count, and its
-     * SHA-256 matches the digest pinned from the litert-community HF repo (verified
-     * 2026-06-06 against revision main, filename gemma-4-E2B-it.litertlm).
-     *
-     * Refresh these constants whenever the model file is updated upstream.
-     */
-    private fun verifyModel(fullCheck: Boolean = true): Boolean {
-        val file = serviceHolder.modelFile
-        if (!file.exists() || file.length() != MODEL_EXPECTED_BYTES) return false
+    private fun verifyModel(variant: ModelVariant, fullCheck: Boolean = true): Boolean {
+        val file = serviceHolder.modelFileFor(variant)
+        if (!file.exists() || file.length() != variant.expectedBytes) return false
         if (!fullCheck) return true
         return try {
             val digest = MessageDigest.getInstance("SHA-256")
@@ -169,27 +166,30 @@ class GemmaInsightCoordinator(
                 }
             }
             val hex = digest.digest().joinToString("") { "%02x".format(it) }
-            hex == MODEL_SHA256
+            hex == variant.sha256
         } catch (_: Exception) {
             false
         }
     }
 
+    // ── Model management ───────────────────────────────────────────────────────
+
     override fun cancelDownload() {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         dm.remove(downloadId)
-        downloadId = -1L
         clearPendingDownloadId()
         _state.value = AiInsightState.ModelMissing
     }
 
     override fun deleteModel() {
+        val variant = _selectedModel.value
         lastGeneratedKey = null
-        serviceHolder.modelFile.delete()
-        // release() acquires inferenceLock, so it waits for any in-flight generation.
+        serviceHolder.modelFileFor(variant).delete()
         scope.launch { serviceHolder.release() }
         _state.value = AiInsightState.ModelMissing
     }
+
+    // ── Generation ─────────────────────────────────────────────────────────────
 
     override fun onAiCardVisible(context: InsightContext) {
         if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
@@ -213,7 +213,9 @@ class GemmaInsightCoordinator(
     private suspend fun generate(context: InsightContext) {
         _state.value = AiInsightState.LoadingModel
         try {
-            val service = serviceHolder.getOrCreateService()
+            val variant = _selectedModel.value
+            val modelPath = serviceHolder.modelFileFor(variant).absolutePath
+            val service = serviceHolder.getOrCreateService(modelPath)
             service.ensureInitialized()
 
             if (_state.value !is AiInsightState.LoadingModel) return
@@ -222,8 +224,6 @@ class GemmaInsightCoordinator(
 
             val sb = StringBuilder()
             withTimeout(GENERATION_TIMEOUT_MS) {
-                // collect is itself a suspension point and participates in cancellation;
-                // no ensureActive() needed here.
                 service.generateExplanation(prompt).collect { chunk ->
                     sb.append(chunk)
                     _state.value = AiInsightState.Generating(sb.toString())
@@ -241,7 +241,6 @@ class GemmaInsightCoordinator(
                 _state.value = AiInsightState.Error("Took too long — try again.")
             }
         } catch (e: CancellationException) {
-            // Genuine scope cancellation — do not swallow; let it propagate.
             throw e
         } catch (e: Exception) {
             if (_state.value is AiInsightState.LoadingModel || _state.value is AiInsightState.Generating) {
@@ -250,12 +249,43 @@ class GemmaInsightCoordinator(
         }
     }
 
-    private fun hasSufficientStorage(): Boolean {
-        val path = serviceHolder.modelFile.parentFile
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private suspend fun initializeForCurrentVariant() {
+        val variant = _selectedModel.value
+        val modelFile = serviceHolder.modelFileFor(variant)
+        if (modelFile.exists()) {
+            _state.value = AiInsightState.ModelVerifying
+            scope.launch { runIntegrityCheck(variant, fullCheck = false) }
+        } else {
+            val savedId = uiPreferences.pendingDownloadId.first()
+            if (savedId != -1L) {
+                downloadId = savedId
+                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                _state.value = AiInsightState.Downloading(null)
+                scope.launch { pollDownloadProgress(dm, variant) }
+            } else {
+                _state.value = AiInsightState.ModelMissing
+            }
+        }
+    }
+
+    private fun hasSufficientStorage(variant: ModelVariant): Boolean {
+        val modelFile = serviceHolder.modelFileFor(variant)
+        val path = modelFile.parentFile
             ?.takeIf { it.exists() }?.absolutePath
             ?: context.getExternalFilesDir(null)?.absolutePath
             ?: Environment.getExternalStorageDirectory().path
-        return StatFs(path).availableBytes >= requiredFreeBytes
+        // Require model size + 1 GiB headroom for the temp download file.
+        val required = variant.expectedBytes + 1_073_741_824L
+        return StatFs(path).availableBytes >= required
+    }
+
+    private fun cancelActiveDownloadSilently() {
+        if (downloadId == -1L) return
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        dm.remove(downloadId)
+        clearPendingDownloadId()
     }
 
     private fun clearPendingDownloadId() {
@@ -265,10 +295,5 @@ class GemmaInsightCoordinator(
 
     private companion object {
         private const val GENERATION_TIMEOUT_MS = 45_000L
-
-        /** Pinned from litert-community/gemma-4-E2B-it-litert-lm, verified 2026-06-06. */
-        private const val MODEL_EXPECTED_BYTES = 2_588_147_712L
-        private const val MODEL_SHA256 =
-            "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"
     }
 }

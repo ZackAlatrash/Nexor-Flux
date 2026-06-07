@@ -17,6 +17,11 @@ class StubInsightCoordinator(
     private val _state = MutableStateFlow<AiInsightState>(AiInsightState.Disabled)
     override val state: StateFlow<AiInsightState> = _state.asStateFlow()
 
+    private val _selectedModel = MutableStateFlow(ModelVariant.GEMMA_2B)
+    override val selectedModel: StateFlow<ModelVariant> = _selectedModel.asStateFlow()
+
+    override fun setSelectedModel(variant: ModelVariant) { _selectedModel.value = variant }
+
     private var lastGeneratedKey: String? = null
 
     init {

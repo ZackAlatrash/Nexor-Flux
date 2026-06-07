@@ -17,17 +17,29 @@ import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.repository.LogRepository
 import java.time.LocalDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class BodyEditViewModelTest {
 
+    private val dispatcher = StandardTestDispatcher()
     private val date = LocalDate.of(2026, 5, 29)
+
+    @Before fun setUp() = Dispatchers.setMain(dispatcher)
+    @After fun tearDown() = Dispatchers.resetMain()
 
     private fun buildVm(
         existing: DailyLogEntity? = null,
@@ -101,6 +113,7 @@ private object BENoopMealEntryDao : MealEntryDao {
     override fun observeForDate(date: String): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override suspend fun getForDate(date: String): List<MealEntryEntity> = emptyList()
     override fun observeBetween(s: String, e: String): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
+    override suspend fun getBetween(startDate: String, endDate: String): List<MealEntryEntity> = emptyList()
     override fun observeAll(): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override fun observeFoodLibraryEntries(): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override suspend fun getAll(): List<MealEntryEntity> = emptyList()

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.preferences.UiPreferences
@@ -37,6 +38,7 @@ class MoreViewModel(
     val uiState: StateFlow<MoreUiState> = _uiState.asStateFlow()
 
     val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
+    val selectedModel: StateFlow<ModelVariant> = aiInsightCoordinator.selectedModel
 
     init {
         val hcAvailable = hcRepository.availability() == HealthConnectAvailability.Available
@@ -69,6 +71,7 @@ class MoreViewModel(
     fun requestModelDownload() = aiInsightCoordinator.requestDownload()
     fun cancelDownload() = aiInsightCoordinator.cancelDownload()
     fun deleteModel() = aiInsightCoordinator.deleteModel()
+    fun setModel(variant: ModelVariant) = aiInsightCoordinator.setSelectedModel(variant)
 
     fun exportToUri(context: Context, uri: Uri) {
         viewModelScope.launch {

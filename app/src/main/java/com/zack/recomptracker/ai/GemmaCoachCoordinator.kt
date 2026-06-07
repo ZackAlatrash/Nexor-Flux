@@ -133,11 +133,17 @@ class GemmaCoachCoordinator(
             conversationDate = today
 
             mutableHistory.add(ChatMessage(Role.User, userText))
-            _state.value = CoachState.Thinking(mutableHistory.toList())
+            _state.value = CoachState.Thinking(mutableHistory.toList(), toolStatus = "Thinking…")
             try {
-                val service = serviceHolder.getOrCreateService()
-                // Fast path if already initialised; blocks only on first call.
-                service.ensureInitialized()
+                val modelPath = serviceHolder.modelFileFor(insightCoordinator.selectedModel.value).absolutePath
+                val service = serviceHolder.getOrCreateService(modelPath)
+                if (!service.isInitialized) {
+                    _state.value = CoachState.Thinking(mutableHistory.toList(), toolStatus = "Loading AI engine…")
+                    service.ensureInitialized()
+                    _state.value = CoachState.Thinking(mutableHistory.toList(), toolStatus = "Thinking…")
+                } else {
+                    service.ensureInitialized()
+                }
 
                 // Issue 3: notify the user before silently losing conversation context.
                 // MAX_TURNS = 20 at 45 s/turn ≈ 15 min of chat — a reasonable boundary.
@@ -392,14 +398,17 @@ class GemmaCoachCoordinator(
         appendLine()
         appendLine("Rules (follow exactly):")
         appendLine(
-            "1. For READ-ONLY questions about today's calories, food logged, macros, weight, " +
-                "sleep, or steps: answer directly from the snapshot above. " +
+            "1. The snapshot above contains ONLY today's ($today) data. " +
+                "For READ-ONLY questions about TODAY's calories, food logged, macros, weight, " +
+                "sleep, or steps: answer directly from the snapshot. " +
                 "Call get_today_summary() only if the user just logged something new. " +
                 "Do NOT apply this rule to logging requests — use Rule 5 for those.",
         )
         appendLine(
-            "2. get_today_summary() returns today's data by default. " +
-                "Pass date=\"$yesterday\" to get yesterday's data.",
+            "2. For any question about YESTERDAY ($yesterday) or any past date: " +
+                "you MUST call get_today_summary(date=\"YYYY-MM-DD\"). " +
+                "Do NOT use the snapshot — it contains today's data only. " +
+                "Example for yesterday: get_today_summary(date=\"$yesterday\").",
         )
         appendLine(
             "3. Call get_weekly_trends() for weekly questions, multi-day macro questions, " +
@@ -421,7 +430,6 @@ class GemmaCoachCoordinator(
     private fun toolStatusText(name: String): String = when (name) {
         "get_today_summary" -> "Reading your food log…"
         "get_weekly_trends" -> "Reading your weekly trends…"
-        "get_plan" -> "Reading your plan…"
         "log_meal" -> "Logging meal…"
         "log_metric" -> "Saving metric…"
         "update_calorie_target" -> "Updating calorie target…"
@@ -469,9 +477,6 @@ class GemmaCoachCoordinator(
             ),
             SchemaTool(
                 """{"name":"get_weekly_trends","description":"Get last 7 days of daily macro totals (calories, protein, carbs, fat) and adherence percent. Use this for weekly trends or any multi-day macro question.","parameters":{"type":"object","properties":{},"required":[]}}""",
-            ),
-            SchemaTool(
-                """{"name":"get_plan","description":"Get the user's current calorie and macro targets.","parameters":{"type":"object","properties":{},"required":[]}}""",
             ),
             SchemaTool(
                 """{"name":"search_food_library","description":"Search your saved food library by name. If the user specified a weight in grams, pass it as 'grams' and the tool returns macros already scaled to that weight — use those directly in log_meal.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Food name only — no quantities or weights"},"grams":{"type":"number","description":"Optional: weight in grams requested by the user. If provided, returned macros are pre-scaled to this weight."}},"required":["query"]}}""",

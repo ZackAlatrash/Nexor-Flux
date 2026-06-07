@@ -60,11 +60,17 @@ fun AiInsightCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val context = LocalContext.current
-    val animationsEnabled = Settings.Global.getFloat(
-        context.contentResolver,
-        Settings.Global.ANIMATOR_DURATION_SCALE,
-        1f,
-    ) > 0f
+    // Read once per context instance — Settings.Global is a system property that
+    // doesn't change during the app's lifetime, so reading it on every recomposition
+    // is pure waste. remember(context) caches the result and only re-reads if the
+    // context object itself changes (effectively never after first composition).
+    val animationsEnabled = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) > 0f
+    }
     val effectiveMode = if (animationsEnabled) borderMode else AiBorderMode.Static
 
     val infiniteTransition = rememberInfiniteTransition(label = "aiComet")

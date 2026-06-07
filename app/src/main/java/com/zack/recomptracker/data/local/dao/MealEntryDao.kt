@@ -20,6 +20,10 @@ interface MealEntryDao {
     @Query("SELECT * FROM meal_entries WHERE date BETWEEN :startDate AND :endDate ORDER BY date, id")
     fun observeBetween(startDate: String, endDate: String): Flow<List<MealEntryEntity>>
 
+    /** One-shot suspend read — for tool queries that don't need live updates. */
+    @Query("SELECT * FROM meal_entries WHERE date BETWEEN :startDate AND :endDate ORDER BY date, id")
+    suspend fun getBetween(startDate: String, endDate: String): List<MealEntryEntity>
+
     @Query("SELECT * FROM meal_entries ORDER BY date, id")
     fun observeAll(): Flow<List<MealEntryEntity>>
 

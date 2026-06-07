@@ -45,6 +45,8 @@ class GemmaInsightService(
 ) {
     @Volatile private var engine: Engine? = null
 
+    val isInitialized: Boolean get() = engine != null
+
     private val initLock = Mutex()
 
     /**

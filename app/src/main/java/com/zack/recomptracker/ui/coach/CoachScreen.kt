@@ -1,6 +1,14 @@
 package com.zack.recomptracker.ui.coach
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,10 +19,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -64,6 +74,7 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TintedBorder
 import com.zack.recomptracker.ui.theme.TintedSurface
+import com.zack.recomptracker.ui.theme.Violet300
 
 private val suggestions = listOf(
     "How are my calories this week?",
@@ -349,11 +360,11 @@ private fun ChatContent(
         (if (thinkingStatus != null || partialResponse != null) 1 else 0) +
         (if (errorMessage != null) 1 else 0)
 
-    // Scroll to bottom only when a committed message is added (history.size changes).
-    // The coach emits the full response in one shot, so this fires exactly once per turn.
-    LaunchedEffect(history.size) {
-        if (history.isNotEmpty()) {
-            listState.animateScrollToItem(history.size - 1)
+    // Key on totalItems so the scroll also fires when the thinking/error item appears,
+    // not just when a committed message is added. Target the last item in the list.
+    LaunchedEffect(totalItems) {
+        if (totalItems > 0) {
+            listState.animateScrollToItem(totalItems - 1)
         }
     }
 
@@ -395,18 +406,12 @@ private fun ChatContent(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        text = "Thinking…",
+                        text = thinkingStatus,
                         color = Color.White,
                         fontSize = 14.sp,
                     )
-                    if (!thinkingStatus.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = thinkingStatus,
-                            color = TextMuted,
-                            fontSize = 12.sp,
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ThinkingDots()
                 }
             }
         }
@@ -434,6 +439,7 @@ private fun ConfirmationBar(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -450,15 +456,19 @@ private fun ConfirmationBar(
                 fontSize = 14.sp,
             )
         }
+        // No bottom padding here — the input row directly below already reserves
+        // FloatingNavHeight + 8dp for the floating nav bar, so adding it again
+        // would double-pad and push the buttons too far up.
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = FloatingNavHeight),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             FilterChip(
                 selected = false,
-                onClick = onCancel,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onCancel()
+                },
                 label = {
                     Text(
                         text = "Cancel",
@@ -476,7 +486,10 @@ private fun ConfirmationBar(
             )
             FilterChip(
                 selected = false,
-                onClick = onConfirm,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onConfirm()
+                },
                 label = {
                     Text(
                         text = "Confirm",
@@ -491,6 +504,33 @@ private fun ConfirmationBar(
                     selectedContainerColor = TintedSurface,
                 ),
                 border = BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF66BB6A).copy(alpha = 0.5f)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThinkingDots() {
+    val transition = rememberInfiniteTransition(label = "dots")
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(3) { i ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.2f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse,
+                    initialStartOffset = StartOffset(i * 200),
+                ),
+                label = "dot$i",
+            )
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .background(Violet300.copy(alpha = alpha), CircleShape),
             )
         }
     }

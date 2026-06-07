@@ -39,6 +39,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.key
 import com.zack.recomptracker.core.util.formatPercent
 import com.zack.recomptracker.core.util.formatSignedOneDecimal
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -612,7 +613,9 @@ private fun StatTile(
 fun DashboardScreen(viewModel: DashboardViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
-    LaunchedEffect(state.result) {
+    // Key on result.key() so the effect only restarts when verdict/reasons/change differ —
+    // not on every summary text update, which is not part of the dedup logic.
+    LaunchedEffect(state.result.key()) {
         viewModel.onAiCardVisible(state.result)
     }
     LazyColumn(
@@ -845,7 +848,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text("Something went wrong.", fontSize = 13.sp, color = TextMuted)
+                Text(aiState.message, fontSize = 13.sp, color = TextMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
             }

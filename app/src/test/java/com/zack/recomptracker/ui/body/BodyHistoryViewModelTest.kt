@@ -103,6 +103,7 @@ private object NoopMealEntryDao : MealEntryDao {
     override fun observeForDate(date: String): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override suspend fun getForDate(date: String): List<MealEntryEntity> = emptyList()
     override fun observeBetween(s: String, e: String): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
+    override suspend fun getBetween(startDate: String, endDate: String): List<MealEntryEntity> = emptyList()
     override fun observeAll(): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override fun observeFoodLibraryEntries(): Flow<List<MealEntryEntity>> = flow { emit(emptyList()) }
     override suspend fun getAll(): List<MealEntryEntity> = emptyList()

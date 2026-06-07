@@ -16,25 +16,21 @@ class GemmaServiceHolder(context: Context) {
     // Always pin to applicationContext so an Activity context can never leak here.
     private val appContext: Context = context.applicationContext
 
-    /**
-     * Computed once; [File.getExternalFilesDir] is not free and the path never changes
-     * at runtime.
-     */
-    val modelFile: File by lazy {
-        File(appContext.getExternalFilesDir(null), "ai/gemma-4-E2B-it.litertlm")
-    }
-
     private var _service: GemmaInsightService? = null
     private val lock = Mutex()
 
+    /** Returns the file path for [variant]'s model on external storage. */
+    fun modelFileFor(variant: ModelVariant): File =
+        File(appContext.getExternalFilesDir(null), "ai/${variant.fileName}")
+
     /**
-     * Returns the existing service or creates a fresh one. The service object is cheap
-     * to create; the expensive work (loading the Engine) is deferred to
-     * [GemmaInsightService.ensureInitialized].
+     * Returns the existing service or creates a fresh one with [modelPath].
+     * The service object is cheap to create; the expensive work (loading the Engine)
+     * is deferred to [GemmaInsightService.ensureInitialized].
      */
-    suspend fun getOrCreateService(): GemmaInsightService = lock.withLock {
+    suspend fun getOrCreateService(modelPath: String): GemmaInsightService = lock.withLock {
         _service ?: GemmaInsightService(
-            modelPath = modelFile.absolutePath,
+            modelPath = modelPath,
             cacheDir = appContext.cacheDir.absolutePath,
         ).also { _service = it }
     }

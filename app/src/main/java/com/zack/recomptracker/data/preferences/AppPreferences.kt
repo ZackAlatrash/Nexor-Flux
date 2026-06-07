@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.zack.recomptracker.ai.ModelVariant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -88,6 +89,14 @@ class UiPreferences(private val context: Context) {
     val pendingDownloadId: kotlinx.coroutines.flow.Flow<Long> =
         context.uiDataStore.data.map { it[Keys.PendingDownloadId] ?: -1L }
 
+    val selectedModelVariant: kotlinx.coroutines.flow.Flow<ModelVariant> =
+        context.uiDataStore.data.map {
+            when (it[Keys.SelectedModelVariant]) {
+                ModelVariant.GEMMA_4B.name -> ModelVariant.GEMMA_4B
+                else -> ModelVariant.GEMMA_2B
+            }
+        }
+
     suspend fun setFont(font: String) {
         context.uiDataStore.edit { it[Keys.SelectedFont] = font }
     }
@@ -106,9 +115,14 @@ class UiPreferences(private val context: Context) {
         }
     }
 
+    suspend fun setSelectedModel(variant: ModelVariant) {
+        context.uiDataStore.edit { it[Keys.SelectedModelVariant] = variant.name }
+    }
+
     private object Keys {
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
         val PendingDownloadId = longPreferencesKey("pending_download_id")
+        val SelectedModelVariant = stringPreferencesKey("selected_model_variant")
     }
 }

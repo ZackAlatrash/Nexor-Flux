@@ -25,6 +25,7 @@ import com.zack.recomptracker.ai.GemmaServiceHolder
 import com.zack.recomptracker.ai.GemmaCoachCoordinator
 import com.zack.recomptracker.ai.GemmaInsightCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.ui.coach.CoachViewModel
 import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -50,6 +51,7 @@ class AppContainer(context: Context) {
     val database: RecompDatabase get() = _database
     private val appPreferences = AppPreferences(context.applicationContext)
     val uiPreferences = UiPreferences(context.applicationContext)
+    val userProfilePreferencesStore = UserProfilePreferencesStore(context.applicationContext)
     val planRepository = PlanRepository(appPreferences)
     val logRepository = LogRepository(
         dailyLogDao = database.dailyLogDao(),

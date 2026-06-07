@@ -11,6 +11,7 @@ import com.zack.recomptracker.data.local.dao.CatalogFoodDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
 import com.zack.recomptracker.data.local.dao.PerformanceDao
+import com.zack.recomptracker.data.local.dao.RecipeDao
 import com.zack.recomptracker.data.local.dao.SavedFoodDao
 import com.zack.recomptracker.data.local.dao.SavedMealDao
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
@@ -19,6 +20,8 @@ import com.zack.recomptracker.data.local.entity.CatalogFoodEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
+import com.zack.recomptracker.data.local.entity.RecipeEntity
+import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
@@ -33,8 +36,10 @@ import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
         LiftPerformanceEntity::class,
         WeeklyReviewEntity::class,
         MealSlotEntity::class,
+        RecipeEntity::class,
+        RecipeIngredientEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -46,6 +51,7 @@ abstract class RecompDatabase : RoomDatabase() {
     abstract fun performanceDao(): PerformanceDao
     abstract fun weeklyReviewDao(): WeeklyReviewDao
     abstract fun mealSlotDao(): MealSlotDao
+    abstract fun recipeDao(): RecipeDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -90,6 +96,40 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS recipes (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "name TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS recipe_ingredients (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "recipeId INTEGER NOT NULL, " +
+                    "name TEXT NOT NULL, " +
+                    "sortOrder INTEGER NOT NULL, " +
+                    "calories INTEGER NOT NULL, " +
+                    "proteinG REAL NOT NULL, " +
+                    "carbsG REAL NOT NULL, " +
+                    "fatG REAL NOT NULL, " +
+                    "amountGrams REAL, " +
+                    "basePer100Calories INTEGER, " +
+                    "basePer100ProteinG REAL, " +
+                    "basePer100CarbsG REAL, " +
+                    "basePer100FatG REAL, " +
+                    "entryServingName TEXT, " +
+                    "entryServingGrams REAL, " +
+                    "loggedByServings INTEGER NOT NULL DEFAULT 0, " +
+                    "FOREIGN KEY(recipeId) REFERENCES recipes(id) ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_recipe_ingredients_recipeId " +
+                    "ON recipe_ingredients (recipeId)"
+                )
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -120,7 +160,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
     }
 }

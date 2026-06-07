@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ai
 
+import android.util.Log
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
@@ -9,7 +10,12 @@ import com.google.ai.edge.litertlm.OpenApiTool
 import com.google.ai.edge.litertlm.ToolProvider
 import com.google.ai.edge.litertlm.tool
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.preferences.ActivityLevel
+import com.zack.recomptracker.data.preferences.BiologicalSex
+import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.PlanRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -46,6 +52,7 @@ class GemmaCoachCoordinator(
     private val insightCoordinator: AiInsightCoordinator,
     private val toolExecutor: CoachToolExecutor,
     private val planRepository: PlanRepository,
+    private val userProfileStore: UserProfilePreferencesStore,
     private val dateProvider: DateProvider,
     private val scope: CoroutineScope,
 ) : CoachCoordinator {
@@ -143,96 +150,142 @@ class GemmaCoachCoordinator(
                 val conv =
                     conversation ?: createConversation(service).also { conversation = it }
 
-                // Acquire the shared Engine lock for ALL sendMessage calls in this turn.
-                // Released before emitting the final response so the insight flow is not
-                // blocked while the UI updates.
-                val fullText: String? = service.withInferenceLock {
-                    var response = withTimeout(TIMEOUT_MS) {
+                // Acquire the Engine lock per sendMessage call, not for the entire turn.
+                // This lets the insight flow run freely while we await user confirmation
+                // between tool calls — previously a single withInferenceLock block held
+                // the lock across the entire confirmation wait.
+                var response = service.withInferenceLock {
+                    withTimeout(TIMEOUT_MS) {
                         withContext(Dispatchers.IO) { conv.sendMessage(userText) }
                     }
+                }
 
-                    var toolIterations = 0
-                    // Issue 4: process every tool call in each response before the next
-                    // sendMessage, not just the first one.
-                    while (toolIterations < MAX_TOOL_ITERATIONS) {
-                        val toolCalls = response.toolCalls
-                        if (toolCalls.isEmpty()) break
-                        toolIterations += toolCalls.size
-                        val toolResponses = mutableListOf<Content.ToolResponse>()
-                        for (toolCall in toolCalls) {
+                Log.d("RecompCoach", "model_resp: toolCalls=${response.toolCalls.size} text='${extractText(response).take(120)}'")
+
+                var toolIterations = 0
+                // Issue 4: process every tool call in each response before the next
+                // sendMessage, not just the first one.
+                while (toolIterations < MAX_TOOL_ITERATIONS) {
+                    val toolCalls = response.toolCalls
+                    if (toolCalls.isEmpty()) break
+                    toolIterations += toolCalls.size
+                    val toolResponses = mutableListOf<Content.ToolResponse>()
+                    for (toolCall in toolCalls) {
+                        Log.d("RecompCoach", "tool_call: name=${toolCall.name} args=${toolCall.arguments}")
+                        _state.value = CoachState.Thinking(
+                            mutableHistory.toList(),
+                            toolStatus = toolStatusText(toolCall.name),
+                        )
+                        val argsMap =
+                            toolCall.arguments.mapValues { (_, value) -> value.toString() }
+                        if (toolCall.name in WRITE_TOOLS) {
+                            val action = PendingCoachAction(
+                                toolName = toolCall.name,
+                                args = argsMap,
+                                displayText = pendingActionDisplayText(toolCall.name, argsMap),
+                            )
+                            val deferred = CompletableDeferred<Boolean>()
+                            pendingConfirmation = deferred
+                            _state.value = CoachState.AwaitingConfirmation(
+                                mutableHistory.toList(),
+                                action,
+                            )
+                            // inferenceLock is NOT held here — the insight flow is free
+                            // to run while the user reads and responds to the dialog.
+                            val confirmed = deferred.await()
+                            pendingConfirmation = null
+                            if (!confirmed) {
+                                toolResponses.add(
+                                    Content.ToolResponse(toolCall.name, """{"cancelled":true}"""),
+                                )
+                                continue
+                            }
                             _state.value = CoachState.Thinking(
                                 mutableHistory.toList(),
                                 toolStatus = toolStatusText(toolCall.name),
                             )
-                            val argsMap =
-                                toolCall.arguments.mapValues { (_, value) -> value.toString() }
-                            if (toolCall.name in WRITE_TOOLS) {
-                                val action = PendingCoachAction(
-                                    toolName = toolCall.name,
-                                    args = argsMap,
-                                    displayText = pendingActionDisplayText(toolCall.name, argsMap),
-                                )
-                                val deferred = CompletableDeferred<Boolean>()
-                                pendingConfirmation = deferred
-                                _state.value = CoachState.AwaitingConfirmation(
-                                    mutableHistory.toList(),
-                                    action,
-                                )
-                                val confirmed = deferred.await()
-                                pendingConfirmation = null
-                                if (!confirmed) {
-                                    toolResponses.add(
-                                        Content.ToolResponse(toolCall.name, """{"cancelled":true}"""),
-                                    )
-                                    continue
-                                }
-                                _state.value = CoachState.Thinking(
-                                    mutableHistory.toList(),
-                                    toolStatus = toolStatusText(toolCall.name),
-                                )
-                            }
-                            val result = withContext(Dispatchers.IO) {
-                                toolExecutor.execute(toolCall.name, argsMap)
-                            }
-                            toolResponses.add(Content.ToolResponse(toolCall.name, result))
                         }
-                        response = withTimeout(TIMEOUT_MS) {
+                        val result = withContext(Dispatchers.IO) {
+                            toolExecutor.execute(toolCall.name, argsMap)
+                        }
+                        Log.d("RecompCoach", "tool_result: name=${toolCall.name} result='${result.take(300)}'")
+                        toolResponses.add(Content.ToolResponse(toolCall.name, result))
+                    }
+                    // Re-acquire lock for the next model call.
+                    response = service.withInferenceLock {
+                        withTimeout(TIMEOUT_MS) {
                             withContext(Dispatchers.IO) {
                                 conv.sendMessage(Contents.of(*toolResponses.toTypedArray()))
                             }
                         }
                     }
-
-                    if (toolIterations >= MAX_TOOL_ITERATIONS &&
-                        response.toolCalls.isNotEmpty()
-                    ) {
-                        // Fundamental failure — clear conversation so next turn starts clean.
-                        // Keep mutableHistory intact so the user message stays visible (Issue 2).
-                        clearConversation()
-                        turnCount = 0
-                        _state.value = CoachState.Error(
-                            mutableHistory.toList(),
-                            "Something went wrong — try again.",
-                        )
-                        return@withInferenceLock null
-                    }
-
-                    val text = extractText(response)
-                    if (text.isEmpty()) {
-                        // Fundamental failure — same policy as above.
-                        clearConversation()
-                        turnCount = 0
-                        _state.value = CoachState.Error(
-                            mutableHistory.toList(),
-                            "Something went wrong — try again.",
-                        )
-                        return@withInferenceLock null
-                    }
-                    text
                 }
 
-                // Inference lock released — emit response.
-                if (fullText == null) return@withLock
+                if (toolIterations >= MAX_TOOL_ITERATIONS &&
+                    response.toolCalls.isNotEmpty()
+                ) {
+                    // Fundamental failure — clear conversation so next turn starts clean.
+                    // Keep mutableHistory intact so the user message stays visible.
+                    clearConversation()
+                    turnCount = 0
+                    _state.value = CoachState.Error(
+                        mutableHistory.toList(),
+                        "Something went wrong — try again.",
+                    )
+                    return@withLock
+                }
+
+                var fullText = extractText(response)
+                if (fullText.isEmpty() && toolIterations > 0) {
+                    // After a tool sequence the model sometimes returns no text (e.g. after
+                    // search + log_meal). Prompt it once for a one-line confirmation rather
+                    // than surfacing an error to the user.
+                    try {
+                        val nudge = service.withInferenceLock {
+                            withTimeout(TIMEOUT_MS) {
+                                withContext(Dispatchers.IO) {
+                                    conv.sendMessage("Confirm what you just did in one sentence.")
+                                }
+                            }
+                        }
+                        fullText = extractText(nudge)
+                    } catch (_: Exception) { /* fall through to error below */ }
+                }
+                if (fullText.isEmpty()) {
+                    // Fundamental failure — same policy as above.
+                    clearConversation()
+                    turnCount = 0
+                    _state.value = CoachState.Error(
+                        mutableHistory.toList(),
+                        "Something went wrong — try again.",
+                    )
+                    return@withLock
+                }
+
+                // Safety net: small models often generate planning text ("I need to call X…")
+                // before the tool call. That text lands in conversation history, and after the
+                // tool result comes back the model echoes it instead of quoting the actual data.
+                // If we detect that pattern after at least one tool ran, send a one-shot
+                // correction so the model answers from the data it already retrieved.
+                if (toolIterations > 0 && fullText.containsEchoPhrase()) {
+                    try {
+                        val retry = service.withInferenceLock {
+                            withTimeout(TIMEOUT_MS) {
+                                withContext(Dispatchers.IO) {
+                                    conv.sendMessage(
+                                        "The tool already ran and returned data. " +
+                                            "Answer the original question using ONLY the " +
+                                            "numbers from the tool result. Do NOT call any tool again.",
+                                    )
+                                }
+                            }
+                        }
+                        val retryText = extractText(retry)
+                        if (retryText.isNotEmpty()) fullText = retryText
+                    } catch (_: Exception) {
+                        // Retry failed — keep the imperfect original rather than showing an error.
+                    }
+                }
 
                 // Issue 1: the model has already finished; emit the full text at once rather
                 // than adding an artificial per-word delay.
@@ -264,9 +317,14 @@ class GemmaCoachCoordinator(
     private suspend fun createConversation(service: GemmaInsightService): Conversation {
         val toolProviders: List<ToolProvider> = COACH_TOOLS.map { tool(it) }
         val prefs = planRepository.preferences.first()
+        val profile = userProfileStore.preferences.first()
         val today = dateProvider.today()
+        val todaySummary = withContext(Dispatchers.IO) {
+            toolExecutor.execute("get_today_summary", emptyMap())
+        }
+        Log.d("RecompCoach", "snapshot: $todaySummary")
         val config = ConversationConfig(
-            systemInstruction = Contents.of(buildSystemPrompt(prefs, today)),
+            systemInstruction = Contents.of(buildSystemPrompt(prefs, profile, today, todaySummary)),
             tools = toolProviders,
             automaticToolCalling = false,
         )
@@ -279,9 +337,28 @@ class GemmaCoachCoordinator(
             .joinToString("") { it.text }
             .trim()
 
+    /**
+     * Returns true when the model's response looks like it echoed its pre-tool-call planning
+     * text ("I need to call X…") instead of answering from the retrieved tool data.
+     * Used by the echo-recovery safety net to decide whether to send a correction prompt.
+     */
+    private fun String.containsEchoPhrase(): Boolean {
+        val lower = lowercase()
+        return lower.contains("i need to call") ||
+            lower.contains("i'll call") ||
+            lower.contains("i have to call") ||
+            lower.contains("let me call") ||
+            lower.contains("i should call") ||
+            lower.contains("i will call") ||
+            lower.contains("need to use the") ||
+            lower.contains("i need to use")
+    }
+
     private fun buildSystemPrompt(
         prefs: PlanPreferences,
+        profile: UserProfilePreferences,
         today: java.time.LocalDate,
+        todaySummary: String,
     ): String = buildString {
         val yesterday = today.minusDays(1)
         appendLine("You are a nutrition coach in a body recomposition tracking app.")
@@ -293,19 +370,51 @@ class GemmaCoachCoordinator(
             "Plan: ${prefs.targetCalories} kcal | P ${prefs.targetProteinG}g" +
                 " | C ${prefs.targetCarbsG}g | F ${prefs.targetFatG}g",
         )
+        val profileParts = buildList {
+            profile.goal?.let { add("Goal: ${it.displayName()}") }
+            profile.biologicalSex?.let { add("Sex: ${it.displayName()}") }
+            profile.ageYears?.let { add("Age: $it") }
+            profile.heightCm?.let { add("Height: $it cm") }
+            profile.activityLevel?.let { add("Activity: ${it.displayName()}") }
+            profile.weeklyGymSessions?.let { add("Gym sessions/week: $it") }
+        }
+        if (profileParts.isNotEmpty()) {
+            appendLine()
+            appendLine("=== USER PROFILE ===")
+            appendLine(profileParts.joinToString(" | "))
+            appendLine("=== END PROFILE ===")
+        }
         appendLine()
-        // Issue 7: tool definitions are provided via ConversationConfig.tools (formal schemas).
-        // Duplicating them as plain text confuses the 2B model into using the wrong call format.
-        appendLine("Rules:")
-        appendLine("1. Be concise: 1–3 sentences unless detail is asked for.")
-        appendLine("2. Always call a tool before quoting any numbers — never guess.")
+        appendLine("=== TODAY'S DATA SNAPSHOT (fetched at conversation start) ===")
+        appendLine(todaySummary)
+        appendLine("=== END SNAPSHOT ===")
+        appendLine()
+        appendLine("Rules (follow exactly):")
         appendLine(
-            "3. Today = get_today_summary() (no date). " +
-                "Yesterday = get_today_summary(date=\"$yesterday\"). " +
-                "Named days = compute the date and call get_today_summary.",
+            "1. For READ-ONLY questions about today's calories, food logged, macros, weight, " +
+                "sleep, or steps: answer directly from the snapshot above. " +
+                "Call get_today_summary() only if the user just logged something new. " +
+                "Do NOT apply this rule to logging requests — use Rule 5 for those.",
         )
-        appendLine("4. Before any write tool: state what you'll log and wait for the user to confirm.")
-        append("5. Stay on topic: nutrition, body composition, training, recovery only.")
+        appendLine(
+            "2. get_today_summary() returns today's data by default. " +
+                "Pass date=\"$yesterday\" to get yesterday's data.",
+        )
+        appendLine(
+            "3. Call get_weekly_trends() for weekly questions, multi-day macro questions, " +
+                "or adherence questions.",
+        )
+        appendLine(
+            "4. After a tool returns, reply in 1–3 sentences using only the numbers from the JSON. " +
+                "Do not guess or invent numbers. Do not add information not present in the result.",
+        )
+        appendLine(
+            "5. To log any food: call log_meal(name=..., calories=..., meal_type=...). " +
+                "If the user said a weight in grams (e.g. '100g'), also pass grams=.... " +
+                "The tool checks your food library automatically — do NOT call search_food_library before logging. " +
+                "Use search_food_library only when the user asks to browse or search available foods.",
+        )
+        append("6. Stay on topic: nutrition, body composition, training, recovery only.")
     }
 
     private fun toolStatusText(name: String): String = when (name) {
@@ -326,7 +435,11 @@ class GemmaCoachCoordinator(
     private fun pendingActionDisplayText(toolName: String, args: Map<String, String>): String =
         when (toolName) {
             "log_meal" -> buildString {
-                append("Log ${args["name"]} (${args["calories"]} kcal)")
+                append("Log ${args["name"]}")
+                val grams = args["grams"]?.toDoubleOrNull()
+                if (grams != null) append(" (${grams.toInt()}g)")
+                val cals = args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }
+                if (cals != null && cals > 0) append(" ($cals kcal)")
                 val type = args["meal_type"]
                 if (!type.isNullOrBlank()) append(" as $type")
                 append(" to today's food log")
@@ -354,13 +467,16 @@ class GemmaCoachCoordinator(
                 """{"name":"get_today_summary","description":"Get a specific day's food log, macro totals, and daily metrics. Omit 'date' for today.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"ISO date YYYY-MM-DD. Omit for today."}},"required":[]}}""",
             ),
             SchemaTool(
-                """{"name":"get_weekly_trends","description":"Get last 7 days calorie history and adherence.","parameters":{"type":"object","properties":{},"required":[]}}""",
+                """{"name":"get_weekly_trends","description":"Get last 7 days of daily macro totals (calories, protein, carbs, fat) and adherence percent. Use this for weekly trends or any multi-day macro question.","parameters":{"type":"object","properties":{},"required":[]}}""",
             ),
             SchemaTool(
                 """{"name":"get_plan","description":"Get the user's current calorie and macro targets.","parameters":{"type":"object","properties":{},"required":[]}}""",
             ),
             SchemaTool(
-                """{"name":"log_meal","description":"Add a meal to today's food log.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Food name or description"},"calories":{"type":"integer","description":"Calories in kcal"},"meal_type":{"type":"string","description":"One of: Breakfast, Lunch, Dinner, Snack. Default: Snack"},"protein_g":{"type":"number","description":"Protein in grams"},"carbs_g":{"type":"number","description":"Carbohydrates in grams"},"fat_g":{"type":"number","description":"Fat in grams"}},"required":["name","calories"]}}""",
+                """{"name":"search_food_library","description":"Search your saved food library by name. If the user specified a weight in grams, pass it as 'grams' and the tool returns macros already scaled to that weight — use those directly in log_meal.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Food name only — no quantities or weights"},"grams":{"type":"number","description":"Optional: weight in grams requested by the user. If provided, returned macros are pre-scaled to this weight."}},"required":["query"]}}""",
+            ),
+            SchemaTool(
+                """{"name":"log_meal","description":"Add a meal to today's food log. The tool looks up your food library automatically and uses the correct macros. Pass grams if the user specified a weight. If the food is NOT in the library, you MUST also provide calories, protein_g, carbs_g, and fat_g.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Food name"},"grams":{"type":"number","description":"Optional: weight in grams. Macros are scaled automatically if food is in library."},"meal_type":{"type":"string","description":"One of: Breakfast, Lunch, Dinner, Snack. Default: Snack"},"calories":{"type":"integer","description":"Required only if food is NOT in your library. Omit for library foods."},"protein_g":{"type":"number","description":"Required only if food is NOT in your library."},"carbs_g":{"type":"number","description":"Required only if food is NOT in your library."},"fat_g":{"type":"number","description":"Required only if food is NOT in your library."}},"required":["name"]}}""",
             ),
             SchemaTool(
                 """{"name":"log_metric","description":"Record a body or recovery metric for today.","parameters":{"type":"object","properties":{"metric":{"type":"string","description":"One of: weight_kg, waist_cm, sleep_hours, energy_score, hunger_score, soreness_score"},"value":{"type":"number","description":"The numeric value to record"}},"required":["metric","value"]}}""",
@@ -381,4 +497,26 @@ private class SchemaTool(private val schemaJson: String) : OpenApiTool {
     override fun getToolDescriptionJsonString(): String = schemaJson
     override fun execute(args: String): String =
         error("SchemaTool.execute should not be called — tool calls are dispatched manually.")
+}
+
+private fun FitnessGoal.displayName(): String = when (this) {
+    FitnessGoal.AGGRESSIVE_CUT -> "Aggressive Cut"
+    FitnessGoal.MODERATE_CUT -> "Moderate Cut"
+    FitnessGoal.MINI_CUT -> "Mini Cut"
+    FitnessGoal.RECOMP -> "Recomp"
+    FitnessGoal.LEAN_BULK -> "Lean Bulk"
+    FitnessGoal.MODERATE_BULK -> "Moderate Bulk"
+    FitnessGoal.AGGRESSIVE_BULK -> "Aggressive Bulk"
+}
+
+private fun BiologicalSex.displayName(): String = when (this) {
+    BiologicalSex.MALE -> "Male"
+    BiologicalSex.FEMALE -> "Female"
+}
+
+private fun ActivityLevel.displayName(): String = when (this) {
+    ActivityLevel.SEDENTARY -> "Sedentary"
+    ActivityLevel.LIGHTLY_ACTIVE -> "Lightly Active"
+    ActivityLevel.MODERATELY_ACTIVE -> "Moderately Active"
+    ActivityLevel.VERY_ACTIVE -> "Very Active"
 }

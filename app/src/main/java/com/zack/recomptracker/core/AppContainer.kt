@@ -89,6 +89,7 @@ class AppContainer(context: Context) {
             dateProvider = dateProvider,
         ),
         planRepository = planRepository,
+        userProfileStore = userProfilePreferencesStore,
         dateProvider = dateProvider,
         scope = appScope,
     )

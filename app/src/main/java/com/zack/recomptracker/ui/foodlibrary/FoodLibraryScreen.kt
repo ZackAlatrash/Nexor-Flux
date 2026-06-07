@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -64,8 +65,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.domain.food.FoodScaling
+import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
 import com.zack.recomptracker.ui.toast.ToastType
@@ -86,6 +89,8 @@ import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
 import com.zack.recomptracker.ui.theme.Violet500
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val TextSecondary = Color(0x47FFFFFF) // TextMuted
 
@@ -98,14 +103,36 @@ fun FoodLibraryScreen(
     editEntryId: Long? = null,
     logDate: String = "",
     onScanBarcode: () -> Unit,
+    pickerMode: Boolean = false,
+    scannedFoodJson: String? = null,
+    onScannedFoodConsumed: () -> Unit = {},
+    onIngredientPicked: (String) -> Unit = {},
+    onCreateRecipe: () -> Unit = {},
+    onEditRecipe: (Long) -> Unit = {},
 ) {
-    LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId, logDate) }
+    LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId, logDate, pickerMode) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     val toastController = LocalToastController.current
     LaunchedEffect(viewModel) {
         viewModel.loggedEvent.collect { message ->
             toastController.show(ToastMessage(message, ToastType.Success))
+        }
+    }
+
+    // Scanned food arrives from barcode scanner in picker mode
+    LaunchedEffect(scannedFoodJson) {
+        val json = scannedFoodJson ?: return@LaunchedEffect
+        val food = Json.decodeFromString<SavedFoodEntity>(json)
+        viewModel.requestLogFood(food)
+        onScannedFoodConsumed()
+    }
+
+    // Ingredient confirmed in picker mode — return it to RecipeBuilderScreen
+    LaunchedEffect(viewModel) {
+        viewModel.ingredientPickedEvent.collect { ingredient ->
+            onIngredientPicked(Json.encodeToString(ingredient))
+            onBack()
         }
     }
 
@@ -117,6 +144,7 @@ fun FoodLibraryScreen(
             remainingCalories = state.remainingCalories,
             onBack = onBack,
             onScanBarcode = onScanBarcode,
+            pickerMode = pickerMode,
         )
 
         MessageText(
@@ -285,14 +313,29 @@ fun FoodLibraryScreen(
                 }
 
                 if (category == FoodCategory.ALL || category == FoodCategory.MEALS) {
-                    if (filteredMeals.isNotEmpty()) {
-                        item(key = "${category}_meals_spacer") { Spacer(Modifier.height(8.dp)) }
+                    // ── Create Recipe button (hidden in picker mode) ──────────
+                    if (!pickerMode) {
+                        item(key = "${category}_create_recipe") {
+                            Spacer(Modifier.height(8.dp))
+                            GlassActionButton(
+                                text = "+ Create Recipe",
+                                onClick = onCreateRecipe,
+                                isPrimary = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+
+                    // ── Recipe rows ──────────────────────────────────────────
+                    val filteredRecipes = state.filteredRecipes
+                    if (filteredRecipes.isNotEmpty()) {
                         itemsIndexed(
-                            items = filteredMeals,
-                            key = { _, meal -> "${category}_${meal.id}" },
-                        ) { index, meal ->
+                            items = filteredRecipes,
+                            key = { _, r -> "${category}_recipe_${r.recipe.id}" },
+                        ) { index, recipe ->
                             val isFirst = index == 0
-                            val isLast = index == filteredMeals.lastIndex
+                            val isLast = index == filteredRecipes.lastIndex
                             val topCorner = if (isFirst) CornerCard else 0.dp
                             val bottomCorner = if (isLast) CornerCard else 0.dp
                             val shape = RoundedCornerShape(
@@ -306,12 +349,52 @@ fun FoodLibraryScreen(
                                     .background(CardSurface),
                             ) {
                                 if (!isFirst) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(1.dp)
-                                            .background(Color(0x0AFFFFFF)),
-                                    )
+                                    Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x0AFFFFFF)))
+                                }
+                                GlassRecipeRow(
+                                    recipe = recipe,
+                                    pickerMode = pickerMode,
+                                    onLog = { viewModel.logRecipe(recipe) },
+                                    onEdit = { onEditRecipe(recipe.recipe.id) },
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Legacy Saved Meals (faded, read-only) ────────────────
+                    if (filteredMeals.isNotEmpty()) {
+                        item(key = "${category}_legacy_header") {
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = "LEGACY SAVED MEALS",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextMuted,
+                                letterSpacing = 0.14.sp,
+                                modifier = Modifier.padding(vertical = 4.dp),
+                            )
+                        }
+                        itemsIndexed(
+                            items = filteredMeals,
+                            key = { _, meal -> "${category}_meal_${meal.id}" },
+                        ) { index, meal ->
+                            val isFirst = index == 0
+                            val isLast = index == filteredMeals.lastIndex
+                            val topCorner = if (isFirst) CornerCard else 0.dp
+                            val bottomCorner = if (isLast) CornerCard else 0.dp
+                            val shape = RoundedCornerShape(
+                                topStart = topCorner, topEnd = topCorner,
+                                bottomStart = bottomCorner, bottomEnd = bottomCorner,
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(shape)
+                                    .background(CardSurface)
+                                    .alpha(0.5f),
+                            ) {
+                                if (!isFirst) {
+                                    Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x0AFFFFFF)))
                                 }
                                 GlassMealRow(meal = meal, onLog = { viewModel.logMeal(meal) })
                             }
@@ -336,7 +419,7 @@ fun FoodLibraryScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                "Save slot as meal",
+                                "Save slot as recipe",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Violet300,
@@ -359,7 +442,7 @@ fun FoodLibraryScreen(
     if (state.showSaveMealDialog) {
         AlertDialog(
             onDismissRequest = viewModel::dismissSaveMealDialog,
-            title = { Text("Save as meal") },
+            title = { Text("Save as recipe") },
             text = {
                 OutlinedTextField(
                     value = state.saveMealName,
@@ -390,6 +473,7 @@ private fun FoodLibraryTopBar(
     remainingCalories: Int,
     onBack: () -> Unit,
     onScanBarcode: () -> Unit,
+    pickerMode: Boolean = false,
 ) {
     Row(
         modifier = Modifier
@@ -423,7 +507,11 @@ private fun FoodLibraryTopBar(
         // Title column
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (slotId != null) "Add to $slotName" else "Foods & Meals",
+                text = when {
+                    pickerMode -> "Add Ingredient"
+                    slotId != null -> "Add to $slotName"
+                    else -> "Foods & Meals"
+                },
                 fontSize = 17.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
@@ -676,6 +764,69 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
     }
 }
 
+// ── Glass Recipe Row ──────────────────────────────────────────────────────────
+
+@Composable
+private fun GlassRecipeRow(
+    recipe: RecipeWithIngredients,
+    pickerMode: Boolean,
+    onLog: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(recipe.recipe.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x33A855F7))
+                        .border(1.dp, Color(0x55A855F7), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                ) {
+                    Text("Recipe", fontSize = 9.sp, color = Color(0xFFA855F7), fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Text(
+                "${recipe.ingredients.size} ingredients · ${recipe.totalCalories} kcal  " +
+                "P${recipe.totalProteinG.toInt()}g  C${recipe.totalCarbsG.toInt()}g  F${recipe.totalFatG.toInt()}g",
+                fontSize = 11.sp,
+                color = Color(0xFF9CA3AF),
+            )
+        }
+        if (!pickerMode) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x0DFFFFFF))
+                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(8.dp))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onEdit),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✎", fontSize = 14.sp, color = Color(0xBFFFFFFF))
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x1A8B5CF6))
+                .border(1.dp, Color(0x358B5CF6), RoundedCornerShape(8.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onLog),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("+", fontSize = 18.sp, color = Color(0xFFA78BFA), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
 // ── Empty State ───────────────────────────────────────────────────────────────
 
 @Composable
@@ -703,7 +854,7 @@ private fun FoodCategory.label() = when (this) {
     FoodCategory.ALL -> "All"
     FoodCategory.PROTEINS -> "Proteins"
     FoodCategory.CARBS -> "Carbs"
-    FoodCategory.MEALS -> "Saved Meals"
+    FoodCategory.MEALS -> "Recipes"
     FoodCategory.NEVO -> "NEVO"
     FoodCategory.OFF -> "Open Food Facts"
 }
@@ -776,9 +927,11 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
             }
             MessageText(state.message, state.messageKind)
             LiquidPrimaryButton(
-                text = if (state.editingEntryId == null) {
-                    if (state.slotId != null) "Add to ${state.slotName}" else "Add"
-                } else "Save",
+                text = when {
+                    state.pickerMode -> "Add to Recipe"
+                    state.editingEntryId == null -> if (state.slotId != null) "Add to ${state.slotName}" else "Add"
+                    else -> "Save"
+                },
                 onClick = viewModel::confirmAmount,
             )
         }

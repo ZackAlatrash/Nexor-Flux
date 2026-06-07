@@ -33,5 +33,7 @@ class RecipeWithIngredientsTest {
         val recipe = RecipeWithIngredients(RecipeEntity(id = 1, name = "Empty"), emptyList())
         assertEquals(0, recipe.totalCalories)
         assertEquals(0.0, recipe.totalProteinG, 0.001)
+        assertEquals(0.0, recipe.totalCarbsG, 0.001)
+        assertEquals(0.0, recipe.totalFatG, 0.001)
     }
 }

@@ -31,6 +31,7 @@ sealed class ScanState {
     object NetworkError : ScanState()
     data class ShowingSuccess(val message: String) : ScanState()
     object Logged : ScanState()
+    data class PickedForRecipe(val food: SavedFoodEntity) : ScanState()
 }
 
 data class BarcodeScannerUiState(
@@ -52,8 +53,10 @@ class BarcodeScannerViewModel(
     private val _uiState = MutableStateFlow(BarcodeScannerUiState())
     val uiState: StateFlow<BarcodeScannerUiState> = _uiState
     private var lastScannedBarcode: String? = null
+    private var pickerMode = false
 
-    fun init(slotId: Long?, slotName: String) {
+    fun init(slotId: Long?, slotName: String, pickerMode: Boolean = false) {
+        this.pickerMode = pickerMode
         _uiState.update { it.copy(slotId = slotId, slotName = slotName) }
     }
 
@@ -124,6 +127,22 @@ class BarcodeScannerViewModel(
             return
         }
         val scale = actualGrams / 100.0
+
+        if (pickerMode) {
+            val food = SavedFoodEntity(
+                name = product.name,
+                servingName = product.servingName ?: "100g",
+                calories = product.caloriesPer100g,
+                proteinG = product.proteinPer100g,
+                carbsG = product.carbsPer100g,
+                fatG = product.fatPer100g,
+                householdServingName = product.servingName,
+                householdServingGrams = product.servingGrams,
+            )
+            _uiState.update { it.copy(scanState = ScanState.PickedForRecipe(food)) }
+            return
+        }
+
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(

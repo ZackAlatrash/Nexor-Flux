@@ -64,21 +64,33 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Composable
 fun BarcodeScannerScreen(
     viewModel: BarcodeScannerViewModel,
     slotId: Long?,
     slotName: String,
+    pickerMode: Boolean = false,
+    onFoodPicked: (String) -> Unit = {},
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(slotId, slotName) { viewModel.init(slotId, slotName) }
+    LaunchedEffect(slotId, slotName, pickerMode) { viewModel.init(slotId, slotName, pickerMode) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.scanState) {
-        if (state.scanState is ScanState.Logged) onBack()
+        when (val s = state.scanState) {
+            is ScanState.Logged -> onBack()
+            is ScanState.PickedForRecipe -> {
+                onFoodPicked(Json.encodeToString<SavedFoodEntity>(s.food))
+                onBack()
+            }
+            else -> Unit
+        }
     }
 
     val context = LocalContext.current

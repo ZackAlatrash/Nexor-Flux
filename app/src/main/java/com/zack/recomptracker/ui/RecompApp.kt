@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
@@ -53,7 +54,7 @@ val FloatingNavHeight: Dp = 80.dp
 private val topLevelRoutes = setOf(
     TopLevelDestination.Home.route,
     TopLevelDestination.Body.route,
-    TopLevelDestination.Progress.route,
+    TopLevelDestination.Coach.route,
     TopLevelDestination.More.route,
     Routes.Food,
 )
@@ -63,7 +64,7 @@ private fun routeToTabIndex(route: String?): Int = when (route) {
     TopLevelDestination.Home.route -> 0
     TopLevelDestination.Body.route -> 1
     Routes.Food -> 2
-    TopLevelDestination.Progress.route -> 3
+    TopLevelDestination.Coach.route -> 3
     TopLevelDestination.More.route -> 4
     else -> 0
 }
@@ -72,7 +73,7 @@ private val tabRoutes = listOf(
     TopLevelDestination.Home.route,
     TopLevelDestination.Body.route,
     Routes.Food,
-    TopLevelDestination.Progress.route,
+    TopLevelDestination.Coach.route,
     TopLevelDestination.More.route,
 )
 
@@ -227,10 +228,10 @@ fun RecompApp(container: AppContainer) {
                                 Text("Log", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
                             }
 
-                            // Progress
+                            // Coach
                             LiquidBottomTab(
                                 onClick = {
-                                    navController.navigate(TopLevelDestination.Progress.route) {
+                                    navController.navigate(TopLevelDestination.Coach.route) {
                                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
@@ -238,12 +239,12 @@ fun RecompApp(container: AppContainer) {
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                    contentDescription = "Progress",
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "Coach",
                                     tint = Color.White,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                Text("Progress", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Text("Coach", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
                             }
 
                             // More

@@ -12,6 +12,9 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.InsightContext
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -66,6 +69,7 @@ data class DashboardUiState(
         summary = "Log today to start building a review window.",
     ),
     val motivationalMessage: String = "",   // display-only, at end
+    val adjustmentInput: AdjustmentInput? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -76,9 +80,42 @@ class DashboardViewModel(
     private val trendCalculator: TrendCalculator,
     private val adherenceCalculator: AdherenceCalculator,
     private val adjustmentEngine: AdjustmentEngine,
+    private val aiInsightCoordinator: AiInsightCoordinator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
+
+    fun onAiCardVisible(result: AdjustmentResult) {
+        val state = _uiState.value
+        val input = state.adjustmentInput ?: return
+        aiInsightCoordinator.onAiCardVisible(
+            InsightContext(
+                result = result,
+                input = input,
+                targetCalories = state.preferences.targetCalories,
+                targetProteinG = state.preferences.targetProteinG,
+            )
+        )
+    }
+
+    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
+
+    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
+
+    fun retryGeneration() {
+        val state = _uiState.value
+        val input = state.adjustmentInput ?: return
+        aiInsightCoordinator.retryGeneration(
+            InsightContext(
+                result = state.result,
+                input = input,
+                targetCalories = state.preferences.targetCalories,
+                targetProteinG = state.preferences.targetProteinG,
+            )
+        )
+    }
 
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()
@@ -156,17 +193,16 @@ class DashboardViewModel(
             cachedEngineThresholds = thresholds
             cachedEngine = AdjustmentEngine(thresholds)
         }
-        val result = cachedEngine.evaluate(
-            AdjustmentInput(
-                daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
-                adherencePercent = adherence,
-                weeksSincePhaseStart = weeksSincePhaseStart,
-                weightTrendKgPerWeek = weightTrend,
-                waistTrendCmPerWeek = waistTrend,
-                performanceTrend = trendCalculator.performanceTrend(performancePoints),
-                recoveryTrend = trendCalculator.recoveryTrend(recoveryPoints),
-            ),
+        val adjustmentInput = AdjustmentInput(
+            daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
+            adherencePercent = adherence,
+            weeksSincePhaseStart = weeksSincePhaseStart,
+            weightTrendKgPerWeek = weightTrend,
+            waistTrendCmPerWeek = waistTrend,
+            performanceTrend = trendCalculator.performanceTrend(performancePoints),
+            recoveryTrend = trendCalculator.recoveryTrend(recoveryPoints),
         )
+        val result = cachedEngine.evaluate(adjustmentInput)
 
         val last7DaysCalories = (0..6).map { offset ->
             val date = last7Start.plusDays(offset.toLong())
@@ -200,6 +236,7 @@ class DashboardViewModel(
             inZoneDays7 = inZoneDays7,
             motivationalMessage = todayMessage,
             result = result,
+            adjustmentInput = adjustmentInput,
         )
     }
 

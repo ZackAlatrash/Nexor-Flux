@@ -46,6 +46,7 @@ enum class TopLevelDestination(
     Home("home", "Home"),
     Body("body", "Body"),
     Progress("progress", "Progress"),
+    Coach("coach", "Coach"),
     More("more", "More"),
 }
 
@@ -142,6 +143,15 @@ fun AppNavGraph(
             ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
         }
         composable(
+            route = TopLevelDestination.Coach.route,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
+            com.zack.recomptracker.ui.coach.CoachScreen(
+                viewModel = viewModel<com.zack.recomptracker.ui.coach.CoachViewModel>(factory = factory),
+            )
+        }
+        composable(
             route = Routes.BodyHistory,
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
@@ -194,10 +204,12 @@ fun AppNavGraph(
             exitTransition  = { tabExit },
         ) {
             MoreScreen(
-                viewModel      = viewModel<MoreViewModel>(factory = factory),
-                onStatsClick   = { navController.navigate(Routes.Stats) },
-                onChartsClick  = { navController.navigate(Routes.Charts) },
-                onPlanClick    = { navController.navigate(Routes.Plan) },
+                viewModel       = viewModel<MoreViewModel>(factory = factory),
+                onStatsClick    = { navController.navigate(Routes.Stats) },
+                onChartsClick   = { navController.navigate(Routes.Charts) },
+                onPlanClick     = { navController.navigate(Routes.Plan) },
+                onProgressClick = { navController.navigate(TopLevelDestination.Progress.route) },
+                onSettingsClick = { navController.navigate(Routes.Settings) },
             )
         }
         composable(

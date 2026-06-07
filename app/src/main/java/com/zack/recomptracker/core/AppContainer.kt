@@ -18,8 +18,19 @@ import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.CoachCoordinator
+import com.zack.recomptracker.ai.CoachToolExecutor
+import com.zack.recomptracker.ai.GemmaServiceHolder
+import com.zack.recomptracker.ai.GemmaCoachCoordinator
+import com.zack.recomptracker.ai.GemmaInsightCoordinator
 import com.zack.recomptracker.data.preferences.UiPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.ui.coach.CoachViewModel
 import com.zack.recomptracker.ui.body.BodyEditViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
@@ -40,6 +51,7 @@ class AppContainer(context: Context) {
     val database: RecompDatabase get() = _database
     private val appPreferences = AppPreferences(context.applicationContext)
     val uiPreferences = UiPreferences(context.applicationContext)
+    val userProfilePreferencesStore = UserProfilePreferencesStore(context.applicationContext)
     val planRepository = PlanRepository(appPreferences)
     val logRepository = LogRepository(
         dailyLogDao = database.dailyLogDao(),
@@ -59,6 +71,28 @@ class AppContainer(context: Context) {
     val adjustmentEngine = AdjustmentEngine()
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val gemmaServiceHolder = GemmaServiceHolder(context)
+    val aiInsightCoordinator: AiInsightCoordinator = GemmaInsightCoordinator(
+        context = context,
+        aiEnabledFlow = uiPreferences.aiInsightsEnabled,
+        scope = appScope,
+        serviceHolder = gemmaServiceHolder,
+        uiPreferences = uiPreferences,
+    )
+    val coachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
+        serviceHolder = gemmaServiceHolder,
+        insightCoordinator = aiInsightCoordinator,
+        toolExecutor = CoachToolExecutor(
+            logRepository = logRepository,
+            planRepository = planRepository,
+            dateProvider = dateProvider,
+        ),
+        planRepository = planRepository,
+        userProfileStore = userProfilePreferencesStore,
+        dateProvider = dateProvider,
+        scope = appScope,
+    )
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)
 }
 
@@ -86,6 +120,7 @@ private class AppViewModelFactory(
                 trendCalculator = container.trendCalculator,
                 adherenceCalculator = container.adherenceCalculator,
                 adjustmentEngine = container.adjustmentEngine,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             ProgressViewModel::class.java -> ProgressViewModel(
                 logRepository = container.logRepository,
@@ -105,6 +140,7 @@ private class AppViewModelFactory(
                 hcRepository = container.healthConnectRepository,
                 foodCatalogRepository = container.foodCatalogRepository,
                 personalFoodRepository = container.personalFoodRepository,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 logRepository = container.logRepository,
@@ -130,6 +166,10 @@ private class AppViewModelFactory(
                 uiPreferences = container.uiPreferences,
                 hcRepository = container.healthConnectRepository,
                 backupRepository = container.backupRepository,
+                aiInsightCoordinator = container.aiInsightCoordinator,
+            )
+            CoachViewModel::class.java -> CoachViewModel(
+                coachCoordinator = container.coachCoordinator,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

@@ -46,6 +46,41 @@ class LogRepository(
         }
     }
 
+    /**
+     * One-shot suspend read for a single day — suitable for tool queries that don't need
+     * live updates. Avoids the combine(Flow, Flow).first() timing hazard where both inner
+     * flows must emit before the combined flow fires its first value.
+     */
+    suspend fun getDay(date: LocalDate): DayLog {
+        val storedDate = date.toString()
+        val log = dailyLogDao.getByDate(storedDate)
+        val meals = mealEntryDao.getForDate(storedDate)
+        return DayLog(date = date, dailyLog = log, meals = meals, totals = meals.macroTotals())
+    }
+
+    /**
+     * One-shot suspend read for calorie totals across a date range.
+     * Same rationale as [getDay] — avoids Flow.first() on a mapped single flow.
+     */
+    suspend fun getWeekCalories(start: LocalDate, end: LocalDate): Map<LocalDate, Int> {
+        val entries = mealEntryDao.getBetween(start.toString(), end.toString())
+        return entries
+            .groupBy { LocalDate.parse(it.date) }
+            .mapValues { (_, dayEntries) -> dayEntries.sumOf { it.calories } }
+    }
+
+    /**
+     * One-shot read of per-day macro totals across a date range — used by the AI coach's
+     * get_weekly_trends tool so it can answer protein/carb/fat questions without 7 separate
+     * get_today_summary calls.
+     */
+    suspend fun getWeekMacros(start: LocalDate, end: LocalDate): Map<LocalDate, MacroTotals> {
+        val entries = mealEntryDao.getBetween(start.toString(), end.toString())
+        return entries
+            .groupBy { LocalDate.parse(it.date) }
+            .mapValues { (_, dayEntries) -> dayEntries.macroTotals() }
+    }
+
     fun observeDailyLogs(): Flow<List<DailyLogEntity>> = dailyLogDao.observeAll()
     fun observeMealEntries(): Flow<List<MealEntryEntity>> = mealEntryDao.observeAll()
     fun observeMealEntriesSince(startDate: LocalDate): Flow<List<MealEntryEntity>> =
@@ -163,6 +198,10 @@ class LogRepository(
     }
 
     fun observeSlots(): Flow<List<MealSlotEntity>> = mealSlotDao.observeAll()
+
+    suspend fun getSlots(): List<MealSlotEntity> = mealSlotDao.getAll()
+
+    suspend fun getSavedFoods(): List<SavedFoodEntity> = savedFoodDao.getAll()
 
     suspend fun getMealEntry(id: Long): MealEntryEntity? = mealEntryDao.getById(id)
 

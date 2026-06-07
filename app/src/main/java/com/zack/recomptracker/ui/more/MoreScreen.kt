@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -38,12 +39,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.AiBadge
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.theme.Violet400
@@ -56,9 +63,13 @@ fun MoreScreen(
     onStatsClick: () -> Unit,
     onChartsClick: () -> Unit,
     onPlanClick: () -> Unit,
+    onProgressClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
+    val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -128,6 +139,13 @@ fun MoreScreen(
                         title = "Charts",
                         detail = "Weight, waist, nutrition and lifts",
                         onClick = onChartsClick,
+                        showDivider = true,
+                    )
+                    MenuRow(
+                        emoji = "📉",
+                        title = "Progress",
+                        detail = "Trends and adherence history",
+                        onClick = onProgressClick,
                         showDivider = false,
                     )
                 }
@@ -169,6 +187,13 @@ fun MoreScreen(
             item { SectionLabel("App") }
             item {
                 MenuCard {
+                    MenuRow(
+                        emoji = "⚙️",
+                        title = "Settings",
+                        detail = "Profile, backup, food catalog and more",
+                        onClick = onSettingsClick,
+                        showDivider = true,
+                    )
                     SettingRow(
                         emoji = "❤️",
                         title = "Health Connect",
@@ -202,6 +227,20 @@ fun MoreScreen(
                 }
             }
 
+            // AI model card — only when AI Insights is on
+            if (aiState != AiInsightState.Disabled) {
+                item {
+                    AiModelSection(
+                        aiState = aiState,
+                        selectedModel = selectedModel,
+                        onModelSelect = viewModel::setModel,
+                        onDownload = viewModel::requestModelDownload,
+                        onCancel = viewModel::cancelDownload,
+                        onDelete = viewModel::deleteModel,
+                    )
+                }
+            }
+
             // ── Data ─────────────────────────────────────────────────────────
             item { SectionLabel("Data") }
             item {
@@ -232,6 +271,207 @@ fun MoreScreen(
                 }
             }
         }
+    }
+}
+
+// ── AI Model Section ──────────────────────────────────────────────────────────
+
+@Composable
+private fun AiModelSection(
+    aiState: AiInsightState,
+    selectedModel: ModelVariant,
+    onModelSelect: (ModelVariant) -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    AiInsightCard(borderMode = AiBorderMode.Static) {
+        AiModelHeader()
+        Spacer(Modifier.height(10.dp))
+
+        // Model selector — disabled while a download/verify is in progress for the other model.
+        val canSwitch = aiState !is AiInsightState.Downloading && aiState != AiInsightState.ModelVerifying
+        ModelVariantSelector(
+            selected = selectedModel,
+            onSelect = onModelSelect,
+            enabled = canSwitch,
+        )
+
+        when (aiState) {
+            AiInsightState.Disabled -> Unit
+
+            AiInsightState.ModelMissing -> {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Download the on-device model to get AI explanations on the Stats screen.",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    lineHeight = 17.sp,
+                )
+                Text(
+                    "~${selectedModel.displaySizeGb} · Wi-Fi recommended",
+                    fontSize = 10.sp,
+                    color = TextFaint,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.Button(onClick = onDownload) {
+                    Text("Download Model", fontSize = 13.sp)
+                }
+            }
+
+            is AiInsightState.Downloading -> {
+                Spacer(Modifier.height(10.dp))
+                val progress = aiState.progress
+                if (progress != null) {
+                    Text(
+                        "${"%.1f".format(progress * selectedModel.displaySizeGbFloat)} GB of ${selectedModel.displaySizeGb}",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text("Downloading…", fontSize = 11.sp, color = TextMuted)
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(onClick = onCancel) {
+                    Text("Cancel", fontSize = 12.sp)
+                }
+            }
+
+            AiInsightState.DownloadFailed -> {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Download failed — check your connection and try again.",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                )
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.material3.Button(onClick = onDownload) {
+                    Text("Retry Download", fontSize = 13.sp)
+                }
+            }
+
+            AiInsightState.ModelVerifying -> {
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text("Verifying download…", fontSize = 12.sp, color = TextMuted)
+                }
+            }
+
+            AiInsightState.ModelReady,
+            AiInsightState.LoadingModel,
+            is AiInsightState.Generating,
+            is AiInsightState.Ready,
+            is AiInsightState.Error -> {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4ADE80)),
+                        )
+                        Text(
+                            "Model ready · ${selectedModel.displaySizeGb}",
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                        )
+                    }
+                    androidx.compose.material3.TextButton(onClick = onDelete) {
+                        Text("Delete", fontSize = 12.sp, color = Color(0xFFFC8181))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModelVariantSelector(
+    selected: ModelVariant,
+    onSelect: (ModelVariant) -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ModelVariant.entries.forEach { variant ->
+            val isActive = selected == variant
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isActive) Color(0x288B5CF6) else Color(0x0FFFFFFF))
+                    .border(
+                        1.dp,
+                        if (isActive) Color(0x598B5CF6) else Color(0x14FFFFFF),
+                        RoundedCornerShape(10.dp),
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = enabled && !isActive,
+                        onClick = { onSelect(variant) },
+                    )
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = variant.displayName,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isActive) Violet300 else Color.White.copy(alpha = if (enabled) 0.5f else 0.3f),
+                    )
+                    Text(
+                        text = variant.displaySizeGb,
+                        fontSize = 10.sp,
+                        color = if (isActive) Violet400 else TextFaint,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiModelHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "AI MODEL",
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextFaint,
+            letterSpacing = 0.14.sp,
+        )
+        AiBadge()
     }
 }
 

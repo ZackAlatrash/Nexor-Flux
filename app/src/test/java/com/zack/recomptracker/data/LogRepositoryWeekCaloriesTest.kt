@@ -37,6 +37,8 @@ class LogRepositoryWeekCaloriesTest {
             override suspend fun getForDate(date: String) = entries.filter { it.date == date }
             override fun observeBetween(s: String, e: String): Flow<List<MealEntryEntity>> =
                 flowOf(entries.filter { it.date in s..e })
+            override suspend fun getBetween(startDate: String, endDate: String) =
+                entries.filter { it.date in startDate..endDate }
             override fun observeAll() = flowOf(entries)
             override fun observeFoodLibraryEntries() = flowOf(emptyList<MealEntryEntity>())
             override suspend fun getAll() = entries

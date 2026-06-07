@@ -5,30 +5,35 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
-import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
-import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
-import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,73 +45,80 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.GemmaInsightService
 import com.zack.recomptracker.data.health.HealthConnectAvailability
+import com.zack.recomptracker.data.preferences.ActivityLevel
+import com.zack.recomptracker.data.preferences.BiologicalSex
+import com.zack.recomptracker.data.preferences.FitnessGoal
+import com.zack.recomptracker.data.preferences.UserProfilePreferences
+import com.zack.recomptracker.data.preferences.displayName
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 import com.zack.recomptracker.domain.foodimport.identity
+import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.ConfirmDialog
+import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
-import com.zack.recomptracker.ui.component.SectionCard
-import com.zack.recomptracker.ui.component.ToggleRow
-import com.zack.recomptracker.ui.theme.RecompTrackerTheme
+import com.zack.recomptracker.ui.component.ScoreStepper
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.VioletToggle
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import com.zack.recomptracker.ui.theme.CardBorder
+import com.zack.recomptracker.ui.theme.CardSurface
+import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.CornerSmall
+import com.zack.recomptracker.ui.theme.TextFaint
+import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.Violet300
+import com.zack.recomptracker.ui.theme.Violet400
 import java.time.LocalDate
 
+private val AmbientOrb1 = Brush.radialGradient(listOf(Color(0x268B5CF6), Color.Transparent))
+private val AmbientOrb2 = Brush.radialGradient(listOf(Color(0x14a78bfa), Color.Transparent))
 private val HealthConnectGreen = Color(0xFF34D399)
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val profile by viewModel.profileState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri != null) viewModel.exportToUri(context, uri)
-    }
+    ) { uri -> if (uri != null) viewModel.exportToUri(context, uri) }
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) viewModel.importFromUri(context, uri)
-    }
+    ) { uri -> if (uri != null) viewModel.importFromUri(context, uri) }
     val personalFoodsExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri != null) viewModel.exportPersonalFoodsToUri(context, uri)
-    }
+    ) { uri -> if (uri != null) viewModel.exportPersonalFoodsToUri(context, uri) }
     val personalFoodsImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) viewModel.importPersonalFoodsFromUri(context, uri)
-    }
+    ) { uri -> if (uri != null) viewModel.importPersonalFoodsFromUri(context, uri) }
     val nevoImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) viewModel.importNevoFromUri(context, uri)
-    }
+    ) { uri -> if (uri != null) viewModel.importNevoFromUri(context, uri) }
     val samsungFoodExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) viewModel.scanSamsungHealthFoodExport(context, uri)
-    }
+    ) { uri -> if (uri != null) viewModel.scanSamsungHealthFoodExport(context, uri) }
     val hcPermissionLauncher = rememberLauncherForActivityResult(
         contract = viewModel.hcPermissionsContract,
-    ) {
-        // The returned granted-set is unreliable; the ViewModel re-queries the
-        // authoritative permission state, so the callback payload is ignored.
-        viewModel.onPermissionsResult()
-    }
+    ) { viewModel.onPermissionsResult() }
     val nutritionPermissionLauncher = rememberLauncherForActivityResult(
         contract = viewModel.hcPermissionsContract,
-    ) {
-        viewModel.onNutritionPermissionsResult()
-    }
+    ) { viewModel.onNutritionPermissionsResult() }
 
     var showResetLogsConfirm by remember { mutableStateOf(false) }
     var showResetAllConfirm by remember { mutableStateOf(false) }
@@ -126,129 +138,175 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         }
     }
 
-    val gemma = GemmaInsightService().availability()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .size(320.dp)
+                .offset(x = (-80).dp, y = (-60).dp)
+                .background(AmbientOrb1),
+        )
+        Box(
+            modifier = Modifier
+                .size(240.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = 60.dp, y = (-180).dp)
+                .background(AmbientOrb2),
+        )
 
-    LazyColumn(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text("Local-only controls")
-                MessageText(state.message, state.messageKind)
-            }
-        }
-        item {
-            SectionCard("Backup") {
-                LiquidPrimaryButton(
-                    text = "Export JSON backup",
-                    onClick = { exportLauncher.launch("recomp-tracker-${LocalDate.now()}.json") },
-                    enabled = !state.busy,
-                )
-                LiquidSecondaryButton(
-                    text = "Import JSON backup",
-                    onClick = { showImportConfirm = true },
-                    enabled = !state.busy,
-                )
-                LiquidSecondaryButton(
-                    text = "Export personal foods JSON",
-                    onClick = { personalFoodsExportLauncher.launch("recomp-tracker-personal-foods-${LocalDate.now()}.json") },
-                    enabled = !state.busy,
-                )
-                LiquidSecondaryButton(
-                    text = "Import personal foods JSON",
-                    onClick = { personalFoodsImportLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
-                    enabled = !state.busy,
-                )
-            }
-        }
-        item {
-            SectionCard("Dutch food catalog") {
-                Text("Import an official NEVO CSV export downloaded after accepting RIVM's conditions.")
-                LiquidPrimaryButton(
-                    text = if (state.nevoSourceVersion == null) "Import NEVO CSV" else "Replace NEVO CSV",
-                    onClick = { nevoImportLauncher.launch(arrayOf("text/csv", "text/*", "*/*")) },
-                    enabled = !state.busy,
-                )
-                if (state.nevoSourceVersion != null) {
+        LazyColumn(
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 4.dp,
+                bottom = FloatingNavHeight + 16.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 18.dp),
+                ) {
                     Text(
-                        "Based on data from NEVO online version ${state.nevoSourceVersion}, RIVM, Bilthoven",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "Settings",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        letterSpacing = (-0.8).sp,
+                    )
+                    if (state.message != null) {
+                        Spacer(Modifier.height(4.dp))
+                        MessageText(state.message, state.messageKind)
+                    }
+                }
+            }
+
+            item { SectionLabel("My Profile") }
+            item {
+                UserProfileSection(profile = profile, onProfileChange = viewModel::saveProfile)
+            }
+
+            item { SectionLabel("Backup") }
+            item {
+                SettingsCard {
+                    LiquidPrimaryButton(
+                        text = "Export JSON backup",
+                        onClick = { exportLauncher.launch("recomp-tracker-${LocalDate.now()}.json") },
+                        enabled = !state.busy,
                     )
                     LiquidSecondaryButton(
-                        text = "Remove NEVO catalog",
-                        onClick = { showRemoveNevoConfirm = true },
+                        text = "Import JSON backup",
+                        onClick = { showImportConfirm = true },
+                        enabled = !state.busy,
+                    )
+                    CardDivider()
+                    LiquidSecondaryButton(
+                        text = "Export personal foods",
+                        onClick = { personalFoodsExportLauncher.launch("recomp-tracker-personal-foods-${LocalDate.now()}.json") },
+                        enabled = !state.busy,
+                    )
+                    LiquidSecondaryButton(
+                        text = "Import personal foods",
+                        onClick = { personalFoodsImportLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
                         enabled = !state.busy,
                     )
                 }
             }
-        }
-        item {
-            SectionCard("Samsung Health food import") {
-                Text(
-                    "In Samsung Health: Profile → Settings → Download personal data. " +
-                        "Once downloaded, pick the ZIP file directly — or extract it and pick " +
-                        "\"com.samsung.health.food_info.T.csv\". " +
-                        "Foods are normalised to per-100 g and added to your personal library.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                LiquidGlassButton(
-                    onClick = { samsungFoodExportLauncher.launch(arrayOf("*/*")) },
-                    enabled = !state.historicalFoodBusy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (state.historicalFoodBusy) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
+
+            item { SectionLabel("Dutch food catalog") }
+            item {
+                SettingsCard {
+                    Text(
+                        "Import an official NEVO CSV export downloaded after accepting RIVM's conditions.",
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        lineHeight = 17.sp,
+                    )
+                    LiquidPrimaryButton(
+                        text = if (state.nevoSourceVersion == null) "Import NEVO CSV" else "Replace NEVO CSV",
+                        onClick = { nevoImportLauncher.launch(arrayOf("text/csv", "text/*", "*/*")) },
+                        enabled = !state.busy,
+                    )
+                    if (state.nevoSourceVersion != null) {
+                        Text(
+                            "Based on NEVO online v${state.nevoSourceVersion}, RIVM, Bilthoven",
+                            fontSize = 11.sp,
+                            color = TextFaint,
+                        )
+                        LiquidSecondaryButton(
+                            text = "Remove NEVO catalog",
+                            onClick = { showRemoveNevoConfirm = true },
+                            enabled = !state.busy,
+                        )
                     }
-                    Text("Pick food_info CSV")
                 }
             }
-        }
-        item {
-            HealthConnectSection(
-                availability = state.healthConnectAvailability,
-                enabled = state.healthConnectEnabled,
-                hasPermissions = state.healthConnectHasPermissions,
-                syncing = state.healthConnectSyncing,
-                message = state.healthConnectMessage,
-                messageKind = state.healthConnectMessageKind,
-                onToggle = viewModel::onHealthConnectToggled,
-                onSyncNow = viewModel::syncNow,
-                importingFoods = state.historicalFoodBusy,
-                onImportFoods = viewModel::startHistoricalFoodImport,
-                onInstall = {
-                    val marketUri = Uri.parse("market://details?id=com.google.android.apps.healthdata")
-                    val webUri = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, marketUri))
-                    } catch (e: android.content.ActivityNotFoundException) {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+
+            item { SectionLabel("Samsung Health import") }
+            item {
+                SettingsCard {
+                    Text(
+                        "In Samsung Health: Profile → Settings → Download personal data. " +
+                            "Pick the ZIP file or extract and choose \"com.samsung.health.food_info.T.csv\". " +
+                            "Foods are normalised to per-100 g and added to your personal library.",
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        lineHeight = 17.sp,
+                    )
+                    LiquidGlassButton(
+                        onClick = { samsungFoodExportLauncher.launch(arrayOf("*/*")) },
+                        enabled = !state.historicalFoodBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (state.historicalFoodBusy) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text("Pick food_info CSV")
                     }
-                },
-            )
-        }
-        item {
-            SectionCard("Reset") {
-                LiquidSecondaryButton(
-                    text = "Reset logs only",
-                    onClick = { showResetLogsConfirm = true },
-                    enabled = !state.busy,
-                )
-                LiquidSecondaryButton(
-                    text = "Reset all local data",
-                    onClick = { showResetAllConfirm = true },
-                    enabled = !state.busy,
+                }
+            }
+
+            item { SectionLabel("Integrations") }
+            item {
+                HealthConnectSection(
+                    availability = state.healthConnectAvailability,
+                    enabled = state.healthConnectEnabled,
+                    hasPermissions = state.healthConnectHasPermissions,
+                    syncing = state.healthConnectSyncing,
+                    message = state.healthConnectMessage,
+                    messageKind = state.healthConnectMessageKind,
+                    onToggle = viewModel::onHealthConnectToggled,
+                    onSyncNow = viewModel::syncNow,
+                    importingFoods = state.historicalFoodBusy,
+                    onImportFoods = viewModel::startHistoricalFoodImport,
+                    onInstall = {
+                        val marketUri = Uri.parse("market://details?id=com.google.android.apps.healthdata")
+                        val webUri = Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, marketUri))
+                        } catch (e: android.content.ActivityNotFoundException) {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                        }
+                    },
                 )
             }
-        }
-        item {
-            SectionCard("Gemma status") {
-                Text(if (gemma.available) "Available" else "Not enabled")
-                Text(gemma.reason)
+
+            item { SectionLabel("Danger zone") }
+            item {
+                SettingsCard {
+                    LiquidSecondaryButton(
+                        text = "Reset logs only",
+                        onClick = { showResetLogsConfirm = true },
+                        enabled = !state.busy,
+                    )
+                    LiquidSecondaryButton(
+                        text = "Reset all local data",
+                        onClick = { showResetAllConfirm = true },
+                        enabled = !state.busy,
+                    )
+                }
             }
         }
     }
@@ -263,7 +321,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             onDismiss = { showResetLogsConfirm = false },
         )
     }
-
     if (showResetAllConfirm) {
         ConfirmDialog(
             title = "Delete everything?",
@@ -274,7 +331,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             onDismiss = { showResetAllConfirm = false },
         )
     }
-
     if (showRemoveNevoConfirm) {
         ConfirmDialog(
             title = "Remove NEVO catalog?",
@@ -285,7 +341,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             onDismiss = { showRemoveNevoConfirm = false },
         )
     }
-
     if (showImportConfirm) {
         ConfirmDialog(
             title = "Import backup?",
@@ -299,7 +354,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             onDismiss = { showImportConfirm = false },
         )
     }
-
     if (state.historicalFoodCandidates.isNotEmpty()) {
         HistoricalFoodReviewDialog(
             candidates = state.historicalFoodCandidates,
@@ -310,6 +364,123 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         )
     }
 }
+
+// ── User Profile Section ──────────────────────────────────────────────────────
+
+@Composable
+private fun UserProfileSection(
+    profile: UserProfilePreferences,
+    onProfileChange: (UserProfilePreferences) -> Unit,
+) {
+    FrostedCard {
+        // ── Goal ─────────────────────────────────────────────────────────────
+        SectionLabel("Goal")
+        Spacer(Modifier.height(6.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            FitnessGoal.entries.forEach { g ->
+                ProfileOptionRow(
+                    label = g.displayName(),
+                    subtitle = g.shortDesc(),
+                    selected = profile.goal == g,
+                    onClick = {
+                        onProfileChange(profile.copy(goal = if (profile.goal == g) null else g))
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Biological sex ────────────────────────────────────────────────────
+        SectionLabel("Biological sex")
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BiologicalSex.entries.forEach { s ->
+                SexChip(
+                    label = s.displayName(),
+                    selected = profile.biologicalSex == s,
+                    onClick = {
+                        onProfileChange(profile.copy(biologicalSex = if (profile.biologicalSex == s) null else s))
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Activity level ────────────────────────────────────────────────────
+        SectionLabel("Activity level")
+        Spacer(Modifier.height(6.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            ActivityLevel.entries.forEach { a ->
+                ProfileOptionRow(
+                    label = a.displayName(),
+                    subtitle = a.shortDesc(),
+                    selected = profile.activityLevel == a,
+                    onClick = {
+                        onProfileChange(profile.copy(activityLevel = if (profile.activityLevel == a) null else a))
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Gym sessions ──────────────────────────────────────────────────────
+        ScoreStepper(
+            label = "Gym sessions / week",
+            value = profile.weeklyGymSessions ?: 0,
+            onValueChange = { onProfileChange(profile.copy(weeklyGymSessions = it)) },
+            range = 0..7,
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Height & Age ──────────────────────────────────────────────────────
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassInputField(
+                label = "Height",
+                value = profile.heightCm?.toString() ?: "",
+                onValueChange = { raw ->
+                    onProfileChange(profile.copy(heightCm = raw.filter { it.isDigit() }.take(3).toIntOrNull()))
+                },
+                unit = "cm",
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.weight(1f),
+            )
+            GlassInputField(
+                label = "Age",
+                value = profile.ageYears?.toString() ?: "",
+                onValueChange = { raw ->
+                    onProfileChange(profile.copy(ageYears = raw.filter { it.isDigit() }.take(3).toIntOrNull()))
+                },
+                unit = "yrs",
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+private fun FitnessGoal.shortDesc(): String = when (this) {
+    FitnessGoal.AGGRESSIVE_CUT  -> "~500+ kcal deficit"
+    FitnessGoal.MODERATE_CUT    -> "~300–500 kcal deficit"
+    FitnessGoal.MINI_CUT        -> "~150–200 kcal deficit"
+    FitnessGoal.RECOMP          -> "Maintain and recompose"
+    FitnessGoal.LEAN_BULK       -> "~100–200 kcal surplus"
+    FitnessGoal.MODERATE_BULK   -> "~300–500 kcal surplus"
+    FitnessGoal.AGGRESSIVE_BULK -> "~500+ kcal surplus"
+}
+
+private fun ActivityLevel.shortDesc(): String = when (this) {
+    ActivityLevel.SEDENTARY          -> "Desk job, little exercise"
+    ActivityLevel.LIGHTLY_ACTIVE     -> "1–3 workout days / week"
+    ActivityLevel.MODERATELY_ACTIVE  -> "3–5 workout days / week"
+    ActivityLevel.VERY_ACTIVE        -> "6–7 hard workout days / week"
+}
+
+// ── Health Connect Section ────────────────────────────────────────────────────
 
 @Composable
 private fun HealthConnectSection(
@@ -326,36 +497,47 @@ private fun HealthConnectSection(
     onInstall: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SectionCard(modifier = modifier) {
+    SettingsCard(modifier = modifier) {
+        // Header with icon
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
-                imageVector = Icons.Default.MonitorHeart,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0x1A34D399))
+                    .border(1.dp, Color(0x3334D399), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MonitorHeart,
+                    contentDescription = null,
+                    tint = HealthConnectGreen,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Column {
                 Text(
                     "Health Connect",
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
                 )
                 Text(
                     "Auto-fill steps, weight & sleep",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    color = TextMuted,
                 )
             }
         }
 
+        CardDivider()
+
         when (availability) {
             HealthConnectAvailability.NotInstalled -> {
-                StatusRow(
-                    dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    text = "Health Connect isn't installed on this device.",
-                )
+                HcStatusRow(dotColor = TextMuted, text = "Health Connect isn't installed on this device.")
                 LiquidGlassButton(
                     onClick = onInstall,
                     modifier = Modifier.fillMaxWidth(),
@@ -367,27 +549,23 @@ private fun HealthConnectSection(
             }
 
             HealthConnectAvailability.NotSupported -> {
-                StatusRow(
-                    dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    text = "Health Connect isn't supported on this device.",
-                )
+                HcStatusRow(dotColor = TextMuted, text = "Health Connect isn't supported on this device.")
             }
 
             HealthConnectAvailability.Available -> {
-                ToggleRow(
+                VioletToggle(
                     label = "Sync automatically",
                     checked = enabled,
                     onCheckedChange = onToggle,
                 )
+
                 val (dotColor, statusText) = when {
-                    enabled && hasPermissions ->
-                        HealthConnectGreen to "Connected"
-                    enabled && !hasPermissions ->
-                        MaterialTheme.colorScheme.error to "Permission needed — tap to reconnect"
-                    else ->
-                        MaterialTheme.colorScheme.onSurfaceVariant to "Not connected"
+                    enabled && hasPermissions  -> HealthConnectGreen to "Connected"
+                    enabled && !hasPermissions -> Color(0xFFfb7185) to "Permission needed — tap toggle to reconnect"
+                    else                       -> TextMuted to "Not connected"
                 }
-                StatusRow(dotColor = dotColor, text = statusText)
+                HcStatusRow(dotColor = dotColor, text = statusText)
+
                 if (enabled && hasPermissions) {
                     LiquidGlassButton(
                         onClick = onSyncNow,
@@ -405,6 +583,7 @@ private fun HealthConnectSection(
                         }
                     }
                 }
+
                 LiquidSecondaryButton(
                     text = if (importingFoods) "Scanning food history…" else "Import foods from Health Connect",
                     onClick = onImportFoods,
@@ -416,6 +595,8 @@ private fun HealthConnectSection(
         MessageText(message, messageKind)
     }
 }
+
+// ── Historical food review dialog ─────────────────────────────────────────────
 
 @Composable
 private fun HistoricalFoodReviewDialog(
@@ -431,11 +612,12 @@ private fun HistoricalFoodReviewDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100g baseline.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100 g baseline.",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    lineHeight = 17.sp,
                 )
-                LazyColumn(
+                androidx.compose.foundation.lazy.LazyColumn(
                     modifier = Modifier.heightIn(max = 360.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -450,11 +632,11 @@ private fun HistoricalFoodReviewDialog(
                                 onCheckedChange = { onToggle(candidate) },
                             )
                             Column {
-                                Text(candidate.name, fontWeight = FontWeight.SemiBold)
+                                Text(candidate.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 Text(
                                     "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    color = TextMuted,
                                 )
                             }
                         }
@@ -463,9 +645,7 @@ private fun HistoricalFoodReviewDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onImport, enabled = selected.isNotEmpty()) {
-                Text("Import selected")
-            }
+            TextButton(onClick = onImport, enabled = selected.isNotEmpty()) { Text("Import selected") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -473,81 +653,132 @@ private fun HistoricalFoodReviewDialog(
     )
 }
 
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
 @Composable
-private fun StatusRow(
-    dotColor: Color,
-    text: String,
+private fun SettingsCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerCard))
+            .background(CardSurface)
+            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun CardDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(Color(0x0DFFFFFF)),
+    )
+}
+
+@Composable
+private fun ProfileOptionRow(
+    label: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val bgColor = if (selected) Color(0x1A8B5CF6) else Color.Transparent
+    val borderColor = if (selected) Color(0x4D8B5CF6) else Color(0x0DFFFFFF)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerSmall))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(CornerSmall))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (selected) Color.White else Color.White.copy(alpha = 0.75f),
+            )
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = TextMuted,
+            )
+        }
+        if (selected) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Violet400),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SexChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val bgColor = if (selected) Color(0x1A8B5CF6) else Color.Transparent
+    val borderColor = if (selected) Color(0x4D8B5CF6) else Color(0x12FFFFFF)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(CornerSmall))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(CornerSmall))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (selected) Violet300 else Color.White.copy(alpha = 0.5f),
+        )
+    }
+}
+
+@Composable
+private fun HcStatusRow(dotColor: Color, text: String) {
     Row(
-        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(7.dp)
                 .clip(CircleShape)
                 .background(dotColor),
         )
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun HealthConnectSectionPreview() {
-    RecompTrackerTheme {
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            HealthConnectSection(
-                availability = HealthConnectAvailability.Available,
-                enabled = true, hasPermissions = true, syncing = false,
-                message = "Synced from Health Connect.",
-                messageKind = MessageKind.SUCCESS,
-                importingFoods = false,
-                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
-            )
-            HealthConnectSection(
-                availability = HealthConnectAvailability.Available,
-                enabled = true, hasPermissions = true, syncing = true,
-                message = "Connected. Syncing…",
-                messageKind = MessageKind.SUCCESS,
-                importingFoods = false,
-                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
-            )
-            HealthConnectSection(
-                availability = HealthConnectAvailability.Available,
-                enabled = true, hasPermissions = false, syncing = false,
-                message = "Permission wasn't granted. Tap the toggle to try again.",
-                messageKind = MessageKind.ERROR,
-                importingFoods = false,
-                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
-            )
-            HealthConnectSection(
-                availability = HealthConnectAvailability.Available,
-                enabled = false, hasPermissions = false, syncing = false,
-                message = null,
-                messageKind = MessageKind.INFO,
-                importingFoods = false,
-                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
-            )
-            HealthConnectSection(
-                availability = HealthConnectAvailability.NotInstalled,
-                enabled = false, hasPermissions = false, syncing = false,
-                message = null,
-                messageKind = MessageKind.INFO,
-                importingFoods = false,
-                onToggle = {}, onSyncNow = {}, onImportFoods = {}, onInstall = {},
-            )
-        }
+        Text(text = text, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
     }
 }

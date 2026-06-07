@@ -4,14 +4,17 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.repository.BackupRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,9 +32,13 @@ class MoreViewModel(
     private val uiPreferences: UiPreferences,
     private val hcRepository: HealthConnectRepository,
     private val backupRepository: BackupRepository,
+    private val aiInsightCoordinator: AiInsightCoordinator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MoreUiState())
     val uiState: StateFlow<MoreUiState> = _uiState.asStateFlow()
+
+    val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
+    val selectedModel: StateFlow<ModelVariant> = aiInsightCoordinator.selectedModel
 
     init {
         val hcAvailable = hcRepository.availability() == HealthConnectAvailability.Available
@@ -60,6 +67,11 @@ class MoreViewModel(
     fun setAiInsights(enabled: Boolean) {
         viewModelScope.launch { uiPreferences.setAiInsights(enabled) }
     }
+
+    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
+    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
+    fun deleteModel() = aiInsightCoordinator.deleteModel()
+    fun setModel(variant: ModelVariant) = aiInsightCoordinator.setSelectedModel(variant)
 
     fun exportToUri(context: Context, uri: Uri) {
         viewModelScope.launch {

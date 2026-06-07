@@ -3,15 +3,18 @@ package com.zack.recomptracker.ui.foodlibrary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.RecipeRepository
 import com.zack.recomptracker.domain.food.FoodMacros
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import com.zack.recomptracker.ui.component.MessageKind
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -74,6 +77,9 @@ data class FoodLibraryUiState(
     val quickAddFat: String = "",
     val offSearchResults: List<com.zack.recomptracker.data.local.entity.SavedFoodEntity> = emptyList(),
     val offSearchLoading: Boolean = false,
+    val allRecipes: List<RecipeWithIngredients> = emptyList(),
+    val filteredRecipes: List<RecipeWithIngredients> = emptyList(),
+    val pickerMode: Boolean = false,
     // Pre-computed by the ViewModel whenever filtering inputs change — never computed
     // on the main thread during recomposition, preventing jank and ANR-style crashes.
     val filteredFoods: List<FoodLibraryItem> = emptyList(),
@@ -116,6 +122,7 @@ data class FoodLibraryUiState(
         return copy(
             filteredFoods = computeFilteredFoods(q),
             filteredMeals = allMeals.filter { q.isEmpty() || it.name.lowercase().contains(q) },
+            filteredRecipes = allRecipes.filter { q.isEmpty() || it.recipe.name.lowercase().contains(q) },
             recentFoods = recentEntries.map { e ->
                 SavedFoodEntity(
                     name = e.name,
@@ -197,6 +204,7 @@ class FoodLibraryViewModel(
     private val dateProvider: DateProvider,
     private val foodCatalogRepository: FoodCatalogRepository,
     private val barcodeRepository: com.zack.recomptracker.data.repository.BarcodeRepository,
+    private val recipeRepository: RecipeRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
@@ -205,13 +213,16 @@ class FoodLibraryViewModel(
     private val _loggedEvent = MutableSharedFlow<String>(replay = 0)
     val loggedEvent: SharedFlow<String> = _loggedEvent
 
+    private val _ingredientPickedEvent = MutableSharedFlow<RecipeIngredientEntity>(replay = 0)
+    val ingredientPickedEvent: SharedFlow<RecipeIngredientEntity> = _ingredientPickedEvent
+
     private var initialized = false
     private var logDate: LocalDate = dateProvider.today()
     private var offSearchJob: Job? = null
 
-    fun init(slotId: Long?, slotName: String, editEntryId: Long? = null, logDateStr: String = "") {
+    fun init(slotId: Long?, slotName: String, editEntryId: Long? = null, logDateStr: String = "", pickerMode: Boolean = false) {
         logDate = if (logDateStr.isNotEmpty()) LocalDate.parse(logDateStr) else dateProvider.today()
-        _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }) }
+        _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }, pickerMode = pickerMode) }
         if (editEntryId != null && _uiState.value.editingEntryId != editEntryId) {
             _uiState.update { it.copy(editingEntryId = editEntryId) }
             viewModelScope.launch {
@@ -250,6 +261,11 @@ class FoodLibraryViewModel(
         viewModelScope.launch {
             logRepository.observeRecentFoods().collect { recents ->
                 _uiState.update { it.copy(recentEntries = recents).withComputedFields() }
+            }
+        }
+        viewModelScope.launch {
+            recipeRepository.observeAll().collect { recipes ->
+                _uiState.update { it.copy(allRecipes = recipes).withComputedFields() }
             }
         }
     }
@@ -353,6 +369,28 @@ class FoodLibraryViewModel(
         }
         val servingName = food.householdServingName
         val servingGrams = food.householdServingGrams
+        if (state.pickerMode) {
+            val ingredient = RecipeIngredientEntity(
+                name = food.name,
+                calories = preview.calories,
+                proteinG = preview.proteinG,
+                carbsG = preview.carbsG,
+                fatG = preview.fatG,
+                amountGrams = grams,
+                basePer100Calories = food.calories,
+                basePer100ProteinG = food.proteinG,
+                basePer100CarbsG = food.carbsG,
+                basePer100FatG = food.fatG,
+                entryServingName = servingName,
+                entryServingGrams = servingGrams,
+                loggedByServings = state.amountMode == AmountMode.SERVINGS,
+            )
+            viewModelScope.launch {
+                _uiState.update { it.copy(showAmountSheet = false, pendingFood = null, message = null) }
+                _ingredientPickedEvent.emit(ingredient)
+            }
+            return
+        }
         viewModelScope.launch {
             val editingId = state.editingEntryId
             if (editingId == null) {
@@ -429,6 +467,35 @@ class FoodLibraryViewModel(
             val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
             _uiState.update { it.copy(message = null) }
             _loggedEvent.emit("${meal.name} added to $slotLabel")
+        }
+    }
+
+    fun logRecipe(recipe: RecipeWithIngredients) {
+        viewModelScope.launch {
+            recipe.ingredients.forEach { ingredient ->
+                logRepository.addMealToSlot(
+                    input = MealEntryInput(
+                        date = logDate,
+                        mealType = MealEntryTypes.RECIPE,
+                        name = ingredient.name,
+                        calories = ingredient.calories,
+                        proteinG = ingredient.proteinG,
+                        carbsG = ingredient.carbsG,
+                        fatG = ingredient.fatG,
+                        amountGrams = ingredient.amountGrams,
+                        basePer100Calories = ingredient.basePer100Calories,
+                        basePer100ProteinG = ingredient.basePer100ProteinG,
+                        basePer100CarbsG = ingredient.basePer100CarbsG,
+                        basePer100FatG = ingredient.basePer100FatG,
+                        entryServingName = ingredient.entryServingName,
+                        entryServingGrams = ingredient.entryServingGrams,
+                        loggedByServings = ingredient.loggedByServings,
+                    ),
+                    slotId = _uiState.value.slotId,
+                )
+            }
+            val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
+            _loggedEvent.emit("${recipe.recipe.name} added to $slotLabel (${recipe.ingredients.size} items)")
         }
     }
 
@@ -534,18 +601,27 @@ class FoodLibraryViewModel(
                 _uiState.update { it.copy(message = "No foods in slot to save.", messageKind = MessageKind.ERROR) }
                 return@launch
             }
-            logRepository.saveMeal(
-                SavedMealEntity(
-                    name = s.saveMealName.trim(),
-                    mealType = "SAVED",
-                    calories = slotEntries.sumOf { it.calories },
-                    proteinG = slotEntries.sumOf { it.proteinG },
-                    carbsG = slotEntries.sumOf { it.carbsG },
-                    fatG = slotEntries.sumOf { it.fatG },
-                ),
-            )
+            val ingredients = slotEntries.mapIndexed { index, entry ->
+                RecipeIngredientEntity(
+                    name = entry.name,
+                    sortOrder = index,
+                    calories = entry.calories,
+                    proteinG = entry.proteinG,
+                    carbsG = entry.carbsG,
+                    fatG = entry.fatG,
+                    amountGrams = entry.amountGrams,
+                    basePer100Calories = entry.basePer100Calories,
+                    basePer100ProteinG = entry.basePer100ProteinG,
+                    basePer100CarbsG = entry.basePer100CarbsG,
+                    basePer100FatG = entry.basePer100FatG,
+                    entryServingName = entry.entryServingName,
+                    entryServingGrams = entry.entryServingGrams,
+                    loggedByServings = entry.loggedByServings,
+                )
+            }
+            recipeRepository.saveRecipe(s.saveMealName.trim(), ingredients)
             _uiState.update {
-                it.copy(showSaveMealDialog = false, saveMealName = "", message = "Meal saved.", messageKind = MessageKind.SUCCESS)
+                it.copy(showSaveMealDialog = false, saveMealName = "", message = "Recipe saved.", messageKind = MessageKind.SUCCESS)
             }
         }
     }

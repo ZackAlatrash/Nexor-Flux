@@ -8,7 +8,7 @@ import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class RecipeRepository(private val recipeDao: RecipeDao) {
+open class RecipeRepository(private val recipeDao: RecipeDao) {
 
     open fun observeAll(): Flow<List<RecipeWithIngredients>> =
         recipeDao.observeAllWithIngredients().map { list -> list.map { it.toDomain() } }

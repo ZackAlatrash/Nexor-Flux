@@ -9,6 +9,7 @@ import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.RecipeRepository
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,6 +36,7 @@ class FoodLibraryViewModelOffSearchTest {
     private lateinit var logRepository: LogRepository
     private lateinit var planRepository: PlanRepository
     private lateinit var foodCatalogRepository: FoodCatalogRepository
+    private lateinit var recipeRepository: RecipeRepository
     private val dateProvider = object : DateProvider {
         override fun today(): LocalDate = LocalDate.of(2026, 6, 1)
     }
@@ -46,6 +48,7 @@ class FoodLibraryViewModelOffSearchTest {
         logRepository = mock()
         planRepository = mock()
         foodCatalogRepository = mock()
+        recipeRepository = mock()
         whenever(logRepository.observeSavedFoods()).thenReturn(flowOf(emptyList()))
         whenever(foodCatalogRepository.observeCatalogFoods()).thenReturn(flowOf(emptyList()))
         whenever(logRepository.observeSavedMeals()).thenReturn(flowOf(emptyList()))
@@ -59,6 +62,7 @@ class FoodLibraryViewModelOffSearchTest {
             )
         ))
         whenever(logRepository.observeRecentFoods()).thenReturn(flowOf(emptyList()))
+        whenever(recipeRepository.observeAll()).thenReturn(flowOf(emptyList()))
     }
 
     @After
@@ -70,6 +74,7 @@ class FoodLibraryViewModelOffSearchTest {
         dateProvider = dateProvider,
         foodCatalogRepository = foodCatalogRepository,
         barcodeRepository = barcodeRepository,
+        recipeRepository = recipeRepository,
     )
 
     @Test

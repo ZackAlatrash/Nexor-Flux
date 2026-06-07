@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
@@ -24,9 +26,11 @@ import java.time.LocalDate
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,6 +60,7 @@ class SettingsViewModel(
     private val hcRepository: HealthConnectRepository,
     private val foodCatalogRepository: FoodCatalogRepository,
     private val personalFoodRepository: PersonalFoodRepository,
+    private val userProfileStore: UserProfilePreferencesStore,
 ) : ViewModel() {
     private val samsungFoodParser = SamsungHealthFoodCsvParser()
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -64,6 +69,14 @@ class SettingsViewModel(
     val hcPermissionsContract = hcRepository.permissionsContract()
     val hcRequiredPermissions: Set<String> = hcRepository.requiredPermissions
     val nutritionPermission: Set<String> = hcRepository.historicalNutritionPermissions
+
+    val profileState: StateFlow<UserProfilePreferences> =
+        userProfileStore.preferences
+            .stateIn(viewModelScope, SharingStarted.Eagerly, UserProfilePreferences())
+
+    fun saveProfile(profile: UserProfilePreferences) {
+        viewModelScope.launch { userProfileStore.save(profile) }
+    }
 
     init {
         val availability = hcRepository.availability()

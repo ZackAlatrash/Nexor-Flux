@@ -139,6 +139,7 @@ private class AppViewModelFactory(
                 hcRepository = container.healthConnectRepository,
                 foodCatalogRepository = container.foodCatalogRepository,
                 personalFoodRepository = container.personalFoodRepository,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 logRepository = container.logRepository,

@@ -45,7 +45,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -123,9 +122,14 @@ fun FoodLibraryScreen(
     // Scanned food arrives from barcode scanner in picker mode
     LaunchedEffect(scannedFoodJson) {
         val json = scannedFoodJson ?: return@LaunchedEffect
-        val food = Json.decodeFromString<SavedFoodEntity>(json)
-        viewModel.requestLogFood(food)
-        onScannedFoodConsumed()
+        try {
+            val food = Json.decodeFromString<SavedFoodEntity>(json)
+            viewModel.requestLogFood(food)
+        } catch (_: Exception) {
+            // Malformed JSON — discard silently
+        } finally {
+            onScannedFoodConsumed()
+        }
     }
 
     // Ingredient confirmed in picker mode — return it to RecipeBuilderScreen

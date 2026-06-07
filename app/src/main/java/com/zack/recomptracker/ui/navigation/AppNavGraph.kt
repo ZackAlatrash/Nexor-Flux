@@ -6,7 +6,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -35,6 +37,8 @@ import com.zack.recomptracker.ui.body.BodyEditViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryScreen
 import com.zack.recomptracker.ui.body.BodyEditScreen
+import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
+import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import java.time.LocalDate
@@ -61,9 +65,15 @@ object Routes {
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
-    const val BarcodeScanner = "barcode_scanner?slotId={slotId}&slotName={slotName}"
-    fun barcodeScanner(slotId: Long?, slotName: String) =
-        "barcode_scanner?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}"
+
+    const val BarcodeScanner = "barcode_scanner?slotId={slotId}&slotName={slotName}&pickerMode={pickerMode}"
+    fun barcodeScanner(slotId: Long?, slotName: String, pickerMode: Boolean = false) =
+        "barcode_scanner?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&pickerMode=$pickerMode"
+
+    const val RecipeBuilder = "recipe_builder?recipeId={recipeId}"
+    fun recipeBuilder(recipeId: Long? = null) = "recipe_builder?recipeId=${recipeId ?: -1L}"
+
+    fun foodLibraryPicker() = "${FoodLibrary}?pickerMode=true"
 }
 
 @Composable
@@ -72,7 +82,6 @@ fun AppNavGraph(
     modifier: Modifier = Modifier,
 ) {
     val factory = LocalAppContainer.current.viewModelFactory
-    // Shared transition specs: fade for top-level tabs, slide+fade for sub-screens
     val tabEnter = fadeIn(tween(220))
     val tabExit  = fadeOut(tween(200))
     val screenEnter = slideInVertically(tween(280)) { it / 16 } + fadeIn(tween(280))
@@ -220,7 +229,7 @@ fun AppNavGraph(
             FoodsScreen(viewModel<FoodsViewModel>(factory = factory))
         }
         composable(
-            route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}&date={date}",
+            route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}&date={date}&pickerMode={pickerMode}",
             arguments = listOf(
                 androidx.navigation.navArgument("slotId") {
                     type = androidx.navigation.NavType.LongType
@@ -238,6 +247,10 @@ fun AppNavGraph(
                     type = androidx.navigation.NavType.StringType
                     defaultValue = ""
                 },
+                androidx.navigation.navArgument("pickerMode") {
+                    type = androidx.navigation.NavType.BoolType
+                    defaultValue = false
+                },
             ),
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
@@ -249,6 +262,12 @@ fun AppNavGraph(
             )
             val editEntryId = backStackEntry.arguments?.getLong("editEntryId")?.takeIf { it != -1L }
             val logDate = backStackEntry.arguments?.getString("date").orEmpty()
+            val pickerMode = backStackEntry.arguments?.getBoolean("pickerMode") ?: false
+
+            val scannedFoodJson by backStackEntry.savedStateHandle
+                .getStateFlow<String?>("scanned_food", null)
+                .collectAsStateWithLifecycle()
+
             FoodLibraryScreen(
                 viewModel   = viewModel<FoodLibraryViewModel>(factory = factory),
                 slotId      = slotId,
@@ -257,7 +276,21 @@ fun AppNavGraph(
                 editEntryId = editEntryId,
                 logDate     = logDate,
                 onScanBarcode = {
-                    navController.navigate(Routes.barcodeScanner(slotId, slotName))
+                    navController.navigate(Routes.barcodeScanner(slotId, slotName, pickerMode = pickerMode))
+                },
+                pickerMode        = pickerMode,
+                scannedFoodJson   = scannedFoodJson,
+                onScannedFoodConsumed = {
+                    backStackEntry.savedStateHandle.remove<String>("scanned_food")
+                },
+                onIngredientPicked = { ingredientJson ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("picked_ingredient", ingredientJson)
+                },
+                onCreateRecipe = {
+                    navController.navigate(Routes.recipeBuilder())
+                },
+                onEditRecipe = { recipeId ->
+                    navController.navigate(Routes.recipeBuilder(recipeId))
                 },
             )
         }
@@ -272,6 +305,10 @@ fun AppNavGraph(
                     type = androidx.navigation.NavType.StringType
                     defaultValue = ""
                 },
+                androidx.navigation.navArgument("pickerMode") {
+                    type = androidx.navigation.NavType.BoolType
+                    defaultValue = false
+                },
             ),
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
@@ -280,10 +317,42 @@ fun AppNavGraph(
             val slotName = java.net.URLDecoder.decode(
                 backStackEntry.arguments?.getString("slotName").orEmpty(), "UTF-8"
             )
+            val pickerMode = backStackEntry.arguments?.getBoolean("pickerMode") ?: false
             BarcodeScannerScreen(
                 viewModel = viewModel<BarcodeScannerViewModel>(factory = factory),
                 slotId = slotId,
                 slotName = slotName,
+                pickerMode = pickerMode,
+                onFoodPicked = { foodJson ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("scanned_food", foodJson)
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.RecipeBuilder,
+            arguments = listOf(
+                androidx.navigation.navArgument("recipeId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) { backStackEntry ->
+            val pickedIngredientJson by backStackEntry.savedStateHandle
+                .getStateFlow<String?>("picked_ingredient", null)
+                .collectAsStateWithLifecycle()
+
+            RecipeBuilderScreen(
+                viewModel = viewModel<RecipeBuilderViewModel>(factory = factory),
+                pickedIngredientJson = pickedIngredientJson,
+                onPickedIngredientConsumed = {
+                    backStackEntry.savedStateHandle.remove<String>("picked_ingredient")
+                },
+                onNavigateToFoodPicker = {
+                    navController.navigate(Routes.foodLibraryPicker())
+                },
                 onBack = { navController.popBackStack() },
             )
         }

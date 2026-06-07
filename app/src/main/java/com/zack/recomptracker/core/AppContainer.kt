@@ -44,6 +44,7 @@ import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.RecipeRepository
+import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 
 class AppContainer(context: Context) {
@@ -173,6 +174,10 @@ private class AppViewModelFactory(
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,
+            )
+            RecipeBuilderViewModel::class.java -> RecipeBuilderViewModel(
+                recipeRepository = container.recipeRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

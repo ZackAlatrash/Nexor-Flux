@@ -53,6 +53,7 @@ data class TodayUiState(
     val trained: Boolean = false,
     val notes: String = "",
     val metricsDirty: Boolean = false,
+    val checkInDone: Boolean = false,
     val message: String? = null,
     val weightChange7d: Float? = null,
     val waistChange7d: Float? = null,
@@ -123,6 +124,7 @@ class TodayViewModel(
                         totals = day.totals,
                         slots = slottedEntries,
                         unslottedEntries = unslotted,
+                        checkInDone = log != null,
                     )
                 }
             }

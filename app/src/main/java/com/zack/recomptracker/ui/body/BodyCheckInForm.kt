@@ -34,6 +34,7 @@ data class BodyCheckInFormState(
     val trained: Boolean = false,
     val notes: String = "",
     val message: String? = null,
+    val checkInDone: Boolean = false,
 )
 
 data class BodyCheckInFormActions(

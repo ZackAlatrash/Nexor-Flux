@@ -223,6 +223,19 @@ fun FoodLibraryScreen(
             Spacer(Modifier.height(10.dp))
         }
 
+        // ── Create Recipe button (pinned above list, hidden in picker mode) ───
+        if (!pickerMode && (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS)) {
+            GlassActionButton(
+                text = "+ Create Recipe",
+                onClick = onCreateRecipe,
+                isPrimary = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+        }
+
         // ── Food List ─────────────────────────────────────────────────────────
         // filteredFoods / filteredMeals / recentFoods are pre-computed by the ViewModel
         // (via withComputedFields()) whenever filtering inputs change — no main-thread
@@ -317,20 +330,6 @@ fun FoodLibraryScreen(
                 }
 
                 if (category == FoodCategory.ALL || category == FoodCategory.MEALS) {
-                    // ── Create Recipe button (hidden in picker mode) ──────────
-                    if (!pickerMode) {
-                        item(key = "${category}_create_recipe") {
-                            Spacer(Modifier.height(8.dp))
-                            GlassActionButton(
-                                text = "+ Create Recipe",
-                                onClick = onCreateRecipe,
-                                isPrimary = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
-
                     // ── Recipe rows ──────────────────────────────────────────
                     val filteredRecipes = state.filteredRecipes
                     if (filteredRecipes.isNotEmpty()) {
@@ -406,31 +405,6 @@ fun FoodLibraryScreen(
                     }
                 }
 
-                if (slotId != null) {
-                    item(key = "${category}_save_slot") {
-                        Spacer(Modifier.height(12.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(CornerSmall))
-                                .background(CardSurface)
-                                .border(1.dp, CardBorder, RoundedCornerShape(CornerSmall))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                ) { viewModel.openSaveMealDialog() }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "Save slot as recipe",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Violet300,
-                            )
-                        }
-                    }
-                }
 
                 item(key = "${category}_bottom_spacer") { Spacer(Modifier.height(24.dp)) }
         }
@@ -780,53 +754,65 @@ private fun GlassRecipeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(recipe.recipe.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
+                Text(
+                    recipe.recipe.name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0x33A855F7))
-                        .border(1.dp, Color(0x55A855F7), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0x1F8B5CF6))
+                        .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Recipe", fontSize = 9.sp, color = Color(0xFFA855F7), fontWeight = FontWeight.SemiBold)
+                    Text("Recipe", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xB38B5CF6))
                 }
             }
             Text(
-                "${recipe.ingredients.size} ingredients · ${recipe.totalCalories} kcal  " +
-                "P${recipe.totalProteinG.toInt()}g  C${recipe.totalCarbsG.toInt()}g  F${recipe.totalFatG.toInt()}g",
-                fontSize = 11.sp,
-                color = Color(0xFF9CA3AF),
+                "${recipe.ingredients.size} ingredients · " +
+                "${recipe.totalProteinG.toInt()}P ${recipe.totalCarbsG.toInt()}C ${recipe.totalFatG.toInt()}F",
+                fontSize = 10.sp,
+                color = TextSecondary,
             )
         }
+        Text(
+            text = "${recipe.totalCalories} kcal",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0x66FFFFFF),
+        )
         if (!pickerMode) {
             Box(
                 modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(7.dp))
                     .background(Color(0x0DFFFFFF))
-                    .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(8.dp))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onEdit),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 14.sp, color = Color(0xBFFFFFFF))
+                Text("✎", fontSize = 13.sp, color = Violet400)
             }
         }
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0x1A8B5CF6))
-                .border(1.dp, Color(0x358B5CF6), RoundedCornerShape(8.dp))
+                .background(Violet500)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onLog),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, color = Color(0xFFA78BFA), fontWeight = FontWeight.Bold)
+            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
         }
     }
 }

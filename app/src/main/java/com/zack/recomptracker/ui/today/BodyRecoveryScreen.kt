@@ -116,6 +116,7 @@ fun BodyRecoveryContent(
         trained = state.trained,
         notes = state.notes,
         message = state.message,
+        checkInDone = state.checkInDone,
     )
 
     var showSheet by remember { mutableStateOf(false) }
@@ -320,7 +321,7 @@ private fun MetricTilesCard(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("Sleep", state.sleepHours.ifEmpty { null }, "hrs", Modifier.weight(1f)) { onTileClick(0) }
             MetricTile("Steps", state.steps.ifEmpty { null }, "", Modifier.weight(1f)) { onTileClick(0) }
-            MetricTile("Training", if (state.trained) "Yes" else null, "", Modifier.weight(1f)) { onTileClick(2) }
+            MetricTile("Training", if (state.trained) "Yes" else if (state.checkInDone) "No" else null, "", Modifier.weight(1f)) { onTileClick(2) }
         }
     }
 }

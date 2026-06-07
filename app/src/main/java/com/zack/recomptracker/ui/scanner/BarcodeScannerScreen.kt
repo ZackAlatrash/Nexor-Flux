@@ -217,6 +217,7 @@ fun BarcodeScannerScreen(
                     ProductFoundSheet(
                         state = scanState,
                         message = state.message,
+                        pickerMode = pickerMode,
                         onAmountChanged = viewModel::onAmountChanged,
                         onLogModeChanged = viewModel::onLogModeChanged,
                         onLogAndSave = viewModel::confirmLogAndSave,
@@ -281,6 +282,7 @@ private fun ScanErrorOverlay(message: String, onRetry: () -> Unit) {
 private fun ProductFoundSheet(
     state: ScanState.ProductFound,
     message: String?,
+    pickerMode: Boolean = false,
     onAmountChanged: (String) -> Unit,
     onLogModeChanged: (LogMode) -> Unit,
     onLogAndSave: () -> Unit,
@@ -339,9 +341,13 @@ private fun ProductFoundSheet(
             singleLine = true,
         )
         MessageText(message, MessageKind.ERROR)
-        LiquidPrimaryButton(text = "Log & Save to Library", onClick = onLogAndSave)
+        if (pickerMode) {
+            LiquidPrimaryButton(text = "Add to Recipe", onClick = onLogOnly)
+        } else {
+            LiquidPrimaryButton(text = "Log & Save to Library", onClick = onLogAndSave)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LiquidSecondaryButton(text = "Log Only", onClick = onLogOnly, modifier = Modifier.weight(1f))
+            if (!pickerMode) LiquidSecondaryButton(text = "Log Only", onClick = onLogOnly, modifier = Modifier.weight(1f))
             LiquidSecondaryButton(text = "Cancel", onClick = onCancel, modifier = Modifier.weight(1f))
         }
     }

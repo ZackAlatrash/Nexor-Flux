@@ -43,6 +43,7 @@ import com.zack.recomptracker.ui.today.FoodLogViewModel
 import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
+import com.zack.recomptracker.data.repository.RecipeRepository
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 
 class AppContainer(context: Context) {
@@ -67,6 +68,7 @@ class AppContainer(context: Context) {
     val openFoodFactsApi = OpenFoodFactsApi()
     val barcodeRepository = BarcodeRepository(openFoodFactsApi)
     val personalFoodRepository = PersonalFoodRepository(database.savedFoodDao())
+    val recipeRepository = RecipeRepository(database.recipeDao())
     val healthConnectRepository = HealthConnectRepository(context.applicationContext)
     val adjustmentEngine = AdjustmentEngine()
     val trendCalculator = TrendCalculator()
@@ -148,6 +150,7 @@ private class AppViewModelFactory(
                 dateProvider = container.dateProvider,
                 foodCatalogRepository = container.foodCatalogRepository,
                 barcodeRepository = container.barcodeRepository,
+                recipeRepository = container.recipeRepository,
             )
             BodyHistoryViewModel::class.java -> BodyHistoryViewModel(
                 logRepository = container.logRepository,

@@ -126,8 +126,6 @@ class BarcodeScannerViewModel(
             _uiState.update { it.copy(message = "Enter a valid amount (min 1g).") }
             return
         }
-        val scale = actualGrams / 100.0
-
         if (pickerMode) {
             val food = SavedFoodEntity(
                 name = product.name,
@@ -143,6 +141,7 @@ class BarcodeScannerViewModel(
             return
         }
 
+        val scale = actualGrams / 100.0
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(

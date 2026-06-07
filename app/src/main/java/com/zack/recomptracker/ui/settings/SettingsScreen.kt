@@ -56,6 +56,7 @@ import com.zack.recomptracker.data.preferences.ActivityLevel
 import com.zack.recomptracker.data.preferences.BiologicalSex
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
+import com.zack.recomptracker.data.preferences.displayName
 
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
@@ -626,28 +627,6 @@ private fun UserProfileSection(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         )
     }
-}
-
-private fun FitnessGoal.displayName(): String = when (this) {
-    FitnessGoal.AGGRESSIVE_CUT -> "Aggressive Cut"
-    FitnessGoal.MODERATE_CUT -> "Moderate Cut"
-    FitnessGoal.MINI_CUT -> "Mini Cut"
-    FitnessGoal.RECOMP -> "Recomp"
-    FitnessGoal.LEAN_BULK -> "Lean Bulk"
-    FitnessGoal.MODERATE_BULK -> "Moderate Bulk"
-    FitnessGoal.AGGRESSIVE_BULK -> "Aggressive Bulk"
-}
-
-private fun BiologicalSex.displayName(): String = when (this) {
-    BiologicalSex.MALE -> "Male"
-    BiologicalSex.FEMALE -> "Female"
-}
-
-private fun ActivityLevel.displayName(): String = when (this) {
-    ActivityLevel.SEDENTARY -> "Sedentary"
-    ActivityLevel.LIGHTLY_ACTIVE -> "Lightly Active"
-    ActivityLevel.MODERATELY_ACTIVE -> "Moderately Active"
-    ActivityLevel.VERY_ACTIVE -> "Very Active"
 }
 
 @Preview(showBackground = true)

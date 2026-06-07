@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.preferences.displayName
 import com.zack.recomptracker.data.repository.PlanRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -497,26 +498,4 @@ private class SchemaTool(private val schemaJson: String) : OpenApiTool {
     override fun getToolDescriptionJsonString(): String = schemaJson
     override fun execute(args: String): String =
         error("SchemaTool.execute should not be called — tool calls are dispatched manually.")
-}
-
-private fun FitnessGoal.displayName(): String = when (this) {
-    FitnessGoal.AGGRESSIVE_CUT -> "Aggressive Cut"
-    FitnessGoal.MODERATE_CUT -> "Moderate Cut"
-    FitnessGoal.MINI_CUT -> "Mini Cut"
-    FitnessGoal.RECOMP -> "Recomp"
-    FitnessGoal.LEAN_BULK -> "Lean Bulk"
-    FitnessGoal.MODERATE_BULK -> "Moderate Bulk"
-    FitnessGoal.AGGRESSIVE_BULK -> "Aggressive Bulk"
-}
-
-private fun BiologicalSex.displayName(): String = when (this) {
-    BiologicalSex.MALE -> "Male"
-    BiologicalSex.FEMALE -> "Female"
-}
-
-private fun ActivityLevel.displayName(): String = when (this) {
-    ActivityLevel.SEDENTARY -> "Sedentary"
-    ActivityLevel.LIGHTLY_ACTIVE -> "Lightly Active"
-    ActivityLevel.MODERATELY_ACTIVE -> "Moderately Active"
-    ActivityLevel.VERY_ACTIVE -> "Very Active"
 }

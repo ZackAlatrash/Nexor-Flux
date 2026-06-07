@@ -33,3 +33,25 @@ enum class FitnessGoal {
     MODERATE_BULK,
     AGGRESSIVE_BULK,
 }
+
+fun FitnessGoal.displayName(): String = when (this) {
+    FitnessGoal.AGGRESSIVE_CUT -> "Aggressive Cut"
+    FitnessGoal.MODERATE_CUT -> "Moderate Cut"
+    FitnessGoal.MINI_CUT -> "Mini Cut"
+    FitnessGoal.RECOMP -> "Recomp"
+    FitnessGoal.LEAN_BULK -> "Lean Bulk"
+    FitnessGoal.MODERATE_BULK -> "Moderate Bulk"
+    FitnessGoal.AGGRESSIVE_BULK -> "Aggressive Bulk"
+}
+
+fun BiologicalSex.displayName(): String = when (this) {
+    BiologicalSex.MALE -> "Male"
+    BiologicalSex.FEMALE -> "Female"
+}
+
+fun ActivityLevel.displayName(): String = when (this) {
+    ActivityLevel.SEDENTARY -> "Sedentary"
+    ActivityLevel.LIGHTLY_ACTIVE -> "Lightly Active"
+    ActivityLevel.MODERATELY_ACTIVE -> "Moderately Active"
+    ActivityLevel.VERY_ACTIVE -> "Very Active"
+}

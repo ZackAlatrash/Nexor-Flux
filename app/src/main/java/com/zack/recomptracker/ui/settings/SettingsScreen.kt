@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MonitorHeart
@@ -27,8 +29,11 @@ import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,9 +48,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.data.preferences.ActivityLevel
+import com.zack.recomptracker.data.preferences.BiologicalSex
+import com.zack.recomptracker.data.preferences.FitnessGoal
+import com.zack.recomptracker.data.preferences.UserProfilePreferences
 
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
@@ -63,6 +73,7 @@ private val HealthConnectGreen = Color(0xFF34D399)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val profile by viewModel.profileState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -136,6 +147,12 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 Text("Local-only controls")
                 MessageText(state.message, state.messageKind)
             }
+        }
+        item {
+            UserProfileSection(
+                profile = profile,
+                onProfileChange = viewModel::saveProfile,
+            )
         }
         item {
             SectionCard("Backup") {
@@ -488,6 +505,149 @@ private fun StatusRow(
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
+}
+
+@Composable
+private fun UserProfileSection(
+    profile: UserProfilePreferences,
+    onProfileChange: (UserProfilePreferences) -> Unit,
+) {
+    SectionCard("My Profile") {
+        // Goal — vertical radio list
+        Text("Goal", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            FitnessGoal.entries.forEach { g ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = profile.goal == g,
+                            onClick = {
+                                onProfileChange(profile.copy(goal = if (profile.goal == g) null else g))
+                            },
+                        )
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RadioButton(
+                        selected = profile.goal == g,
+                        onClick = {
+                            onProfileChange(profile.copy(goal = if (profile.goal == g) null else g))
+                        },
+                    )
+                    Text(g.displayName())
+                }
+            }
+        }
+
+        // Biological sex — chip row
+        Text("Biological Sex", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BiologicalSex.entries.forEach { s ->
+                FilterChip(
+                    selected = profile.biologicalSex == s,
+                    onClick = {
+                        onProfileChange(profile.copy(biologicalSex = if (profile.biologicalSex == s) null else s))
+                    },
+                    label = { Text(s.displayName()) },
+                )
+            }
+        }
+
+        // Activity level — one chip per row (full width)
+        Text("Activity Level", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            ActivityLevel.entries.forEach { a ->
+                FilterChip(
+                    selected = profile.activityLevel == a,
+                    onClick = {
+                        onProfileChange(profile.copy(activityLevel = if (profile.activityLevel == a) null else a))
+                    },
+                    label = { Text(a.displayName()) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Weekly gym sessions — stepper
+        Text("Weekly Gym Sessions", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            LiquidSecondaryButton(
+                text = "−",
+                onClick = {
+                    val cur = profile.weeklyGymSessions ?: 0
+                    if (cur > 0) onProfileChange(profile.copy(weeklyGymSessions = cur - 1))
+                },
+                enabled = (profile.weeklyGymSessions ?: 0) > 0,
+            )
+            Text(
+                text = "${profile.weeklyGymSessions ?: 0} days/week",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            LiquidSecondaryButton(
+                text = "+",
+                onClick = {
+                    val cur = profile.weeklyGymSessions ?: 0
+                    if (cur < 7) onProfileChange(profile.copy(weeklyGymSessions = cur + 1))
+                },
+                enabled = (profile.weeklyGymSessions ?: 0) < 7,
+            )
+        }
+
+        // Height — cm text field
+        Text("Height (cm)", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        OutlinedTextField(
+            value = profile.heightCm?.toString() ?: "",
+            onValueChange = { raw ->
+                val parsed = raw.filter { it.isDigit() }.take(3).toIntOrNull()
+                onProfileChange(profile.copy(heightCm = parsed))
+            },
+            placeholder = { Text("e.g. 178") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+
+        // Age — text field
+        Text("Age", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        OutlinedTextField(
+            value = profile.ageYears?.toString() ?: "",
+            onValueChange = { raw ->
+                val parsed = raw.filter { it.isDigit() }.take(3).toIntOrNull()
+                onProfileChange(profile.copy(ageYears = parsed))
+            },
+            placeholder = { Text("e.g. 26") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+    }
+}
+
+private fun FitnessGoal.displayName(): String = when (this) {
+    FitnessGoal.AGGRESSIVE_CUT -> "Aggressive Cut"
+    FitnessGoal.MODERATE_CUT -> "Moderate Cut"
+    FitnessGoal.MINI_CUT -> "Mini Cut"
+    FitnessGoal.RECOMP -> "Recomp"
+    FitnessGoal.LEAN_BULK -> "Lean Bulk"
+    FitnessGoal.MODERATE_BULK -> "Moderate Bulk"
+    FitnessGoal.AGGRESSIVE_BULK -> "Aggressive Bulk"
+}
+
+private fun BiologicalSex.displayName(): String = when (this) {
+    BiologicalSex.MALE -> "Male"
+    BiologicalSex.FEMALE -> "Female"
+}
+
+private fun ActivityLevel.displayName(): String = when (this) {
+    ActivityLevel.SEDENTARY -> "Sedentary"
+    ActivityLevel.LIGHTLY_ACTIVE -> "Lightly Active"
+    ActivityLevel.MODERATELY_ACTIVE -> "Moderately Active"
+    ActivityLevel.VERY_ACTIVE -> "Very Active"
 }
 
 @Preview(showBackground = true)

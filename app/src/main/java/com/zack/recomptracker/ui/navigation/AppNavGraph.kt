@@ -209,6 +209,7 @@ fun AppNavGraph(
                 onChartsClick   = { navController.navigate(Routes.Charts) },
                 onPlanClick     = { navController.navigate(Routes.Plan) },
                 onProgressClick = { navController.navigate(TopLevelDestination.Progress.route) },
+                onSettingsClick = { navController.navigate(Routes.Settings) },
             )
         }
         composable(

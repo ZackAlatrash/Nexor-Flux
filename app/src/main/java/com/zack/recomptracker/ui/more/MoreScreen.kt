@@ -63,6 +63,7 @@ fun MoreScreen(
     onChartsClick: () -> Unit,
     onPlanClick: () -> Unit,
     onProgressClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -184,6 +185,13 @@ fun MoreScreen(
             item { SectionLabel("App") }
             item {
                 MenuCard {
+                    MenuRow(
+                        emoji = "⚙️",
+                        title = "Settings",
+                        detail = "Profile, backup, food catalog and more",
+                        onClick = onSettingsClick,
+                        showDivider = true,
+                    )
                     SettingRow(
                         emoji = "❤️",
                         title = "Health Connect",

@@ -13,8 +13,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.dp
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 
 @Composable
 fun CalorieProgressBar(
@@ -23,6 +22,7 @@ fun CalorieProgressBar(
     zoneHighFrac: Float,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 800),
@@ -39,7 +39,7 @@ fun CalorieProgressBar(
         val zoneRight = (zoneHighFrac * w).coerceIn(0f, w)
         if (zoneRight > zoneLeft) {
             drawRect(
-                color = Color(0x228B5CF6),
+                color = accent.accent.copy(alpha = 0.13f),
                 topLeft = Offset(zoneLeft, 0f),
                 size = Size(zoneRight - zoneLeft, h),
             )
@@ -49,7 +49,7 @@ fun CalorieProgressBar(
                 var x = zoneLeft - h
                 while (x < zoneRight + h) {
                     drawLine(
-                        color = Color(0x608B5CF6),
+                        color = accent.accent.copy(alpha = 0.38f),
                         start = Offset(x, 0f),
                         end = Offset(x + h, h),
                         strokeWidth = stripeW,
@@ -63,7 +63,7 @@ fun CalorieProgressBar(
         if (fillX > 0.5f) {
             drawRoundRect(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(Violet500, Violet400),
+                    colors = listOf(accent.accent, accent.accentLight),
                     startX = 0f,
                     endX = fillX.coerceAtLeast(r * 2),
                 ),

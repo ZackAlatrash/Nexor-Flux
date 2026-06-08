@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.theme.CornerPill
 import com.zack.recomptracker.ui.theme.ErrorRed
-import com.zack.recomptracker.ui.theme.Violet300
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import kotlinx.coroutines.delay
 
 @Composable
@@ -87,13 +87,14 @@ private fun ToastItem(
     toast: ToastMessage,
     onDismiss: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     val bgColor = when (toast.type) {
-        ToastType.Success -> Color(0x388B5CF6)
+        ToastType.Success -> accent.accent.copy(alpha = 0.22f)
         ToastType.Error   -> Color(0x2EFB7185)
         ToastType.Info    -> Color(0x14FFFFFF)
     }
     val borderColor = when (toast.type) {
-        ToastType.Success -> Color(0x728B5CF6)
+        ToastType.Success -> accent.accent.copy(alpha = 0.45f)
         ToastType.Error   -> Color(0x66FB7185)
         ToastType.Info    -> Color(0x26FFFFFF)
     }
@@ -103,7 +104,7 @@ private fun ToastItem(
         ToastType.Info    -> "ℹ"
     }
     val iconTint = when (toast.type) {
-        ToastType.Success -> Violet300
+        ToastType.Success -> accent.accentLighter
         ToastType.Error   -> ErrorRed
         ToastType.Info    -> Color(0x99FFFFFF)
     }
@@ -133,7 +134,7 @@ private fun ToastItem(
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = toast.actionLabel,
-                color = Violet300,
+                color = accent.accentLighter,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable(

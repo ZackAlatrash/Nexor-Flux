@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.liquidglass
 
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
@@ -136,9 +137,10 @@ fun LiquidBottomTabs(
     backdrop: Backdrop,
     tabsCount: Int,
     modifier: Modifier = Modifier,
-    accentColor: Color = Color(0xFFc4b5fd),
+    accentColor: Color = Color.Unspecified,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val effectiveAccentColor = if (accentColor == Color.Unspecified) LocalAppAccent.current.accentLighter else accentColor
     val isDark = isSystemInDarkTheme()
     val containerColor =
         if (!isDark) Color(0xFFFAFAFA).copy(0.4f)
@@ -290,7 +292,7 @@ fun LiquidBottomTabs(
                     .height(56.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp)
-                    .graphicsLayer(colorFilter = ColorFilter.tint(accentColor)),
+                    .graphicsLayer(colorFilter = ColorFilter.tint(effectiveAccentColor)),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
             )
@@ -755,7 +757,7 @@ fun LiquidPrimaryButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        tint = Color(0xFF8B5CF6),           // Violet500 — gives the button clear identity
+        tint = LocalAppAccent.current.accent,
         surfaceColor = Color.White.copy(alpha = 0.08f),
     ) {
         Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
@@ -835,11 +837,12 @@ fun LiquidActionButton(
     enabled: Boolean = true,
     small: Boolean = false,
 ) {
+    val accent = LocalAppAccent.current
     LiquidGlassButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        tint = if (isPrimary) Color(0xFF8B5CF6) else Color.Unspecified,
+        tint = if (isPrimary) accent.accent else Color.Unspecified,
         surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.14f),
         buttonHeight = if (small) 32.dp else 48.dp,
     ) {
@@ -847,7 +850,7 @@ fun LiquidActionButton(
             text = text,
             fontSize = 13.sp,
             fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
-            color = if (isPrimary) Color(0xFFc4b5fd) else Color.White.copy(alpha = 0.85f),
+            color = if (isPrimary) accent.accentLighter else Color.White.copy(alpha = 0.85f),
         )
     }
 }

@@ -26,8 +26,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import kotlin.math.abs
 
 internal fun dotScale(dotX: Float, totalWidth: Float, progress: Float): Float {
@@ -101,6 +100,7 @@ fun SparklineChart(
         }
     } else Modifier
 
+    val accent = LocalAppAccent.current
     val progress = drawInProgress.value
 
     // Memoize range values — avoids two full-list scans every animation frame
@@ -146,12 +146,12 @@ fun SparklineChart(
             val zLowY  = yAt(zoneLow).coerceIn(0f, h)
             val zHighY = yAt(zoneHigh).coerceIn(0f, h)
             drawRect(
-                color    = Color(0x1A8B5CF6),
+                color    = accent.accent.copy(alpha = 0.10f),
                 topLeft  = Offset(0f, zHighY),
                 size     = Size(w, (zLowY - zHighY).coerceAtLeast(0f)),
             )
             val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 4.dp.toPx()))
-            val dashColor = Color(ChartDefaults.zoneDashAlpha shl 24 or 0x8B5CF6)
+            val dashColor = accent.accent.copy(alpha = ChartDefaults.zoneDashAlpha / 255f)
             drawLine(dashColor, Offset(0f, zHighY), Offset(w, zHighY), 0.7.dp.toPx(), pathEffect = dash)
             drawLine(dashColor, Offset(0f, zLowY),  Offset(w, zLowY),  0.7.dp.toPx(), pathEffect = dash)
         }
@@ -179,7 +179,7 @@ fun SparklineChart(
                 drawPath(
                     path  = areaPath,
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color(0x408B5CF6), Color(0x058B5CF6)),
+                        colors = listOf(accent.accent.copy(alpha = 0.25f), accent.accent.copy(alpha = 0.02f)),
                     ),
                     alpha = areaAlpha,
                 )
@@ -192,9 +192,9 @@ fun SparklineChart(
                 path  = linePath,
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFF7c3aed).copy(alpha = 0.55f),
-                        Violet400,
-                        Violet300.copy(alpha = 0.85f),
+                        accent.accentDark.copy(alpha = 0.55f),
+                        accent.accentLight,
+                        accent.accentLighter.copy(alpha = 0.85f),
                     ),
                 ),
                 style = Stroke(
@@ -214,10 +214,10 @@ fun SparklineChart(
                 val dotAlpha  = if (scrubIndex != null && !isActive) 0.3f else 1f
 
                 if (isActive) {
-                    drawCircle(color = Color(0x1Fc4b5fd), radius = ChartDefaults.glowRadius.toPx(), center = pt)
-                    drawCircle(color = Violet300, radius = ChartDefaults.dotRadius.toPx(), center = pt)
+                    drawCircle(color = accent.accentLighter.copy(alpha = 0.12f), radius = ChartDefaults.glowRadius.toPx(), center = pt)
+                    drawCircle(color = accent.accentLighter, radius = ChartDefaults.dotRadius.toPx(), center = pt)
                     drawLine(
-                        color       = Color(0x50a78bfa),
+                        color       = accent.accentLight.copy(alpha = 0.31f),
                         start       = Offset(pt.x, 0f),
                         end         = Offset(pt.x, h),
                         strokeWidth = 1.dp.toPx(),
@@ -226,13 +226,13 @@ fun SparklineChart(
                 } else if (showGlowDot && isEndDot && scrubIndex == null) {
                     val glowAlpha = ((progress - 0.9f) / 0.1f).coerceIn(0f, 1f)
                     if (glowAlpha > 0f) {
-                        drawCircle(color = Color(0xFFc4b5fd).copy(alpha = 0.08f * glowAlpha), radius = ChartDefaults.glowHalo.toPx() * scale, center = pt)
-                        drawCircle(color = Color(0xFFc4b5fd).copy(alpha = 0.15f * glowAlpha), radius = ChartDefaults.glowRadius.toPx() * scale, center = pt)
-                        drawCircle(color = Violet300.copy(alpha = glowAlpha), radius = ChartDefaults.dotRadius.toPx() * scale, center = pt)
+                        drawCircle(color = accent.accentLighter.copy(alpha = 0.08f * glowAlpha), radius = ChartDefaults.glowHalo.toPx() * scale, center = pt)
+                        drawCircle(color = accent.accentLighter.copy(alpha = 0.15f * glowAlpha), radius = ChartDefaults.glowRadius.toPx() * scale, center = pt)
+                        drawCircle(color = accent.accentLighter.copy(alpha = glowAlpha), radius = ChartDefaults.dotRadius.toPx() * scale, center = pt)
                     }
                 } else {
                     drawCircle(
-                        color  = Violet300.copy(alpha = dotAlpha),
+                        color  = accent.accentLighter.copy(alpha = dotAlpha),
                         radius = 2.5.dp.toPx() * scale,
                         center = pt,
                     )

@@ -3,14 +3,20 @@ package com.zack.recomptracker.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 
-val AppDarkColors = darkColorScheme(
-    primary              = Color(0xFF8B5CF6),
+/** Provides the current [AppAccent] to the entire composition tree. */
+val LocalAppAccent = compositionLocalOf { AppAccent() }
+
+private fun accentedColorScheme(accent: AppAccent) = darkColorScheme(
+    primary              = accent.accent,
     onPrimary            = Color.White,
-    primaryContainer     = Color(0x208B5CF6),
-    onPrimaryContainer   = Color(0xFFa78bfa),
-    secondary            = Color(0xFFa78bfa),
+    primaryContainer     = accent.tintedSurface,
+    onPrimaryContainer   = accent.accentLight,
+    secondary            = accent.accentLight,
     onSecondary          = Color.White,
     background           = Color(0xFF0D0818),
     onBackground         = Color.White,
@@ -24,10 +30,16 @@ val AppDarkColors = darkColorScheme(
 )
 
 @Composable
-fun RecompTrackerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = AppDarkColors,
-        typography = MaterialTheme.typography,
-        content = content,
-    )
+fun RecompTrackerTheme(
+    accentTheme: AccentTheme = AccentTheme.VIOLET,
+    content: @Composable () -> Unit,
+) {
+    val appAccent = remember(accentTheme) { AppAccent(accentTheme) }
+    CompositionLocalProvider(LocalAppAccent provides appAccent) {
+        MaterialTheme(
+            colorScheme = remember(accentTheme) { accentedColorScheme(appAccent) },
+            typography = MaterialTheme.typography,
+            content = content,
+        )
+    }
 }

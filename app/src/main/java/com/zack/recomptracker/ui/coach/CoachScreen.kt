@@ -71,10 +71,8 @@ import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.ErrorRed
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.TintedBorder
-import com.zack.recomptracker.ui.theme.TintedSurface
-import com.zack.recomptracker.ui.theme.Violet300
 
 private val suggestions = listOf(
     "How are my calories this week?",
@@ -91,6 +89,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
 
+    val accent = LocalAppAccent.current
     val history = when (val s = state) {
         is CoachState.Idle -> s.history
         is CoachState.Thinking -> s.history
@@ -248,9 +247,9 @@ fun CoachScreen(viewModel: CoachViewModel) {
                     focusedBorderColor = CardBorder,
                     unfocusedBorderColor = CardBorder,
                     disabledBorderColor = CardBorder.copy(alpha = 0.4f),
-                    focusedContainerColor = TintedSurface,
-                    unfocusedContainerColor = TintedSurface,
-                    disabledContainerColor = TintedSurface.copy(alpha = 0.5f),
+                    focusedContainerColor = accent.tintedSurface,
+                    unfocusedContainerColor = accent.tintedSurface,
+                    disabledContainerColor = accent.tintedSurface.copy(alpha = 0.5f),
                     cursorColor = Color.White,
                 ),
             )
@@ -302,6 +301,7 @@ private fun UnavailableContent() {
 
 @Composable
 private fun ReadyContent(onSuggestion: (String) -> Unit) {
+    val accent = LocalAppAccent.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -336,11 +336,11 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
                     },
                 shape = RoundedCornerShape(20.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = TintedSurface,
-                    selectedContainerColor = TintedSurface,
+                    containerColor = accent.tintedSurface,
+                    selectedContainerColor = accent.tintedSurface,
                     labelColor = Color.White,
                 ),
-                border = BorderStroke(1.dp, TintedBorder),
+                border = BorderStroke(1.dp, accent.tintedBorder),
             )
         }
     }
@@ -439,6 +439,7 @@ private fun ConfirmationBar(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier
@@ -479,8 +480,8 @@ private fun ConfirmationBar(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = TintedSurface,
-                    selectedContainerColor = TintedSurface,
+                    containerColor = accent.tintedSurface,
+                    selectedContainerColor = accent.tintedSurface,
                 ),
                 border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f)),
             )
@@ -500,8 +501,8 @@ private fun ConfirmationBar(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = TintedSurface,
-                    selectedContainerColor = TintedSurface,
+                    containerColor = accent.tintedSurface,
+                    selectedContainerColor = accent.tintedSurface,
                 ),
                 border = BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF66BB6A).copy(alpha = 0.5f)),
             )
@@ -511,6 +512,7 @@ private fun ConfirmationBar(
 
 @Composable
 private fun ThinkingDots() {
+    val accent = LocalAppAccent.current
     val transition = rememberInfiniteTransition(label = "dots")
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -530,7 +532,7 @@ private fun ThinkingDots() {
             Box(
                 modifier = Modifier
                     .size(5.dp)
-                    .background(Violet300.copy(alpha = alpha), CircleShape),
+                    .background(accent.accentLighter.copy(alpha = alpha), CircleShape),
             )
         }
     }
@@ -538,6 +540,7 @@ private fun ThinkingDots() {
 
 @Composable
 private fun ChatBubble(message: ChatMessage) {
+    val accent = LocalAppAccent.current
     val isUser = message.role == Role.User
 
     Box(
@@ -552,7 +555,7 @@ private fun ChatBubble(message: ChatMessage) {
                     bottomEnd = 16.dp,
                     bottomStart = 16.dp,
                 ),
-                color = TintedSurface,
+                color = accent.tintedSurface,
                 border = BorderStroke(1.dp, CardBorder),
                 modifier = Modifier.widthIn(max = 300.dp),
             ) {

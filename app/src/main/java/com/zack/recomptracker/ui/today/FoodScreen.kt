@@ -63,8 +63,7 @@ import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import sh.calvin.reorderable.ReorderableItem
@@ -73,7 +72,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val FoodScreenOrbBrush = Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent))
 
 @Composable
 fun FoodScreen(
@@ -124,6 +122,10 @@ fun FoodContent(
     onSelectDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
+    val foodScreenOrbBrush = remember(accent.accent) {
+        Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.16f), Color.Transparent))
+    }
     var showAddSlotDialog by remember { mutableStateOf(false) }
     var newSlotName by remember { mutableStateOf("") }
 
@@ -149,7 +151,7 @@ fun FoodContent(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(FoodScreenOrbBrush),
+                .background(foodScreenOrbBrush),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -381,6 +383,7 @@ private fun MacroProgressItem(
     frac: Float,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val animatedFrac by animateFloatAsState(
         targetValue = frac,
         animationSpec = tween(durationMillis = 900),
@@ -419,7 +422,7 @@ private fun MacroProgressItem(
                     .fillMaxWidth(animatedFrac)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(Violet500, Violet400)),
+                        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
                         RoundedCornerShape(3.dp),
                     ),
             )
@@ -438,9 +441,10 @@ private fun LockedSlotCard(
     onEditEntryAmount: (Long) -> Unit,
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     val hasEntries = slotWithEntries.entries.isNotEmpty()
-    val cardBg     = if (hasEntries) Color(0x0A8B5CF6) else CardSurface
-    val cardBorder = if (hasEntries) Color(0x2E8B5CF6) else CardBorder
+    val cardBg     = if (hasEntries) accent.accent.copy(alpha = 0.04f) else CardSurface
+    val cardBorder = if (hasEntries) accent.accent.copy(alpha = 0.18f) else CardBorder
 
     Column(
         modifier = Modifier
@@ -469,7 +473,7 @@ private fun LockedSlotCard(
                     text = if (hasEntries) "${slotWithEntries.totals.calories} kcal" else "empty",
                     fontSize = 10.sp,
                     fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (hasEntries) Violet400 else TextMuted,
+                    color = if (hasEntries) accent.accentLight else TextMuted,
                 )
             }
             LiquidActionButton(
@@ -547,6 +551,7 @@ private fun SlotEntryRow(
     onEditAmount: () -> Unit,
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     var showMacroEdit by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val amountEditable = entry.amountGrams != null && entry.basePer100Calories != null
@@ -562,7 +567,7 @@ private fun SlotEntryRow(
             .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true }
             .drawBehind {
                 drawRect(
-                    color    = Color(0x4D8B5CF6),
+                    color    = accent.accent.copy(alpha = 0.30f),
                     topLeft  = Offset(0f, 0f),
                     size     = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height),
                 )
@@ -593,11 +598,11 @@ private fun SlotEntryRow(
             modifier = Modifier
                 .size(26.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0x1F8B5CF6))
+                .background(accent.tintedSurface)
                 .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
             contentAlignment = Alignment.Center,
         ) {
-            Text("✎", fontSize = 12.sp, color = Violet400)
+            Text("✎", fontSize = 12.sp, color = accent.accentLight)
         }
         // Delete button
         Box(
@@ -680,6 +685,7 @@ private fun EditModeSlotCard(
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     var showRename        by remember { mutableStateOf(false) }
     var renameValue       by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -733,12 +739,12 @@ private fun EditModeSlotCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x1F8B5CF6))
-                    .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(8.dp))
+                    .background(accent.tintedSurface)
+                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(8.dp))
                     .clickable { showRename = true; renameValue = slotWithEntries.slot.name }
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Text("Rename", fontSize = 11.sp, color = Violet400)
+                Text("Rename", fontSize = 11.sp, color = accent.accentLight)
             }
             Box(
                 modifier = Modifier

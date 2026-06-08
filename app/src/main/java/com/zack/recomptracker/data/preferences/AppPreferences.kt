@@ -97,12 +97,27 @@ class UiPreferences(private val context: Context) {
             }
         }
 
+    val accentTheme: kotlinx.coroutines.flow.Flow<com.zack.recomptracker.ui.theme.AccentTheme> =
+        context.uiDataStore.data.map {
+            when (it[Keys.AccentTheme]) {
+                com.zack.recomptracker.ui.theme.AccentTheme.BLUE.name    -> com.zack.recomptracker.ui.theme.AccentTheme.BLUE
+                com.zack.recomptracker.ui.theme.AccentTheme.EMERALD.name -> com.zack.recomptracker.ui.theme.AccentTheme.EMERALD
+                com.zack.recomptracker.ui.theme.AccentTheme.ROSE.name    -> com.zack.recomptracker.ui.theme.AccentTheme.ROSE
+                com.zack.recomptracker.ui.theme.AccentTheme.AMBER.name   -> com.zack.recomptracker.ui.theme.AccentTheme.AMBER
+                else -> com.zack.recomptracker.ui.theme.AccentTheme.VIOLET
+            }
+        }
+
     suspend fun setFont(font: String) {
         context.uiDataStore.edit { it[Keys.SelectedFont] = font }
     }
 
     suspend fun setAiInsights(enabled: Boolean) {
         context.uiDataStore.edit { it[Keys.AiInsightsEnabled] = enabled }
+    }
+
+    suspend fun setAccentTheme(theme: com.zack.recomptracker.ui.theme.AccentTheme) {
+        context.uiDataStore.edit { it[Keys.AccentTheme] = theme.name }
     }
 
     /**
@@ -124,5 +139,6 @@ class UiPreferences(private val context: Context) {
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
         val PendingDownloadId = longPreferencesKey("pending_download_id")
         val SelectedModelVariant = stringPreferencesKey("selected_model_variant")
+        val AccentTheme = stringPreferencesKey("accent_theme")
     }
 }

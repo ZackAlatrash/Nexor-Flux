@@ -14,17 +14,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zack.recomptracker.ui.theme.TintedBorder
-import com.zack.recomptracker.ui.theme.TintedSurface
-import com.zack.recomptracker.ui.theme.Violet400
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 
 @Composable
 fun AiBadge(modifier: Modifier = Modifier) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(TintedSurface)
-            .border(1.dp, TintedBorder, RoundedCornerShape(20.dp))
+            .background(accent.tintedSurface)
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(20.dp))
             .padding(horizontal = 7.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -32,7 +31,7 @@ fun AiBadge(modifier: Modifier = Modifier) {
             text = "✦ AI",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = Violet400.copy(alpha = 0.75f),
+            color = accent.accentLight.copy(alpha = 0.75f),
         )
     }
 }

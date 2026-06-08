@@ -45,8 +45,7 @@ import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 
 @Composable
 fun RecipeBuilderScreen(
@@ -58,6 +57,7 @@ fun RecipeBuilderScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val navigateBack by viewModel.navigateBack.collectAsStateWithLifecycle()
+    val accent = LocalAppAccent.current
 
     // New ingredient picked from FoodLibraryScreen picker mode
     LaunchedEffect(pickedIngredientJson) {
@@ -202,7 +202,7 @@ fun RecipeBuilderScreen(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ Add ingredient", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Violet300)
+                    Text("+ Add ingredient", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = accent.accentLighter)
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -214,7 +214,7 @@ fun RecipeBuilderScreen(
             Spacer(Modifier.height(8.dp))
             if (state.isSaving) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Violet400)
+                    CircularProgressIndicator(color = accent.accentLight)
                 }
             } else {
                 LiquidPrimaryButton(

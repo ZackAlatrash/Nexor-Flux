@@ -20,7 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,8 +42,9 @@ import com.zack.recomptracker.ui.component.GlassOrbBackground
 import com.zack.recomptracker.ui.navigation.AppNavGraph
 import com.zack.recomptracker.ui.navigation.Routes
 import com.zack.recomptracker.ui.navigation.TopLevelDestination
+import com.zack.recomptracker.ui.theme.AccentTheme
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.RecompTrackerTheme
-import com.zack.recomptracker.ui.theme.Violet300
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastController
 import com.zack.recomptracker.ui.toast.ToastOverlay
@@ -79,7 +82,9 @@ private val tabRoutes = listOf(
 
 @Composable
 fun RecompApp(container: AppContainer) {
-    RecompTrackerTheme {
+    val accentTheme by container.uiPreferences.accentTheme
+        .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
+    RecompTrackerTheme(accentTheme = accentTheme) {
         val navController = rememberNavController()
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
@@ -168,7 +173,7 @@ fun RecompApp(container: AppContainer) {
                             },
                             backdrop = navBackdrop,
                             tabsCount = 5,
-                            accentColor = Violet300,
+                            accentColor = LocalAppAccent.current.accentLighter,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                         ) {
                             // Home

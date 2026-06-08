@@ -8,8 +8,10 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.ui.theme.AccentTheme
 import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
@@ -61,6 +63,7 @@ class SettingsViewModel(
     private val foodCatalogRepository: FoodCatalogRepository,
     private val personalFoodRepository: PersonalFoodRepository,
     private val userProfileStore: UserProfilePreferencesStore,
+    private val uiPreferences: UiPreferences,
 ) : ViewModel() {
     private val samsungFoodParser = SamsungHealthFoodCsvParser()
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -74,8 +77,16 @@ class SettingsViewModel(
         userProfileStore.preferences
             .stateIn(viewModelScope, SharingStarted.Eagerly, UserProfilePreferences())
 
+    val accentTheme: StateFlow<AccentTheme> =
+        uiPreferences.accentTheme
+            .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.VIOLET)
+
     fun saveProfile(profile: UserProfilePreferences) {
         viewModelScope.launch { userProfileStore.save(profile) }
+    }
+
+    fun setAccentTheme(theme: AccentTheme) {
+        viewModelScope.launch { uiPreferences.setAccentTheme(theme) }
     }
 
     init {

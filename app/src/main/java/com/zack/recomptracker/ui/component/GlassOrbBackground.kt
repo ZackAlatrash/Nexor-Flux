@@ -31,6 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zack.recomptracker.R
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 
 // How much the raw rotation-vector reading maps to a tilt fraction
 private const val TILT_SCALE = 0.28f
@@ -116,6 +117,12 @@ fun GlassOrbBackground(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0x8C000000)),
+        )
+        // Accent tint — shifts the background mood with the selected theme colour
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(LocalAppAccent.current.backgroundTint),
         )
     }
 }

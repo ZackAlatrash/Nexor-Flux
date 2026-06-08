@@ -56,9 +56,7 @@ import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -103,6 +101,10 @@ fun BodyRecoveryContent(
     onViewHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
+    val bodyRecoveryOrbBrush = remember(accent.accent) {
+        Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.18f), Color.Transparent))
+    }
     val formState = BodyCheckInFormState(
         date = state.date,
         bodyWeightKg = state.bodyWeightKg,
@@ -129,7 +131,7 @@ fun BodyRecoveryContent(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(Brush.radialGradient(listOf(Color(0x2E8B5CF6), Color.Transparent))),
+                .background(bodyRecoveryOrbBrush),
         )
 
         LazyColumn(
@@ -215,13 +217,14 @@ private fun MetricsHeroCard(state: TodayUiState) {
     val checkInLabel = state.lastLogDate?.let {
         "LATEST CHECK-IN · ${it.format(DateTimeFormatter.ofPattern("MMM d"))}"
     } ?: "NO CHECK-INS YET"
+    val accent = LocalAppAccent.current
     val showSparklines = state.weightSparkline14d.isNotEmpty() || state.waistSparkline14d.isNotEmpty()
 
     FrostedCard {
         Text(
             text = checkInLabel,
             fontSize = 9.sp, fontWeight = FontWeight.Bold,
-            color = Color(0xCCA78BFA), letterSpacing = 0.13.sp,
+            color = accent.accentLight.copy(alpha = 0.80f), letterSpacing = 0.13.sp,
         )
         Spacer(Modifier.height(14.dp))
 
@@ -263,6 +266,7 @@ private fun MetricColumn(
     sparklineValues: List<Float> = emptyList(),
     showSparklineSlot: Boolean = false,
 ) {
+    val accent = LocalAppAccent.current
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
@@ -279,7 +283,7 @@ private fun MetricColumn(
         }
         Text(text = label, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = TextMuted, letterSpacing = 0.10.sp)
         if (trend.isNotEmpty()) {
-            Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Violet400)
+            Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = accent.accentLight)
         }
         if (showSparklineSlot) {
             Spacer(Modifier.height(10.dp))
@@ -334,15 +338,16 @@ private fun MetricTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     val empty = value == null
     val valueAlpha by animateFloatAsState(if (empty) 0.28f else 1f, label = "tileAlpha_$label")
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(CornerSmall))
-            .background(if (empty) Color(0x08FFFFFF) else Color(0x148B5CF6))
+            .background(if (empty) Color(0x08FFFFFF) else accent.accent.copy(alpha = 0.08f))
             .border(
                 1.dp,
-                if (empty) Color(0x0DFFFFFF) else Color(0x2E8B5CF6),
+                if (empty) Color(0x0DFFFFFF) else accent.accent.copy(alpha = 0.18f),
                 RoundedCornerShape(CornerSmall),
             )
             .clickable(
@@ -400,11 +405,12 @@ private fun RecoveryBandCard(state: BodyCheckInFormState, onClick: () -> Unit) {
 
 @Composable
 private fun ScoreBar(label: String, score: Int) {
+    val accent = LocalAppAccent.current
     val fraction by animateFloatAsState(targetValue = score / 10f, label = "bar_$label")
     val (barStart, barEnd, numColor) = when {
         score <= 4 -> Triple(Color(0xFFEF4444), Color(0xFFF97316), Color(0xFFEF4444))
         score <= 6 -> Triple(Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFF59E0B))
-        else -> Triple(Violet500, Violet300, Violet400)
+        else -> Triple(accent.accent, accent.accentLighter, accent.accentLight)
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -443,6 +449,7 @@ private fun ScoreBar(label: String, score: Int) {
 
 @Composable
 private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
+    val accent = LocalAppAccent.current
     NeutralCard(
         modifier = Modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
@@ -462,7 +469,7 @@ private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
                 )
                 Text(text = "$daysLogged days logged · tap to view all", fontSize = 10.sp, color = TextMuted)
             }
-            Text("→", fontSize = 16.sp, color = Color(0xB38B5CF6))
+            Text("→", fontSize = 16.sp, color = accent.accent.copy(alpha = 0.70f))
         }
     }
 }

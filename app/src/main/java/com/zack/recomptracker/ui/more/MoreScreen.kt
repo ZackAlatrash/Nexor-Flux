@@ -52,9 +52,7 @@ import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import java.time.LocalDate
 
 @Composable
@@ -71,6 +69,10 @@ fun MoreScreen(
     val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
     val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val accent = LocalAppAccent.current
+    val moreOrbBrush = remember(accent.accent) {
+        Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.15f), Color.Transparent))
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -90,7 +92,7 @@ fun MoreScreen(
                 .size(280.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
                 .background(
-                    Brush.radialGradient(listOf(Color(0x268B5CF6), Color.Transparent)),
+                    moreOrbBrush,
                 ),
         )
 
@@ -217,7 +219,7 @@ fun MoreScreen(
                             onCheckedChange = viewModel::setAiInsights,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = Violet500,
+                                checkedTrackColor = accent.accent,
                                 uncheckedThumbColor = Color(0x80FFFFFF),
                                 uncheckedTrackColor = Color(0x1AFFFFFF),
                                 uncheckedBorderColor = Color(0x26FFFFFF),
@@ -414,6 +416,7 @@ private fun ModelVariantSelector(
     onSelect: (ModelVariant) -> Unit,
     enabled: Boolean,
 ) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -424,10 +427,10 @@ private fun ModelVariantSelector(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (isActive) Color(0x288B5CF6) else Color(0x0FFFFFFF))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.16f) else Color(0x0FFFFFFF))
                     .border(
                         1.dp,
-                        if (isActive) Color(0x598B5CF6) else Color(0x14FFFFFF),
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
                         RoundedCornerShape(10.dp),
                     )
                     .clickable(
@@ -444,12 +447,12 @@ private fun ModelVariantSelector(
                         text = variant.displayName,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isActive) Violet300 else Color.White.copy(alpha = if (enabled) 0.5f else 0.3f),
+                        color = if (isActive) accent.accentLighter else Color.White.copy(alpha = if (enabled) 0.5f else 0.3f),
                     )
                     Text(
                         text = variant.displaySizeGb,
                         fontSize = 10.sp,
-                        color = if (isActive) Violet400 else TextFaint,
+                        color = if (isActive) accent.accentLight else TextFaint,
                     )
                 }
             }
@@ -569,12 +572,13 @@ private fun SettingRow(
 
 @Composable
 private fun MenuIcon(emoji: String) {
+    val accent = LocalAppAccent.current
     Box(
         modifier = Modifier
             .size(34.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0x248B5CF6))
-            .border(1.dp, Color(0x388B5CF6), RoundedCornerShape(10.dp)),
+            .background(accent.tintedSurface)
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Text(emoji, fontSize = 16.sp)
@@ -585,16 +589,17 @@ private fun MenuIcon(emoji: String) {
 
 @Composable
 private fun FontPicker(selected: String, onSelect: (String) -> Unit) {
+    val accent = LocalAppAccent.current
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         listOf("default" to "Default", "space" to "Space", "jakarta" to "Jakarta").forEach { (key, label) ->
             val isActive = selected == key
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(7.dp))
-                    .background(if (isActive) Color(0x388B5CF6) else Color(0x0FFFFFFF))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else Color(0x0FFFFFFF))
                     .border(
                         1.dp,
-                        if (isActive) Color(0x598B5CF6) else Color(0x14FFFFFF),
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
                         RoundedCornerShape(7.dp),
                     )
                     .clickable(
@@ -607,7 +612,7 @@ private fun FontPicker(selected: String, onSelect: (String) -> Unit) {
                     text = label,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isActive) Violet300 else Color(0x59FFFFFF),
+                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
                 )
             }
         }
@@ -648,14 +653,15 @@ private fun DataActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val alpha = if (enabled) 1f else 0.5f
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(CornerCard))
-            .background(if (isPrimary) Color(0x1F8B5CF6) else CardSurface)
+            .background(if (isPrimary) accent.tintedSurface else CardSurface)
             .border(
                 1.dp,
-                if (isPrimary) Color(0x388B5CF6) else CardBorder,
+                if (isPrimary) accent.tintedBorder else CardBorder,
                 RoundedCornerShape(CornerCard),
             )
             .clickable(
@@ -673,7 +679,7 @@ private fun DataActionCard(
             text = label,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isPrimary) Violet300.copy(alpha = alpha) else Color(0x73FFFFFF),
+            color = if (isPrimary) accent.accentLighter.copy(alpha = alpha) else Color(0x73FFFFFF),
         )
     }
 }

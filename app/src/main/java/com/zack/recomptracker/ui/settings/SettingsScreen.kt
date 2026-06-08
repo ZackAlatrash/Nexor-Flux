@@ -73,18 +73,16 @@ import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import com.zack.recomptracker.ui.theme.AccentTheme
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
 import java.time.LocalDate
 
-private val AmbientOrb1 = Brush.radialGradient(listOf(Color(0x268B5CF6), Color.Transparent))
-private val AmbientOrb2 = Brush.radialGradient(listOf(Color(0x14a78bfa), Color.Transparent))
 private val HealthConnectGreen = Color(0xFF34D399)
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -93,7 +91,15 @@ private val HealthConnectGreen = Color(0xFF34D399)
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val profile by viewModel.profileState.collectAsStateWithLifecycle()
+    val accentTheme by viewModel.accentTheme.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val accent = LocalAppAccent.current
+    val ambientOrb1 = remember(accent.accent) {
+        Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.15f), Color.Transparent))
+    }
+    val ambientOrb2 = remember(accent.accentLight) {
+        Brush.radialGradient(listOf(accent.accentLight.copy(alpha = 0.08f), Color.Transparent))
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -143,14 +149,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             modifier = Modifier
                 .size(320.dp)
                 .offset(x = (-80).dp, y = (-60).dp)
-                .background(AmbientOrb1),
+                .background(ambientOrb1),
         )
         Box(
             modifier = Modifier
                 .size(240.dp)
                 .align(Alignment.BottomEnd)
                 .offset(x = 60.dp, y = (-180).dp)
-                .background(AmbientOrb2),
+                .background(ambientOrb2),
         )
 
         LazyColumn(
@@ -290,6 +296,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
                         }
                     },
+                )
+            }
+
+            item { SectionLabel("Appearance") }
+            item {
+                AccentThemePicker(
+                    selected = accentTheme,
+                    onSelect = viewModel::setAccentTheme,
                 )
             }
 
@@ -689,8 +703,9 @@ private fun ProfileOptionRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val bgColor = if (selected) Color(0x1A8B5CF6) else Color.Transparent
-    val borderColor = if (selected) Color(0x4D8B5CF6) else Color(0x0DFFFFFF)
+    val accent = LocalAppAccent.current
+    val bgColor = if (selected) accent.accent.copy(alpha = 0.10f) else Color.Transparent
+    val borderColor = if (selected) accent.accent.copy(alpha = 0.30f) else Color(0x0DFFFFFF)
 
     Row(
         modifier = Modifier
@@ -729,7 +744,7 @@ private fun ProfileOptionRow(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(Violet400),
+                    .background(accent.accentLight),
             )
         }
     }
@@ -742,8 +757,9 @@ private fun SexChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bgColor = if (selected) Color(0x1A8B5CF6) else Color.Transparent
-    val borderColor = if (selected) Color(0x4D8B5CF6) else Color(0x12FFFFFF)
+    val accent = LocalAppAccent.current
+    val bgColor = if (selected) accent.accent.copy(alpha = 0.10f) else Color.Transparent
+    val borderColor = if (selected) accent.accent.copy(alpha = 0.30f) else Color(0x12FFFFFF)
 
     Box(
         modifier = modifier
@@ -762,8 +778,57 @@ private fun SexChip(
             text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (selected) Violet300 else Color.White.copy(alpha = 0.5f),
+            color = if (selected) accent.accentLighter else Color.White.copy(alpha = 0.5f),
         )
+    }
+}
+
+// ── Accent theme picker ───────────────────────────────────────────────────────
+
+@Composable
+private fun AccentThemePicker(
+    selected: AccentTheme,
+    onSelect: (AccentTheme) -> Unit,
+) {
+    SettingsCard {
+        Text(
+            text = "Accent color",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            AccentTheme.values().forEach { theme ->
+                val isSelected = theme == selected
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(theme.accent)
+                        .then(
+                            if (isSelected) Modifier.border(2.dp, Color.White, CircleShape)
+                            else Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onSelect(theme) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSelected) {
+                        Text(
+                            text = "✓",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -41,10 +41,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.TintedBorder
-import com.zack.recomptracker.ui.theme.TintedSurface
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 
 enum class AiBorderMode {
     Preparing,
@@ -106,11 +103,12 @@ fun AiInsightCard(
         finishedListener = { if (effectiveMode == AiBorderMode.Ready) readyComplete = true },
     )
 
+    val accent = LocalAppAccent.current
     val backdrop = LocalBackdrop.current
     var cardWidth by remember { mutableIntStateOf(0) }
-    val shimmerBrush = remember(cardWidth) {
+    val shimmerBrush = remember(cardWidth, accent.tintedBorder) {
         Brush.horizontalGradient(
-            colors = listOf(Color.Transparent, TintedBorder, TintedBorder, Color.Transparent),
+            colors = listOf(Color.Transparent, accent.tintedBorder, accent.tintedBorder, Color.Transparent),
             startX = cardWidth * 0.10f,
             endX = cardWidth * 0.90f,
         )
@@ -130,7 +128,7 @@ fun AiInsightCard(
                     blur(20f.dp.toPx())
                 },
                 onDrawSurface = {
-                    drawRect(TintedSurface)
+                    drawRect(accent.tintedSurface)
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
                         brush = shimmerBrush,
@@ -148,6 +146,9 @@ fun AiInsightCard(
                     pulseAlpha = pulseAlpha,
                     readyFadeAlpha = readyFadeAlpha,
                     cornerPx = cornerDp.toPx(),
+                    accentLighter = accent.accentLighter,
+                    accentMain = accent.accent,
+                    tintedBorder = accent.tintedBorder,
                 )
             }
             .padding(16.dp),
@@ -161,6 +162,9 @@ private fun DrawScope.drawAnimatedBorder(
     pulseAlpha: Float,
     readyFadeAlpha: Float,
     cornerPx: Float,
+    accentLighter: Color,
+    accentMain: Color,
+    tintedBorder: Color,
 ) {
     val strokeWidth = 1.5.dp.toPx()
     val corner = CornerRadius(cornerPx)
@@ -168,7 +172,7 @@ private fun DrawScope.drawAnimatedBorder(
     when (mode) {
         AiBorderMode.Static -> {
             drawRoundRect(
-                color = TintedBorder,
+                color = tintedBorder,
                 cornerRadius = corner,
                 style = Stroke(width = 1.dp.toPx()),
             )
@@ -176,7 +180,7 @@ private fun DrawScope.drawAnimatedBorder(
 
         AiBorderMode.Preparing -> {
             drawRoundRect(
-                color = Violet300.copy(alpha = pulseAlpha),
+                color = accentLighter.copy(alpha = pulseAlpha),
                 cornerRadius = corner,
                 style = Stroke(width = strokeWidth),
             )
@@ -184,7 +188,7 @@ private fun DrawScope.drawAnimatedBorder(
 
         AiBorderMode.Generating, AiBorderMode.Ready -> {
             drawRoundRect(
-                color = TintedBorder,
+                color = tintedBorder,
                 cornerRadius = corner,
                 style = Stroke(width = 1.dp.toPx()),
             )
@@ -198,8 +202,8 @@ private fun DrawScope.drawAnimatedBorder(
                         colorStops = arrayOf(
                             0.00f to Color.Transparent,
                             0.06f to Color(0x70FFFFFF),
-                            0.11f to Violet300,
-                            0.19f to Violet500,
+                            0.11f to accentLighter,
+                            0.19f to accentMain,
                             0.23f to Color.Transparent,
                             1.00f to Color.Transparent,
                         ),

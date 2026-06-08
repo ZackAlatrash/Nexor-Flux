@@ -144,6 +144,7 @@ private class AppViewModelFactory(
                 foodCatalogRepository = container.foodCatalogRepository,
                 personalFoodRepository = container.personalFoodRepository,
                 userProfileStore = container.userProfilePreferencesStore,
+                uiPreferences = container.uiPreferences,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 logRepository = container.logRepository,

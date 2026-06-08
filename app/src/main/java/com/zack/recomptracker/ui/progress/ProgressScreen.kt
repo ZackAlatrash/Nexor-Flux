@@ -45,20 +45,22 @@ import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet400
-
-private val ProgressOrbBrush = Brush.radialGradient(listOf(Color(0x298B5CF6), Color.Transparent))
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 
 @Composable
 fun ProgressScreen(viewModel: ProgressViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val accent = LocalAppAccent.current
+    val progressOrbBrush = remember(accent.accent) {
+        Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.16f), Color.Transparent))
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(ProgressOrbBrush),
+                .background(progressOrbBrush),
         )
 
         LazyColumn(
@@ -118,6 +120,7 @@ fun ProgressScreen(viewModel: ProgressViewModel) {
 
 @Composable
 private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -128,10 +131,10 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(CornerSmall))
-                    .background(if (isActive) Color(0x338B5CF6) else CardSurface)
+                    .background(if (isActive) accent.accent.copy(alpha = 0.20f) else CardSurface)
                     .border(
                         1.dp,
-                        if (isActive) Color(0x598B5CF6) else CardBorder,
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else CardBorder,
                         RoundedCornerShape(CornerSmall),
                     )
                     .clickable(
@@ -145,7 +148,7 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
                     text = "${days}d",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isActive) Color(0xFFC4B5FD) else Color(0x59FFFFFF),
+                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
                 )
             }
         }
@@ -204,6 +207,7 @@ private fun MiniChartPair(left: ChartSeries, right: ChartSeries) {
 
 @Composable
 private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
+    val accent = LocalAppAccent.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(CornerCard))
@@ -244,7 +248,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
                 text = series.trendLabel,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (series.trendIsGood) Violet400 else ErrorRed,
+                color = if (series.trendIsGood) accent.accentLight else ErrorRed,
             )
         }
         Spacer(Modifier.height(3.dp))
@@ -258,6 +262,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -298,7 +303,7 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                     text = series.trendLabel,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (series.trendIsGood) Violet400 else ErrorRed,
+                    color = if (series.trendIsGood) accent.accentLight else ErrorRed,
                 )
             }
         }

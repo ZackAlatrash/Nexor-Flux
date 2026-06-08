@@ -39,8 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.data.repository.DayCalorieSummary
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -61,6 +60,7 @@ fun WeekCalorieStrip(
 ) {
     if (weekData.isEmpty()) return
 
+    val accent = LocalAppAccent.current
     val scaleMax = (targetHigh * 1.3f).toInt().coerceAtLeast(1)
     val zoneLowFrac   = (targetLow.toFloat()     / scaleMax).coerceIn(0f, 1f)
     val zoneHighFrac  = (targetHigh.toFloat()    / scaleMax).coerceIn(0f, 1f)
@@ -95,14 +95,14 @@ fun WeekCalorieStrip(
 
                         // Colored zone band
                         drawRect(
-                            color   = Color(0x128B5CF6),
+                            color   = accent.accent.copy(alpha = 0.07f),
                             topLeft = Offset(0f, yHigh),
                             size    = Size(size.width, yLow - yHigh),
                         )
 
                         // Single target line
                         drawLine(
-                            color       = Color(0x608B5CF6),
+                            color       = accent.accent.copy(alpha = 0.38f),
                             start       = Offset(0f, yTarget),
                             end         = Offset(size.width - labelGap, yTarget),
                             strokeWidth = 1.dp.toPx(),
@@ -130,7 +130,7 @@ fun WeekCalorieStrip(
                 text = "$targetCalories",
                 fontSize = 7.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0x808B5CF6),
+                color = accent.accent.copy(alpha = 0.50f),
                 textAlign = TextAlign.End,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -153,7 +153,7 @@ fun WeekCalorieStrip(
                         .take(2),
                     fontSize = if (sel) 9.sp else 8.sp,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                    color = if (sel) Violet400 else Color(0xFF555555),
+                    color = if (sel) accent.accentLight else Color(0xFF555555),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )
@@ -170,8 +170,8 @@ fun WeekCalorieStrip(
                 modifier = Modifier
                     .padding(top = 8.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0x1A8B5CF6))
-                    .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(20.dp))
+                    .background(accent.accent.copy(alpha = 0.10f))
+                    .border(1.dp, accent.accent.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -184,7 +184,7 @@ fun WeekCalorieStrip(
                     text = "Today",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Violet400,
+                    color = accent.accentLight,
                 )
             }
         }
@@ -201,25 +201,26 @@ private fun WeekBarItem(
     onSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val empty = summary.calories == 0
     val targetFrac = if (empty) 0.04f else (summary.calories.toFloat() / scaleMax).coerceIn(0f, 1f)
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
     val barColor = when {
         empty -> Color.White.copy(alpha = if (isSelected) 0.18f else 0.10f)
-        summary.calories in targetLow..targetHigh -> Violet400
+        summary.calories in targetLow..targetHigh -> accent.accentLight
         summary.calories > targetHigh -> Color(0xFFF97316)
-        else -> Violet300.copy(alpha = 0.75f)
+        else -> accent.accentLighter.copy(alpha = 0.75f)
     }
 
     Box(
         modifier = modifier
             .fillMaxHeight()
             .clip(RoundedCornerShape(10.dp))
-            .background(if (isSelected) Color(0x158B5CF6) else Color.Transparent)
+            .background(if (isSelected) accent.accent.copy(alpha = 0.08f) else Color.Transparent)
             .border(
                 width = 1.dp,
-                color = if (isSelected) Color(0x308B5CF6) else Color.Transparent,
+                color = if (isSelected) accent.accent.copy(alpha = 0.19f) else Color.Transparent,
                 shape = RoundedCornerShape(10.dp),
             )
             .clickable(

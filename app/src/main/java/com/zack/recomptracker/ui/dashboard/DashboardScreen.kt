@@ -62,15 +62,10 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-private val AmbientOrbBrush1 = Brush.radialGradient(listOf(Color(0x338B5CF6), Color.Transparent))
-private val AmbientOrbBrush2 = Brush.radialGradient(listOf(Color(0x14a78bfa), Color.Transparent))
 
 @Composable
 fun HomeDashboardScreen(
@@ -89,20 +84,27 @@ fun HomeDashboardContent(
     onLogFood: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
+    val ambientOrbBrush1 = remember(accent.accent) {
+        Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.20f), Color.Transparent))
+    }
+    val ambientOrbBrush2 = remember(accent.accentLight) {
+        Brush.radialGradient(listOf(accent.accentLight.copy(alpha = 0.08f), Color.Transparent))
+    }
     Box(modifier = modifier.fillMaxSize()) {
-        // Ambient orb 1 — top-left violet bloom
+        // Ambient orb 1 — top-left bloom
         Box(
             modifier = Modifier
                 .size(300.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(AmbientOrbBrush1),
+                .background(ambientOrbBrush1),
         )
         // Ambient orb 2 — right-center secondary bloom
         Box(
             modifier = Modifier
                 .size(220.dp)
                 .offset(x = 200.dp, y = 260.dp)
-                .background(AmbientOrbBrush2),
+                .background(ambientOrbBrush2),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -181,6 +183,7 @@ private fun ScreenHeader(modifier: Modifier = Modifier) {
 
 @Composable
 private fun TodayCard(state: DashboardUiState) {
+    val accent = LocalAppAccent.current
     val prefs    = state.preferences
     val calories = state.todayTotals.calories
     val zoneLow  = prefs.calorieZoneLowerBound
@@ -272,7 +275,7 @@ private fun TodayCard(state: DashboardUiState) {
             Text(
                 "▌ $zoneLow–$zoneHigh",
                 fontSize = 9.sp,
-                color = Color(0xA68B5CF6),
+                color = accent.accent.copy(alpha = 0.65f),
             )
             Text("$scaleMax", fontSize = 9.sp, color = TextVeryMuted)
         }
@@ -312,6 +315,7 @@ private fun MacroBarItem(
     fraction: Float,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val animatedFrac by animateFloatAsState(
         targetValue = fraction,
         animationSpec = ChartDefaults.AnimSpec.progressBar,
@@ -343,7 +347,7 @@ private fun MacroBarItem(
                     .fillMaxWidth(animatedFrac)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(Violet500, Violet400)),
+                        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
                         RoundedCornerShape(3.dp),
                     ),
             )
@@ -355,6 +359,7 @@ private fun MacroBarItem(
 
 @Composable
 private fun SevenDayChartCard(state: DashboardUiState) {
+    val accent = LocalAppAccent.current
     val inZone = state.inZoneDays7
 
     FrostedCard {
@@ -379,15 +384,15 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     text = "LAST 7 DAYS",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xD9a78bfa),
+                    color = accent.accentLight.copy(alpha = 0.85f),
                     letterSpacing = 0.13.sp,
                 )
             }
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0x268B5CF6))
-                    .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(20.dp))
+                    .background(accent.accent.copy(alpha = 0.15f))
+                    .border(1.dp, accent.accent.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 10.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -396,13 +401,13 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     modifier = Modifier
                         .size(5.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Violet400),
+                        .background(accent.accentLight),
                 )
                 Text(
                     text = "$inZone of 7 in zone",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Violet300,
+                    color = accent.accentLighter,
                 )
             }
         }
@@ -431,7 +436,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                         text = day.label,
                         fontSize = 9.sp,
                         fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
-                        color = if (day.isToday) Violet300 else TextVeryMuted,
+                        color = if (day.isToday) accent.accentLighter else TextVeryMuted,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -466,7 +471,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             ChartStat(
                 value = state.adherencePercent.formatPercent(),
                 label = "Adherence",
-                valueColor = Violet400,
+                valueColor = accent.accentLight,
                 modifier = Modifier.weight(1f),
             )
             Box(
@@ -520,18 +525,19 @@ private fun ChartStat(
 
 @Composable
 private fun MotivationalCard(message: String) {
+    val accent = LocalAppAccent.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0x247C3AED), Color(0x106D28D9)),
+                    colors = listOf(accent.accentDark.copy(alpha = 0.14f), accent.accentDark.copy(alpha = 0.06f)),
                     start = Offset(0f, 0f),
                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
                 ),
             )
-            .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(16.dp))
+            .border(1.dp, accent.accent.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
         Text(
@@ -552,6 +558,7 @@ private fun StatTilesRow(
     adherencePercent: Double,
     weightTrendKgPerWeek: Double,
 ) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -559,7 +566,7 @@ private fun StatTilesRow(
         StatTile(
             value = adherencePercent.formatPercent(),
             label = "Adherence",
-            valueColor = Violet400,
+            valueColor = accent.accentLight,
             modifier = Modifier.weight(1f),
         )
         StatTile(
@@ -706,6 +713,7 @@ private fun AiInsightSection(
     onCancel: () -> Unit,
     onRetry: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
         if (aiState != AiInsightState.Disabled) {
             Text(
@@ -792,7 +800,7 @@ private fun AiInsightSection(
                     androidx.compose.material3.CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = Violet400,
+                        color = accent.accentLight,
                     )
                     Text("Verifying download…", fontSize = 13.sp, color = TextMuted)
                 }
@@ -811,7 +819,7 @@ private fun AiInsightSection(
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = Violet400,
+                        color = accent.accentLight,
                     )
                     Text("Preparing model…", fontSize = 13.sp, color = TextMuted)
                 }
@@ -862,6 +870,7 @@ private fun AiCardHeader(
     showRefresh: Boolean,
     onRefresh: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -880,7 +889,7 @@ private fun AiCardHeader(
         ) {
             if (showRefresh) {
                 androidx.compose.material3.IconButton(onClick = onRefresh) {
-                    Text("↺", fontSize = 14.sp, color = Violet400)
+                    Text("↺", fontSize = 14.sp, color = accent.accentLight)
                 }
             }
             AiBadge()

@@ -53,18 +53,10 @@ import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.TintedBorder
-import com.zack.recomptracker.ui.theme.TintedSurface
 import com.zack.recomptracker.ui.theme.FrostedBorder
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
-
-private val AmbientOrbDefaultBrush = Brush.radialGradient(
-    listOf(Color(0x338B5CF6), Color.Transparent)
-)
 
 // ── Neutral Card (workhorse — list rows, menus, form containers) ──────────────
 
@@ -138,10 +130,11 @@ fun TintedCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
+    val accent = LocalAppAccent.current
     var cardWidth by remember { mutableIntStateOf(0) }
-    val shimmerBrush = remember(cardWidth) {
+    val shimmerBrush = remember(cardWidth, accent.tintedBorder) {
         Brush.horizontalGradient(
-            colors = listOf(Color.Transparent, TintedBorder, TintedBorder, Color.Transparent),
+            colors = listOf(Color.Transparent, accent.tintedBorder, accent.tintedBorder, Color.Transparent),
             startX = cardWidth * 0.10f,
             endX   = cardWidth * 0.90f,
         )
@@ -159,7 +152,7 @@ fun TintedCard(
                     blur(20f.dp.toPx())
                 },
                 onDrawSurface = {
-                    drawRect(TintedSurface)
+                    drawRect(accent.tintedSurface)
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
                         brush = shimmerBrush,
@@ -169,7 +162,7 @@ fun TintedCard(
                     )
                 }
             )
-            .border(1.dp, TintedBorder, RoundedCornerShape(CornerCard))
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
         content = content,
     )
@@ -193,18 +186,19 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun VioletBadge(text: String, modifier: Modifier = Modifier) {
+    val accent = LocalAppAccent.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0x1F8B5CF6))
-            .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(20.dp))
+            .background(accent.accent.copy(alpha = 0.12f))
+            .border(1.dp, accent.accent.copy(alpha = 0.20f), RoundedCornerShape(20.dp))
             .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
         Text(
             text = text,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = Violet400,
+            color = accent.accentLight,
         )
     }
 }
@@ -221,9 +215,10 @@ fun GlassInputField(
     unit: String? = null,
     keyboardType: KeyboardType = KeyboardType.Decimal,
 ) {
+    val accent = LocalAppAccent.current
     var focused by remember { mutableStateOf(false) }
-    val borderColor = if (focused) Color(0x8C8B5CF6) else Color(0x1AFFFFFF)
-    val bgColor = if (focused) Color(0x148B5CF6) else Color(0x40000000)
+    val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else Color(0x1AFFFFFF)
+    val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(
@@ -244,7 +239,7 @@ fun GlassInputField(
                 color = Color.White,
                 letterSpacing = (-0.5).sp,
             ),
-            cursorBrush = SolidColor(Violet300),
+            cursorBrush = SolidColor(accent.accentLighter),
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
@@ -294,29 +289,31 @@ fun VioletSlider(
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xA6FFFFFF),
             )
+            val accent = LocalAppAccent.current
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x248B5CF6))
-                    .border(1.dp, Color(0x388B5CF6), RoundedCornerShape(8.dp))
+                    .background(accent.accent.copy(alpha = 0.14f))
+                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 1.dp),
             ) {
                 Text(
                     text = value.toString(),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Violet400,
+                    color = accent.accentLight,
                 )
             }
         }
+        val accent = LocalAppAccent.current
         Slider(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.toInt().coerceIn(range.first, range.last)) },
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = (range.last - range.first - 1).coerceAtLeast(0),
             colors = SliderDefaults.colors(
-                thumbColor = Violet300,
-                activeTrackColor = Violet400,
+                thumbColor = accent.accentLighter,
+                activeTrackColor = accent.accentLight,
                 inactiveTrackColor = Color(0x12FFFFFF),
             ),
             modifier = Modifier.fillMaxWidth(),
@@ -357,7 +354,7 @@ fun VioletToggle(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Violet500,
+                checkedTrackColor = LocalAppAccent.current.accent,
                 uncheckedThumbColor = Color(0x80FFFFFF),
                 uncheckedTrackColor = Color(0x1AFFFFFF),
                 uncheckedBorderColor = Color(0x26FFFFFF),
@@ -376,9 +373,10 @@ fun GlassTextArea(
     modifier: Modifier = Modifier,
     minLines: Int = 2,
 ) {
+    val accent = LocalAppAccent.current
     var focused by remember { mutableStateOf(false) }
-    val borderColor = if (focused) Color(0x8C8B5CF6) else Color(0x1AFFFFFF)
-    val bgColor = if (focused) Color(0x148B5CF6) else Color(0x40000000)
+    val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else Color(0x1AFFFFFF)
+    val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
 
     BasicTextField(
         value = value,
@@ -389,7 +387,7 @@ fun GlassTextArea(
             fontSize = 13.sp,
             color = Color.White,
         ),
-        cursorBrush = SolidColor(Violet300),
+        cursorBrush = SolidColor(accent.accentLighter),
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
@@ -438,11 +436,12 @@ fun ScoreStepper(
                 enabled = value > range.first,
                 onClick = { onValueChange((value - 1).coerceAtLeast(range.first)) },
             )
+            val accent = LocalAppAccent.current
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x248B5CF6))
-                    .border(1.dp, Color(0x388B5CF6), RoundedCornerShape(8.dp))
+                    .background(accent.accent.copy(alpha = 0.14f))
+                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(8.dp))
                     .padding(horizontal = 14.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -450,7 +449,7 @@ fun ScoreStepper(
                     text = value.toString(),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Violet400,
+                    color = accent.accentLight,
                 )
             }
             LiquidStepButton(
@@ -472,10 +471,13 @@ fun AmbientOrb(
     size: Int = 300,
     modifier: Modifier = Modifier,
 ) {
+    val orbBrush = Brush.radialGradient(
+        listOf(LocalAppAccent.current.accent.copy(alpha = 0.20f), Color.Transparent)
+    )
     Box(
         modifier = modifier
             .size(size.dp)
             .offset(x = offsetX.dp, y = offsetY.dp)
-            .background(AmbientOrbDefaultBrush),
+            .background(orbBrush),
     )
 }

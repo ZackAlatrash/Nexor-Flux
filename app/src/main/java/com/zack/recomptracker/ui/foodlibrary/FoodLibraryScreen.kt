@@ -82,12 +82,8 @@ import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
-import com.zack.recomptracker.ui.theme.NavLogEnd
-import com.zack.recomptracker.ui.theme.NavLogStart
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.Violet300
-import com.zack.recomptracker.ui.theme.Violet400
-import com.zack.recomptracker.ui.theme.Violet500
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -111,6 +107,7 @@ fun FoodLibraryScreen(
 ) {
     LaunchedEffect(Unit) { viewModel.init(slotId, slotName, editEntryId, logDate, pickerMode) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val accent = LocalAppAccent.current
 
     val toastController = LocalToastController.current
     LaunchedEffect(viewModel) {
@@ -175,10 +172,10 @@ fun FoodLibraryScreen(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(CornerChip))
-                        .background(if (isActive) Color(0x338B5CF6) else Color(0x0DFFFFFF))
+                        .background(if (isActive) accent.accent.copy(alpha = 0.20f) else Color(0x0DFFFFFF))
                         .border(
                             1.dp,
-                            if (isActive) Color(0x598B5CF6) else Color(0x14FFFFFF),
+                            if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
                             RoundedCornerShape(CornerChip),
                         )
                         .clickable(
@@ -191,7 +188,7 @@ fun FoodLibraryScreen(
                         text = cat.label(),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isActive) Violet300 else Color(0x59FFFFFF),
+                        color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
                     )
                 }
             }
@@ -256,7 +253,7 @@ fun FoodLibraryScreen(
                                 .padding(vertical = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(color = Violet400)
+                            CircularProgressIndicator(color = accent.accentLight)
                         }
                     }
                 }
@@ -453,6 +450,7 @@ private fun FoodLibraryTopBar(
     onScanBarcode: () -> Unit,
     pickerMode: Boolean = false,
 ) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -499,7 +497,7 @@ private fun FoodLibraryTopBar(
                 Text(
                     text = "$remainingCalories kcal remaining to zone",
                     fontSize = 11.sp,
-                    color = Color(0xBFA78BFA),
+                    color = accent.accentLight.copy(alpha = 0.75f),
                     fontWeight = FontWeight.SemiBold,
                 )
             }
@@ -510,8 +508,8 @@ private fun FoodLibraryTopBar(
             modifier = Modifier
                 .size(34.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0x268B5CF6))
-                .border(1.dp, Color(0x408B5CF6), RoundedCornerShape(10.dp))
+                .background(accent.tintedSurface)
+                .border(1.dp, accent.accent.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -522,7 +520,7 @@ private fun FoodLibraryTopBar(
             Icon(
                 Icons.Default.CameraAlt,
                 contentDescription = "Scan barcode",
-                tint = Violet300,
+                tint = accent.accentLighter,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -538,9 +536,10 @@ private fun GlassSearchField(
     category: FoodCategory,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     var focused by remember { mutableStateOf(false) }
-    val borderColor = if (focused) Color(0x738B5CF6) else Color(0x1AFFFFFF)
-    val bgColor = if (focused) Color(0x128B5CF6) else Color(0x0FFFFFFF)
+    val borderColor = if (focused) accent.accent.copy(alpha = 0.45f) else Color(0x1AFFFFFF)
+    val bgColor = if (focused) accent.accent.copy(alpha = 0.07f) else Color(0x0FFFFFFF)
     val placeholder = when (category) {
         FoodCategory.NEVO -> "Search NEVO foods…"
         FoodCategory.OFF -> "Search Dutch products…"
@@ -552,7 +551,7 @@ private fun GlassSearchField(
         onValueChange = onQueryChanged,
         singleLine = true,
         textStyle = TextStyle(fontSize = 14.sp, color = Color(0xBFFFFFFF)),
-        cursorBrush = SolidColor(Violet300),
+        cursorBrush = SolidColor(accent.accentLighter),
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
@@ -604,6 +603,7 @@ private fun GlassFoodRow(
     onLog: () -> Unit,
     onEdit: (() -> Unit)? = null,
 ) {
+    val accent = LocalAppAccent.current
     val food = item.food
     Row(
         modifier = Modifier
@@ -627,11 +627,11 @@ private fun GlassFoodRow(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0x1F8B5CF6))
-                            .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(6.dp))
+                            .background(accent.tintedSurface)
+                            .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     ) {
-                        Text(item.sourceLabel, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xB38B5CF6))
+                        Text(item.sourceLabel, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.accent.copy(alpha = 0.70f))
                     }
                 }
             }
@@ -660,7 +660,7 @@ private fun GlassFoodRow(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 13.sp, color = Violet400)
+                Text("✎", fontSize = 13.sp, color = accent.accentLight)
             }
         }
         // Add button
@@ -668,7 +668,7 @@ private fun GlassFoodRow(
             modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Violet500)
+                .background(accent.accent)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -685,10 +685,11 @@ private fun GlassFoodRow(
 
 @Composable
 private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0x0A8B5CF6))
+            .background(accent.accent.copy(alpha = 0.04f))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -706,11 +707,11 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0x1F8B5CF6))
-                        .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(6.dp))
+                        .background(accent.tintedSurface)
+                        .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Meal", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xB38B5CF6))
+                    Text("Meal", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.accent.copy(alpha = 0.70f))
                 }
             }
             Text(
@@ -729,7 +730,7 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
             modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Violet500)
+                .background(accent.accent)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -751,6 +752,7 @@ private fun GlassRecipeRow(
     onLog: () -> Unit,
     onEdit: () -> Unit,
 ) {
+    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -772,11 +774,11 @@ private fun GlassRecipeRow(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0x1F8B5CF6))
-                        .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(6.dp))
+                        .background(accent.tintedSurface)
+                        .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Recipe", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xB38B5CF6))
+                    Text("Recipe", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.accent.copy(alpha = 0.70f))
                 }
             }
             Text(
@@ -801,14 +803,14 @@ private fun GlassRecipeRow(
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onEdit),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 13.sp, color = Violet400)
+                Text("✎", fontSize = 13.sp, color = accent.accentLight)
             }
         }
         Box(
             modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Violet500)
+                .background(accent.accent)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onLog),
             contentAlignment = Alignment.Center,
         ) {

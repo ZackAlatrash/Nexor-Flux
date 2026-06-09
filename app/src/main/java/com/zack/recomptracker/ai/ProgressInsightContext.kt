@@ -14,11 +14,12 @@ data class ProgressInsightContext(
     val hasSufficientData: Boolean
         get() = weightPointCount >= 2 || waistPointCount >= 2
 
+    /** Quantized to 0.1 units so trivial float drift doesn't re-trigger generation. */
     fun key(): String {
-        val w = weightTrendKgPerWeek?.let { (it * 10).roundToInt() } ?: 0
-        val wa = waistTrendCmPerWeek?.let { (it * 10).roundToInt() } ?: 0
-        val l = liftTrendKgPerWeek?.let { (it * 10).roundToInt() } ?: 0
-        val a = adherencePercent?.roundToInt() ?: -1
+        val w = weightTrendKgPerWeek?.let { (it * 10).roundToInt() }?.toString() ?: "n"
+        val wa = waistTrendCmPerWeek?.let { (it * 10).roundToInt() }?.toString() ?: "n"
+        val l = liftTrendKgPerWeek?.let { (it * 10).roundToInt() }?.toString() ?: "n"
+        val a = adherencePercent?.roundToInt()?.toString() ?: "n"
         return "$rangeDays|$w|$wa|$l|$a"
     }
 }

@@ -44,4 +44,9 @@ class ProgressInsightContextTest {
     fun `key stable for identical inputs`() {
         assertEquals(ctx().key(), ctx().key())
     }
+
+    @Test
+    fun `key distinguishes null trend from near-zero trend`() {
+        assertTrue(ctx(weightTrendKgPerWeek = null).key() != ctx(weightTrendKgPerWeek = 0.0).key())
+    }
 }

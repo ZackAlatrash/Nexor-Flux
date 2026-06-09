@@ -62,4 +62,24 @@ class RecoveryInsightPromptTest {
         assertTrue("2" in prompt || "3" in prompt)
         assertTrue("Example output" in prompt)
     }
+
+    @Test
+    fun `sleep between six and seven point five is acceptable`() {
+        assertTrue("Sleep: acceptable" in builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 7.0)))
+    }
+
+    @Test
+    fun `sleep at or above seven point five is good`() {
+        assertTrue("Sleep: good" in builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 8.0)))
+    }
+
+    @Test
+    fun `score seven is high`() {
+        assertTrue("Energy: high" in builder.buildRecoveryReadinessPrompt(ctx(energyScore = 7)))
+    }
+
+    @Test
+    fun `shows not trained status`() {
+        assertTrue("Trained today: no" in builder.buildRecoveryReadinessPrompt(ctx(trained = false)))
+    }
 }

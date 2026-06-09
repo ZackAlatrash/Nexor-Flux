@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.charts.SparklineChart
@@ -50,6 +52,10 @@ import com.zack.recomptracker.ui.theme.LocalAppAccent
 @Composable
 fun ProgressScreen(viewModel: ProgressViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val insightState by viewModel.progressInsightState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.insightContext?.key()) {
+        viewModel.onProgressInsightVisible()
+    }
     val accent = LocalAppAccent.current
     val progressOrbBrush = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.16f), Color.Transparent))
@@ -72,6 +78,14 @@ fun ProgressScreen(viewModel: ProgressViewModel) {
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item {
+                GeneratedInsightCard(
+                    title = "Trend analysis",
+                    state = insightState,
+                    onRetry = viewModel::retryProgressInsight,
+                )
+            }
+
             item {
                 Row(
                     modifier = Modifier

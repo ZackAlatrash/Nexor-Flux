@@ -130,6 +130,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 adherenceCalculator = container.adherenceCalculator,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             PlanViewModel::class.java -> PlanViewModel(container.planRepository)
             FoodsViewModel::class.java -> FoodsViewModel(

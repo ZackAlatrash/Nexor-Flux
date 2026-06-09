@@ -55,4 +55,16 @@ class RestOfDayInsightPromptTest {
         assertTrue("2" in prompt || "3" in prompt)
         assertTrue("Example output" in prompt)
     }
+
+    @Test
+    fun `protein remaining clamps to zero when over target`() {
+        val prompt = builder.buildRestOfDayPrompt(ctx(proteinConsumedG = 180.0, proteinTargetG = 165))
+        assertTrue("0 g remaining" in prompt)
+    }
+
+    @Test
+    fun `calories remaining can go negative when over target`() {
+        val prompt = builder.buildRestOfDayPrompt(ctx(caloriesConsumed = 2400, targetCalories = 2200))
+        assertTrue("-200 remaining" in prompt)
+    }
 }

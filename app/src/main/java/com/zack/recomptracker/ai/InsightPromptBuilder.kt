@@ -79,6 +79,8 @@ class InsightPromptBuilder {
         appendLine("Example output:")
         appendLine("\"You're at 1,420 of your 2,200-calorie target with 38 g of protein still to go. There's room for a solid dinner — make protein the centerpiece to close that gap. You're tracking well for the day.\"")
         appendLine()
+        // Calories may go negative (overeating is useful signal to surface); protein
+        // remaining clamps at 0 since "negative protein to go" is meaningless advice.
         val calRemaining = context.targetCalories - context.caloriesConsumed
         val proteinRemaining = (context.proteinTargetG - context.proteinConsumedG).coerceAtLeast(0.0)
         appendLine("Current intake:")

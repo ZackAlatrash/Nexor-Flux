@@ -3,6 +3,7 @@ package com.zack.recomptracker.ai
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
+import kotlin.math.roundToInt
 
 class InsightPromptBuilder {
 
@@ -67,6 +68,24 @@ class InsightPromptBuilder {
         context.hungerScore?.let { appendLine("- Hunger: ${scoreLabel(it)}") }
         context.sorenessScore?.let { appendLine("- Soreness: ${scoreLabel(it)}") }
         appendLine("- Trained today: ${if (context.trained) "yes" else "no"}")
+    }
+
+    fun buildRestOfDayPrompt(context: RestOfDayInsightContext): String = buildString {
+        appendLine("You are a concise nutrition coach advising an athlete on the rest of their day.")
+        appendLine("Write exactly 2–3 sentences in plain English: state where they stand and what to prioritize for the remaining meals.")
+        appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")
+        appendLine("Base everything only on the numbers below.")
+        appendLine()
+        appendLine("Example output:")
+        appendLine("\"You're at 1,420 of your 2,200-calorie target with 38 g of protein still to go. There's room for a solid dinner — make protein the centerpiece to close that gap. You're tracking well for the day.\"")
+        appendLine()
+        val calRemaining = context.targetCalories - context.caloriesConsumed
+        val proteinRemaining = (context.proteinTargetG - context.proteinConsumedG).coerceAtLeast(0.0)
+        appendLine("Current intake:")
+        appendLine("- Calories: ${context.caloriesConsumed} of ${context.targetCalories} kcal ($calRemaining remaining)")
+        appendLine("- Protein: ${context.proteinConsumedG.roundToInt()} of ${context.proteinTargetG} g (${proteinRemaining.roundToInt()} g remaining)")
+        appendLine("- Calorie zone: ${context.calorieZoneLowerBound}–${context.calorieZoneUpperBound} kcal")
+        appendLine("- Meals logged so far: ${context.mealsLoggedCount}")
     }
 
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {

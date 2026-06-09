@@ -27,7 +27,7 @@ class StubInsightCoordinator(
     private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
         InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
 
-    private val lastInsightKeys = mutableMapOf<InsightKind, String>()
+    private val lastInsightKeys = java.util.concurrent.ConcurrentHashMap<InsightKind, String>()
 
     init {
         scope.launch {
@@ -76,7 +76,7 @@ class StubInsightCoordinator(
     override fun onInsightVisible(request: InsightRequest) {
         if (!request.hasSufficientData) return
         val flow = insightStates.getValue(request.kind)
-        if (_state.value != AiInsightState.ModelReady) {
+        if (!isModelUsable()) {
             flow.value = _state.value
             return
         }
@@ -97,6 +97,15 @@ class StubInsightCoordinator(
         lastInsightKeys.remove(request.kind)
         insightStates.getValue(request.kind).value = AiInsightState.ModelReady
         onInsightVisible(request)
+    }
+
+    private fun isModelUsable(): Boolean = when (_state.value) {
+        AiInsightState.Disabled,
+        AiInsightState.ModelMissing,
+        is AiInsightState.Downloading,
+        AiInsightState.DownloadFailed,
+        AiInsightState.ModelVerifying -> false
+        else -> true
     }
 
     private fun stubInsightText(request: InsightRequest): String = when (request) {

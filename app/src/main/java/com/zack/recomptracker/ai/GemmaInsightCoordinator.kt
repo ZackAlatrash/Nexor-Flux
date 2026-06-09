@@ -42,7 +42,9 @@ class GemmaInsightCoordinator(
     private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
         InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
 
-    private val lastInsightKeys = mutableMapOf<InsightKind, String>()
+    private val lastInsightKeys = java.util.concurrent.ConcurrentHashMap<InsightKind, String>()
+
+    private val promptBuilder = InsightPromptBuilder()
 
     init {
         // Load saved model selection (fast DataStore read; default GEMMA_2B until loaded).
@@ -292,8 +294,6 @@ class GemmaInsightCoordinator(
             }
         }
     }
-
-    private val promptBuilder = InsightPromptBuilder()
 
     private suspend fun generate(context: InsightContext) {
         _state.value = AiInsightState.LoadingModel

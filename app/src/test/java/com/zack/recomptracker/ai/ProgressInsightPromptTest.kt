@@ -78,4 +78,22 @@ class ProgressInsightPromptTest {
     fun `instructs to avoid inventing data`() {
         assertTrue(builder.buildProgressTrendPrompt(ctx()).contains("invent", ignoreCase = true))
     }
+
+    @Test
+    fun `lifts declining is qualitative`() {
+        val prompt = builder.buildProgressTrendPrompt(ctx(liftTrendKgPerWeek = -0.5))
+        assertTrue("Lifts: declining" in prompt)
+    }
+
+    @Test
+    fun `null weight trend renders no data`() {
+        val prompt = builder.buildProgressTrendPrompt(ctx(weightTrendKgPerWeek = null))
+        assertTrue("Weight: no data" in prompt)
+    }
+
+    @Test
+    fun `null adherence renders no data`() {
+        val prompt = builder.buildProgressTrendPrompt(ctx(adherencePercent = null))
+        assertTrue("Adherence: no data" in prompt)
+    }
 }

@@ -96,8 +96,8 @@ class InsightPromptBuilder {
 
     private fun liftTrendLabel(kgPerWeek: Double?): String = when {
         kgPerWeek == null -> "no data"
-        kgPerWeek > 0.1 -> "improving"
-        kgPerWeek < -0.1 -> "declining"
+        kgPerWeek > LIFT_THRESHOLD -> "improving"
+        kgPerWeek < -LIFT_THRESHOLD -> "declining"
         else -> "stable"
     }
 
@@ -105,6 +105,7 @@ class InsightPromptBuilder {
         private const val DEFAULT_WEEKS_FALLBACK = 4
         private const val WEIGHT_THRESHOLD = 0.20
         private const val WAIST_THRESHOLD = 0.25
+        private const val LIFT_THRESHOLD = 0.1
 
         private val REASON_DESCRIPTIONS = mapOf(
             "LOSING_WITH_POOR_RECOVERY" to "Weight is falling while performance or recovery is suffering",

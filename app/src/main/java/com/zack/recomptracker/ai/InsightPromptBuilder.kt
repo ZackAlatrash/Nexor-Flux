@@ -35,6 +35,23 @@ class InsightPromptBuilder {
         appendLine("Calorie target: ${context.targetCalories} kcal | Protein target: ${context.targetProteinG}g")
     }
 
+    fun buildProgressTrendPrompt(context: ProgressInsightContext): String = buildString {
+        appendLine("You are a concise body-recomposition coach interpreting an athlete's progress trends.")
+        appendLine("Write exactly 2–3 sentences in plain English explaining what the combination of trends means for body recomposition.")
+        appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. Interpret the trend only.")
+        appendLine("Base everything only on the signals below. Do not invent data.")
+        appendLine()
+        appendLine("Example output:")
+        appendLine("\"Over the last four weeks your weight held steady while your waist trended down and your lifts kept climbing — that's recomposition, not a stall. Your logging has been consistent, so the trend is trustworthy. Stay the course and let another two weeks confirm it.\"")
+        appendLine()
+        appendLine("Window: last ${context.rangeDays} days")
+        appendLine("Signals:")
+        appendLine("- Weight: ${context.weightTrendKgPerWeek?.let { weightLabel(it) } ?: "no data"}")
+        appendLine("- Waist: ${context.waistTrendCmPerWeek?.let { waistLabel(it) } ?: "no data"}")
+        appendLine("- Lifts: ${liftTrendLabel(context.liftTrendKgPerWeek)}")
+        appendLine("- Adherence: ${context.adherencePercent?.let { adherenceLabel(it) } ?: "no data"}")
+    }
+
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {
         AdjustmentVerdict.HOLD -> "Hold — no change to calories"
         AdjustmentVerdict.INCREASE_CALORIES -> "Increase calories"
@@ -75,6 +92,13 @@ class InsightPromptBuilder {
         percent >= 90.0 -> "high"
         percent >= 75.0 -> "moderate"
         else -> "low (below target)"
+    }
+
+    private fun liftTrendLabel(kgPerWeek: Double?): String = when {
+        kgPerWeek == null -> "no data"
+        kgPerWeek > 0.1 -> "improving"
+        kgPerWeek < -0.1 -> "declining"
+        else -> "stable"
     }
 
     private companion object {

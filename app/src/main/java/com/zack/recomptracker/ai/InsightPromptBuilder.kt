@@ -52,6 +52,23 @@ class InsightPromptBuilder {
         appendLine("- Adherence: ${context.adherencePercent?.let { adherenceLabel(it) } ?: "no data"}")
     }
 
+    fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext): String = buildString {
+        appendLine("You are a concise training-recovery coach.")
+        appendLine("Write exactly 2–3 sentences in plain English about the athlete's training readiness today.")
+        appendLine("Give practical training and recovery suggestions only. Do NOT give medical advice or diagnose anything.")
+        appendLine("Base everything only on the signals below. Do not invent data.")
+        appendLine()
+        appendLine("Example output:")
+        appendLine("\"Two short nights with soreness running high and energy low suggests recovery hasn't caught up to your training. Prioritize sleep tonight and keep portions adequate. If soreness holds tomorrow, an easier session would help you bounce back.\"")
+        appendLine()
+        appendLine("Signals today:")
+        context.sleepHours?.let { appendLine("- Sleep: ${sleepLabel(it)}") }
+        context.energyScore?.let { appendLine("- Energy: ${scoreLabel(it)}") }
+        context.hungerScore?.let { appendLine("- Hunger: ${scoreLabel(it)}") }
+        context.sorenessScore?.let { appendLine("- Soreness: ${scoreLabel(it)}") }
+        appendLine("- Trained today: ${if (context.trained) "yes" else "no"}")
+    }
+
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {
         AdjustmentVerdict.HOLD -> "Hold — no change to calories"
         AdjustmentVerdict.INCREASE_CALORIES -> "Increase calories"
@@ -99,6 +116,18 @@ class InsightPromptBuilder {
         kgPerWeek > LIFT_THRESHOLD -> "improving"
         kgPerWeek < -LIFT_THRESHOLD -> "declining"
         else -> "stable"
+    }
+
+    private fun sleepLabel(hours: Double): String = when {
+        hours < 6.0 -> "poor"
+        hours < 7.5 -> "acceptable"
+        else -> "good"
+    }
+
+    private fun scoreLabel(score: Int): String = when {
+        score <= 3 -> "low"
+        score <= 6 -> "moderate"
+        else -> "high"
     }
 
     private companion object {

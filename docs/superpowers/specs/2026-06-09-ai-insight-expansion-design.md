@@ -45,6 +45,8 @@ Adding three more insights to this single state would be impossible — they eac
   ```
   WEEKLY_VERDICT | PROGRESS_TREND | RECOVERY_READINESS | REST_OF_DAY
   ```
+  > **Implementation note:** `WEEKLY_VERDICT` was intentionally dropped from the `InsightKind` enum — the weekly verdict retains its existing dedicated `state` / `onAiCardVisible` path, so an enum member for it would never be routed. `InsightKind` therefore holds only the three new kinds.
+
   The coordinator exposes a generation state **per kind** and an `onInsightVisible(kind, context)` entry point. Each kind keeps its own `lastGeneratedKey` for dedup. All generation serializes naturally behind the existing `inferenceLock` (one engine, one inference at a time) — so two insights never run concurrently, but each retains its own latest result.
 - **One `InsightPromptBuilder` class, extended.** Add one build method per new insight and **reuse the existing qualitative-label helpers** (`weightLabel`, `waistLabel`, `adherenceLabel`). No churn on the weekly path.
 

@@ -49,4 +49,9 @@ class ProgressInsightContextTest {
     fun `key distinguishes null trend from near-zero trend`() {
         assertTrue(ctx(weightTrendKgPerWeek = null).key() != ctx(weightTrendKgPerWeek = 0.0).key())
     }
+
+    @Test
+    fun `key changes when lift trend changes`() {
+        assertTrue(ctx(liftTrendKgPerWeek = 0.5).key() != ctx(liftTrendKgPerWeek = -0.5).key())
+    }
 }

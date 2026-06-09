@@ -39,6 +39,11 @@ class GemmaInsightCoordinator(
     @Volatile private var lastGeneratedKey: String? = null
     @Volatile private var downloadId: Long = -1L
 
+    private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
+        InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
+
+    private val lastInsightKeys = mutableMapOf<InsightKind, String>()
+
     init {
         // Load saved model selection (fast DataStore read; default GEMMA_2B until loaded).
         scope.launch {
@@ -50,6 +55,7 @@ class GemmaInsightCoordinator(
             aiEnabledFlow.collect { enabled ->
                 if (!enabled) {
                     cancelActiveDownloadSilently()
+                    lastInsightKeys.clear()
                     _state.value = AiInsightState.Disabled
                 } else if (_state.value == AiInsightState.Disabled) {
                     initializeForCurrentVariant()
@@ -66,6 +72,7 @@ class GemmaInsightCoordinator(
             if (_state.value != AiInsightState.Disabled) {
                 cancelActiveDownloadSilently()
                 lastGeneratedKey = null
+                lastInsightKeys.clear()
                 serviceHolder.release()
                 initializeForCurrentVariant()
             }
@@ -184,6 +191,7 @@ class GemmaInsightCoordinator(
     override fun deleteModel() {
         val variant = _selectedModel.value
         lastGeneratedKey = null
+        lastInsightKeys.clear()
         serviceHolder.modelFileFor(variant).delete()
         scope.launch { serviceHolder.release() }
         _state.value = AiInsightState.ModelMissing
@@ -206,6 +214,83 @@ class GemmaInsightCoordinator(
         lastGeneratedKey = null
         _state.value = AiInsightState.ModelReady
         onAiCardVisible(context)
+    }
+
+    override fun generationState(kind: InsightKind): StateFlow<AiInsightState> =
+        insightStates.getValue(kind).asStateFlow()
+
+    override fun onInsightVisible(request: InsightRequest) {
+        if (!request.hasSufficientData) return
+        val flow = insightStates.getValue(request.kind)
+        if (!isModelUsable()) {
+            flow.value = _state.value
+            return
+        }
+        val key = request.dedupKey()
+        if (lastInsightKeys[request.kind] == key) return
+        lastInsightKeys[request.kind] = key
+        scope.launch { generateInsight(request, flow) }
+    }
+
+    override fun retryInsight(request: InsightRequest) {
+        lastInsightKeys.remove(request.kind)
+        insightStates.getValue(request.kind).value = AiInsightState.ModelReady
+        onInsightVisible(request)
+    }
+
+    private fun isModelUsable(): Boolean = when (_state.value) {
+        AiInsightState.Disabled,
+        AiInsightState.ModelMissing,
+        is AiInsightState.Downloading,
+        AiInsightState.DownloadFailed,
+        AiInsightState.ModelVerifying -> false
+        else -> true
+    }
+
+    private suspend fun generateInsight(
+        request: InsightRequest,
+        flow: MutableStateFlow<AiInsightState>,
+    ) {
+        flow.value = AiInsightState.LoadingModel
+        try {
+            val variant = _selectedModel.value
+            val modelPath = serviceHolder.modelFileFor(variant).absolutePath
+            val service = serviceHolder.getOrCreateService(modelPath)
+            service.ensureInitialized()
+
+            if (flow.value !is AiInsightState.LoadingModel) return
+            flow.value = AiInsightState.Generating("")
+            val prompt = when (request) {
+                is InsightRequest.ProgressTrend -> promptBuilder.buildProgressTrendPrompt(request.context)
+                is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
+                is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context)
+            }
+
+            val sb = StringBuilder()
+            withTimeout(GENERATION_TIMEOUT_MS) {
+                service.generateExplanation(prompt).collect { chunk ->
+                    sb.append(chunk)
+                    flow.value = AiInsightState.Generating(sb.toString())
+                }
+            }
+            if (flow.value is AiInsightState.Generating) {
+                val finalText = sb.toString()
+                    .trim()
+                    .replace(Regex("""[*_`#>]"""), "")
+                    .replace(Regex("""\n{2,}"""), " ")
+                flow.value = AiInsightState.Ready(finalText)
+            }
+        } catch (e: TimeoutCancellationException) {
+            if (flow.value is AiInsightState.LoadingModel || flow.value is AiInsightState.Generating) {
+                flow.value = AiInsightState.Error("Took too long — try again.")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (flow.value is AiInsightState.LoadingModel || flow.value is AiInsightState.Generating) {
+                flow.value = AiInsightState.Error("Something went wrong — try again.")
+            }
+        }
     }
 
     private val promptBuilder = InsightPromptBuilder()

@@ -24,6 +24,11 @@ class StubInsightCoordinator(
 
     private var lastGeneratedKey: String? = null
 
+    private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
+        InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
+
+    private val lastInsightKeys = mutableMapOf<InsightKind, String>()
+
     init {
         scope.launch {
             aiEnabledFlow.collect { enabled ->
@@ -63,6 +68,41 @@ class StubInsightCoordinator(
         lastGeneratedKey = null
         _state.value = AiInsightState.ModelReady
         onAiCardVisible(context)
+    }
+
+    override fun generationState(kind: InsightKind): StateFlow<AiInsightState> =
+        insightStates.getValue(kind).asStateFlow()
+
+    override fun onInsightVisible(request: InsightRequest) {
+        if (!request.hasSufficientData) return
+        val flow = insightStates.getValue(request.kind)
+        if (_state.value != AiInsightState.ModelReady) {
+            flow.value = _state.value
+            return
+        }
+        val key = request.dedupKey()
+        if (lastInsightKeys[request.kind] == key) return
+        lastInsightKeys[request.kind] = key
+        scope.launch {
+            flow.value = AiInsightState.LoadingModel
+            delay(50L)
+            if (flow.value !is AiInsightState.LoadingModel) return@launch
+            val text = stubInsightText(request)
+            flow.value = AiInsightState.Generating(text)
+            flow.value = AiInsightState.Ready(text)
+        }
+    }
+
+    override fun retryInsight(request: InsightRequest) {
+        lastInsightKeys.remove(request.kind)
+        insightStates.getValue(request.kind).value = AiInsightState.ModelReady
+        onInsightVisible(request)
+    }
+
+    private fun stubInsightText(request: InsightRequest): String = when (request) {
+        is InsightRequest.ProgressTrend -> "Your trends look stable this period."
+        is InsightRequest.RecoveryReadiness -> "Your recovery looks on track today."
+        is InsightRequest.RestOfDay -> "You're tracking well for the day."
     }
 
     private suspend fun generate(context: InsightContext) {

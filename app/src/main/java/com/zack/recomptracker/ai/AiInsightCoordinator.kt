@@ -11,4 +11,7 @@ interface AiInsightCoordinator {
     fun deleteModel()
     fun onAiCardVisible(context: InsightContext)
     fun retryGeneration(context: InsightContext)
+    fun generationState(kind: InsightKind): StateFlow<AiInsightState>
+    fun onInsightVisible(request: InsightRequest)
+    fun retryInsight(request: InsightRequest)
 }

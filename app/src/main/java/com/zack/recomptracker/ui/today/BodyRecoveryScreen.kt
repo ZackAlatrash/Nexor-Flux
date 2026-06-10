@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
@@ -50,6 +51,7 @@ import com.zack.recomptracker.ui.body.BodyCheckInFormState
 import com.zack.recomptracker.ui.body.BodyCheckInSheet
 import com.zack.recomptracker.ui.body.CheckInSection
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.charts.SparklineChart
@@ -67,6 +69,10 @@ fun BodyRecoveryScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val recoveryInsightState by viewModel.recoveryInsightState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.recoveryInsightContext?.key()) {
+        viewModel.onRecoveryInsightVisible()
+    }
     val toastController = LocalToastController.current
     LaunchedEffect(viewModel) {
         viewModel.savedEvent.collect {
@@ -75,6 +81,8 @@ fun BodyRecoveryScreen(
     }
     BodyRecoveryContent(
         state = state,
+        recoveryInsightState = recoveryInsightState,
+        onRetryRecoveryInsight = viewModel::retryRecoveryInsight,
         onViewHistory = onViewHistory,
         actions = BodyCheckInFormActions(
             onBodyWeightChanged = viewModel::onBodyWeightChanged,
@@ -99,6 +107,8 @@ fun BodyRecoveryContent(
     state: TodayUiState,
     actions: BodyCheckInFormActions,
     onViewHistory: () -> Unit,
+    recoveryInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryRecoveryInsight: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
@@ -145,6 +155,13 @@ fun BodyRecoveryContent(
         ) {
             item { ScreenHeader(state) }
             item { MetricsHeroCard(state) }
+            item {
+                GeneratedInsightCard(
+                    title = "Recovery readiness",
+                    state = recoveryInsightState,
+                    onRetry = onRetryRecoveryInsight,
+                )
+            }
             item {
                 MetricTilesCard(formState) { section ->
                     initialSection = section

@@ -3,6 +3,11 @@ package com.zack.recomptracker.ui.today
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.InsightKind
+import com.zack.recomptracker.ai.InsightRequest
+import com.zack.recomptracker.ai.RecoveryInsightContext
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.util.toNullableDouble
@@ -64,6 +69,7 @@ data class TodayUiState(
     val weightSparkline14d: List<Float> = emptyList(),
     val waistSparkline14d: List<Float> = emptyList(),
     val totalDaysLogged: Int = 0,
+    val recoveryInsightContext: RecoveryInsightContext? = null,
 )
 
 class TodayViewModel(
@@ -71,6 +77,7 @@ class TodayViewModel(
     private val planRepository: PlanRepository,
     dateProvider: DateProvider,
     private val hcRepository: HealthConnectRepository,
+    private val aiInsightCoordinator: AiInsightCoordinator,
 ) : ViewModel() {
     private val today = dateProvider.today()
     private val _uiState = MutableStateFlow(TodayUiState(date = today))
@@ -82,6 +89,20 @@ class TodayViewModel(
 
     private val _savedEvent = MutableSharedFlow<Unit>(replay = 0)
     val savedEvent: SharedFlow<Unit> = _savedEvent
+
+    val recoveryInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.RECOVERY_READINESS)
+
+    fun onRecoveryInsightVisible() {
+        val ctx = _uiState.value.recoveryInsightContext ?: return
+        if (!ctx.hasSufficientData) return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.RecoveryReadiness(ctx))
+    }
+
+    fun retryRecoveryInsight() {
+        val ctx = _uiState.value.recoveryInsightContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.RecoveryReadiness(ctx))
+    }
 
     init {
         viewModelScope.launch {
@@ -125,6 +146,7 @@ class TodayViewModel(
                         slots = slottedEntries,
                         unslottedEntries = unslotted,
                         checkInDone = log != null,
+                        recoveryInsightContext = buildRecoveryInsightContext(day.dailyLog),
                     )
                 }
             }

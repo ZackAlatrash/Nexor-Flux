@@ -115,6 +115,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 hcRepository = container.healthConnectRepository,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             DashboardViewModel::class.java -> DashboardViewModel(
                 logRepository = container.logRepository,

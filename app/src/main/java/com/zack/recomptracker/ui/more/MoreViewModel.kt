@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,8 +30,6 @@ private data class MoreFlags(
     val font: String,
     val ai: Boolean,
     val backend: AiBackend,
-    val baseUrl: String,
-    val modelId: String,
 )
 
 data class MoreUiState(
@@ -63,15 +62,14 @@ class MoreViewModel(
 
     init {
         val hcAvailable = hcRepository.availability() == HealthConnectAvailability.Available
+        // Reactive toggles/selectors (not free-text, so no typing race).
         viewModelScope.launch {
             combine(
                 uiPreferences.selectedFont,
                 uiPreferences.aiInsightsEnabled,
                 uiPreferences.aiBackend,
-                uiPreferences.cloudBaseUrl,
-                uiPreferences.cloudModelId,
-            ) { font, ai, backend, baseUrl, modelId ->
-                MoreFlags(font, ai, backend, baseUrl, modelId)
+            ) { font, ai, backend ->
+                MoreFlags(font, ai, backend)
             }.collect { f ->
                 val connected = hcAvailable && hcRepository.hasPermissions()
                 _uiState.update {
@@ -80,10 +78,19 @@ class MoreViewModel(
                         aiInsightsEnabled = f.ai,
                         healthConnectConnected = connected,
                         aiBackend = f.backend,
-                        cloudBaseUrl = f.baseUrl,
-                        cloudModelId = f.modelId,
                     )
                 }
+            }
+        }
+        // Free-text fields are seeded ONCE from persisted prefs. They must NOT be re-collected
+        // from DataStore — echoing the async value back into the TextField resets the cursor and
+        // scrambles fast input. Edits update _uiState synchronously (see setters) and persist async.
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    cloudBaseUrl = uiPreferences.cloudBaseUrl.first(),
+                    cloudModelId = uiPreferences.cloudModelId.first(),
+                )
             }
         }
         viewModelScope.launch {
@@ -106,10 +113,12 @@ class MoreViewModel(
     }
 
     fun setCloudBaseUrl(url: String) {
-        viewModelScope.launch { uiPreferences.setCloudBaseUrl(url) }
+        _uiState.update { it.copy(cloudBaseUrl = url) }      // synchronous → field updates instantly
+        viewModelScope.launch { uiPreferences.setCloudBaseUrl(url) }  // persist (async side effect)
     }
 
     fun setCloudModelId(model: String) {
+        _uiState.update { it.copy(cloudModelId = model) }
         viewModelScope.launch { uiPreferences.setCloudModelId(model) }
     }
 

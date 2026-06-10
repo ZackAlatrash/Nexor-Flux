@@ -56,7 +56,7 @@ All tools are defined as `SchemaTool` entries in `COACH_TOOLS` (JSON schema only
 
 | Tool | Args | Returns | Notes |
 |---|---|---|---|
-| `get_today_summary` | `date?: String` (ISO `YYYY-MM-DD`) | JSON: meals, macro totals, daily log | Omit `date` for today. Pass ISO date for any past date. Falls back to today if date fails to parse — always pass ISO format. |
+| `get_today_summary` | `date?: String` (ISO `YYYY-MM-DD`) | JSON: meals (each tagged `planned`), `totals` (eaten only), `planned_totals`, daily log | Omit `date` for today. Pass ISO date for any past date. Falls back to today if date fails to parse — always pass ISO format. `totals` exclude planned (not-yet-eaten) entries; planned meals carry `"planned":true` and are summed in `planned_totals`. |
 | `get_weekly_trends` | — | JSON: 7-day daily macros + adherence % | Last 7 days ending today. |
 | `search_food_library` | `query: String`, `grams?: Number` | JSON: up to 5 matches, macros scaled to `grams` if provided | Fuzzy scored: exact > starts-with > contains > all-words. |
 | `log_meal` | `name`, `meal_type`, `grams?`, `date?`, `calories?`, `protein_g?`, `carbs_g?`, `fat_g?` | `{success, logged, calories}` or `{success, planned, date, calories}` | Always checks food library first. Macro args only needed if food not in library. A future `date` (ISO `YYYY-MM-DD`) **plans** the meal instead of logging it eaten. **Write tool — requires user confirmation.** |

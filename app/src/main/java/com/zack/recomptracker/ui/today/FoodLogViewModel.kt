@@ -109,9 +109,10 @@ class FoodLogViewModel(
         }
 
         viewModelScope.launch {
-            logRepository.observeStalePlannedCount(today).collect { count ->
-                _uiState.update { it.copy(stalePlannedCount = count) }
-            }
+            logRepository.observeStalePlannedCount(today, today.minusDays(NAV_WINDOW_DAYS))
+                .collect { count ->
+                    _uiState.update { it.copy(stalePlannedCount = count) }
+                }
         }
 
         viewModelScope.launch {
@@ -127,7 +128,7 @@ class FoodLogViewModel(
 
     fun selectDate(date: LocalDate) {
         // Allow navigating back through history and forward to plan meals ahead.
-        val clamped = date.coerceIn(today.minusDays(30), today.plusDays(30))
+        val clamped = date.coerceIn(today.minusDays(NAV_WINDOW_DAYS), today.plusDays(NAV_WINDOW_DAYS))
         _selectedDate.value = clamped
         _uiState.update { it.copy(selectedDate = clamped) }
     }
@@ -193,4 +194,9 @@ class FoodLogViewModel(
     }
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
+
+    companion object {
+        /** How many days the food log lets you navigate (and plan) in each direction. */
+        const val NAV_WINDOW_DAYS = 30L
+    }
 }

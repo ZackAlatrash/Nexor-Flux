@@ -75,7 +75,13 @@ interface MealEntryDao {
     @Query("UPDATE meal_entries SET date = :date, planned = :planned WHERE id = :id")
     suspend fun setDateAndPlanned(id: Long, date: String, planned: Boolean)
 
-    /** Live count of unconfirmed plans strictly before [date] — drives the reconcile prompt. */
-    @Query("SELECT COUNT(*) FROM meal_entries WHERE planned = 1 AND date < :date")
-    fun observeStalePlannedCount(date: String): Flow<Int>
+    /**
+     * Live count of unconfirmed plans in the reconcilable window: on or after [floor] and
+     * strictly before [date] (today). Bounded below by [floor] so the count matches the days
+     * the user can actually navigate to — a plan that ages past the window goes quiet rather
+     * than nagging from a day the ‹ chevrons can't reach. Such forgotten plans stay excluded
+     * from all eaten totals regardless, so dropping them from the prompt is harmless.
+     */
+    @Query("SELECT COUNT(*) FROM meal_entries WHERE planned = 1 AND date >= :floor AND date < :date")
+    fun observeStalePlannedCount(floor: String, date: String): Flow<Int>
 }

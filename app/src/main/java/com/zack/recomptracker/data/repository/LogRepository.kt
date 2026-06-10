@@ -279,9 +279,13 @@ class LogRepository(
     suspend fun moveMealToDate(id: Long, date: LocalDate, planned: Boolean) =
         mealEntryDao.setDateAndPlanned(id, date.toString(), planned)
 
-    /** Live count of unconfirmed plans before [date] — drives the reconcile prompt. */
-    fun observeStalePlannedCount(date: LocalDate): Flow<Int> =
-        mealEntryDao.observeStalePlannedCount(date.toString())
+    /**
+     * Live count of unconfirmed plans in `[floor, today)` — drives the reconcile prompt.
+     * [floor] bounds the count to the days the user can navigate to, so the nudge never
+     * points at an unreachable past day.
+     */
+    fun observeStalePlannedCount(today: LocalDate, floor: LocalDate): Flow<Int> =
+        mealEntryDao.observeStalePlannedCount(floor.toString(), today.toString())
 
     suspend fun updateMealEntry(entry: MealEntryEntity) {
         mealEntryDao.update(

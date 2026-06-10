@@ -71,6 +71,40 @@ class CoachToolExecutorTest {
     }
 
     @Test
+    fun `get_today_summary tags planned meals and keeps totals eaten-only`() = runTest {
+        val eaten = MealEntryEntity(
+            date = fixedDate.toString(), mealType = "Lunch", name = "Chicken Rice",
+            calories = 500, proteinG = 40.0, carbsG = 60.0, fatG = 8.0, planned = false,
+        )
+        val plan = MealEntryEntity(
+            date = fixedDate.toString(), mealType = "Dinner", name = "Salmon Bowl",
+            calories = 600, proteinG = 45.0, carbsG = 40.0, fatG = 25.0, planned = true,
+        )
+        val dayLog = DayLog(
+            date = fixedDate,
+            dailyLog = null,
+            meals = listOf(eaten, plan),
+            totals = MacroTotals(calories = 500, proteinG = 40.0, carbsG = 60.0, fatG = 8.0),
+            plannedTotals = MacroTotals(calories = 600, proteinG = 45.0, carbsG = 40.0, fatG = 25.0),
+        )
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getDay(fixedDate)).thenReturn(dayLog)
+        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("get_today_summary", emptyMap())
+
+        // Both meals listed, each carrying its planned flag.
+        assertTrue("Plan meal tagged planned", result.contains(""""name":"Salmon Bowl""""))
+        assertTrue("Eaten meal tagged not planned", result.contains(""""planned":false"""))
+        assertTrue("Plan meal tagged planned", result.contains(""""planned":true"""))
+        // Eaten totals exclude the plan; planned_totals carry it separately.
+        assertTrue("totals are eaten-only", result.contains(""""totals":{"calories":500"""))
+        assertTrue("planned_totals present", result.contains(""""planned_totals":{"calories":600"""))
+    }
+
+    @Test
     fun `unknown tool returns JSON with error key`() = runTest {
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()

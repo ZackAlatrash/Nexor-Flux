@@ -482,6 +482,9 @@ private fun NutritionStrip(state: FoodLogUiState) {
     val zoneHigh = target.calorieZoneUpperBound
     val scaleMax = ((zoneHigh * 1.2).toInt()).coerceAtLeast(1)
     val calFrac  = (cal.toFloat() / scaleMax).coerceIn(0f, 1f)
+    val plannedCalForBar = state.plannedTotals.calories
+    val projectedFrac = if (plannedCalForBar > 0)
+        ((cal + plannedCalForBar).toFloat() / scaleMax).coerceIn(0f, 1f) else 0f
 
     val isInZone = cal in zoneLow..zoneHigh
     val isOver   = cal > zoneHigh
@@ -534,6 +537,7 @@ private fun NutritionStrip(state: FoodLogUiState) {
             progress = calFrac,
             zoneLowFrac = (zoneLow.toFloat() / scaleMax).coerceIn(0f, 1f),
             zoneHighFrac = (zoneHigh.toFloat() / scaleMax).coerceIn(0f, 1f),
+            plannedProgress = projectedFrac,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp),

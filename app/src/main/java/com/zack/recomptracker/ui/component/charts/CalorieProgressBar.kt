@@ -21,12 +21,23 @@ fun CalorieProgressBar(
     zoneLowFrac: Float,
     zoneHighFrac: Float,
     modifier: Modifier = Modifier,
+    /**
+     * Projected fill fraction including planned (not-yet-eaten) calories — i.e.
+     * (eaten + planned) / scaleMax. When greater than [progress], a translucent "ghost"
+     * segment extends the solid eaten fill out to here. Defaults to 0 (no projection).
+     */
+    plannedProgress: Float = 0f,
 ) {
     val accent = LocalAppAccent.current
     val animatedProgress by animateFloatAsState(
         targetValue   = progress.coerceIn(0f, 1f),
         animationSpec = ChartDefaults.AnimSpec.progressBar,
         label         = "calorieFill",
+    )
+    val animatedPlanned by animateFloatAsState(
+        targetValue   = plannedProgress.coerceIn(0f, 1f),
+        animationSpec = ChartDefaults.AnimSpec.progressBar,
+        label         = "caloriePlannedFill",
     )
     // Mutable cache for stripe X positions — rebuilt only when zone bounds or canvas size change
     val stripeCache = remember {
@@ -74,6 +85,19 @@ fun CalorieProgressBar(
         }
 
         val fillX = animatedProgress * w
+
+        // Ghost projection — planned calories shown as a translucent extension of the eaten
+        // fill. Drawn first so the solid fill overlays its lower portion, leaving only the
+        // planned remainder visible as a faint segment past the solid edge.
+        val plannedX = animatedPlanned * w
+        if (plannedX > fillX + 0.5f) {
+            drawRoundRect(
+                color        = accent.accentLight.copy(alpha = 0.22f),
+                size         = Size(plannedX.coerceAtLeast(r * 2), h),
+                cornerRadius = CornerRadius(r),
+            )
+        }
+
         if (fillX > 0.5f) {
             drawRoundRect(
                 brush        = Brush.horizontalGradient(

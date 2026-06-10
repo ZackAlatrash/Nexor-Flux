@@ -36,8 +36,11 @@ class CoachToolExecutor(
         // value, which can silently return 0 meals when no daily_log row exists for today.
         val dayLog = logRepository.getDay(today)
         Log.d("RecompCoach", "get_today_summary: date=$today meals=${dayLog.meals.size} cals=${dayLog.totals.calories}")
+        // Tag each meal with its planned flag. `totals` below counts eaten entries only, so
+        // without this the model would see meals it can't reconcile with the totals (and might
+        // report a plan as already eaten). planned=true entries are intentions, not reality.
         val mealsJson = dayLog.meals.joinToString(separator = ",") { meal ->
-            """{"name":"${meal.name.esc()}","calories":${meal.calories},"protein_g":${meal.proteinG},"carbs_g":${meal.carbsG},"fat_g":${meal.fatG},"meal_type":"${meal.mealType.esc()}"}"""
+            """{"name":"${meal.name.esc()}","calories":${meal.calories},"protein_g":${meal.proteinG},"carbs_g":${meal.carbsG},"fat_g":${meal.fatG},"meal_type":"${meal.mealType.esc()}","planned":${meal.planned}}"""
         }
         val log = dayLog.dailyLog
         val dailyLogJson = if (log != null) {
@@ -45,7 +48,10 @@ class CoachToolExecutor(
         } else {
             "null"
         }
-        return """{"date":"$today","meals":[$mealsJson],"totals":{"calories":${dayLog.totals.calories},"protein_g":${dayLog.totals.proteinG},"carbs_g":${dayLog.totals.carbsG},"fat_g":${dayLog.totals.fatG}},"daily_log":$dailyLogJson}"""
+        val plannedJson = dayLog.plannedTotals.let { p ->
+            """{"calories":${p.calories},"protein_g":${p.proteinG},"carbs_g":${p.carbsG},"fat_g":${p.fatG}}"""
+        }
+        return """{"date":"$today","meals":[$mealsJson],"totals":{"calories":${dayLog.totals.calories},"protein_g":${dayLog.totals.proteinG},"carbs_g":${dayLog.totals.carbsG},"fat_g":${dayLog.totals.fatG}},"planned_totals":$plannedJson,"daily_log":$dailyLogJson}"""
     }
 
     private suspend fun getWeeklyTrends(): String {

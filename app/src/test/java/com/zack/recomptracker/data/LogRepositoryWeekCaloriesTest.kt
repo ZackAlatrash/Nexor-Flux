@@ -55,7 +55,7 @@ class LogRepositoryWeekCaloriesTest {
             override suspend fun setPlanned(id: Long, planned: Boolean) = Unit
             override suspend fun confirmPlannedForDate(date: String) = Unit
             override suspend fun setDateAndPlanned(id: Long, date: String, planned: Boolean) = Unit
-            override fun observeStalePlannedCount(date: String) = flowOf(0)
+            override fun observeStalePlannedCount(floor: String, date: String) = flowOf(0)
         }
         return LogRepository(
             dailyLogDao = WcNoopDailyLogDao,

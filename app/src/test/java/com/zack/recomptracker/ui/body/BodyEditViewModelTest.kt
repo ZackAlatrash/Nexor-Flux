@@ -130,7 +130,7 @@ private object BENoopMealEntryDao : MealEntryDao {
     override suspend fun setPlanned(id: Long, planned: Boolean) = Unit
     override suspend fun confirmPlannedForDate(date: String) = Unit
     override suspend fun setDateAndPlanned(id: Long, date: String, planned: Boolean) = Unit
-    override fun observeStalePlannedCount(date: String): Flow<Int> = flow { emit(0) }
+    override fun observeStalePlannedCount(floor: String, date: String): Flow<Int> = flow { emit(0) }
 }
 
 private object BENoopSavedFoodDao : SavedFoodDao {

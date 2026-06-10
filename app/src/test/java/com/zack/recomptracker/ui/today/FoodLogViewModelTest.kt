@@ -54,7 +54,7 @@ class FoodLogViewModelTest {
         whenever(logRepo.observeDay(any())).thenReturn(flowOf(emptyDayLog(today)))
         whenever(logRepo.observeSlots()).thenReturn(flowOf(emptyList()))
         whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
-        whenever(logRepo.observeStalePlannedCount(any())).thenReturn(flowOf(0))
+        whenever(logRepo.observeStalePlannedCount(any(), any())).thenReturn(flowOf(0))
         whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
     }
 

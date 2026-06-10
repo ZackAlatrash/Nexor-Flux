@@ -69,6 +69,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.MarkdownText
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -392,7 +393,7 @@ private fun ChatContent(
                     borderMode = AiBorderMode.Generating,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
+                    MarkdownText(
                         text = partialResponse,
                         color = Color.White,
                         fontSize = 14.sp,
@@ -571,7 +572,7 @@ private fun ChatBubble(message: ChatMessage) {
                 borderMode = AiBorderMode.Static,
                 modifier = Modifier.widthIn(max = 300.dp),
             ) {
-                Text(
+                MarkdownText(
                     text = message.text,
                     color = Color.White,
                     fontSize = 14.sp,

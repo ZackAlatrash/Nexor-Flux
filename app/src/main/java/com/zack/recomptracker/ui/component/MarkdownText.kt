@@ -1,0 +1,269 @@
+package com.zack.recomptracker.ui.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+/**
+ * Minimal markdown renderer for AI chat output. Handles the common subset cloud models emit:
+ * **bold**, *italic*, `inline code`, bullet lists (-, *, +), numbered lists (1.), and #/##/###
+ * headings. Paragraphs separated by blank lines. Intentionally does NOT treat single underscores
+ * as emphasis, so identifiers like `weight_kg` render verbatim. Unclosed markers (common mid-stream)
+ * are appended literally rather than dropped.
+ */
+@Composable
+fun MarkdownText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.White,
+    fontSize: TextUnit = 14.sp,
+) {
+    val blocks = remember(text) { parseMarkdownBlocks(text) }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        blocks.forEach { block ->
+            when (block) {
+                is MdBlock.Heading -> Text(
+                    text = parseInline(block.text),
+                    color = color,
+                    fontSize = when (block.level) {
+                        1 -> 18.sp
+                        2 -> 16.sp
+                        else -> 15.sp
+                    },
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = fontSize.times(1.4f),
+                )
+
+                is MdBlock.Paragraph -> Text(
+                    text = parseInline(block.text),
+                    color = color,
+                    fontSize = fontSize,
+                    lineHeight = fontSize.times(1.4f),
+                )
+
+                is MdBlock.Bullet -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("•", color = color, fontSize = fontSize, lineHeight = fontSize.times(1.4f))
+                    Text(
+                        text = parseInline(block.text),
+                        color = color,
+                        fontSize = fontSize,
+                        lineHeight = fontSize.times(1.4f),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                is MdBlock.Numbered -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("${block.number}.", color = color, fontSize = fontSize, fontWeight = FontWeight.SemiBold, lineHeight = fontSize.times(1.4f))
+                    Text(
+                        text = parseInline(block.text),
+                        color = color,
+                        fontSize = fontSize,
+                        lineHeight = fontSize.times(1.4f),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                is MdBlock.Table -> MarkdownTable(block, color, fontSize)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit) {
+    val colCount = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(8.dp)),
+    ) {
+        MarkdownTableRow(table.header, table.aligns, colCount, color, fontSize, header = true)
+        table.rows.forEach { row ->
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
+            MarkdownTableRow(row, table.aligns, colCount, color, fontSize, header = false)
+        }
+    }
+}
+
+@Composable
+private fun MarkdownTableRow(
+    cells: List<String>,
+    aligns: List<TextAlign>,
+    colCount: Int,
+    color: Color,
+    fontSize: TextUnit,
+    header: Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (header) Color(0x14FFFFFF) else Color.Transparent),
+    ) {
+        for (c in 0 until colCount) {
+            Text(
+                text = parseInline(cells.getOrNull(c) ?: ""),
+                color = color,
+                fontSize = fontSize,
+                fontWeight = if (header) FontWeight.Bold else FontWeight.Normal,
+                textAlign = aligns.getOrNull(c) ?: TextAlign.Start,
+                lineHeight = fontSize.times(1.35f),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+private sealed interface MdBlock {
+    data class Heading(val text: String, val level: Int) : MdBlock
+    data class Paragraph(val text: String) : MdBlock
+    data class Bullet(val text: String) : MdBlock
+    data class Numbered(val number: String, val text: String) : MdBlock
+    data class Table(
+        val header: List<String>,
+        val rows: List<List<String>>,
+        val aligns: List<TextAlign>,
+    ) : MdBlock
+}
+
+private val BULLET_REGEX = Regex("""^[-*+]\s+(.*)""")
+private val NUMBERED_REGEX = Regex("""^(\d+)\.\s+(.*)""")
+
+private fun parseMarkdownBlocks(src: String): List<MdBlock> {
+    val blocks = mutableListOf<MdBlock>()
+    val paragraph = StringBuilder()
+
+    fun flushParagraph() {
+        if (paragraph.isNotBlank()) blocks.add(MdBlock.Paragraph(paragraph.trim().toString()))
+        paragraph.setLength(0)
+    }
+
+    val lines = src.lines()
+    var i = 0
+    while (i < lines.size) {
+        val trimmed = lines[i].trim()
+
+        // GFM table: a row line immediately followed by a separator row (|---|---|).
+        if (trimmed.contains('|') && i + 1 < lines.size && isTableSeparator(lines[i + 1].trim())) {
+            flushParagraph()
+            val header = parseTableRow(trimmed)
+            val aligns = parseAlignments(lines[i + 1].trim())
+            i += 2
+            val rows = mutableListOf<List<String>>()
+            while (i < lines.size && lines[i].isNotBlank() && lines[i].contains('|')) {
+                rows.add(parseTableRow(lines[i].trim()))
+                i++
+            }
+            blocks.add(MdBlock.Table(header, rows, aligns))
+            continue
+        }
+
+        when {
+            trimmed.isEmpty() -> flushParagraph()
+            trimmed.startsWith("### ") -> { flushParagraph(); blocks.add(MdBlock.Heading(trimmed.removePrefix("### ").trim(), 3)) }
+            trimmed.startsWith("## ") -> { flushParagraph(); blocks.add(MdBlock.Heading(trimmed.removePrefix("## ").trim(), 2)) }
+            trimmed.startsWith("# ") -> { flushParagraph(); blocks.add(MdBlock.Heading(trimmed.removePrefix("# ").trim(), 1)) }
+            NUMBERED_REGEX.matches(trimmed) -> {
+                flushParagraph()
+                val m = NUMBERED_REGEX.find(trimmed)!!
+                blocks.add(MdBlock.Numbered(m.groupValues[1], m.groupValues[2]))
+            }
+            BULLET_REGEX.matches(trimmed) -> {
+                flushParagraph()
+                blocks.add(MdBlock.Bullet(BULLET_REGEX.find(trimmed)!!.groupValues[1]))
+            }
+            else -> {
+                if (paragraph.isNotEmpty()) paragraph.append(' ')
+                paragraph.append(trimmed)
+            }
+        }
+        i++
+    }
+    flushParagraph()
+    return blocks
+}
+
+private val SEPARATOR_CELL_REGEX = Regex("""^:?-{1,}:?$""")
+
+/** A markdown table separator row: every pipe-delimited cell is dashes with optional colons. */
+private fun isTableSeparator(line: String): Boolean {
+    if (!line.contains('-') || !line.contains('|')) return false
+    val cells = line.trim().trim('|').split('|')
+    return cells.isNotEmpty() && cells.all { SEPARATOR_CELL_REGEX.matches(it.trim()) }
+}
+
+private fun parseTableRow(line: String): List<String> =
+    line.trim().trim('|').split('|').map { it.trim() }
+
+private fun parseAlignments(separator: String): List<TextAlign> =
+    separator.trim().trim('|').split('|').map { raw ->
+        val s = raw.trim()
+        val left = s.startsWith(":")
+        val right = s.endsWith(":")
+        when {
+            left && right -> TextAlign.Center
+            right -> TextAlign.End
+            else -> TextAlign.Start
+        }
+    }
+
+/** Inline emphasis: **bold**, *italic*, `code`. Unclosed markers are emitted literally. */
+private fun parseInline(text: String): AnnotatedString = buildAnnotatedString {
+    var i = 0
+    val n = text.length
+    while (i < n) {
+        val c = text[i]
+        when {
+            c == '*' && i + 1 < n && text[i + 1] == '*' -> {
+                val end = text.indexOf("**", i + 2)
+                if (end > i + 1) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(text.substring(i + 2, end)) }
+                    i = end + 2
+                } else { append(c); i++ }
+            }
+            c == '`' -> {
+                val end = text.indexOf('`', i + 1)
+                if (end > i) {
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0x22FFFFFF))) {
+                        append(text.substring(i + 1, end))
+                    }
+                    i = end + 1
+                } else { append(c); i++ }
+            }
+            c == '*' -> {
+                val end = text.indexOf('*', i + 1)
+                if (end > i) {
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(text.substring(i + 1, end)) }
+                    i = end + 1
+                } else { append(c); i++ }
+            }
+            else -> { append(c); i++ }
+        }
+    }
+}

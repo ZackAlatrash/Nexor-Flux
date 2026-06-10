@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,13 +24,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiBackend
 import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.ui.FloatingNavHeight
@@ -53,6 +60,7 @@ import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import java.time.LocalDate
 
 @Composable
@@ -200,7 +208,7 @@ fun MoreScreen(
                         emoji = "❤️",
                         title = "Health Connect",
                         detail = "Sync steps and heart rate",
-                        showDivider = true,
+                        showDivider = false,
                     ) {
                         if (state.healthConnectConnected) {
                             HealthConnectedBadge()
@@ -208,11 +216,18 @@ fun MoreScreen(
                             Text("Disconnected", fontSize = 10.sp, color = TextMuted)
                         }
                     }
+                }
+            }
+
+            // ── AI ──────────────────────────────────────────────────────────────
+            item { SectionLabel("AI") }
+            item {
+                MenuCard {
                     SettingRow(
                         emoji = "✨",
-                        title = "AI Insights",
-                        detail = "Experimental on-device analysis",
-                        showDivider = false,
+                        title = "Enable AI",
+                        detail = "Insights & coach",
+                        showDivider = state.aiInsightsEnabled,
                     ) {
                         Switch(
                             checked = state.aiInsightsEnabled,
@@ -226,11 +241,112 @@ fun MoreScreen(
                             ),
                         )
                     }
+                    if (state.aiInsightsEnabled) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        ) {
+                            Text(
+                                "ENGINE",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextFaint,
+                                letterSpacing = 0.14.sp,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            AiEngineSelector(
+                                backend = state.aiBackend,
+                                onSelect = viewModel::setAiBackend,
+                            )
+                        }
+                    }
                 }
             }
 
-            // AI model card — only when AI Insights is on
-            if (aiState != AiInsightState.Disabled) {
+            // Cloud config — only when AI is enabled and the Cloud engine is selected
+            if (state.aiInsightsEnabled && state.aiBackend == AiBackend.CLOUD) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(CornerCard))
+                            .background(CardSurface)
+                            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        CloudStatusLine(state)
+                        Text(
+                            text = "Your logged data is sent to the API you configure. Switch to On-device to keep everything private.",
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                        )
+                        Text(
+                            "QUICK FILL",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextFaint,
+                            letterSpacing = 0.14.sp,
+                        )
+                        ProviderPresetChips(onPick = viewModel::setCloudBaseUrl)
+                        OutlinedTextField(
+                            value = state.cloudBaseUrl,
+                            onValueChange = viewModel::setCloudBaseUrl,
+                            label = { Text("Base URL") },
+                            placeholder = { Text("https://openrouter.ai/api/v1") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = state.cloudModelId,
+                            onValueChange = viewModel::setCloudModelId,
+                            label = { Text("Model ID") },
+                            placeholder = { Text("openai/gpt-oss-20b") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        var apiKeyInput by remember { mutableStateOf("") }
+                        OutlinedTextField(
+                            value = apiKeyInput,
+                            onValueChange = { apiKeyInput = it },
+                            label = { Text(if (state.cloudHasKey) "API key (saved — type to replace)" else "API key") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                onClick = {
+                                    if (apiKeyInput.isNotBlank()) {
+                                        viewModel.setCloudApiKey(apiKeyInput)
+                                        apiKeyInput = ""
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Save key", fontSize = 13.sp) }
+                            if (state.cloudHasKey) {
+                                Button(
+                                    onClick = { viewModel.clearCloudApiKey() },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Clear", fontSize = 13.sp) }
+                            }
+                        }
+                        Button(
+                            onClick = { viewModel.testCloudConnection() },
+                            enabled = !state.testingConnection,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (state.testingConnection) "Testing…" else "Test connection", fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+
+            // On-device model card — only in On-device (Local) mode
+            if (state.aiInsightsEnabled && state.aiBackend == AiBackend.LOCAL && aiState != AiInsightState.Disabled) {
                 item {
                     AiModelSection(
                         aiState = aiState,
@@ -457,6 +573,113 @@ private fun ModelVariantSelector(
                 }
             }
         }
+    }
+}
+
+// ── AI Engine Selector (On-device / Cloud) ──────────────────────────────────────
+
+@Composable
+private fun AiEngineSelector(backend: AiBackend, onSelect: (AiBackend) -> Unit) {
+    val accent = LocalAppAccent.current
+    val options = listOf(
+        Triple(AiBackend.LOCAL, "On-device", "Private · Gemma"),
+        Triple(AiBackend.CLOUD, "Cloud", "API key · most capable"),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { (value, title, subtitle) ->
+            val isActive = backend == value
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.16f) else Color(0x0FFFFFFF))
+                    .border(
+                        1.dp,
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
+                        RoundedCornerShape(10.dp),
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !isActive,
+                        onClick = { onSelect(value) },
+                    )
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = title,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isActive) accent.accentLighter else Color.White.copy(alpha = 0.5f),
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 9.sp,
+                        color = if (isActive) accent.accentLight else TextFaint,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Cloud provider quick-fill presets ────────────────────────────────────────────
+
+private val CLOUD_PRESETS = listOf(
+    "OpenRouter" to "https://openrouter.ai/api/v1",
+    "OpenAI" to "https://api.openai.com/v1",
+    "Groq" to "https://api.groq.com/openai/v1",
+    "NVIDIA" to "https://integrate.api.nvidia.com/v1",
+)
+
+@Composable
+private fun ProviderPresetChips(onPick: (String) -> Unit) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        CLOUD_PRESETS.forEach { (label, url) ->
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(Color(0x0FFFFFFF))
+                    .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(7.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { onPick(url) },
+                    )
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0x99FFFFFF))
+            }
+        }
+    }
+}
+
+// ── Cloud connection status line ─────────────────────────────────────────────────
+
+@Composable
+private fun CloudStatusLine(state: MoreUiState) {
+    val ok = state.testConnectionResult == "Connection OK"
+    val (dot, label) = when {
+        state.testingConnection -> Color(0xFFFBBF24) to "Testing…"
+        ok -> Color(0xFF4ADE80) to "Connected"
+        state.testConnectionResult != null -> Color(0xFFFC8181) to state.testConnectionResult!!
+        state.cloudHasKey -> Color(0x66FFFFFF) to "Configured · not tested"
+        else -> Color(0x66FFFFFF) to "Not configured"
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
+        Text(label, fontSize = 12.sp, color = dot.copy(alpha = 0.95f), lineHeight = 16.sp)
     }
 }
 

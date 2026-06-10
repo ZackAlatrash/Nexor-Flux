@@ -252,6 +252,8 @@ private class AppViewModelFactory(
                 hcRepository = container.healthConnectRepository,
                 backupRepository = container.backupRepository,
                 aiInsightCoordinator = container.aiInsightCoordinator,
+                secureKeyStore = container.secureKeyStore,
+                openAiCompatClient = container.openAiCompatClient,
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,

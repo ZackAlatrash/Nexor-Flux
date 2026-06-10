@@ -22,13 +22,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiBackend
 import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.ui.FloatingNavHeight
@@ -212,7 +217,7 @@ fun MoreScreen(
                         emoji = "✨",
                         title = "AI Insights",
                         detail = "Experimental on-device analysis",
-                        showDivider = false,
+                        showDivider = true,
                     ) {
                         Switch(
                             checked = state.aiInsightsEnabled,
@@ -225,6 +230,95 @@ fun MoreScreen(
                                 uncheckedBorderColor = Color(0x26FFFFFF),
                             ),
                         )
+                    }
+                    SettingRow(
+                        emoji = "☁️",
+                        title = "AI Backend",
+                        detail = if (state.aiBackend == AiBackend.CLOUD) "Cloud model (API key)" else "On-device Gemma",
+                        showDivider = false,
+                    ) {
+                        Switch(
+                            checked = state.aiBackend == AiBackend.CLOUD,
+                            onCheckedChange = { useCloud ->
+                                viewModel.setAiBackend(if (useCloud) AiBackend.CLOUD else AiBackend.LOCAL)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = accent.accent,
+                                uncheckedThumbColor = Color(0x80FFFFFF),
+                                uncheckedTrackColor = Color(0x1AFFFFFF),
+                                uncheckedBorderColor = Color(0x26FFFFFF),
+                            ),
+                        )
+                    }
+                }
+            }
+
+            // Cloud config fields — only when cloud backend is selected
+            if (state.aiBackend == AiBackend.CLOUD) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(CornerCard))
+                            .background(CardSurface)
+                            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "In cloud mode your logged data is sent to the API you configure. On-device Gemma keeps everything private.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(bottom = 2.dp),
+                        )
+                        OutlinedTextField(
+                            value = state.cloudBaseUrl,
+                            onValueChange = viewModel::setCloudBaseUrl,
+                            label = { Text("Base URL (e.g. https://openrouter.ai/api/v1)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        )
+                        OutlinedTextField(
+                            value = state.cloudModelId,
+                            onValueChange = viewModel::setCloudModelId,
+                            label = { Text("Model ID (e.g. anthropic/claude-3.5-sonnet)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        )
+                        var apiKeyInput by remember { mutableStateOf("") }
+                        OutlinedTextField(
+                            value = apiKeyInput,
+                            onValueChange = { apiKeyInput = it },
+                            label = { Text(if (state.cloudHasKey) "API key (saved — type to replace)" else "API key") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(onClick = {
+                                if (apiKeyInput.isNotBlank()) {
+                                    viewModel.setCloudApiKey(apiKeyInput)
+                                    apiKeyInput = ""
+                                }
+                            }) { Text("Save key") }
+                            Button(
+                                onClick = { viewModel.testCloudConnection() },
+                                enabled = !state.testingConnection,
+                            ) {
+                                Text(if (state.testingConnection) "Testing…" else "Test connection")
+                            }
+                        }
+                        state.testConnectionResult?.let {
+                            Text(
+                                text = it,
+                                color = TextMuted,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 4.dp),
+                            )
+                        }
                     }
                 }
             }

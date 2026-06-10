@@ -209,6 +209,10 @@ private fun parseMarkdownBlocks(src: String): List<MdBlock> {
     return blocks
 }
 
+/** True if the text contains a GFM table (used to widen the chat bubble that holds it). */
+fun markdownHasTable(text: String): Boolean =
+    text.lineSequence().any { isTableSeparator(it.trim()) }
+
 private val SEPARATOR_CELL_REGEX = Regex("""^:?-{1,}:?$""")
 
 /** A markdown table separator row: every pipe-delimited cell is dashes with optional colons. */

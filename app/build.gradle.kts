@@ -105,6 +105,8 @@ dependencies {
     implementation(libs.backdrop)
     implementation(libs.kyant.shapes)
     implementation(libs.reorderable)
+    implementation(libs.okhttp)
+    implementation(libs.androidx.security.crypto)
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
 
     ksp(libs.androidx.room.compiler)

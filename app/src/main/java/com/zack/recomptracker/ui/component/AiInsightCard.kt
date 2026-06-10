@@ -121,11 +121,12 @@ fun AiInsightCard(
                 highlight = { Highlight.Default },
                 shadow = { Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.35f)) },
                 onDrawSurface = {
-                    drawRect(Color.White.copy(alpha = 0.06f))
-                    drawRect(accent.accent.copy(alpha = 0.05f))
+                    // Lighter, more transparent frost so more of the backdrop shows through.
+                    drawRect(Color.White.copy(alpha = 0.03f))
+                    drawRect(accent.accent.copy(alpha = 0.03f))
                     drawRect(
                         brush = Brush.verticalGradient(
-                            0f to Color.White.copy(alpha = 0.28f),
+                            0f to Color.White.copy(alpha = 0.22f),
                             0.12f to Color.Transparent,
                         ),
                     )

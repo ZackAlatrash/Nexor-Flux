@@ -114,11 +114,11 @@ class MoreViewModel(
     }
 
     fun setCloudApiKey(key: String) {
-        secureKeyStore.setApiKey(key)
+        viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.setApiKey(key) } }
     }
 
     fun clearCloudApiKey() {
-        secureKeyStore.clearApiKey()
+        viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.clearApiKey() } }
     }
 
     fun testCloudConnection() {

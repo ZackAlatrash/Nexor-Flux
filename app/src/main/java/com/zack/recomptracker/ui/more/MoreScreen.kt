@@ -58,6 +58,7 @@ import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import java.time.LocalDate
 
 @Composable
@@ -292,6 +293,7 @@ fun MoreScreen(
                             onValueChange = { apiKeyInput = it },
                             label = { Text(if (state.cloudHasKey) "API key (saved — type to replace)" else "API key") },
                             singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         )
                         Row(

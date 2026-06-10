@@ -3,6 +3,7 @@ package com.zack.recomptracker.ai
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
+import kotlin.math.roundToInt
 
 class InsightPromptBuilder {
 
@@ -33,6 +34,60 @@ class InsightPromptBuilder {
         }
         appendLine()
         appendLine("Calorie target: ${context.targetCalories} kcal | Protein target: ${context.targetProteinG}g")
+    }
+
+    fun buildProgressTrendPrompt(context: ProgressInsightContext): String = buildString {
+        appendLine("You are a concise body-recomposition coach interpreting an athlete's progress trends.")
+        appendLine("Write exactly 2–3 sentences in plain English explaining what the combination of trends means for body recomposition.")
+        appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. Interpret the trend only.")
+        appendLine("Base everything only on the signals below. Do not invent data.")
+        appendLine()
+        appendLine("Example output:")
+        appendLine("\"Over the last four weeks your weight held steady while your waist trended down and your lifts kept climbing — that's recomposition, not a stall. Your logging has been consistent, so the trend is trustworthy. Stay the course and let another two weeks confirm it.\"")
+        appendLine()
+        appendLine("Window: last ${context.rangeDays} days")
+        appendLine("Signals:")
+        appendLine("- Weight: ${context.weightTrendKgPerWeek?.let { weightLabel(it) } ?: "no data"}")
+        appendLine("- Waist: ${context.waistTrendCmPerWeek?.let { waistLabel(it) } ?: "no data"}")
+        appendLine("- Lifts: ${liftTrendLabel(context.liftTrendKgPerWeek)}")
+        appendLine("- Adherence: ${context.adherencePercent?.let { adherenceLabel(it) } ?: "no data"}")
+    }
+
+    fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext): String = buildString {
+        appendLine("You are a concise training-recovery coach.")
+        appendLine("Write exactly 2–3 sentences in plain English about the athlete's training readiness today.")
+        appendLine("Give practical training and recovery suggestions only. Do NOT give medical advice or diagnose anything.")
+        appendLine("Base everything only on the signals below. Do not invent data.")
+        appendLine()
+        appendLine("Example output:")
+        appendLine("\"Two short nights with soreness running high and energy low suggests recovery hasn't caught up to your training. Prioritize sleep tonight and keep portions adequate. If soreness holds tomorrow, an easier session would help you bounce back.\"")
+        appendLine()
+        appendLine("Signals today:")
+        context.sleepHours?.let { appendLine("- Sleep: ${sleepLabel(it)}") }
+        context.energyScore?.let { appendLine("- Energy: ${scoreLabel(it)}") }
+        context.hungerScore?.let { appendLine("- Hunger: ${scoreLabel(it)}") }
+        context.sorenessScore?.let { appendLine("- Soreness: ${scoreLabel(it)}") }
+        appendLine("- Trained today: ${if (context.trained) "yes" else "no"}")
+    }
+
+    fun buildRestOfDayPrompt(context: RestOfDayInsightContext): String = buildString {
+        appendLine("You are a concise nutrition coach advising an athlete on the rest of their day.")
+        appendLine("Write exactly 2–3 sentences in plain English: state where they stand and what to prioritize for the remaining meals.")
+        appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")
+        appendLine("Base everything only on the numbers below.")
+        appendLine()
+        appendLine("Example output:")
+        appendLine("\"You're at 1,420 of your 2,200-calorie target with 38 g of protein still to go. There's room for a solid dinner — make protein the centerpiece to close that gap. You're tracking well for the day.\"")
+        appendLine()
+        // Calories may go negative (overeating is useful signal to surface); protein
+        // remaining clamps at 0 since "negative protein to go" is meaningless advice.
+        val calRemaining = context.targetCalories - context.caloriesConsumed
+        val proteinRemaining = (context.proteinTargetG - context.proteinConsumedG).coerceAtLeast(0.0)
+        appendLine("Current intake:")
+        appendLine("- Calories: ${context.caloriesConsumed} of ${context.targetCalories} kcal ($calRemaining remaining)")
+        appendLine("- Protein: ${context.proteinConsumedG.roundToInt()} of ${context.proteinTargetG} g (${proteinRemaining.roundToInt()} g remaining)")
+        appendLine("- Calorie zone: ${context.calorieZoneLowerBound}–${context.calorieZoneUpperBound} kcal")
+        appendLine("- Meals logged so far: ${context.mealsLoggedCount}")
     }
 
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {
@@ -77,10 +132,30 @@ class InsightPromptBuilder {
         else -> "low (below target)"
     }
 
+    private fun liftTrendLabel(kgPerWeek: Double?): String = when {
+        kgPerWeek == null -> "no data"
+        kgPerWeek > LIFT_THRESHOLD -> "improving"
+        kgPerWeek < -LIFT_THRESHOLD -> "declining"
+        else -> "stable"
+    }
+
+    private fun sleepLabel(hours: Double): String = when {
+        hours < 6.0 -> "poor"
+        hours < 7.5 -> "acceptable"
+        else -> "good"
+    }
+
+    private fun scoreLabel(score: Int): String = when {
+        score <= 3 -> "low"
+        score <= 6 -> "moderate"
+        else -> "high"
+    }
+
     private companion object {
         private const val DEFAULT_WEEKS_FALLBACK = 4
         private const val WEIGHT_THRESHOLD = 0.20
         private const val WAIST_THRESHOLD = 0.25
+        private const val LIFT_THRESHOLD = 0.1
 
         private val REASON_DESCRIPTIONS = mapOf(
             "LOSING_WITH_POOR_RECOVERY" to "Weight is falling while performance or recovery is suffering",

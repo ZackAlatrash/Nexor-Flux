@@ -109,12 +109,14 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             TodayViewModel::class.java -> TodayViewModel(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 hcRepository = container.healthConnectRepository,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             DashboardViewModel::class.java -> DashboardViewModel(
                 logRepository = container.logRepository,
@@ -130,6 +132,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 adherenceCalculator = container.adherenceCalculator,
+                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             PlanViewModel::class.java -> PlanViewModel(container.planRepository)
             FoodsViewModel::class.java -> FoodsViewModel(

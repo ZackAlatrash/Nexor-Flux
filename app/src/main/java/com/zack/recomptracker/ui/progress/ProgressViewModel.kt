@@ -2,6 +2,11 @@ package com.zack.recomptracker.ui.progress
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.InsightKind
+import com.zack.recomptracker.ai.InsightRequest
+import com.zack.recomptracker.ai.ProgressInsightContext
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
@@ -37,6 +42,7 @@ data class ProgressUiState(
     val fat: ChartSeries = ChartSeries("Fat", "g", emptyList()),
     val adherence: ChartSeries = ChartSeries("Adherence", "%", emptyList()),
     val lifts: ChartSeries = ChartSeries("Marker lift e1RM", "kg", emptyList()),
+    val insightContext: ProgressInsightContext? = null,
 )
 
 class ProgressViewModel(
@@ -44,10 +50,25 @@ class ProgressViewModel(
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
     private val adherenceCalculator: AdherenceCalculator,
+    private val aiInsightCoordinator: AiInsightCoordinator,
 ) : ViewModel() {
     private val rangeDays = MutableStateFlow(28)
     private val _uiState = MutableStateFlow(ProgressUiState())
     val uiState: StateFlow<ProgressUiState> = _uiState.asStateFlow()
+
+    val progressInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.PROGRESS_TREND)
+
+    fun onProgressInsightVisible() {
+        val ctx = _uiState.value.insightContext ?: return
+        if (!ctx.hasSufficientData) return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.ProgressTrend(ctx))
+    }
+
+    fun retryProgressInsight() {
+        val ctx = _uiState.value.insightContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.ProgressTrend(ctx))
+    }
 
     init {
         viewModelScope.launch {
@@ -138,6 +159,13 @@ class ProgressViewModel(
                     lifts = ChartSeries(
                         "Lifts e1RM", "kg", liftValues,
                         currentValue = liftValues.lastOrNull(),
+                    ),
+                    insightContext = buildProgressInsightContext(
+                        rangeDays = range,
+                        weightValues = weightValues,
+                        waistValues = waistValues,
+                        liftValues = liftValues,
+                        adherencePercent = adherenceLast,
                     ),
                 )
             }.collect { _uiState.value = it }

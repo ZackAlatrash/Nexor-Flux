@@ -15,10 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -30,14 +29,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -50,6 +50,12 @@ enum class AiBorderMode {
     Static,
 }
 
+/**
+ * Liquid-glass AI card: a translucent frosted body (vibrancy + blur + chromatic lens + specular
+ * highlight) with a thin full-spectrum iridescent rim whose hue flows in place — the rim geometry
+ * never rotates. Rim intensity/motion is driven by [borderMode]. When system animations are off,
+ * it falls back to a static iridescent rim.
+ */
 @Composable
 fun AiInsightCard(
     borderMode: AiBorderMode,
@@ -57,10 +63,6 @@ fun AiInsightCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val context = LocalContext.current
-    // Read once per context instance — Settings.Global is a system property that
-    // doesn't change during the app's lifetime, so reading it on every recomposition
-    // is pure waste. remember(context) caches the result and only re-reads if the
-    // context object itself changes (effectively never after first composition).
     val animationsEnabled = remember(context) {
         Settings.Global.getFloat(
             context.contentResolver,
@@ -70,22 +72,20 @@ fun AiInsightCard(
     }
     val effectiveMode = if (animationsEnabled) borderMode else AiBorderMode.Static
 
-    val infiniteTransition = rememberInfiniteTransition(label = "aiComet")
+    val infiniteTransition = rememberInfiniteTransition(label = "aiIridescent")
 
-    val cometPhase by infiniteTransition.animateFloat(
+    val huePhase by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1500, easing = LinearEasing),
-        ),
-        label = "cometPhase",
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 17000, easing = LinearEasing)),
+        label = "huePhase",
     )
 
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.85f,
+        initialValue = 0.30f,
+        targetValue = 0.60f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
+            animation = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "pulseAlpha",
@@ -95,7 +95,6 @@ fun AiInsightCard(
     LaunchedEffect(effectiveMode) {
         if (effectiveMode != AiBorderMode.Ready) readyComplete = false
     }
-
     val readyFadeAlpha by animateFloatAsState(
         targetValue = if (effectiveMode == AiBorderMode.Ready && !readyComplete) 1f else 0f,
         animationSpec = tween(durationMillis = 1000),
@@ -105,50 +104,43 @@ fun AiInsightCard(
 
     val accent = LocalAppAccent.current
     val backdrop = LocalBackdrop.current
-    var cardWidth by remember { mutableIntStateOf(0) }
-    val shimmerBrush = remember(cardWidth, accent.tintedBorder) {
-        Brush.horizontalGradient(
-            colors = listOf(Color.Transparent, accent.tintedBorder, accent.tintedBorder, Color.Transparent),
-            startX = cardWidth * 0.10f,
-            endX = cardWidth * 0.90f,
-        )
-    }
     val cornerDp = CornerCard
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(cornerDp))
-            .onSizeChanged { cardWidth = it.width }
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { RoundedRectangle(cornerDp) },
                 effects = {
                     vibrancy()
-                    blur(20f.dp.toPx())
+                    blur(22f.dp.toPx())
+                    lens(12f.dp.toPx(), 18f.dp.toPx(), chromaticAberration = true)
                 },
+                highlight = { Highlight.Default },
+                shadow = { Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.35f)) },
                 onDrawSurface = {
-                    drawRect(accent.tintedSurface)
-                    val shimmerY = 1.dp.toPx() / 2f
-                    drawLine(
-                        brush = shimmerBrush,
-                        start = Offset(0f, shimmerY),
-                        end = Offset(size.width, shimmerY),
-                        strokeWidth = 1.dp.toPx(),
+                    // Lighter, more transparent frost so more of the backdrop shows through.
+                    drawRect(Color.White.copy(alpha = 0.03f))
+                    drawRect(accent.accent.copy(alpha = 0.03f))
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.22f),
+                            0.12f to Color.Transparent,
+                        ),
                     )
                 },
             )
             .drawWithContent {
                 drawContent()
-                drawAnimatedBorder(
+                drawIridescentBorder(
                     mode = effectiveMode,
-                    cometPhase = cometPhase,
+                    huePhase = huePhase,
                     pulseAlpha = pulseAlpha,
                     readyFadeAlpha = readyFadeAlpha,
                     cornerPx = cornerDp.toPx(),
-                    accentLighter = accent.accentLighter,
-                    accentMain = accent.accent,
-                    tintedBorder = accent.tintedBorder,
+                    animationsEnabled = animationsEnabled,
                 )
             }
             .padding(16.dp),
@@ -156,73 +148,41 @@ fun AiInsightCard(
     )
 }
 
-private fun DrawScope.drawAnimatedBorder(
+/**
+ * Draws the thin full-spectrum iridescent rim. Geometry is fixed (a sweep gradient at the centre);
+ * only the stop hues shift by [huePhase], so the colour flows in place. Opacity encodes the mode.
+ */
+private fun DrawScope.drawIridescentBorder(
     mode: AiBorderMode,
-    cometPhase: Float,
+    huePhase: Float,
     pulseAlpha: Float,
     readyFadeAlpha: Float,
     cornerPx: Float,
-    accentLighter: Color,
-    accentMain: Color,
-    tintedBorder: Color,
+    animationsEnabled: Boolean,
 ) {
-    val strokeWidth = 1.5.dp.toPx()
     val corner = CornerRadius(cornerPx)
-
-    when (mode) {
-        AiBorderMode.Static -> {
-            drawRoundRect(
-                color = tintedBorder,
-                cornerRadius = corner,
-                style = Stroke(width = 1.dp.toPx()),
-            )
-        }
-
-        AiBorderMode.Preparing -> {
-            drawRoundRect(
-                color = accentLighter.copy(alpha = pulseAlpha),
-                cornerRadius = corner,
-                style = Stroke(width = strokeWidth),
-            )
-        }
-
-        AiBorderMode.Generating, AiBorderMode.Ready -> {
-            drawRoundRect(
-                color = tintedBorder,
-                cornerRadius = corner,
-                style = Stroke(width = 1.dp.toPx()),
-            )
-            val alpha = if (mode == AiBorderMode.Ready) readyFadeAlpha else 1f
-            rotate(
-                degrees = cometPhase * 360f,
-                pivot = Offset(size.width / 2f, size.height / 2f),
-            ) {
-                drawRoundRect(
-                    brush = Brush.sweepGradient(
-                        colorStops = arrayOf(
-                            0.00f to Color.Transparent,
-                            0.06f to Color(0x70FFFFFF),
-                            0.11f to accentLighter,
-                            0.19f to accentMain,
-                            0.23f to Color.Transparent,
-                            1.00f to Color.Transparent,
-                        ),
-                        center = Offset(size.width / 2f, size.height / 2f),
-                    ),
-                    cornerRadius = corner,
-                    style = Stroke(width = strokeWidth),
-                    alpha = alpha,
-                )
-            }
-        }
+    val baseAlpha = when (mode) {
+        AiBorderMode.Static -> 0.35f
+        AiBorderMode.Preparing -> if (animationsEnabled) pulseAlpha else 0.45f
+        AiBorderMode.Generating -> 0.70f
+        AiBorderMode.Ready -> 0.50f + 0.20f * readyFadeAlpha
     }
+    val rawShift = if (animationsEnabled) huePhase else 0f
+    val shift = if (mode == AiBorderMode.Generating) rawShift * 1.6f else rawShift
+    val colors = IridescentStops.map { it.hueShifted(shift) }
+    drawRoundRect(
+        brush = Brush.sweepGradient(colors, center = Offset(size.width / 2f, size.height / 2f)),
+        cornerRadius = corner,
+        style = Stroke(width = 1.3.dp.toPx()),
+        alpha = baseAlpha,
+    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0D0818)
 @Composable
 private fun PreviewStatic() {
     AiInsightCard(borderMode = AiBorderMode.Static) {
-        androidx.compose.material3.Text("Static border", color = Color.White)
+        androidx.compose.material3.Text("Static iridescent rim", color = Color.White)
     }
 }
 

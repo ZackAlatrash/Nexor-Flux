@@ -45,16 +45,22 @@ class RoutingInsightCoordinator(
     override fun cancelDownload() = local.cancelDownload()
     override fun deleteModel() = local.deleteModel()
 
+    private val routedStates: Map<InsightKind, StateFlow<AiInsightState>> =
+        InsightKind.entries.associateWith { kind ->
+            effectiveBackend
+                .flatMapLatest { backend ->
+                    if (backend == AiBackend.CLOUD) cloud.generationState(kind)
+                    else local.generationState(kind)
+                }
+                .stateIn(scope, SharingStarted.Eagerly, AiInsightState.ModelReady)
+        }
+
+    override fun generationState(kind: InsightKind): StateFlow<AiInsightState> =
+        routedStates.getValue(kind)
+
     // Insight generation routes to whichever backend is currently effective.
     override fun onAiCardVisible(context: InsightContext) = active().onAiCardVisible(context)
     override fun retryGeneration(context: InsightContext) = active().retryGeneration(context)
-
-    override fun generationState(kind: InsightKind): StateFlow<AiInsightState> =
-        effectiveBackend
-            .flatMapLatest { backend ->
-                if (backend == AiBackend.CLOUD) cloud.generationState(kind) else local.generationState(kind)
-            }
-            .stateIn(scope, SharingStarted.Eagerly, AiInsightState.ModelReady)
 
     override fun onInsightVisible(request: InsightRequest) = active().onInsightVisible(request)
     override fun retryInsight(request: InsightRequest) = active().retryInsight(request)

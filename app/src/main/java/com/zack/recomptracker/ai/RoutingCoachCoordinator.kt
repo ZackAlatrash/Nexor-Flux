@@ -36,8 +36,15 @@ class RoutingCoachCoordinator(
             .flatMapLatest { backend -> if (backend == AiBackend.CLOUD) cloud.state else local.state }
             .stateIn(scope, SharingStarted.Eagerly, CoachState.Unavailable)
 
-    override fun sendMessage(text: String) = activeCoordinator().sendMessage(text)
+    @Volatile private var lastRoutedCoach: CoachCoordinator? = null
+
+    override fun sendMessage(text: String) {
+        val target = activeCoordinator()
+        lastRoutedCoach = target
+        target.sendMessage(text)
+    }
+
     override fun clearHistory() = activeCoordinator().clearHistory()
-    override fun confirmPendingAction() = activeCoordinator().confirmPendingAction()
-    override fun cancelPendingAction() = activeCoordinator().cancelPendingAction()
+    override fun confirmPendingAction() = (lastRoutedCoach ?: activeCoordinator()).confirmPendingAction()
+    override fun cancelPendingAction() = (lastRoutedCoach ?: activeCoordinator()).cancelPendingAction()
 }

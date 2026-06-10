@@ -280,6 +280,7 @@ class GemmaInsightCoordinator(
                     .trim()
                     .replace(Regex("""[*_`#>]"""), "")
                     .replace(Regex("""\n{2,}"""), " ")
+                    .let { InsightPromptBuilder.limitToSentences(it, 2) }
                 flow.value = AiInsightState.Ready(finalText)
             }
         } catch (e: TimeoutCancellationException) {
@@ -319,6 +320,7 @@ class GemmaInsightCoordinator(
                     .trim()
                     .replace(Regex("""[*_`#>]"""), "")
                     .replace(Regex("""\n{2,}"""), " ")
+                    .let { InsightPromptBuilder.limitToSentences(it, 2) }
                 _state.value = AiInsightState.Ready(finalText)
             }
         } catch (e: TimeoutCancellationException) {

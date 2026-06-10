@@ -103,6 +103,8 @@ class CloudCoachCoordinator(
                 var rounds = 0
                 while (true) {
                     if (rounds++ >= MAX_TOOL_ROUNDS) {
+                        requestMessages.clear()
+                        systemSeeded = false
                         _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
                         return@withLock
                     }
@@ -147,6 +149,8 @@ class CloudCoachCoordinator(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                requestMessages.clear()
+                systemSeeded = false
                 _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
             }
         }

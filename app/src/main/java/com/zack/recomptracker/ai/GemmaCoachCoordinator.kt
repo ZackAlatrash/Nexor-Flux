@@ -202,7 +202,7 @@ class GemmaCoachCoordinator(
                         )
                         val argsMap =
                             toolCall.arguments.mapValues { (_, value) -> value.toString() }
-                        if (toolCall.name in WRITE_TOOLS) {
+                        if (toolCall.name in COACH_WRITE_TOOLS) {
                             val action = PendingCoachAction(
                                 toolName = toolCall.name,
                                 args = argsMap,
@@ -481,33 +481,13 @@ class GemmaCoachCoordinator(
         private const val MAX_TOOL_ITERATIONS = 5
         private const val MAX_TURNS = 20
 
-        val WRITE_TOOLS = setOf("log_meal", "log_metric", "update_calorie_target")
-
         /**
-         * Tool schemas advertised to the model. Parameter names match the keys read by
-         * [CoachToolExecutor]. [SchemaTool.execute] is never invoked because tool calls
-         * are dispatched manually through [CoachToolExecutor]; only the schema is used.
+         * Tool schemas advertised to the model. Derived from the top-level [COACH_TOOL_SCHEMAS]
+         * so the JSON is defined in exactly one place. [SchemaTool.execute] is never invoked
+         * because tool calls are dispatched manually through [CoachToolExecutor]; only the
+         * schema is used.
          */
-        val COACH_TOOLS: List<OpenApiTool> = listOf(
-            SchemaTool(
-                """{"name":"get_today_summary","description":"Get a specific day's food log, macro totals, and daily metrics. Omit 'date' for today.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"ISO date YYYY-MM-DD. Omit for today."}},"required":[]}}""",
-            ),
-            SchemaTool(
-                """{"name":"get_weekly_trends","description":"Get last 7 days of daily macro totals (calories, protein, carbs, fat) and adherence percent. Use this for weekly trends or any multi-day macro question.","parameters":{"type":"object","properties":{},"required":[]}}""",
-            ),
-            SchemaTool(
-                """{"name":"search_food_library","description":"Search your saved food library by name. If the user specified a weight in grams, pass it as 'grams' and the tool returns macros already scaled to that weight — use those directly in log_meal.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Food name only — no quantities or weights"},"grams":{"type":"number","description":"Optional: weight in grams requested by the user. If provided, returned macros are pre-scaled to this weight."}},"required":["query"]}}""",
-            ),
-            SchemaTool(
-                """{"name":"log_meal","description":"Add a meal to today's food log. The tool looks up your food library automatically and uses the correct macros. Pass grams if the user specified a weight. If the food is NOT in the library, you MUST also provide calories, protein_g, carbs_g, and fat_g.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Food name"},"grams":{"type":"number","description":"Optional: weight in grams. Macros are scaled automatically if food is in library."},"meal_type":{"type":"string","description":"One of: Breakfast, Lunch, Dinner, Snack. Default: Snack"},"calories":{"type":"integer","description":"Required only if food is NOT in your library. Omit for library foods."},"protein_g":{"type":"number","description":"Required only if food is NOT in your library."},"carbs_g":{"type":"number","description":"Required only if food is NOT in your library."},"fat_g":{"type":"number","description":"Required only if food is NOT in your library."}},"required":["name"]}}""",
-            ),
-            SchemaTool(
-                """{"name":"log_metric","description":"Record a body or recovery metric for today.","parameters":{"type":"object","properties":{"metric":{"type":"string","description":"One of: weight_kg, waist_cm, sleep_hours, energy_score, hunger_score, soreness_score"},"value":{"type":"number","description":"The numeric value to record"}},"required":["metric","value"]}}""",
-            ),
-            SchemaTool(
-                """{"name":"update_calorie_target","description":"Update the daily calorie target. Value must be between 500 and 6000.","parameters":{"type":"object","properties":{"target_calories":{"type":"integer","description":"New daily calorie target in kcal (500–6000)"}},"required":["target_calories"]}}""",
-            ),
-        )
+        val COACH_TOOLS: List<OpenApiTool> = COACH_TOOL_SCHEMAS.map { SchemaTool(it) }
     }
 }
 

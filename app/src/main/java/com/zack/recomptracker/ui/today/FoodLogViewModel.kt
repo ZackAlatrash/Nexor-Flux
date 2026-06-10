@@ -2,6 +2,11 @@ package com.zack.recomptracker.ui.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.InsightKind
+import com.zack.recomptracker.ai.InsightRequest
+import com.zack.recomptracker.ai.RestOfDayInsightContext
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
@@ -32,6 +37,7 @@ data class FoodLogUiState(
     val slotsEditMode: Boolean = false,
     val weekSummary: ImmutableList<DayCalorieSummary> = persistentListOf(),
     val message: String? = null,
+    val restOfDayInsightContext: RestOfDayInsightContext? = null,
 ) {
     val isToday: Boolean get() = selectedDate == today
 }
@@ -41,6 +47,7 @@ class FoodLogViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     dateProvider: DateProvider,
+    private val aiInsightCoordinator: AiInsightCoordinator,
 ) : ViewModel() {
 
     val today: LocalDate = dateProvider.today()
@@ -48,6 +55,20 @@ class FoodLogViewModel(
 
     private val _uiState = MutableStateFlow(FoodLogUiState(selectedDate = today, today = today))
     val uiState: StateFlow<FoodLogUiState> = _uiState.asStateFlow()
+
+    val restOfDayInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.REST_OF_DAY)
+
+    fun onRestOfDayInsightVisible() {
+        val ctx = _uiState.value.restOfDayInsightContext ?: return
+        if (!ctx.hasSufficientData) return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.RestOfDay(ctx))
+    }
+
+    fun retryRestOfDayInsight() {
+        val ctx = _uiState.value.restOfDayInsightContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.RestOfDay(ctx))
+    }
 
     init {
         viewModelScope.launch {
@@ -69,6 +90,9 @@ class FoodLogViewModel(
                         target = prefs,
                         totals = day.totals,
                         slots = slottedEntries,
+                        restOfDayInsightContext = if (day.date == today) {
+                            buildRestOfDayInsightContext(day.totals, prefs, day.meals.size)
+                        } else null,
                     )
                 }
             }

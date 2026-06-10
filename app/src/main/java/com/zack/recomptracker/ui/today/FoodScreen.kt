@@ -51,7 +51,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import com.zack.recomptracker.ui.component.WeekCalorieStrip
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
@@ -81,6 +83,7 @@ fun FoodScreen(
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long, date: LocalDate) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val restOfDayInsightState by viewModel.restOfDayInsightState.collectAsStateWithLifecycle()
     val actions = remember {
         FoodActions(
             onToggleEditMode = viewModel::toggleEditMode,
@@ -99,6 +102,10 @@ fun FoodScreen(
         onBrowseLibrary   = onBrowseLibrary,
         onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
         onSelectDate      = viewModel::selectDate,
+        restOfDayInsightState  = restOfDayInsightState,
+        restOfDayAvailable     = state.restOfDayInsightContext?.hasSufficientData == true,
+        onRevealRestOfDay      = viewModel::onRestOfDayInsightVisible,
+        onRetryRestOfDay       = viewModel::retryRestOfDayInsight,
     )
 }
 
@@ -121,6 +128,10 @@ fun FoodContent(
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
     onSelectDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    restOfDayInsightState: AiInsightState = AiInsightState.Disabled,
+    restOfDayAvailable: Boolean = false,
+    onRevealRestOfDay: () -> Unit = {},
+    onRetryRestOfDay: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val foodScreenOrbBrush = remember(accent.accent) {
@@ -180,6 +191,15 @@ fun FoodContent(
 
                 // Nutrition strip
                 item { NutritionStrip(state) }
+
+                item {
+                    RestOfDayReveal(
+                        available = restOfDayAvailable,
+                        state = restOfDayInsightState,
+                        onReveal = onRevealRestOfDay,
+                        onRetry = onRetryRestOfDay,
+                    )
+                }
 
                 // Meals header
                 item {
@@ -287,6 +307,28 @@ private fun FoodScreenHeader(
             letterSpacing = (-0.8).sp,
         )
         Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
+    }
+}
+
+// ── Rest of Day Insight ──────────────────────────────────────────────────────
+
+@Composable
+private fun RestOfDayReveal(
+    available: Boolean,
+    state: AiInsightState,
+    onReveal: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    var revealed by remember { mutableStateOf(false) }
+    when {
+        revealed -> GeneratedInsightCard(
+            title = "Rest of day",
+            state = state,
+            onRetry = onRetry,
+        )
+        available -> TextButton(onClick = { revealed = true; onReveal() }) {
+            Text("✨ Rest of day?")
+        }
     }
 }
 

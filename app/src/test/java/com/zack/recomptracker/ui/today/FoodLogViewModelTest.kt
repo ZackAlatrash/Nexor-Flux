@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.today
 
+import com.zack.recomptracker.ai.StubInsightCoordinator
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.preferences.PlanPreferences
@@ -7,8 +8,10 @@ import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -55,7 +58,9 @@ class FoodLogViewModelTest {
     @After
     fun tearDown() { Dispatchers.resetMain() }
 
-    private fun buildVm() = FoodLogViewModel(logRepo, planRepo, dateProvider)
+    private val aiCoordinator = StubInsightCoordinator(MutableStateFlow(false), CoroutineScope(dispatcher))
+
+    private fun buildVm() = FoodLogViewModel(logRepo, planRepo, dateProvider, aiCoordinator)
 
     @Test
     fun `initial selectedDate is today`() = runTest {

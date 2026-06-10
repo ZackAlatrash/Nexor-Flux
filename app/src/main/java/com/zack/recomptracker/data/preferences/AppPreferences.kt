@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.zack.recomptracker.ai.AiBackend
 import com.zack.recomptracker.ai.ModelVariant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -89,6 +90,21 @@ class UiPreferences(private val context: Context) {
     val pendingDownloadId: kotlinx.coroutines.flow.Flow<Long> =
         context.uiDataStore.data.map { it[Keys.PendingDownloadId] ?: -1L }
 
+    val aiBackend: kotlinx.coroutines.flow.Flow<AiBackend> =
+        context.uiDataStore.data.map { AiBackend.fromStored(it[Keys.AiBackend]) }
+
+    val cloudBaseUrl: kotlinx.coroutines.flow.Flow<String> =
+        context.uiDataStore.data.map { it[Keys.CloudBaseUrl] ?: "" }
+
+    val cloudModelId: kotlinx.coroutines.flow.Flow<String> =
+        context.uiDataStore.data.map { it[Keys.CloudModelId] ?: "" }
+
+    /** True when base URL and model id are both set (API-key presence is tracked by SecureKeyStore). */
+    val cloudConfigPresent: kotlinx.coroutines.flow.Flow<Boolean> =
+        context.uiDataStore.data.map {
+            !(it[Keys.CloudBaseUrl].isNullOrBlank()) && !(it[Keys.CloudModelId].isNullOrBlank())
+        }
+
     val selectedModelVariant: kotlinx.coroutines.flow.Flow<ModelVariant> =
         context.uiDataStore.data.map {
             when (it[Keys.SelectedModelVariant]) {
@@ -131,11 +147,26 @@ class UiPreferences(private val context: Context) {
         context.uiDataStore.edit { it[Keys.SelectedModelVariant] = variant.name }
     }
 
+    suspend fun setAiBackend(backend: AiBackend) {
+        context.uiDataStore.edit { it[Keys.AiBackend] = backend.name }
+    }
+
+    suspend fun setCloudBaseUrl(url: String) {
+        context.uiDataStore.edit { it[Keys.CloudBaseUrl] = url.trim() }
+    }
+
+    suspend fun setCloudModelId(model: String) {
+        context.uiDataStore.edit { it[Keys.CloudModelId] = model.trim() }
+    }
+
     private object Keys {
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
         val PendingDownloadId = longPreferencesKey("pending_download_id")
         val SelectedModelVariant = stringPreferencesKey("selected_model_variant")
         val AccentTheme = stringPreferencesKey("accent_theme")
+        val AiBackend = stringPreferencesKey("ai_backend")
+        val CloudBaseUrl = stringPreferencesKey("cloud_base_url")
+        val CloudModelId = stringPreferencesKey("cloud_model_id")
     }
 }

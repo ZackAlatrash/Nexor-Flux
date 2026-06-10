@@ -5,14 +5,11 @@ import com.zack.recomptracker.data.remote.OpenAiCompatClient
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
@@ -44,26 +41,30 @@ class CloudInsightCoordinator(
         InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
     private val lastInsightKeys = java.util.concurrent.ConcurrentHashMap<InsightKind, String>()
 
-    private var lastGeneratedKey: String? = null
+    @Volatile private var lastGeneratedKey: String? = null
+
+    // Caches the latest enabled emission so the configFlow collector can re-derive state
+    // when config appears or disappears while the enabled flag is unchanged.
+    @Volatile private var lastKnownEnabled: Boolean = false
 
     init {
-        // UNDISPATCHED: executes synchronously until the first real suspension, so
-        // the initial emission from the enabled flow sets _state before init returns.
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+        // React to AI-enabled toggle; configFlow.value is readable directly (it's a StateFlow).
+        scope.launch {
             aiEnabledFlow.collect { enabled ->
+                lastKnownEnabled = enabled
                 _state.value =
                     if (enabled && configFlow.value != null) AiInsightState.ModelReady
                     else AiInsightState.Disabled
             }
         }
-        // Also react when config disappears (user clears settings).
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            configFlow
-                .map { it == null }
-                .distinctUntilChanged()
-                .collect { configGone ->
-                    if (configGone) _state.value = AiInsightState.Disabled
-                }
+        // React when config appears or disappears (e.g. user saves / clears cloud settings).
+        // Uses lastKnownEnabled so state is re-derived correctly in both directions.
+        scope.launch {
+            configFlow.collect { config ->
+                _state.value =
+                    if (lastKnownEnabled && config != null) AiInsightState.ModelReady
+                    else AiInsightState.Disabled
+            }
         }
     }
 
@@ -79,7 +80,7 @@ class CloudInsightCoordinator(
         val key = context.result.key()
         if (key == lastGeneratedKey) return
         lastGeneratedKey = key
-        scope.launch(start = CoroutineStart.UNDISPATCHED) { streamInto(_state, promptBuilder.buildWeeklySummaryPrompt(context)) }
+        scope.launch { streamInto(_state, promptBuilder.buildWeeklySummaryPrompt(context)) }
     }
 
     override fun retryGeneration(context: InsightContext) {
@@ -96,7 +97,7 @@ class CloudInsightCoordinator(
     override fun onInsightVisible(request: InsightRequest) {
         if (!request.hasSufficientData) return
         val flow = insightStates.getValue(request.kind)
-        if (_state.value != AiInsightState.ModelReady) {
+        if (!isModelUsable()) {
             flow.value = _state.value
             return
         }
@@ -108,13 +109,22 @@ class CloudInsightCoordinator(
             is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context, rich = capabilities.richInsights)
             is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context, rich = capabilities.richInsights)
         }
-        scope.launch(start = CoroutineStart.UNDISPATCHED) { streamInto(flow, prompt) }
+        scope.launch { streamInto(flow, prompt) }
     }
 
     override fun retryInsight(request: InsightRequest) {
         lastInsightKeys.remove(request.kind)
         insightStates.getValue(request.kind).value = AiInsightState.ModelReady
         onInsightVisible(request)
+    }
+
+    private fun isModelUsable(): Boolean = when (_state.value) {
+        AiInsightState.Disabled,
+        AiInsightState.ModelMissing,
+        is AiInsightState.Downloading,
+        AiInsightState.DownloadFailed,
+        AiInsightState.ModelVerifying -> false
+        else -> true
     }
 
     private suspend fun streamInto(flow: MutableStateFlow<AiInsightState>, prompt: String) {
@@ -140,15 +150,20 @@ class CloudInsightCoordinator(
                 flow.value = AiInsightState.Ready(sb.toString().trim())
             }
         } catch (e: TimeoutCancellationException) {
-            flow.value = AiInsightState.Error("Took too long — try again.")
+            if (flow.value is AiInsightState.LoadingModel || flow.value is AiInsightState.Generating) {
+                flow.value = AiInsightState.Error("Took too long — try again.")
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            flow.value = AiInsightState.Error("Cloud request failed — check your settings.")
+            if (flow.value is AiInsightState.LoadingModel || flow.value is AiInsightState.Generating) {
+                flow.value = AiInsightState.Error("Cloud request failed — check your settings.")
+            }
         }
     }
 
     private companion object {
+        // Cloud path: 60 s to allow for network latency (local Gemma uses 45 s).
         private const val GENERATION_TIMEOUT_MS = 60_000L
         private const val SYSTEM_PROMPT =
             "You are a precise, supportive body-recomposition coach. Answer only from the data you are given."

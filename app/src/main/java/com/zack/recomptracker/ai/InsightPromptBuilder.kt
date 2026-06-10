@@ -36,9 +36,13 @@ class InsightPromptBuilder {
         appendLine("Calorie target: ${context.targetCalories} kcal | Protein target: ${context.targetProteinG}g")
     }
 
-    fun buildProgressTrendPrompt(context: ProgressInsightContext): String = buildString {
-        appendLine("You are a concise body-recomposition coach interpreting an athlete's progress trends.")
-        appendLine("Write exactly 2–3 sentences in plain English explaining what the combination of trends means for body recomposition.")
+    fun buildProgressTrendPrompt(context: ProgressInsightContext, rich: Boolean = false): String = buildString {
+        appendLine("You are a body-recomposition coach interpreting an athlete's progress trends.")
+        if (rich) {
+            appendLine("Write a thorough, cross-signal interpretation (4–6 sentences) of what the combination of trends means for body recomposition. Connect the signals to each other; call out tension or agreement between weight, waist, lifts, and adherence.")
+        } else {
+            appendLine("Write exactly 2–3 sentences in plain English explaining what the combination of trends means for body recomposition.")
+        }
         appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. Interpret the trend only.")
         appendLine("Base everything only on the signals below. Do not invent data.")
         appendLine()
@@ -53,9 +57,13 @@ class InsightPromptBuilder {
         appendLine("- Adherence: ${context.adherencePercent?.let { adherenceLabel(it) } ?: "no data"}")
     }
 
-    fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext): String = buildString {
-        appendLine("You are a concise training-recovery coach.")
-        appendLine("Write exactly 2–3 sentences in plain English about the athlete's training readiness today.")
+    fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext, rich: Boolean = false): String = buildString {
+        appendLine("You are a training-recovery coach.")
+        if (rich) {
+            appendLine("Write a thorough, cross-signal readiness assessment (4–6 sentences) for the athlete today. Relate sleep, energy, hunger, and soreness to each other and to whether they trained.")
+        } else {
+            appendLine("Write exactly 2–3 sentences in plain English about the athlete's training readiness today.")
+        }
         appendLine("Give practical training and recovery suggestions only. Do NOT give medical advice or diagnose anything.")
         appendLine("Base everything only on the signals below. Do not invent data.")
         appendLine()
@@ -70,9 +78,13 @@ class InsightPromptBuilder {
         appendLine("- Trained today: ${if (context.trained) "yes" else "no"}")
     }
 
-    fun buildRestOfDayPrompt(context: RestOfDayInsightContext): String = buildString {
-        appendLine("You are a concise nutrition coach advising an athlete on the rest of their day.")
-        appendLine("Write exactly 2–3 sentences in plain English: state where they stand and what to prioritize for the remaining meals.")
+    fun buildRestOfDayPrompt(context: RestOfDayInsightContext, rich: Boolean = false): String = buildString {
+        appendLine("You are a nutrition coach advising an athlete on the rest of their day.")
+        if (rich) {
+            appendLine("Write a thorough, cross-signal plan (4–6 sentences): state where they stand, frame the remaining gap, and connect it to meal timing and protein distribution for the rest of the day.")
+        } else {
+            appendLine("Write exactly 2–3 sentences in plain English: state where they stand and what to prioritize for the remaining meals.")
+        }
         appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")
         appendLine("Base everything only on the numbers below.")
         appendLine()

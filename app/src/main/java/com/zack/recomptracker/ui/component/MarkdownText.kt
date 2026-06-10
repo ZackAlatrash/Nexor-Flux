@@ -1,12 +1,20 @@
 package com.zack.recomptracker.ui.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -14,6 +22,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -77,7 +86,56 @@ fun MarkdownText(
                         modifier = Modifier.weight(1f),
                     )
                 }
+
+                is MdBlock.Table -> MarkdownTable(block, color, fontSize)
             }
+        }
+    }
+}
+
+@Composable
+private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit) {
+    val colCount = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(8.dp)),
+    ) {
+        MarkdownTableRow(table.header, table.aligns, colCount, color, fontSize, header = true)
+        table.rows.forEach { row ->
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
+            MarkdownTableRow(row, table.aligns, colCount, color, fontSize, header = false)
+        }
+    }
+}
+
+@Composable
+private fun MarkdownTableRow(
+    cells: List<String>,
+    aligns: List<TextAlign>,
+    colCount: Int,
+    color: Color,
+    fontSize: TextUnit,
+    header: Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (header) Color(0x14FFFFFF) else Color.Transparent),
+    ) {
+        for (c in 0 until colCount) {
+            Text(
+                text = parseInline(cells.getOrNull(c) ?: ""),
+                color = color,
+                fontSize = fontSize,
+                fontWeight = if (header) FontWeight.Bold else FontWeight.Normal,
+                textAlign = aligns.getOrNull(c) ?: TextAlign.Start,
+                lineHeight = fontSize.times(1.35f),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
         }
     }
 }
@@ -87,6 +145,11 @@ private sealed interface MdBlock {
     data class Paragraph(val text: String) : MdBlock
     data class Bullet(val text: String) : MdBlock
     data class Numbered(val number: String, val text: String) : MdBlock
+    data class Table(
+        val header: List<String>,
+        val rows: List<List<String>>,
+        val aligns: List<TextAlign>,
+    ) : MdBlock
 }
 
 private val BULLET_REGEX = Regex("""^[-*+]\s+(.*)""")
@@ -101,8 +164,26 @@ private fun parseMarkdownBlocks(src: String): List<MdBlock> {
         paragraph.setLength(0)
     }
 
-    src.lines().forEach { raw ->
-        val trimmed = raw.trim()
+    val lines = src.lines()
+    var i = 0
+    while (i < lines.size) {
+        val trimmed = lines[i].trim()
+
+        // GFM table: a row line immediately followed by a separator row (|---|---|).
+        if (trimmed.contains('|') && i + 1 < lines.size && isTableSeparator(lines[i + 1].trim())) {
+            flushParagraph()
+            val header = parseTableRow(trimmed)
+            val aligns = parseAlignments(lines[i + 1].trim())
+            i += 2
+            val rows = mutableListOf<List<String>>()
+            while (i < lines.size && lines[i].isNotBlank() && lines[i].contains('|')) {
+                rows.add(parseTableRow(lines[i].trim()))
+                i++
+            }
+            blocks.add(MdBlock.Table(header, rows, aligns))
+            continue
+        }
+
         when {
             trimmed.isEmpty() -> flushParagraph()
             trimmed.startsWith("### ") -> { flushParagraph(); blocks.add(MdBlock.Heading(trimmed.removePrefix("### ").trim(), 3)) }
@@ -122,10 +203,35 @@ private fun parseMarkdownBlocks(src: String): List<MdBlock> {
                 paragraph.append(trimmed)
             }
         }
+        i++
     }
     flushParagraph()
     return blocks
 }
+
+private val SEPARATOR_CELL_REGEX = Regex("""^:?-{1,}:?$""")
+
+/** A markdown table separator row: every pipe-delimited cell is dashes with optional colons. */
+private fun isTableSeparator(line: String): Boolean {
+    if (!line.contains('-') || !line.contains('|')) return false
+    val cells = line.trim().trim('|').split('|')
+    return cells.isNotEmpty() && cells.all { SEPARATOR_CELL_REGEX.matches(it.trim()) }
+}
+
+private fun parseTableRow(line: String): List<String> =
+    line.trim().trim('|').split('|').map { it.trim() }
+
+private fun parseAlignments(separator: String): List<TextAlign> =
+    separator.trim().trim('|').split('|').map { raw ->
+        val s = raw.trim()
+        val left = s.startsWith(":")
+        val right = s.endsWith(":")
+        when {
+            left && right -> TextAlign.Center
+            right -> TextAlign.End
+            else -> TextAlign.Start
+        }
+    }
 
 /** Inline emphasis: **bold**, *italic*, `code`. Unclosed markers are emitted literally. */
 private fun parseInline(text: String): AnnotatedString = buildAnnotatedString {

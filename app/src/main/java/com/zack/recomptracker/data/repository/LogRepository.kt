@@ -41,7 +41,8 @@ class LogRepository(
                 date = date,
                 dailyLog = log,
                 meals = meals,
-                totals = meals.macroTotals(),
+                totals = meals.filterNot { it.planned }.macroTotals(),
+                plannedTotals = meals.filter { it.planned }.macroTotals(),
             )
         }
     }
@@ -55,7 +56,13 @@ class LogRepository(
         val storedDate = date.toString()
         val log = dailyLogDao.getByDate(storedDate)
         val meals = mealEntryDao.getForDate(storedDate)
-        return DayLog(date = date, dailyLog = log, meals = meals, totals = meals.macroTotals())
+        return DayLog(
+            date = date,
+            dailyLog = log,
+            meals = meals,
+            totals = meals.filterNot { it.planned }.macroTotals(),
+            plannedTotals = meals.filter { it.planned }.macroTotals(),
+        )
     }
 
     /**
@@ -65,6 +72,7 @@ class LogRepository(
     suspend fun getWeekCalories(start: LocalDate, end: LocalDate): Map<LocalDate, Int> {
         val entries = mealEntryDao.getBetween(start.toString(), end.toString())
         return entries
+            .filterNot { it.planned }
             .groupBy { LocalDate.parse(it.date) }
             .mapValues { (_, dayEntries) -> dayEntries.sumOf { it.calories } }
     }
@@ -77,6 +85,7 @@ class LogRepository(
     suspend fun getWeekMacros(start: LocalDate, end: LocalDate): Map<LocalDate, MacroTotals> {
         val entries = mealEntryDao.getBetween(start.toString(), end.toString())
         return entries
+            .filterNot { it.planned }
             .groupBy { LocalDate.parse(it.date) }
             .mapValues { (_, dayEntries) -> dayEntries.macroTotals() }
     }
@@ -117,6 +126,7 @@ class LogRepository(
             proteinG = input.proteinG.coerceAtLeast(0.0),
             carbsG = input.carbsG.coerceAtLeast(0.0),
             fatG = input.fatG.coerceAtLeast(0.0),
+            planned = input.planned,
         ),
     )
 
@@ -251,8 +261,31 @@ class LogRepository(
             entryServingName = input.entryServingName,
             entryServingGrams = input.entryServingGrams,
             loggedByServings = input.loggedByServings,
+            planned = input.planned,
         ),
     )
+
+    /** Confirm a single planned entry (planned → eaten), or re-plan it (eaten → planned). */
+    suspend fun setMealPlanned(id: Long, planned: Boolean) = mealEntryDao.setPlanned(id, planned)
+
+    /** "Confirm all" — mark every planned entry on [date] as eaten. */
+    suspend fun confirmPlannedForDate(date: LocalDate) =
+        mealEntryDao.confirmPlannedForDate(date.toString())
+
+    /**
+     * Move an entry to [date]. [planned] is recomputed by the caller (which knows "today")
+     * so a meal moved to a future day becomes a plan, and one moved to today/past becomes eaten.
+     */
+    suspend fun moveMealToDate(id: Long, date: LocalDate, planned: Boolean) =
+        mealEntryDao.setDateAndPlanned(id, date.toString(), planned)
+
+    /**
+     * Live count of unconfirmed plans in `[floor, today)` — drives the reconcile prompt.
+     * [floor] bounds the count to the days the user can navigate to, so the nudge never
+     * points at an unreachable past day.
+     */
+    fun observeStalePlannedCount(today: LocalDate, floor: LocalDate): Flow<Int> =
+        mealEntryDao.observeStalePlannedCount(floor.toString(), today.toString())
 
     suspend fun updateMealEntry(entry: MealEntryEntity) {
         mealEntryDao.update(
@@ -270,6 +303,7 @@ class LogRepository(
         mealEntryDao.observeBetween(start.toString(), end.toString())
             .map { entries ->
                 entries
+                    .filterNot { it.planned }
                     .groupBy { LocalDate.parse(it.date) }
                     .mapValues { (_, dayEntries) -> dayEntries.sumOf { it.calories } }
             }

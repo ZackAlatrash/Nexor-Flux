@@ -35,7 +35,6 @@ class CloudInsightCoordinator(
     override val selectedModel: StateFlow<ModelVariant> = _selectedModel.asStateFlow()
 
     private val promptBuilder = InsightPromptBuilder()
-    private val capabilities = AiCapabilities.of(AiBackend.CLOUD)
 
     private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
         InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
@@ -105,9 +104,9 @@ class CloudInsightCoordinator(
         if (lastInsightKeys[request.kind] == key) return
         lastInsightKeys[request.kind] = key
         val prompt = when (request) {
-            is InsightRequest.ProgressTrend -> promptBuilder.buildProgressTrendPrompt(request.context, rich = capabilities.richInsights)
-            is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context, rich = capabilities.richInsights)
-            is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context, rich = capabilities.richInsights)
+            is InsightRequest.ProgressTrend -> promptBuilder.buildProgressTrendPrompt(request.context)
+            is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
+            is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context)
         }
         scope.launch { streamInto(flow, prompt) }
     }
@@ -147,7 +146,12 @@ class CloudInsightCoordinator(
                 }
             }
             if (flow.value is AiInsightState.Generating) {
-                flow.value = AiInsightState.Ready(sb.toString().trim())
+                val finalText = sb.toString()
+                    .trim()
+                    .replace(Regex("""[*_`#>]"""), "")
+                    .replace(Regex("""\n{2,}"""), " ")
+                    .let { InsightPromptBuilder.limitToSentences(it, 2) }
+                flow.value = AiInsightState.Ready(finalText)
             }
         } catch (e: TimeoutCancellationException) {
             if (flow.value is AiInsightState.LoadingModel || flow.value is AiInsightState.Generating) {

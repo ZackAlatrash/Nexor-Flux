@@ -10,7 +10,10 @@ data class DayLog(
     val date: LocalDate,
     val dailyLog: DailyLogEntity?,
     val meals: List<MealEntryEntity>,
+    /** Totals of *eaten* entries only (planned entries excluded). */
     val totals: MacroTotals,
+    /** Totals of *planned* entries only. Zero on days with no plans. */
+    val plannedTotals: MacroTotals = MacroTotals(),
 )
 
 data class DailyMetricsInput(
@@ -43,6 +46,8 @@ data class MealEntryInput(
     val entryServingName: String? = null,
     val entryServingGrams: Double? = null,
     val loggedByServings: Boolean = false,
+    /** When true the entry is saved as a plan (not yet eaten). See [MealEntryEntity.planned]. */
+    val planned: Boolean = false,
 )
 
 @Immutable

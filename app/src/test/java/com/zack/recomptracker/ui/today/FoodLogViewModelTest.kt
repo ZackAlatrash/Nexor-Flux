@@ -3,6 +3,7 @@ package com.zack.recomptracker.ui.today
 import com.zack.recomptracker.ai.StubInsightCoordinator
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
@@ -26,6 +27,7 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,6 +54,7 @@ class FoodLogViewModelTest {
         whenever(logRepo.observeDay(any())).thenReturn(flowOf(emptyDayLog(today)))
         whenever(logRepo.observeSlots()).thenReturn(flowOf(emptyList()))
         whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
+        whenever(logRepo.observeStalePlannedCount(any(), any())).thenReturn(flowOf(0))
         whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
     }
 
@@ -91,26 +94,94 @@ class FoodLogViewModelTest {
     }
 
     @Test
-    fun `selectDate clamps to today when future date given`() = runTest {
+    fun `selectDate allows future dates for planning`() = runTest {
         val vm = buildVm()
+        val tomorrow = today.plusDays(1)
+        whenever(logRepo.observeDay(tomorrow)).thenReturn(flowOf(emptyDayLog(tomorrow)))
         advanceUntilIdle()
 
-        vm.selectDate(today.plusDays(1))
+        vm.selectDate(tomorrow)
         advanceUntilIdle()
 
-        assertEquals(today, vm.uiState.value.selectedDate)
+        assertEquals(tomorrow, vm.uiState.value.selectedDate)
+        assertTrue(vm.uiState.value.isFuture)
     }
 
     @Test
-    fun `selectDate clamps to today minus 6 when older date given`() = runTest {
+    fun `selectDate clamps to 30 days ahead`() = runTest {
         val vm = buildVm()
-        val sixDaysAgo = today.minusDays(6)
-        whenever(logRepo.observeDay(sixDaysAgo)).thenReturn(flowOf(emptyDayLog(sixDaysAgo)))
+        val maxFuture = today.plusDays(30)
+        whenever(logRepo.observeDay(maxFuture)).thenReturn(flowOf(emptyDayLog(maxFuture)))
         advanceUntilIdle()
 
-        vm.selectDate(today.minusDays(10))
+        vm.selectDate(today.plusDays(40))
         advanceUntilIdle()
 
-        assertEquals(sixDaysAgo, vm.uiState.value.selectedDate)
+        assertEquals(maxFuture, vm.uiState.value.selectedDate)
+    }
+
+    @Test
+    fun `selectDate clamps to 30 days back when older date given`() = runTest {
+        val vm = buildVm()
+        val maxPast = today.minusDays(30)
+        whenever(logRepo.observeDay(maxPast)).thenReturn(flowOf(emptyDayLog(maxPast)))
+        advanceUntilIdle()
+
+        vm.selectDate(today.minusDays(40))
+        advanceUntilIdle()
+
+        assertEquals(maxPast, vm.uiState.value.selectedDate)
+    }
+
+    @Test
+    fun `plannedTotals and hasPlannedEntries reflect the day log`() = runTest {
+        val plannedMeal = MealEntryEntity(
+            date = today.toString(), mealType = "x", name = "y",
+            calories = 300, proteinG = 0.0, carbsG = 0.0, fatG = 0.0, planned = true,
+        )
+        val day = DayLog(
+            date = today, dailyLog = null, meals = listOf(plannedMeal),
+            totals = MacroTotals(), plannedTotals = MacroTotals(calories = 300),
+        )
+        whenever(logRepo.observeDay(today)).thenReturn(flowOf(day))
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        assertEquals(300, vm.uiState.value.plannedTotals.calories)
+        assertTrue(vm.uiState.value.hasPlannedEntries)
+    }
+
+    @Test
+    fun `confirmMeal delegates to repository`() = runTest {
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        vm.confirmMeal(7L)
+        advanceUntilIdle()
+
+        verify(logRepo).setMealPlanned(7L, planned = false)
+    }
+
+    @Test
+    fun `postponeMeal moves entry to next day as a plan`() = runTest {
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        vm.postponeMeal(5L)
+        advanceUntilIdle()
+
+        // selected day is today, so next day is in the future → planned
+        verify(logRepo).moveMealToDate(5L, today.plusDays(1), planned = true)
+    }
+
+    @Test
+    fun `confirmAllPlanned delegates for the selected date`() = runTest {
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        vm.confirmAllPlanned()
+        advanceUntilIdle()
+
+        verify(logRepo).confirmPlannedForDate(today)
     }
 }

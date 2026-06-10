@@ -19,7 +19,7 @@ class InsightPromptBuilderRichModeTest {
     @Test
     fun `default recovery prompt keeps the concise sentence cap`() {
         val prompt = builder.buildRecoveryReadinessPrompt(recoveryContext(), rich = false)
-        assertTrue(prompt.contains("exactly 2–3 sentences"))
+        assertTrue(prompt.contains("exactly 1–2 short sentences"))
     }
 
     @Test

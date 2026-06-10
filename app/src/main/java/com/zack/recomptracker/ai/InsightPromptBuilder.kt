@@ -9,11 +9,11 @@ class InsightPromptBuilder {
 
     fun buildWeeklySummaryPrompt(context: InsightContext): String = buildString {
         appendLine("You are a concise nutrition coach explaining a weekly calorie verdict to an athlete.")
-        appendLine("Write exactly 2–3 sentences in plain English. Do not change the verdict.")
+        appendLine("Write exactly 1–2 short sentences. Lead with the decisive signal, then state the verdict — do not change it. No preamble or filler.")
         appendLine("Be specific about which signals drove the decision. Keep the tone calm and direct.")
         appendLine()
         appendLine("Example output for a Hold verdict:")
-        appendLine("\"Your weight has been stable over the past two weeks while your waist held steady — that's the exact signal recomposition looks like. No change to calories is needed; keep logging and let the trend confirm itself.\"")
+        appendLine("\"Weight held steady and waist trended down — recomposition is working, hold calories.\"")
         appendLine()
         appendLine("Verdict: ${verdictLabel(context.result.verdict)}")
         appendLine("Context: ${context.result.summary}")
@@ -41,13 +41,13 @@ class InsightPromptBuilder {
         if (rich) {
             appendLine("Write a thorough, cross-signal interpretation (4–6 sentences) of what the combination of trends means for body recomposition. Connect the signals to each other; call out tension or agreement between weight, waist, lifts, and adherence.")
         } else {
-            appendLine("Write exactly 2–3 sentences in plain English explaining what the combination of trends means for body recomposition.")
+            appendLine("Write exactly 1–2 short sentences in plain English: name the key signals and what they mean together for recomposition. No preamble or filler.")
         }
         appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. Interpret the trend only.")
         appendLine("Base everything only on the signals below. Do not invent data.")
         appendLine()
         appendLine("Example output:")
-        appendLine("\"Over the last four weeks your weight held steady while your waist trended down and your lifts kept climbing — that's recomposition, not a stall. Your logging has been consistent, so the trend is trustworthy. Stay the course and let another two weeks confirm it.\"")
+        appendLine("\"Weight stable, waist trending down, lifts improving — classic recomposition signal, stay the course.\"")
         appendLine()
         appendLine("Window: last ${context.rangeDays} days")
         appendLine("Signals:")
@@ -62,13 +62,13 @@ class InsightPromptBuilder {
         if (rich) {
             appendLine("Write a thorough, cross-signal readiness assessment (4–6 sentences) for the athlete today. Relate sleep, energy, hunger, and soreness to each other and to whether they trained.")
         } else {
-            appendLine("Write exactly 2–3 sentences in plain English about the athlete's training readiness today.")
+            appendLine("Write exactly 1–2 short sentences: assess readiness today and give one concrete suggestion. No preamble or filler.")
         }
         appendLine("Give practical training and recovery suggestions only. Do NOT give medical advice or diagnose anything.")
         appendLine("Base everything only on the signals below. Do not invent data.")
         appendLine()
         appendLine("Example output:")
-        appendLine("\"Two short nights with soreness running high and energy low suggests recovery hasn't caught up to your training. Prioritize sleep tonight and keep portions adequate. If soreness holds tomorrow, an easier session would help you bounce back.\"")
+        appendLine("\"Low sleep and high soreness say recovery is behind — keep today light and prioritize sleep tonight.\"")
         appendLine()
         appendLine("Signals today:")
         context.sleepHours?.let { appendLine("- Sleep: ${sleepLabel(it)}") }
@@ -83,13 +83,13 @@ class InsightPromptBuilder {
         if (rich) {
             appendLine("Write a thorough, cross-signal plan (4–6 sentences): state where they stand, frame the remaining gap, and connect it to meal timing and protein distribution for the rest of the day.")
         } else {
-            appendLine("Write exactly 2–3 sentences in plain English: state where they stand and what to prioritize for the remaining meals.")
+            appendLine("Write exactly 1–2 short sentences: state where they stand and name one priority for remaining meals. No preamble or filler.")
         }
         appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")
         appendLine("Base everything only on the numbers below.")
         appendLine()
         appendLine("Example output:")
-        appendLine("\"You're at 1,420 of your 2,200-calorie target with 38 g of protein still to go. There's room for a solid dinner — make protein the centerpiece to close that gap. You're tracking well for the day.\"")
+        appendLine("\"You're at 1,420 of 2,200 kcal with 38 g protein left — make dinner protein-heavy to close the gap.\"")
         appendLine()
         // Calories may go negative (overeating is useful signal to surface); protein
         // remaining clamps at 0 since "negative protein to go" is meaningless advice.
@@ -163,7 +163,20 @@ class InsightPromptBuilder {
         else -> "high"
     }
 
-    private companion object {
+    companion object {
+        /**
+         * Trims [text] to at most [max] sentences. Splits only on sentence-ending
+         * punctuation followed by whitespace + a capital letter, so decimals like
+         * "1.5 kg" and inline dashes are not treated as sentence breaks.
+         */
+        fun limitToSentences(text: String, max: Int): String {
+            val sentenceBreak = Regex("""(?<=[.!?])\s+(?=[A-Z])""")
+            val sentences = text.split(sentenceBreak).filter { it.isNotBlank() }
+            if (sentences.size <= max) return text
+            val truncated = sentences.take(max).joinToString(" ")
+            return if (truncated.last() in listOf('.', '!', '?')) truncated else "$truncated."
+        }
+
         private const val DEFAULT_WEEKS_FALLBACK = 4
         private const val WEIGHT_THRESHOLD = 0.20
         private const val WAIST_THRESHOLD = 0.25

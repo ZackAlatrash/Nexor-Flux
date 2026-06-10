@@ -28,4 +28,11 @@ data class MealEntryEntity(
     val entryServingName: String? = null,
     val entryServingGrams: Double? = null,
     val loggedByServings: Boolean = false,
+    /**
+     * True when this entry is a *plan* (an intention, usually on a future day) rather than
+     * a record of food actually eaten. Planned entries are excluded from eaten totals,
+     * adherence, and trend until confirmed. Defaults to false so all existing rows are
+     * treated as eaten.
+     */
+    val planned: Boolean = false,
 )

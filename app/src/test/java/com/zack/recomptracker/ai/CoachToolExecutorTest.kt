@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import java.time.LocalDate
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -67,6 +68,40 @@ class CoachToolExecutorTest {
 
         assertTrue("Should contain date", result.contains("2026-06-05"))
         assertTrue("Should contain meal name", result.contains("Chicken Rice"))
+    }
+
+    @Test
+    fun `get_today_summary tags planned meals and keeps totals eaten-only`() = runTest {
+        val eaten = MealEntryEntity(
+            date = fixedDate.toString(), mealType = "Lunch", name = "Chicken Rice",
+            calories = 500, proteinG = 40.0, carbsG = 60.0, fatG = 8.0, planned = false,
+        )
+        val plan = MealEntryEntity(
+            date = fixedDate.toString(), mealType = "Dinner", name = "Salmon Bowl",
+            calories = 600, proteinG = 45.0, carbsG = 40.0, fatG = 25.0, planned = true,
+        )
+        val dayLog = DayLog(
+            date = fixedDate,
+            dailyLog = null,
+            meals = listOf(eaten, plan),
+            totals = MacroTotals(calories = 500, proteinG = 40.0, carbsG = 60.0, fatG = 8.0),
+            plannedTotals = MacroTotals(calories = 600, proteinG = 45.0, carbsG = 40.0, fatG = 25.0),
+        )
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getDay(fixedDate)).thenReturn(dayLog)
+        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("get_today_summary", emptyMap())
+
+        // Both meals listed, each carrying its planned flag.
+        assertTrue("Plan meal tagged planned", result.contains(""""name":"Salmon Bowl""""))
+        assertTrue("Eaten meal tagged not planned", result.contains(""""planned":false"""))
+        assertTrue("Plan meal tagged planned", result.contains(""""planned":true"""))
+        // Eaten totals exclude the plan; planned_totals carry it separately.
+        assertTrue("totals are eaten-only", result.contains(""""totals":{"calories":500"""))
+        assertTrue("planned_totals present", result.contains(""""planned_totals":{"calories":600"""))
     }
 
     @Test
@@ -520,6 +555,42 @@ class CoachToolExecutorTest {
         executor.execute("log_meal", mapOf("name" to "Eggs", "calories" to "200", "meal_type" to "Breakfast"))
 
         assertTrue("Should save as Breakfast", captured?.mealType == "Breakfast")
+    }
+
+    @Test
+    fun `log_meal with future date plans the meal`() = runTest {
+        var captured: MealEntryInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getSavedFoods()).thenReturn(emptyList())
+        whenever(logRepo.getSlots()).thenReturn(emptyList())
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider) // today = 2026-06-05
+        val result = executor.execute(
+            "log_meal",
+            mapOf("name" to "Oatmeal", "calories" to "300", "date" to "2026-06-07"),
+        )
+
+        assertTrue("Entry should be planned", captured?.planned == true)
+        assertEquals(LocalDate.of(2026, 6, 7), captured?.date)
+        assertTrue("Result mentions planned", result.contains("\"planned\""))
+    }
+
+    @Test
+    fun `log_meal today is eaten not planned`() = runTest {
+        var captured: MealEntryInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getSavedFoods()).thenReturn(emptyList())
+        whenever(logRepo.getSlots()).thenReturn(emptyList())
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        executor.execute("log_meal", mapOf("name" to "Eggs", "calories" to "200"))
+
+        assertFalse("Entry should not be planned", captured?.planned == true)
+        assertEquals(fixedDate, captured?.date)
     }
 
     @Test

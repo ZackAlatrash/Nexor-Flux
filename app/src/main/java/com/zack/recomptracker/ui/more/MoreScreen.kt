@@ -216,9 +216,9 @@ fun MoreScreen(
                     }
                     SettingRow(
                         emoji = "✨",
-                        title = "AI Insights",
-                        detail = "Experimental on-device analysis",
-                        showDivider = true,
+                        title = "Enable AI",
+                        detail = "Powers insights & coach (on-device or cloud)",
+                        showDivider = state.aiInsightsEnabled,
                     ) {
                         Switch(
                             checked = state.aiInsightsEnabled,
@@ -232,31 +232,33 @@ fun MoreScreen(
                             ),
                         )
                     }
-                    SettingRow(
-                        emoji = "☁️",
-                        title = "AI Backend",
-                        detail = if (state.aiBackend == AiBackend.CLOUD) "Cloud model (API key)" else "On-device Gemma",
-                        showDivider = false,
-                    ) {
-                        Switch(
-                            checked = state.aiBackend == AiBackend.CLOUD,
-                            onCheckedChange = { useCloud ->
-                                viewModel.setAiBackend(if (useCloud) AiBackend.CLOUD else AiBackend.LOCAL)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.accent,
-                                uncheckedThumbColor = Color(0x80FFFFFF),
-                                uncheckedTrackColor = Color(0x1AFFFFFF),
-                                uncheckedBorderColor = Color(0x26FFFFFF),
-                            ),
-                        )
+                    if (state.aiInsightsEnabled) {
+                        SettingRow(
+                            emoji = "☁️",
+                            title = "AI Backend",
+                            detail = if (state.aiBackend == AiBackend.CLOUD) "Cloud model (API key)" else "On-device Gemma",
+                            showDivider = false,
+                        ) {
+                            Switch(
+                                checked = state.aiBackend == AiBackend.CLOUD,
+                                onCheckedChange = { useCloud ->
+                                    viewModel.setAiBackend(if (useCloud) AiBackend.CLOUD else AiBackend.LOCAL)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = accent.accent,
+                                    uncheckedThumbColor = Color(0x80FFFFFF),
+                                    uncheckedTrackColor = Color(0x1AFFFFFF),
+                                    uncheckedBorderColor = Color(0x26FFFFFF),
+                                ),
+                            )
+                        }
                     }
                 }
             }
 
-            // Cloud config fields — only when cloud backend is selected
-            if (state.aiBackend == AiBackend.CLOUD) {
+            // Cloud config fields — only when AI is enabled and the cloud backend is selected
+            if (state.aiInsightsEnabled && state.aiBackend == AiBackend.CLOUD) {
                 item {
                     Column(
                         modifier = Modifier

@@ -53,7 +53,10 @@ open class OpenAiCompatClient(
         )
         val request = newRequest(config, bodyJson)
         httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) error("HTTP ${response.code}")
+            if (!response.isSuccessful) {
+                val errBody = response.body?.string().orEmpty().take(200)
+                error("HTTP ${response.code}: $errBody")
+            }
             val source = response.body?.source() ?: error("empty response body")
             while (!source.exhausted()) {
                 val line = source.readUtf8Line() ?: break
@@ -89,7 +92,6 @@ open class OpenAiCompatClient(
         Request.Builder()
             .url("${config.baseUrl.trimEnd('/')}/chat/completions")
             .addHeader("Authorization", "Bearer ${config.apiKey}")
-            .addHeader("Content-Type", "application/json")
             .post(bodyJson.toRequestBody(jsonMedia))
             .build()
 }

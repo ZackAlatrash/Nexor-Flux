@@ -7,6 +7,7 @@ import com.zack.recomptracker.data.remote.ParsedToolCall
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
@@ -76,10 +78,14 @@ class CloudCoachCoordinator(
 
     override fun clearHistory() {
         pendingConfirmation?.complete(false)
-        history.clear()
-        requestMessages.clear()
-        systemSeeded = false
-        if (_state.value != CoachState.Unavailable) _state.value = CoachState.Ready
+        scope.launch {
+            turnLock.withLock {
+                history.clear()
+                requestMessages.clear()
+                systemSeeded = false
+                if (_state.value != CoachState.Unavailable) _state.value = CoachState.Ready
+            }
+        }
     }
 
     override fun confirmPendingAction() { pendingConfirmation?.complete(true) }
@@ -106,9 +112,13 @@ class CloudCoachCoordinator(
                         requestMessages.clear()
                         systemSeeded = false
                         _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
-                        return@withLock
+                        break
                     }
-                    val response = client.completion(config, requestMessages.toList(), COACH_TOOL_SCHEMAS)
+                    // Timeout applies to each network completion call; user-confirmation
+                    // waits (confirmAndRun) are intentionally excluded from the timeout.
+                    val response = withTimeout(TURN_TIMEOUT_MS) {
+                        client.completion(config, requestMessages.toList(), COACH_TOOL_SCHEMAS)
+                    }
 
                     if (response.toolCalls.isEmpty()) {
                         val text = response.text.ifBlank { "Done." }
@@ -116,7 +126,7 @@ class CloudCoachCoordinator(
                         _state.value = CoachState.Responding(history.toList(), partial = text)
                         history.add(ChatMessage(Role.Assistant, text))
                         _state.value = CoachState.Idle(history.toList())
-                        return@withLock
+                        break
                     }
 
                     // Replay the assistant tool-call turn into request history.
@@ -146,6 +156,10 @@ class CloudCoachCoordinator(
                         )
                     }
                 }
+            } catch (e: TimeoutCancellationException) {
+                requestMessages.clear()
+                systemSeeded = false
+                _state.value = CoachState.Error(history.toList(), "Took too long — try again.")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -224,5 +238,6 @@ class CloudCoachCoordinator(
 
     private companion object {
         private const val MAX_TOOL_ROUNDS = 12
+        private const val TURN_TIMEOUT_MS = 180_000L
     }
 }

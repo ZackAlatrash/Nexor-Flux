@@ -312,6 +312,9 @@ fun MoreScreen(
                             ) {
                                 Text(if (state.testingConnection) "Testing…" else "Test connection")
                             }
+                            if (state.cloudHasKey) {
+                                Button(onClick = { viewModel.clearCloudApiKey() }) { Text("Clear key") }
+                            }
                         }
                         state.testConnectionResult?.let {
                             Text(

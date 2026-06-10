@@ -13,6 +13,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
+/** Strict parser for server-generated JSON: unknown keys are tolerated but malformed values are not silently coerced. */
+private val strictJson = Json { ignoreUnknownKeys = true }
+
+/** Lenient parser used ONLY for model-generated tool-call arguments, which may emit loosely-quoted values or numbers like `500.0`. */
 private val lenientJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
 /** One message in the request `messages` array. [content] may be null for tool-result turns. */
@@ -21,7 +25,10 @@ data class ChatRequestMessage(
     val content: String?,
     /** For role="tool": the id of the tool call this responds to. */
     val toolCallId: String? = null,
-    /** For role="assistant" replays that requested tools: the raw assistant tool_calls JSON array string. */
+    /**
+     * For role="assistant" replays that requested tools: the raw assistant tool_calls JSON array string.
+     * WARNING: MUST be complete, valid JSON — it is re-parsed via [strictJson] when building a request.
+     */
     val assistantToolCallsJson: String? = null,
     /** For role="tool": the function name. */
     val name: String? = null,
@@ -50,7 +57,7 @@ fun extractStreamDelta(line: String): String? {
     val payload = trimmed.removePrefix("data:").trim()
     if (payload.isEmpty() || payload == "[DONE]") return null
     return try {
-        val choices = lenientJson.parseToJsonElement(payload)
+        val choices = strictJson.parseToJsonElement(payload)
             .jsonObject["choices"]?.jsonArray ?: return null
         val delta = choices.firstOrNull()?.jsonObject?.get("delta")?.jsonObject ?: return null
         val content = delta["content"]?.jsonPrimitive?.contentOrNullSafe()
@@ -62,7 +69,7 @@ fun extractStreamDelta(line: String): String? {
 
 /** Parse a full non-streaming `/chat/completions` response body. */
 fun parseChatResponse(body: String): ParsedChatResponse {
-    val message = lenientJson.parseToJsonElement(body)
+    val message = strictJson.parseToJsonElement(body)
         .jsonObject["choices"]?.jsonArray
         ?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
         ?: return ParsedChatResponse(text = "", toolCalls = emptyList())
@@ -107,7 +114,7 @@ fun buildChatRequestJson(
                     msg.name?.let { put("name", it) }
                     msg.toolCallId?.let { put("tool_call_id", it) }
                     msg.assistantToolCallsJson?.let {
-                        put("tool_calls", lenientJson.parseToJsonElement(it))
+                        put("tool_calls", strictJson.parseToJsonElement(it))
                     }
                 }
             }
@@ -117,7 +124,7 @@ fun buildChatRequestJson(
                 toolSchemasJson.forEach { schema ->
                     addJsonObject {
                         put("type", "function")
-                        put("function", lenientJson.parseToJsonElement(schema))
+                        put("function", strictJson.parseToJsonElement(schema))
                     }
                 }
             }
@@ -126,6 +133,13 @@ fun buildChatRequestJson(
     return obj.toString()
 }
 
+/**
+ * Safe content accessor for a [JsonPrimitive].
+ * - String primitives: returns the unquoted string value.
+ * - JSON `null` literal: returns null (so callers treat it as absent content).
+ * - Non-string primitives (numbers, booleans): [content] returns the raw unquoted value
+ *   (e.g. `"42"` for a JSON number), which is the desired stringification for downstream use.
+ */
 private fun JsonPrimitive.contentOrNullSafe(): String? =
     if (this.isString) content
     else if (this.toString() == "null") null

@@ -32,6 +32,11 @@ class OpenAiCompatModelsTest {
     }
 
     @Test
+    fun `extractStreamDelta returns null when delta content is JSON null`() {
+        assertNull(extractStreamDelta("""data: {"choices":[{"delta":{"content":null}}]}"""))
+    }
+
+    @Test
     fun `parseChatResponse extracts plain text content`() {
         val body = """{"choices":[{"message":{"role":"assistant","content":"You are at 1420 kcal."}}]}"""
         val parsed = parseChatResponse(body)

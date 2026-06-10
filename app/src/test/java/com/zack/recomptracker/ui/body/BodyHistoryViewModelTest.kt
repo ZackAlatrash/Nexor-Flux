@@ -117,6 +117,10 @@ private object NoopMealEntryDao : MealEntryDao {
     override suspend fun clearSlotId(slotId: Long) = Unit
     override suspend fun deleteBySlotId(slotId: Long) = Unit
     override suspend fun getById(id: Long): MealEntryEntity? = null
+    override suspend fun setPlanned(id: Long, planned: Boolean) = Unit
+    override suspend fun confirmPlannedForDate(date: String) = Unit
+    override suspend fun setDateAndPlanned(id: Long, date: String, planned: Boolean) = Unit
+    override fun observeStalePlannedCount(date: String): Flow<Int> = flow { emit(0) }
 }
 
 private object NoopSavedFoodDao : SavedFoodDao {

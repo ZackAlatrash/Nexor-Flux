@@ -32,7 +32,9 @@ ai/          On-device AI: insight cards + coach chat
 
 ## Source of Truth
 
-- **Room** — all logs, meals, food library, body entries, weekly reviews
+- **Room** (schema v8) — all logs, meals, food library, body entries, weekly reviews, recipes.
+  Meal entries carry a `planned` flag: planned (not-yet-eaten) entries are excluded from eaten
+  totals, adherence, and trend until confirmed. See `docs/superpowers/specs/2026-06-10-planned-meals-design.md`.
 - **DataStore** — plan targets (`PlanPreferences`), app prefs (`AppPreferences`), user profile (`UserProfilePreferences`)
 
 ## Build

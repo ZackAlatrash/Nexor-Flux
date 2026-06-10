@@ -93,6 +93,9 @@ fun FoodScreen(
             onReorderSlots   = viewModel::reorderSlots,
             onDeleteMeal     = viewModel::deleteMeal,
             onEditMacros     = viewModel::updateMealMacros,
+            onConfirmMeal    = viewModel::confirmMeal,
+            onPostponeMeal   = viewModel::postponeMeal,
+            onConfirmAllPlanned = viewModel::confirmAllPlanned,
         )
     }
     FoodContent(
@@ -117,6 +120,9 @@ data class FoodActions(
     val onReorderSlots: (List<Long>) -> Unit,
     val onDeleteMeal: (Long) -> Unit,
     val onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
+    val onConfirmMeal: (Long) -> Unit = {},
+    val onPostponeMeal: (Long) -> Unit = {},
+    val onConfirmAllPlanned: () -> Unit = {},
 )
 
 @Composable
@@ -168,6 +174,9 @@ fun FoodContent(
         Column(modifier = Modifier.fillMaxSize()) {
             FoodScreenHeader(
                 date     = state.selectedDate,
+                isFuture = state.isFuture,
+                onPrevDay = { onSelectDate(state.selectedDate.minusDays(1)) },
+                onNextDay = { onSelectDate(state.selectedDate.plusDays(1)) },
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
             )
 
@@ -191,6 +200,21 @@ fun FoodContent(
 
                 // Nutrition strip
                 item { NutritionStrip(state) }
+
+                // Reconcile banner — past day with unconfirmed plans
+                if (state.isPast && state.hasPlannedEntries) {
+                    item {
+                        ReconcilePlannedBanner(
+                            plannedCalories = state.plannedTotals.calories,
+                            onConfirmAll = actions.onConfirmAllPlanned,
+                        )
+                    }
+                }
+
+                // Gentle nudge on today when plans linger unconfirmed on past days
+                if (state.isToday && state.stalePlannedCount > 0) {
+                    item { StalePlannedHint(count = state.stalePlannedCount) }
+                }
 
                 item {
                     RestOfDayReveal(
@@ -240,10 +264,14 @@ fun FoodContent(
                     } else {
                         LockedSlotCard(
                             slotWithEntries   = slotWithEntries,
+                            isFuture          = state.isFuture,
+                            isPast            = state.isPast,
                             onAddClick        = { onAddToSlot(slotWithEntries.slot.id, slotWithEntries.slot.name) },
                             onDeleteEntry     = actions.onDeleteMeal,
                             onEditEntryAmount = { entryId -> onEditEntryAmount(slotWithEntries.slot.id, slotWithEntries.slot.name, entryId) },
                             onEditMacros      = actions.onEditMacros,
+                            onConfirmEntry    = actions.onConfirmMeal,
+                            onPostponeEntry   = actions.onPostponeMeal,
                         )
                     }
                 }
@@ -289,8 +317,12 @@ fun FoodContent(
 @Composable
 private fun FoodScreenHeader(
     date: LocalDate,
+    isFuture: Boolean,
+    onPrevDay: () -> Unit,
+    onNextDay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val dateStr = remember(date) {
         date.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
@@ -299,14 +331,101 @@ private fun FoodScreenHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
     ) {
-        Text(
-            text = "Food Log",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
-            letterSpacing = (-0.8).sp,
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = "Food Log",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = (-0.8).sp,
+            )
+            if (isFuture) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(accent.accent.copy(alpha = 0.20f))
+                        .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(5.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = "PLANNING",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = accent.accentLight,
+                        letterSpacing = 0.10.sp,
+                    )
+                }
+            }
+        }
+        // Day navigation
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            DayNavButton(text = "‹", onClick = onPrevDay)
+            Text(
+                text = dateStr,
+                fontSize = 12.sp,
+                color = TextMuted,
+                modifier = Modifier.padding(horizontal = 2.dp),
+            )
+            DayNavButton(text = "›", onClick = onNextDay)
+        }
+    }
+}
+
+@Composable
+private fun DayNavButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(26.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x12FFFFFF))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, fontSize = 16.sp, color = Color(0xCCFFFFFF), fontWeight = FontWeight.Bold)
+    }
+}
+
+// ── Reconcile planned banner ─────────────────────────────────────────────────
+
+@Composable
+private fun ReconcilePlannedBanner(
+    plannedCalories: Int,
+    onConfirmAll: () -> Unit,
+) {
+    val accent = LocalAppAccent.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerCard))
+            .background(accent.accent.copy(alpha = 0.10f))
+            .border(1.dp, accent.accent.copy(alpha = 0.28f), RoundedCornerShape(CornerCard))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "Planned meals not confirmed",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text(
+                text = "You planned $plannedCalories kcal for this day. Did you eat it?",
+                fontSize = 10.sp,
+                color = TextMuted,
+            )
+        }
+        LiquidActionButton(
+            text = "Confirm all",
+            onClick = onConfirmAll,
+            isPrimary = true,
+            small = true,
         )
-        Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
     }
 }
 
@@ -329,6 +448,27 @@ private fun RestOfDayReveal(
         available -> TextButton(onClick = { revealed = true; onReveal() }) {
             Text("✨ Rest of day?")
         }
+    }
+}
+
+@Composable
+private fun StalePlannedHint(count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerCard))
+            .background(Color(0x14FFFFFF))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(CornerCard))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("🗓", fontSize = 13.sp)
+        Text(
+            text = "$count planned ${if (count == 1) "meal" else "meals"} on past days await confirmation — use ‹ to review.",
+            fontSize = 10.sp,
+            color = TextMuted,
+        )
     }
 }
 
@@ -373,6 +513,19 @@ private fun NutritionStrip(state: FoodLogUiState) {
                 )
             }
             VioletBadge(text = badgeText)
+        }
+
+        // Planned projection — shown when the day has any planned (not-yet-eaten) entries
+        val plannedCal = state.plannedTotals.calories
+        if (plannedCal > 0) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = if (cal > 0) "+$plannedCal kcal planned · ${cal + plannedCal} projected"
+                       else "$plannedCal kcal planned",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = LocalAppAccent.current.accentLight.copy(alpha = 0.85f),
+            )
         }
         Spacer(Modifier.height(8.dp))
 
@@ -478,10 +631,14 @@ private fun MacroProgressItem(
 @Composable
 private fun LockedSlotCard(
     slotWithEntries: MealSlotWithEntries,
+    isFuture: Boolean,
+    isPast: Boolean,
     onAddClick: () -> Unit,
     onDeleteEntry: (Long) -> Unit,
     onEditEntryAmount: (Long) -> Unit,
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
+    onConfirmEntry: (Long) -> Unit,
+    onPostponeEntry: (Long) -> Unit,
 ) {
     val accent = LocalAppAccent.current
     val hasEntries = slotWithEntries.entries.isNotEmpty()
@@ -553,7 +710,13 @@ private fun LockedSlotCard(
                         }
                         SlotEntryRow(
                             entry = entry,
+                            // Confirm only makes sense for plans on today or a past day —
+                            // you can't "have eaten" something on a future date.
+                            canConfirm = entry.planned && !isFuture,
+                            canPostpone = !isPast,
                             onDelete = onDeleteEntry,
+                            onConfirm = { onConfirmEntry(entry.id) },
+                            onPostpone = { onPostponeEntry(entry.id) },
                             onEditAmount = { onEditEntryAmount(entry.id) },
                             onEditMacros = onEditMacros,
                         )
@@ -589,7 +752,11 @@ private fun LockedSlotCard(
 @Composable
 private fun SlotEntryRow(
     entry: MealEntryEntity,
+    canConfirm: Boolean,
+    canPostpone: Boolean,
     onDelete: (Long) -> Unit,
+    onConfirm: () -> Unit,
+    onPostpone: () -> Unit,
     onEditAmount: () -> Unit,
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
 ) {
@@ -597,6 +764,11 @@ private fun SlotEntryRow(
     var showMacroEdit by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val amountEditable = entry.amountGrams != null && entry.basePer100Calories != null
+    val planned = entry.planned
+
+    // Planned entries read as "intentions": dimmer accent rail and text.
+    val nameColor = if (planned) Color(0x80FFFFFF) else Color(0xBFFFFFFF)
+    val railColor = if (planned) accent.accent.copy(alpha = 0.55f) else accent.accent.copy(alpha = 0.30f)
 
     val macroStr = buildString {
         entry.amountGrams?.let { append("${it.toInt()}g · ") }
@@ -609,24 +781,41 @@ private fun SlotEntryRow(
             .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true }
             .drawBehind {
                 drawRect(
-                    color    = accent.accent.copy(alpha = 0.30f),
+                    color    = railColor,
                     topLeft  = Offset(0f, 0f),
                     size     = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height),
                 )
             }
             .padding(start = 18.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.name,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xBFFFFFFF),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text(
+                    text = entry.name,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = nameColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (planned) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(accent.accent.copy(alpha = 0.16f))
+                            .border(1.dp, accent.accent.copy(alpha = 0.34f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                    ) {
+                        Text("Planned", fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = accent.accentLight)
+                    }
+                }
+            }
             Text(text = macroStr, fontSize = 9.sp, color = Color(0x40FFFFFF))
         }
         Text(
@@ -635,16 +824,43 @@ private fun SlotEntryRow(
             fontWeight = FontWeight.Bold,
             color = Color(0x66FFFFFF),
         )
-        // Edit button
-        Box(
-            modifier = Modifier
-                .size(26.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(accent.tintedSurface)
-                .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("✎", fontSize = 12.sp, color = accent.accentLight)
+        // Confirm button (planned → eaten) — replaces edit for confirmable plans
+        if (canConfirm) {
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x2234D399))
+                    .clickable { onConfirm() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✓", fontSize = 13.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Bold)
+            }
+        } else {
+            // Edit button
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accent.tintedSurface)
+                    .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✎", fontSize = 12.sp, color = accent.accentLight)
+            }
+        }
+        // Postpone button (move to next day) — only when not viewing a past day
+        if (canPostpone) {
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x12FFFFFF))
+                    .clickable { onPostpone() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("⤍", fontSize = 13.sp, color = Color(0x99FFFFFF))
+            }
         }
         // Delete button
         Box(

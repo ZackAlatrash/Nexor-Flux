@@ -81,7 +81,8 @@ class ProgressViewModel(
             ) { logs, meals, performances, preferences, range ->
                 val today = dateProvider.today()
                 val dates = (range - 1 downTo 0).map { today.minusDays(it.toLong()) }
-                val mealsByDate = meals.groupBy { LocalDate.parse(it.date) }
+                // Exclude planned (not-yet-eaten) entries from progress charts.
+                val mealsByDate = meals.filterNot { it.planned }.groupBy { LocalDate.parse(it.date) }
                 val logsByDate = logs.associateBy { LocalDate.parse(it.date) }
                 val liftByDate = performances
                     .groupBy { LocalDate.parse(it.date) }

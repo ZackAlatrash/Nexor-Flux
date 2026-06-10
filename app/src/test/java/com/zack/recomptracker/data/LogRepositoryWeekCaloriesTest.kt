@@ -26,9 +26,9 @@ import org.junit.Test
 
 class LogRepositoryWeekCaloriesTest {
 
-    private fun entry(date: String, calories: Int) = MealEntryEntity(
+    private fun entry(date: String, calories: Int, planned: Boolean = false) = MealEntryEntity(
         id = 0, date = date, mealType = "FOOD_LIBRARY", name = "food",
-        calories = calories, proteinG = 0.0, carbsG = 0.0, fatG = 0.0,
+        calories = calories, proteinG = 0.0, carbsG = 0.0, fatG = 0.0, planned = planned,
     )
 
     private fun buildRepo(entries: List<MealEntryEntity>): LogRepository {
@@ -52,6 +52,10 @@ class LogRepositoryWeekCaloriesTest {
             override suspend fun clearSlotId(slotId: Long) = Unit
             override suspend fun deleteBySlotId(slotId: Long) = Unit
             override suspend fun getById(id: Long): MealEntryEntity? = null
+            override suspend fun setPlanned(id: Long, planned: Boolean) = Unit
+            override suspend fun confirmPlannedForDate(date: String) = Unit
+            override suspend fun setDateAndPlanned(id: Long, date: String, planned: Boolean) = Unit
+            override fun observeStalePlannedCount(date: String) = flowOf(0)
         }
         return LogRepository(
             dailyLogDao = WcNoopDailyLogDao,
@@ -92,6 +96,37 @@ class LogRepositoryWeekCaloriesTest {
             end   = LocalDate.of(2026, 6, 1),
         ).first()
         assertEquals(emptyMap<LocalDate, Int>(), result)
+    }
+
+    @Test
+    fun `observeWeekCalories excludes planned entries`() = runTest {
+        val jun1 = LocalDate.of(2026, 6, 1)
+        val repo = buildRepo(
+            listOf(
+                entry("2026-06-01", 500),                  // eaten
+                entry("2026-06-01", 700, planned = true),  // planned — must not count
+            ),
+        )
+        val result = repo.observeWeekCalories(
+            start = LocalDate.of(2026, 5, 26),
+            end   = LocalDate.of(2026, 6, 1),
+        ).first()
+        assertEquals(500, result[jun1])
+    }
+
+    @Test
+    fun `observeDay splits eaten and planned totals`() = runTest {
+        val jun1 = LocalDate.of(2026, 6, 1)
+        val repo = buildRepo(
+            listOf(
+                entry("2026-06-01", 500),                  // eaten
+                entry("2026-06-01", 300, planned = true),  // planned
+            ),
+        )
+        val day = repo.observeDay(jun1).first()
+        assertEquals(500, day.totals.calories)
+        assertEquals(300, day.plannedTotals.calories)
+        assertEquals(2, day.meals.size) // both entries are still present for the UI
     }
 }
 

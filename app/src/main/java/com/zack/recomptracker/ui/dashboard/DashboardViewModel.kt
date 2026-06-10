@@ -149,11 +149,13 @@ class DashboardViewModel(
 
     private fun buildState(
         logs: List<DailyLogEntity>,
-        meals: List<MealEntryEntity>,
+        allMeals: List<MealEntryEntity>,
         performances: List<LiftPerformanceEntity>,
         preferences: PlanPreferences,
     ): DashboardUiState {
         val today = dateProvider.today()
+        // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
+        val meals = allMeals.filterNot { it.planned }
         val todayTotals = meals.filter { it.date == today.toString() }.macroTotals()
         val last14Start = today.minusDays(13)
         val last28Start = today.minusDays(27)

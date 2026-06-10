@@ -220,6 +220,16 @@ class FoodLibraryViewModel(
     private var logDate: LocalDate = dateProvider.today()
     private var offSearchJob: Job? = null
 
+    /** Adding food onto a future day creates plans, not eaten entries. */
+    private fun isPlannedDate(): Boolean = logDate.isAfter(dateProvider.today())
+
+    private fun dayLabel(): String =
+        logDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d"))
+
+    /** Toast wording that reflects whether the entry was logged (eaten) or planned. */
+    private fun addedMessage(name: String, slotLabel: String): String =
+        if (isPlannedDate()) "Planned $name for ${dayLabel()}" else "Added $name to $slotLabel"
+
     fun init(slotId: Long?, slotName: String, editEntryId: Long? = null, logDateStr: String = "", pickerMode: Boolean = false) {
         logDate = if (logDateStr.isNotEmpty()) LocalDate.parse(logDateStr) else dateProvider.today()
         _uiState.update { it.copy(slotId = slotId, slotName = slotName.ifBlank { "Food Log" }, pickerMode = pickerMode) }
@@ -411,12 +421,13 @@ class FoodLibraryViewModel(
                         entryServingName = servingName,
                         entryServingGrams = servingGrams,
                         loggedByServings = state.amountMode == AmountMode.SERVINGS,
+                        planned = isPlannedDate(),
                     ),
                     slotId = state.slotId,
                 )
                 _uiState.update { it.copy(showAmountSheet = false, pendingFood = null, message = null) }
                 val slotLabel = if (state.slotId != null) state.slotName else "log"
-                _loggedEvent.emit("Added ${food.name} to $slotLabel")
+                _loggedEvent.emit(addedMessage(food.name, slotLabel))
             } else {
                 val existing = logRepository.getMealEntry(editingId)
                 if (existing == null) {
@@ -461,12 +472,13 @@ class FoodLibraryViewModel(
                     proteinG = meal.proteinG,
                     carbsG = meal.carbsG,
                     fatG = meal.fatG,
+                    planned = isPlannedDate(),
                 ),
                 slotId = _uiState.value.slotId,
             )
             val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
             _uiState.update { it.copy(message = null) }
-            _loggedEvent.emit("${meal.name} added to $slotLabel")
+            _loggedEvent.emit(addedMessage(meal.name, slotLabel))
         }
     }
 
@@ -490,12 +502,14 @@ class FoodLibraryViewModel(
                         entryServingName = ingredient.entryServingName,
                         entryServingGrams = ingredient.entryServingGrams,
                         loggedByServings = ingredient.loggedByServings,
+                        planned = isPlannedDate(),
                     ),
                     slotId = _uiState.value.slotId,
                 )
             }
             val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
-            _loggedEvent.emit("${recipe.recipe.name} added to $slotLabel (${recipe.ingredients.size} items)")
+            val verb = if (isPlannedDate()) "planned for ${dayLabel()}" else "added to $slotLabel"
+            _loggedEvent.emit("${recipe.recipe.name} $verb (${recipe.ingredients.size} items)")
         }
     }
 
@@ -655,11 +669,12 @@ class FoodLibraryViewModel(
                     proteinG = s.quickAddProtein.toDoubleOrNull() ?: 0.0,
                     carbsG = s.quickAddCarbs.toDoubleOrNull() ?: 0.0,
                     fatG = s.quickAddFat.toDoubleOrNull() ?: 0.0,
+                    planned = isPlannedDate(),
                 ),
                 slotId = s.slotId,
             )
             _uiState.update { it.copy(showQuickAddDialog = false, message = null) }
-            _loggedEvent.emit("Quick add logged")
+            _loggedEvent.emit(if (isPlannedDate()) "Quick add planned for ${dayLabel()}" else "Quick add logged")
         }
     }
 

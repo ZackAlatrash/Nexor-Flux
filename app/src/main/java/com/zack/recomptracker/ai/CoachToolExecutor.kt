@@ -98,6 +98,10 @@ class CoachToolExecutor(
         val mealType = args["meal_type"]
             ?.takeIf { it in setOf("Breakfast", "Lunch", "Dinner", "Snack") }
             ?: "Snack"
+        // Optional date: a future date plans the meal instead of logging it as eaten.
+        val logDate = args["date"]?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+            ?: dateProvider.today()
+        val planned = logDate.isAfter(dateProvider.today())
 
         // Always check the food library first — use its macros instead of the model's
         // estimates. This ensures the entry matches the saved food exactly, regardless of
@@ -142,7 +146,7 @@ class CoachToolExecutor(
         // correctly; slot assignment still uses the user's mealType arg via matchedSlotId.
         val logGrams = if (libraryFood != null) requestedGrams ?: libraryFood.householdServingGrams else null
         val input = MealEntryInput(
-            date = dateProvider.today(),
+            date = logDate,
             mealType = if (libraryFood != null) MealEntryTypes.FOOD_LIBRARY else mealType,
             name = finalName,
             calories = calories,
@@ -157,6 +161,7 @@ class CoachToolExecutor(
             entryServingName = libraryFood?.householdServingName,
             entryServingGrams = libraryFood?.householdServingGrams,
             loggedByServings = false,
+            planned = planned,
         )
         // Match the meal_type to a named slot (case-insensitive) so the entry appears
         // inside the correct slot card in the food log screen, not just in the totals.
@@ -164,7 +169,11 @@ class CoachToolExecutor(
             .firstOrNull { it.name.trim().equals(mealType, ignoreCase = true) }
             ?.id
         logRepository.addMealToSlot(input, matchedSlotId)
-        return """{"success":true,"logged":"${finalName.esc()}","calories":$calories}"""
+        return if (planned) {
+            """{"success":true,"planned":"${finalName.esc()}","date":"$logDate","calories":$calories}"""
+        } else {
+            """{"success":true,"logged":"${finalName.esc()}","calories":$calories}"""
+        }
     }
 
     // Shared food scoring used by both searchFoodLibrary and logMeal.

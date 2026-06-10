@@ -59,7 +59,7 @@ All tools are defined as `SchemaTool` entries in `COACH_TOOLS` (JSON schema only
 | `get_today_summary` | `date?: String` (ISO `YYYY-MM-DD`) | JSON: meals, macro totals, daily log | Omit `date` for today. Pass ISO date for any past date. Falls back to today if date fails to parse — always pass ISO format. |
 | `get_weekly_trends` | — | JSON: 7-day daily macros + adherence % | Last 7 days ending today. |
 | `search_food_library` | `query: String`, `grams?: Number` | JSON: up to 5 matches, macros scaled to `grams` if provided | Fuzzy scored: exact > starts-with > contains > all-words. |
-| `log_meal` | `name`, `meal_type`, `grams?`, `calories?`, `protein_g?`, `carbs_g?`, `fat_g?` | `{success, logged, calories}` | Always checks food library first. Macro args only needed if food not in library. **Write tool — requires user confirmation.** |
+| `log_meal` | `name`, `meal_type`, `grams?`, `date?`, `calories?`, `protein_g?`, `carbs_g?`, `fat_g?` | `{success, logged, calories}` or `{success, planned, date, calories}` | Always checks food library first. Macro args only needed if food not in library. A future `date` (ISO `YYYY-MM-DD`) **plans** the meal instead of logging it eaten. **Write tool — requires user confirmation.** |
 | `log_metric` | `metric: String`, `value: Number` | `{success, metric, value}` | Metrics: `weight_kg`, `waist_cm`, `sleep_hours`, `energy_score`, `hunger_score`, `soreness_score`. Scores must be whole numbers 1–10. **Write tool — requires user confirmation.** |
 | `update_calorie_target` | `target_calories: Int` | `{success, new_target_calories}` | Range: 500–6000. **Write tool — requires user confirmation.** |
 

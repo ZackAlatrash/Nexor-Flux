@@ -33,13 +33,21 @@ data class FoodLogUiState(
     val today: LocalDate,
     val target: PlanPreferences = PlanPreferences(),
     val totals: MacroTotals = MacroTotals(),
+    /** Totals of planned (not-yet-eaten) entries on the selected day. */
+    val plannedTotals: MacroTotals = MacroTotals(),
+    /** True when the selected day has at least one planned entry. */
+    val hasPlannedEntries: Boolean = false,
     val slots: ImmutableList<MealSlotWithEntries> = persistentListOf(),
     val slotsEditMode: Boolean = false,
     val weekSummary: ImmutableList<DayCalorieSummary> = persistentListOf(),
     val message: String? = null,
     val restOfDayInsightContext: RestOfDayInsightContext? = null,
+    /** Count of unconfirmed plans sitting on past days — a nudge to reconcile them. */
+    val stalePlannedCount: Int = 0,
 ) {
     val isToday: Boolean get() = selectedDate == today
+    val isFuture: Boolean get() = selectedDate.isAfter(today)
+    val isPast: Boolean get() = selectedDate.isBefore(today)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -89,12 +97,20 @@ class FoodLogViewModel(
                         selectedDate = day.date,
                         target = prefs,
                         totals = day.totals,
+                        plannedTotals = day.plannedTotals,
+                        hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
                         restOfDayInsightContext = if (day.date == today) {
                             buildRestOfDayInsightContext(day.totals, prefs, day.meals.size)
                         } else null,
                     )
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            logRepository.observeStalePlannedCount(today).collect { count ->
+                _uiState.update { it.copy(stalePlannedCount = count) }
             }
         }
 
@@ -110,9 +126,32 @@ class FoodLogViewModel(
     }
 
     fun selectDate(date: LocalDate) {
-        val clamped = date.coerceIn(today.minusDays(6), today)
+        // Allow navigating back through history and forward to plan meals ahead.
+        val clamped = date.coerceIn(today.minusDays(30), today.plusDays(30))
         _selectedDate.value = clamped
         _uiState.update { it.copy(selectedDate = clamped) }
+    }
+
+    /** Confirm a single planned entry — it becomes an eaten entry that counts toward totals. */
+    fun confirmMeal(id: Long) {
+        viewModelScope.launch { logRepository.setMealPlanned(id, planned = false) }
+    }
+
+    /** "Confirm all" on the reconcile banner — mark every plan on the selected day as eaten. */
+    fun confirmAllPlanned() {
+        val date = _selectedDate.value
+        viewModelScope.launch { logRepository.confirmPlannedForDate(date) }
+    }
+
+    /**
+     * Postpone an entry to the next day. Moving it onto a future day turns it into a plan;
+     * moving onto today/past keeps it eaten.
+     */
+    fun postponeMeal(id: Long) {
+        val target = _selectedDate.value.plusDays(1)
+        viewModelScope.launch {
+            logRepository.moveMealToDate(id, target, planned = target.isAfter(today))
+        }
     }
 
     fun toggleEditMode() = _uiState.update { it.copy(slotsEditMode = !it.slotsEditMode) }

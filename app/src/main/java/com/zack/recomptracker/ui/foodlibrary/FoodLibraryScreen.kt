@@ -144,7 +144,6 @@ fun FoodLibraryScreen(
             slotName = state.slotName,
             remainingCalories = state.remainingCalories,
             onBack = onBack,
-            onScanBarcode = onScanBarcode,
             pickerMode = pickerMode,
         )
 
@@ -159,6 +158,7 @@ fun FoodLibraryScreen(
             query = state.query,
             onQueryChanged = viewModel::onQueryChanged,
             category = state.category,
+            onScanBarcode = onScanBarcode,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
         )
 
@@ -447,7 +447,6 @@ private fun FoodLibraryTopBar(
     slotName: String,
     remainingCalories: Int,
     onBack: () -> Unit,
-    onScanBarcode: () -> Unit,
     pickerMode: Boolean = false,
 ) {
     val accent = LocalAppAccent.current
@@ -503,27 +502,6 @@ private fun FoodLibraryTopBar(
             }
         }
 
-        // Camera scan button
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(accent.tintedSurface)
-                .border(1.dp, accent.accent.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onScanBarcode,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Default.CameraAlt,
-                contentDescription = "Scan barcode",
-                tint = accent.accentLighter,
-                modifier = Modifier.size(18.dp),
-            )
-        }
     }
 }
 
@@ -534,6 +512,7 @@ private fun GlassSearchField(
     query: String,
     onQueryChanged: (String) -> Unit,
     category: FoodCategory,
+    onScanBarcode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
@@ -543,7 +522,7 @@ private fun GlassSearchField(
     val placeholder = when (category) {
         FoodCategory.NEVO -> "Search NEVO foods…"
         FoodCategory.OFF -> "Search Dutch products…"
-        else -> "Search foods…"
+        else -> "Search foods or scan…"
     }
 
     BasicTextField(
@@ -558,20 +537,50 @@ private fun GlassSearchField(
             .background(bgColor)
             .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .onFocusChanged { focused = it.isFocused }
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         decorationBox = { innerField ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Icon(
                     Icons.Default.Search,
                     contentDescription = null,
                     tint = Color(0x40FFFFFF),
                     modifier = Modifier.size(18.dp),
                 )
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(1f).padding(vertical = 7.dp)) {
                     if (query.isEmpty()) {
                         Text(placeholder, fontSize = 14.sp, color = Color(0x40FFFFFF))
                     }
                     innerField()
+                }
+                // Vertical divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(20.dp)
+                        .background(Color(0x14FFFFFF)),
+                )
+                // Scan button integrated into the search field
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accent.tintedSurface)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onScanBarcode,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        contentDescription = "Scan barcode",
+                        tint = accent.accentLighter,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         },

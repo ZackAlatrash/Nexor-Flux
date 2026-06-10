@@ -2,6 +2,7 @@ package com.zack.recomptracker.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +27,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,17 +99,31 @@ fun MarkdownText(
 
 @Composable
 private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit) {
-    val colCount = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(8.dp)),
-    ) {
-        MarkdownTableRow(table.header, table.aligns, colCount, color, fontSize, header = true)
-        table.rows.forEach { row ->
-            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
-            MarkdownTableRow(row, table.aligns, colCount, color, fontSize, header = false)
+    // Size each column to its longest cell (estimated) so columns align and the table keeps
+    // its natural width. When that exceeds the bubble, the table scrolls horizontally while
+    // the rest of the message stays at normal reading width.
+    val colWidths: List<Dp> = remember(table) {
+        val colCount = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
+        val allRows = listOf(table.header) + table.rows
+        (0 until colCount).map { c ->
+            val maxLen = allRows.maxOf { (it.getOrNull(c) ?: "").length }
+            (maxLen * 8 + 16).dp.coerceIn(56.dp, 200.dp)
+        }
+    }
+    val tableWidth = colWidths.fold(0.dp) { acc, w -> acc + w }
+
+    Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        Column(
+            modifier = Modifier
+                .width(tableWidth)
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(8.dp)),
+        ) {
+            MarkdownTableRow(table.header, table.aligns, colWidths, color, fontSize, header = true)
+            table.rows.forEach { row ->
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
+                MarkdownTableRow(row, table.aligns, colWidths, color, fontSize, header = false)
+            }
         }
     }
 }
@@ -114,7 +132,7 @@ private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit
 private fun MarkdownTableRow(
     cells: List<String>,
     aligns: List<TextAlign>,
-    colCount: Int,
+    colWidths: List<Dp>,
     color: Color,
     fontSize: TextUnit,
     header: Boolean,
@@ -124,7 +142,7 @@ private fun MarkdownTableRow(
             .fillMaxWidth()
             .background(if (header) Color(0x14FFFFFF) else Color.Transparent),
     ) {
-        for (c in 0 until colCount) {
+        colWidths.forEachIndexed { c, w ->
             Text(
                 text = parseInline(cells.getOrNull(c) ?: ""),
                 color = color,
@@ -133,7 +151,7 @@ private fun MarkdownTableRow(
                 textAlign = aligns.getOrNull(c) ?: TextAlign.Start,
                 lineHeight = fontSize.times(1.35f),
                 modifier = Modifier
-                    .weight(1f)
+                    .width(w)
                     .padding(horizontal = 8.dp, vertical = 6.dp),
             )
         }
@@ -208,10 +226,6 @@ private fun parseMarkdownBlocks(src: String): List<MdBlock> {
     flushParagraph()
     return blocks
 }
-
-/** True if the text contains a GFM table (used to widen the chat bubble that holds it). */
-fun markdownHasTable(text: String): Boolean =
-    text.lineSequence().any { isTableSeparator(it.trim()) }
 
 private val SEPARATOR_CELL_REGEX = Regex("""^:?-{1,}:?$""")
 

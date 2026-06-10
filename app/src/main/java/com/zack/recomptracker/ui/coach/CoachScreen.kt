@@ -70,7 +70,6 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.MarkdownText
-import com.zack.recomptracker.ui.component.markdownHasTable
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -569,12 +568,9 @@ private fun ChatBubble(message: ChatMessage) {
                 )
             }
         } else {
-            // Table-containing replies get the full width so columns aren't cramped;
-            // plain replies stay in a comfortable reading-width bubble.
-            val hasTable = remember(message.text) { markdownHasTable(message.text) }
             AiInsightCard(
                 borderMode = AiBorderMode.Static,
-                modifier = if (hasTable) Modifier.fillMaxWidth() else Modifier.widthIn(max = 300.dp),
+                modifier = Modifier.widthIn(max = 300.dp),
             ) {
                 MarkdownText(
                     text = message.text,

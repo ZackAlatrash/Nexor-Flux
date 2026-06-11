@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface WeeklyReviewUiState {
     object Hidden : WeeklyReviewUiState
@@ -101,6 +102,15 @@ class WeeklyReviewViewModel(
         viewModelScope.launch {
             config.saveCalorieTarget(target)
             _pendingApply.value = null
+            // Saving the new target propagates through reviewDataFlow into a fresh signature.
+            // Mark that post-apply signature as seen so the badge doesn't re-appear solely
+            // because the user just acted on the recommendation. It still re-appears later when
+            // trends or the verdict genuinely change. Guarded by a timeout so a stalled flow
+            // never leaves this coroutine hanging.
+            val applied = withTimeoutOrNull(SEEN_AWAIT_TIMEOUT_MS) {
+                config.reviewDataFlow.first { it != null && it.currentTargetCalories == target }
+            }
+            if (applied != null) config.markSeen(config.signatureOf(applied))
         }
     }
 
@@ -111,4 +121,8 @@ class WeeklyReviewViewModel(
     }
 
     private suspend fun firstCloudActive(): Boolean = config.cloudActiveFlow.first()
+
+    private companion object {
+        const val SEEN_AWAIT_TIMEOUT_MS = 5_000L
+    }
 }

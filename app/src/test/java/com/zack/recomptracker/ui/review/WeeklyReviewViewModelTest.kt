@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -51,7 +53,7 @@ class WeeklyReviewViewModelTest {
         return WeeklyReviewDeps(
             cloudActive = MutableStateFlow(cloudActive),
             reviewData = MutableStateFlow(data),
-            signature = "sig-1",
+            lastSeen = MutableStateFlow(""),
             generate = { briefing() },
         )
     }
@@ -85,7 +87,11 @@ class WeeklyReviewViewModelTest {
     fun `apply with confirm saves the target`() = runTest {
         val deps = fixture()
         var savedTarget: Int? = null
-        val vm = WeeklyReviewViewModel(deps.toVm(saveTarget = { savedTarget = it }))
+        val vm = WeeklyReviewViewModel(deps.toVm(saveTarget = { target ->
+            savedTarget = target
+            // Mirror production: the saved target propagates back through weeklyReviewDataFlow.
+            deps.reviewData.value = deps.reviewData.value!!.copy(currentTargetCalories = target)
+        }))
         vm.open(); advanceUntilIdle()
         vm.requestApply(2450)
         assertEquals(2450, vm.pendingApply.value)
@@ -93,23 +99,48 @@ class WeeklyReviewViewModelTest {
         assertEquals(2450, savedTarget)
         assertEquals(null, vm.pendingApply.value)
     }
+
+    @Test
+    fun `badge stays false after apply-confirm with changed target`() = runTest {
+        val deps = fixture()
+        val vm = WeeklyReviewViewModel(deps.toVm(saveTarget = { target ->
+            // Mirror production: the saved target propagates back through weeklyReviewDataFlow,
+            // producing a new signature.
+            deps.reviewData.value = deps.reviewData.value!!.copy(currentTargetCalories = target)
+        }))
+        val badgeJob = launch { vm.badge.collect {} }
+
+        // Opening the review marks the current signature seen, clearing the badge.
+        vm.open(); advanceUntilIdle()
+        assertFalse("badge should clear after opening the review", vm.badge.value)
+
+        // Applying the recommendation changes the target (and the signature) — the badge must
+        // not re-appear solely because the user acted on it.
+        vm.requestApply(2450)
+        vm.confirmApply(); advanceUntilIdle()
+        assertFalse("badge should stay clear after applying the recommendation", vm.badge.value)
+
+        badgeJob.cancel()
+    }
 }
 
 private class WeeklyReviewDeps(
     val cloudActive: kotlinx.coroutines.flow.MutableStateFlow<Boolean>,
     val reviewData: kotlinx.coroutines.flow.MutableStateFlow<WeeklyReviewData?>,
-    val signature: String,
+    val lastSeen: kotlinx.coroutines.flow.MutableStateFlow<String>,
     val generate: suspend (WeeklyReviewData) -> WeeklyBriefing,
 ) {
     fun toVm(saveTarget: suspend (Int) -> Unit = {}) = WeeklyReviewConfig(
         cloudActiveFlow = cloudActive,
         reviewDataFlow = reviewData,
-        signatureOf = { signature },
+        // Signature tracks the calorie target the way the real computer does, so applying a
+        // recommendation produces a genuinely different signature.
+        signatureOf = { "sig-${it.currentTargetCalories}" },
         briefingFor = { _, _, gen -> gen() },
         generate = generate,
         saveCalorieTarget = saveTarget,
-        markSeen = {},
-        lastSeenSignatureFlow = kotlinx.coroutines.flow.MutableStateFlow(""),
+        markSeen = { lastSeen.value = it },
+        lastSeenSignatureFlow = lastSeen,
         startCoachHandoff = { _, _ -> },
     )
 }

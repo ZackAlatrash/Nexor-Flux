@@ -155,7 +155,7 @@ class ProgressViewModel(
                         "Adherence", "%", adherenceValues,
                         currentValue = adherenceLast,
                         trendLabel = adherenceLast?.let { "${"%.0f".format(it)}%" } ?: "",
-                        trendIsGood = (adherenceLast ?: 0f) >= 85f,
+                        trendIsGood = (adherenceLast ?: 0f) >= 80f,
                     ),
                     lifts = ChartSeries(
                         "Lifts e1RM", "kg", liftValues,

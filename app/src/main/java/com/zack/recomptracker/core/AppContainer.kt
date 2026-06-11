@@ -219,7 +219,7 @@ class AppContainer(context: Context) {
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }?.toInt() ?: 4
         val input = AdjustmentInput(
             daysLogged = daysLogged,
-            adherencePercent = adherenceCalculator.calculate(nutritionDays, prefs.targetCalories, expectedDays = 14),
+            adherencePercent = adherenceCalculator.calculate(nutritionDays, prefs.targetCalories),
             weeksSincePhaseStart = weeksSincePhase,
             weightTrendKgPerWeek = trendCalculator.trendPerWeek(weightPoints),
             waistTrendCmPerWeek = trendCalculator.trendPerWeek(waistPoints),

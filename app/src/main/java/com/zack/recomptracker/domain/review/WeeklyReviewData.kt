@@ -1,7 +1,5 @@
 package com.zack.recomptracker.domain.review
 
-import com.zack.recomptracker.ai.BriefingPhase
-import com.zack.recomptracker.ai.SignalDirection
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 

@@ -1,7 +1,5 @@
 package com.zack.recomptracker.domain.review
 
-import com.zack.recomptracker.ai.BriefingPhase
-import com.zack.recomptracker.ai.SignalDirection
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
@@ -48,6 +46,7 @@ class WeeklyReviewComputer {
         val i = data.input
         return listOf(
             data.weekStart,
+            data.currentTargetCalories,
             bucket(i.weightTrendKgPerWeek, 0.05),
             bucket(i.waistTrendCmPerWeek, 0.1),
             (i.adherencePercent / 5.0).roundToInt(),

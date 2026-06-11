@@ -1,13 +1,10 @@
 package com.zack.recomptracker.ai
 
+import com.zack.recomptracker.domain.review.BriefingPhase
+import com.zack.recomptracker.domain.review.SignalDirection
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-
-/** EARLY = 7–13 logged days or no actionable verdict; FULL = 14+ days with a real verdict. */
-enum class BriefingPhase { EARLY, FULL }
-
-enum class SignalDirection { UP, DOWN, FLAT }
 
 /** One per-signal row. value/direction are deterministic; interpretation is AI prose. */
 data class SignalLine(

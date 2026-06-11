@@ -1,6 +1,6 @@
 package com.zack.recomptracker.domain.review
 
-import com.zack.recomptracker.ai.BriefingPhase
+import com.zack.recomptracker.domain.review.BriefingPhase
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
@@ -74,5 +74,12 @@ class WeeklyReviewComputerTest {
         val a = computer.signature(computer.build("2026-06-08", input(), result(AdjustmentVerdict.HOLD, 0), 2550))
         val b = computer.signature(computer.build("2026-06-08", input(), result(AdjustmentVerdict.REDUCE_CALORIES, -100), 2550))
         assertNotEquals(a, b)
+    }
+
+    @Test
+    fun `14 days with WAIT_FOR_DATA is still EARLY phase`() {
+        val data = computer.build("2026-06-08", input(days = 14), result(AdjustmentVerdict.WAIT_FOR_DATA), 2550)
+        assertEquals(BriefingPhase.EARLY, data.phase)
+        assertNull(data.applyTargetCalories)
     }
 }

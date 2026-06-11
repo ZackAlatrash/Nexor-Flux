@@ -12,4 +12,7 @@ data class WeeklyReviewEntity(
     val recommendedCalorieChange: Int,
     val reasonCodes: String,
     val generatedAt: String,
+    val briefingJson: String? = null,
+    val briefingSignature: String? = null,
+    val briefingGeneratedAt: String? = null,
 )

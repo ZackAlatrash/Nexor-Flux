@@ -17,6 +17,7 @@ import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.dashboard.DashboardScreen
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.dashboard.HomeDashboardScreen
+import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.foods.FoodsScreen
 import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.more.MoreScreen
@@ -98,15 +99,16 @@ fun AppNavGraph(
         ) {
             HomeDashboardScreen(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
-                onCheckIn = {
-                    navController.navigate(TopLevelDestination.Body.route) {
+                weeklyReviewViewModel = viewModel<WeeklyReviewViewModel>(factory = factory),
+                onOpenCoach = {
+                    navController.navigate(TopLevelDestination.Coach.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
                     }
                 },
-                onLogFood = {
-                    navController.navigate(Routes.Food) {
+                onOpenSettings = {
+                    navController.navigate(TopLevelDestination.More.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true

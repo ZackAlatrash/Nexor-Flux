@@ -204,7 +204,17 @@ class LogRepository(
     }
 
     suspend fun saveWeeklyReview(review: WeeklyReviewEntity) {
-        weeklyReviewDao.upsert(review)
+        val existing = weeklyReviewDao.getByWeekStart(review.weekStart)
+        val merged = if (existing != null && review.briefingJson == null) {
+            review.copy(
+                briefingJson = existing.briefingJson,
+                briefingSignature = existing.briefingSignature,
+                briefingGeneratedAt = existing.briefingGeneratedAt,
+            )
+        } else {
+            review
+        }
+        weeklyReviewDao.upsert(merged)
     }
 
     fun observeSlots(): Flow<List<MealSlotEntity>> = mealSlotDao.observeAll()

@@ -27,7 +27,7 @@ class AppPreferences(
             maintenancePhaseStartDate = prefs[Keys.MaintenancePhaseStartDate],
             weightTrendThresholdKgPerWeek = prefs[Keys.WeightTrendThresholdKgPerWeek] ?: 0.20,
             waistIncreaseThresholdCm = prefs[Keys.WaistIncreaseThresholdCm] ?: 0.5,
-            adherenceMinimumPercent = prefs[Keys.AdherenceMinimumPercent] ?: 85.0,
+            adherenceMinimumPercent = prefs[Keys.AdherenceMinimumPercent] ?: 80.0,
             reviewCadenceDays = prefs[Keys.ReviewCadenceDays] ?: 7,
             useMetricUnits = prefs[Keys.UseMetricUnits] ?: true,
             healthConnectEnabled = prefs[Keys.HealthConnectEnabled] ?: false,
@@ -92,6 +92,9 @@ class UiPreferences(private val context: Context) {
 
     val aiBackend: kotlinx.coroutines.flow.Flow<AiBackend> =
         context.uiDataStore.data.map { AiBackend.fromStored(it[Keys.AiBackend]) }
+
+    val lastSeenBriefingSignature: kotlinx.coroutines.flow.Flow<String> =
+        context.uiDataStore.data.map { it[Keys.LastSeenBriefingSignature] ?: "" }
 
     val cloudBaseUrl: kotlinx.coroutines.flow.Flow<String> =
         context.uiDataStore.data.map { it[Keys.CloudBaseUrl] ?: "" }
@@ -159,6 +162,10 @@ class UiPreferences(private val context: Context) {
         context.uiDataStore.edit { it[Keys.CloudModelId] = model.trim() }
     }
 
+    suspend fun setLastSeenBriefingSignature(signature: String) {
+        context.uiDataStore.edit { it[Keys.LastSeenBriefingSignature] = signature }
+    }
+
     private object Keys {
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
@@ -168,5 +175,6 @@ class UiPreferences(private val context: Context) {
         val AiBackend = stringPreferencesKey("ai_backend")
         val CloudBaseUrl = stringPreferencesKey("cloud_base_url")
         val CloudModelId = stringPreferencesKey("cloud_model_id")
+        val LastSeenBriefingSignature = stringPreferencesKey("last_seen_briefing_signature")
     }
 }

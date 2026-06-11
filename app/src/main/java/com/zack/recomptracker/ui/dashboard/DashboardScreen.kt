@@ -27,6 +27,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -56,13 +58,14 @@ import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
-import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
+import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -70,19 +73,47 @@ import java.util.Locale
 @Composable
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
-    onCheckIn: () -> Unit,
-    onLogFood: () -> Unit,
+    weeklyReviewViewModel: WeeklyReviewViewModel,
+    onOpenCoach: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeDashboardContent(state = state, onCheckIn = onCheckIn, onLogFood = onLogFood)
+    val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
+    val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
+    val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
+
+    HomeDashboardContent(
+        state = state,
+        showWeeklyReviewBadge = badge,
+        onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+    )
+
+    WeeklyBriefingOverlay(
+        state = reviewState,
+        pendingApply = pendingApply,
+        onDismiss = { weeklyReviewViewModel.dismiss() },
+        onRegenerate = { weeklyReviewViewModel.regenerate() },
+        onRequestApply = { weeklyReviewViewModel.requestApply(it) },
+        onConfirmApply = { weeklyReviewViewModel.confirmApply() },
+        onCancelApply = { weeklyReviewViewModel.cancelApply() },
+        onDiscussWithCoach = {
+            weeklyReviewViewModel.discussWithCoach()
+            weeklyReviewViewModel.dismiss()
+            onOpenCoach()
+        },
+        onOpenSettings = {
+            weeklyReviewViewModel.dismiss()
+            onOpenSettings()
+        },
+    )
 }
 
 @Composable
 fun HomeDashboardContent(
     state: DashboardUiState,
-    onCheckIn: () -> Unit,
-    onLogFood: () -> Unit,
     modifier: Modifier = Modifier,
+    showWeeklyReviewBadge: Boolean = false,
+    onOpenWeeklyReview: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -126,28 +157,38 @@ fun HomeDashboardContent(
             }
         }
 
-        // Floating liquid glass pill buttons above the nav bar
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = FloatingNavHeight + 12.dp)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(9.dp),
+        // Floating wide liquid-glass Weekly Review pill above the nav bar
+        if (onOpenWeeklyReview != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = FloatingNavHeight + 12.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                LiquidPrimaryButton(
-                    text = "Daily Check-In",
-                    onClick = onCheckIn,
-                    modifier = Modifier.weight(1f),
+                // Accent glow halo behind the pill — brighter when a fresh review is waiting.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .blur(radius = 26.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        .clip(RoundedCornerShape(100))
+                        .background(accent.accent.copy(alpha = if (showWeeklyReviewBadge) 0.55f else 0.32f)),
                 )
-                LiquidSecondaryButton(
-                    text = "Log Food",
-                    onClick = onLogFood,
-                    modifier = Modifier.weight(1f),
-                )
+                LiquidGlassButton(
+                    onClick = onOpenWeeklyReview,
+                    modifier = Modifier.fillMaxWidth(),
+                    tint = accent.accent,
+                    surfaceColor = Color.White.copy(alpha = 0.10f),
+                ) {
+                    Text(
+                        text = "✦  Weekly Review",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+                }
             }
         }
     }
@@ -482,7 +523,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .background(Color(0x12FFFFFF)),
             )
             ChartStat(
-                value = "${state.daysLogged}",
+                value = "${state.loggedDaysInWindow} / 14",
                 label = "Days logged",
                 valueColor = Color.White,
                 modifier = Modifier.weight(1f),
@@ -699,7 +740,7 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
                 StatRow("Weight trend", "${state.weightTrendKgPerWeek.formatSignedOneDecimal()} kg/week")
                 StatRow("Waist trend", "${state.waistTrendCmPerWeek.formatSignedOneDecimal()} cm/week")
                 StatRow("Adherence", state.adherencePercent.formatPercent())
-                StatRow("Logged days", state.daysLogged.toString())
+                StatRow("Logged days", "${state.loggedDaysInWindow} / 14")
             }
         }
     }

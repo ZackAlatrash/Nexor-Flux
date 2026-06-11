@@ -18,7 +18,7 @@ class AdjustmentEngine(
                 verdict = AdjustmentVerdict.WAIT_FOR_DATA,
                 recommendedCalorieChange = 0,
                 reasonCodes = listOf("LOW_ADHERENCE"),
-                summary = "Hold calories and improve logging consistency before reviewing.",
+                summary = "Hold calories — intake was too far from target too often to draw a conclusion.",
             )
         }
 

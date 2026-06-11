@@ -219,8 +219,8 @@ No test of its own (plain data holder; exercised in Task 3).
 ```kotlin
 package com.zack.recomptracker.domain.review
 
-import com.zack.recomptracker.ai.BriefingPhase
-import com.zack.recomptracker.ai.SignalDirection
+import com.zack.recomptracker.domain.review.BriefingPhase
+import com.zack.recomptracker.domain.review.SignalDirection
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 
@@ -277,7 +277,7 @@ This builds a `WeeklyReviewData` from an already-computed `AdjustmentInput` + `A
 ```kotlin
 package com.zack.recomptracker.domain.review
 
-import com.zack.recomptracker.ai.BriefingPhase
+import com.zack.recomptracker.domain.review.BriefingPhase
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
@@ -365,8 +365,8 @@ Expected: FAIL — unresolved reference `WeeklyReviewComputer`.
 ```kotlin
 package com.zack.recomptracker.domain.review
 
-import com.zack.recomptracker.ai.BriefingPhase
-import com.zack.recomptracker.ai.SignalDirection
+import com.zack.recomptracker.domain.review.BriefingPhase
+import com.zack.recomptracker.domain.review.SignalDirection
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
@@ -860,7 +860,7 @@ Persists/serializes the merged `WeeklyBriefing` as JSON on the `weekly_reviews` 
 package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.ai.ActionBlock
-import com.zack.recomptracker.ai.BriefingPhase
+import com.zack.recomptracker.domain.review.BriefingPhase
 import com.zack.recomptracker.ai.WeeklyBriefing
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
@@ -933,8 +933,8 @@ Expected: FAIL — unresolved reference `WeeklyBriefingRepository`.
 package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.ai.ActionBlock
-import com.zack.recomptracker.ai.BriefingPhase
-import com.zack.recomptracker.ai.SignalDirection
+import com.zack.recomptracker.domain.review.BriefingPhase
+import com.zack.recomptracker.domain.review.SignalDirection
 import com.zack.recomptracker.ai.SignalLine
 import com.zack.recomptracker.ai.WeeklyBriefing
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
@@ -1099,7 +1099,7 @@ To keep the ViewModel testable without Room, it depends on small interfaces it a
 package com.zack.recomptracker.ui.review
 
 import com.zack.recomptracker.ai.ActionBlock
-import com.zack.recomptracker.ai.BriefingPhase
+import com.zack.recomptracker.domain.review.BriefingPhase
 import com.zack.recomptracker.ai.WeeklyBriefing
 import com.zack.recomptracker.domain.review.WeeklyReviewData
 import kotlinx.coroutines.ExperimentalCoroutinesApi

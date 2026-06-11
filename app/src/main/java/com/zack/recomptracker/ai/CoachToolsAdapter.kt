@@ -21,6 +21,7 @@ class CoachToolsAdapter(
     private val planRepository: PlanRepository,
     private val userProfileStore: UserProfilePreferencesStore,
     private val dateProvider: DateProvider,
+    private val handoffStore: CoachHandoffStore,
 ) : CoachReadTools {
 
     override suspend fun execute(name: String, args: Map<String, String>): String =
@@ -31,7 +32,9 @@ class CoachToolsAdapter(
         val profile = userProfileStore.preferences.first()
         val today = dateProvider.today()
         val todaySummary = withContext(Dispatchers.IO) { toolExecutor.execute("get_today_summary", emptyMap()) }
-        return buildPrompt(prefs, profile, today, todaySummary)
+        val base = buildPrompt(prefs, profile, today, todaySummary)
+        val handoff = handoffStore.consume()
+        return if (handoff.isNullOrBlank()) base else base + "\n\n" + handoff
     }
 
     private fun buildPrompt(

@@ -24,6 +24,7 @@ import com.zack.recomptracker.ai.CloudCoachCoordinator
 import com.zack.recomptracker.ai.CloudInsightCoordinator
 import com.zack.recomptracker.ai.CoachCoordinator
 import com.zack.recomptracker.ai.CoachToolExecutor
+import com.zack.recomptracker.ai.CoachHandoffStore
 import com.zack.recomptracker.ai.CoachToolsAdapter
 import com.zack.recomptracker.ai.GemmaServiceHolder
 import com.zack.recomptracker.ai.GemmaCoachCoordinator
@@ -134,6 +135,8 @@ class AppContainer(context: Context) {
         scope = appScope,
     )
 
+    val coachHandoffStore = CoachHandoffStore()
+
     // ── Cloud coordinators ─────────────────────────────────────────────────────────
     private val cloudInsightCoordinator: AiInsightCoordinator = CloudInsightCoordinator(
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
@@ -154,6 +157,7 @@ class AppContainer(context: Context) {
             planRepository = planRepository,
             userProfileStore = userProfilePreferencesStore,
             dateProvider = dateProvider,
+            handoffStore = coachHandoffStore,
         ),
         scope = appScope,
     )

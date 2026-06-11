@@ -119,7 +119,7 @@ fun AppNavGraph(
                         launchSingleTop = true
                     }
                 },
-                onOpenSettings = { navController.navigate(Routes.Plan) },
+                onOpenSettings = { navController.navigate(TopLevelDestination.More.route) },
             )
         }
         composable(

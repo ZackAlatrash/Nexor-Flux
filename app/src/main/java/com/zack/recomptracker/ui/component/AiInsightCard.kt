@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -62,6 +63,51 @@ fun AiInsightCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val accent = LocalAppAccent.current
+    val backdrop = LocalBackdrop.current
+    val cornerDp = CornerCard
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(cornerDp))
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { RoundedRectangle(cornerDp) },
+                effects = {
+                    vibrancy()
+                    blur(22f.dp.toPx())
+                    lens(12f.dp.toPx(), 18f.dp.toPx(), chromaticAberration = true)
+                },
+                highlight = { Highlight.Default },
+                shadow = { Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.35f)) },
+                onDrawSurface = {
+                    // Lighter, more transparent frost so more of the backdrop shows through.
+                    drawRect(Color.White.copy(alpha = 0.03f))
+                    drawRect(accent.accent.copy(alpha = 0.03f))
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.22f),
+                            0.12f to Color.Transparent,
+                        ),
+                    )
+                },
+            )
+            .aiIridescentRim(borderMode, cornerDp)
+            .padding(16.dp),
+        content = content,
+    )
+}
+
+/**
+ * Draws the node's content, then the thin full-spectrum iridescent rim whose hue flows in place —
+ * the rim geometry never rotates. Intensity/motion encode [mode]; falls back to a static rim when
+ * system animations are off. This has **no backdrop dependency**, so it renders correctly inside a
+ * Dialog window (where the liquid-glass backdrop layer is unavailable) — used both by
+ * [AiInsightCard] and by the backdrop-free weekly-briefing modal.
+ */
+@Composable
+fun Modifier.aiIridescentRim(mode: AiBorderMode, cornerRadius: Dp = CornerCard): Modifier {
     val context = LocalContext.current
     val animationsEnabled = remember(context) {
         Settings.Global.getFloat(
@@ -70,7 +116,7 @@ fun AiInsightCard(
             1f,
         ) > 0f
     }
-    val effectiveMode = if (animationsEnabled) borderMode else AiBorderMode.Static
+    val effectiveMode = if (animationsEnabled) mode else AiBorderMode.Static
 
     val infiniteTransition = rememberInfiniteTransition(label = "aiIridescent")
 
@@ -102,50 +148,17 @@ fun AiInsightCard(
         finishedListener = { if (effectiveMode == AiBorderMode.Ready) readyComplete = true },
     )
 
-    val accent = LocalAppAccent.current
-    val backdrop = LocalBackdrop.current
-    val cornerDp = CornerCard
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(cornerDp))
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { RoundedRectangle(cornerDp) },
-                effects = {
-                    vibrancy()
-                    blur(22f.dp.toPx())
-                    lens(12f.dp.toPx(), 18f.dp.toPx(), chromaticAberration = true)
-                },
-                highlight = { Highlight.Default },
-                shadow = { Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.35f)) },
-                onDrawSurface = {
-                    // Lighter, more transparent frost so more of the backdrop shows through.
-                    drawRect(Color.White.copy(alpha = 0.03f))
-                    drawRect(accent.accent.copy(alpha = 0.03f))
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.White.copy(alpha = 0.22f),
-                            0.12f to Color.Transparent,
-                        ),
-                    )
-                },
-            )
-            .drawWithContent {
-                drawContent()
-                drawIridescentBorder(
-                    mode = effectiveMode,
-                    huePhase = huePhase,
-                    pulseAlpha = pulseAlpha,
-                    readyFadeAlpha = readyFadeAlpha,
-                    cornerPx = cornerDp.toPx(),
-                    animationsEnabled = animationsEnabled,
-                )
-            }
-            .padding(16.dp),
-        content = content,
-    )
+    return drawWithContent {
+        drawContent()
+        drawIridescentBorder(
+            mode = effectiveMode,
+            huePhase = huePhase,
+            pulseAlpha = pulseAlpha,
+            readyFadeAlpha = readyFadeAlpha,
+            cornerPx = cornerRadius.toPx(),
+            animationsEnabled = animationsEnabled,
+        )
+    }
 }
 
 /**

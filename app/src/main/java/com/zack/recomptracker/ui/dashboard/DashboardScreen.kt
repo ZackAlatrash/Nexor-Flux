@@ -64,7 +64,7 @@ import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
-import com.zack.recomptracker.ui.review.WeeklyReviewButton
+import com.zack.recomptracker.ui.review.WeeklyReviewTeaserCard
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -158,7 +158,7 @@ fun HomeDashboardContent(
             ) {
                 if (onOpenWeeklyReview != null) {
                     item {
-                        WeeklyReviewButton(
+                        WeeklyReviewTeaserCard(
                             showBadge = showWeeklyReviewBadge,
                             onClick = onOpenWeeklyReview,
                             modifier = Modifier.padding(bottom = 8.dp),

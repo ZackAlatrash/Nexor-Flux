@@ -22,7 +22,7 @@ data class PlanUiState(
     val maintenancePhaseStartDate: String = "",
     val weightTrendThresholdKgPerWeek: String = "0.20",
     val waistIncreaseThresholdCm: String = "0.5",
-    val adherenceMinimumPercent: String = "85",
+    val adherenceMinimumPercent: String = "80",
     val reviewCadenceDays: String = "7",
     val calorieZoneLowerBound: String = "2400",
     val calorieZoneUpperBound: String = "2600",

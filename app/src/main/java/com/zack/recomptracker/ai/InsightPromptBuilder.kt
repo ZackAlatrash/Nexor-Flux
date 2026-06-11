@@ -187,7 +187,7 @@ class InsightPromptBuilder {
             "GAINING_WITH_WAIST_INCREASE" to "Both weight and waist are trending upward",
             "EARLY_SCALE_JUMP" to "Large weight change in week one likely reflects water, not fat",
             "MAINTENANCE_TREND" to "Weight, waist, and performance are all stable",
-            "LOW_ADHERENCE" to "Logging consistency is too low to draw a reliable conclusion",
+            "LOW_ADHERENCE" to "Intake was too far from target too often to draw a reliable conclusion",
             "INSUFFICIENT_DATA" to "Not enough days logged to make a reliable assessment",
             "NO_CLEAR_CHANGE_SIGNAL" to "No strong signal emerged this week",
             "WEIGHT_UP_WAIST_STABLE_PERFORMANCE_UP" to "Weight rising but waist stable and performance improving — likely lean mass",

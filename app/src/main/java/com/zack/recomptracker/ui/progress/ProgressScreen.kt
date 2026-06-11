@@ -122,10 +122,11 @@ fun ProgressScreen(viewModel: ProgressViewModel) {
             item { FeaturedChartCard(state.calories) }
             item { MiniChartPair(state.protein, state.carbs) }
             item { ShortChartCard(state.fat) }
+            item { MiniChartPair(state.adherence, state.logging) }
 
             // Performance section
             item { SectionLabel("Performance") }
-            item { MiniChartPair(state.adherence, state.lifts) }
+            item { ShortChartCard(state.lifts) }
         }
     }
 }

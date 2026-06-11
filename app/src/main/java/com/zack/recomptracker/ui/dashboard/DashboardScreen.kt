@@ -528,7 +528,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .background(Color(0x12FFFFFF)),
             )
             ChartStat(
-                value = "${state.daysLogged}",
+                value = "${state.loggedDaysInWindow} / 14",
                 label = "Days logged",
                 valueColor = Color.White,
                 modifier = Modifier.weight(1f),
@@ -745,7 +745,7 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
                 StatRow("Weight trend", "${state.weightTrendKgPerWeek.formatSignedOneDecimal()} kg/week")
                 StatRow("Waist trend", "${state.waistTrendCmPerWeek.formatSignedOneDecimal()} cm/week")
                 StatRow("Adherence", state.adherencePercent.formatPercent())
-                StatRow("Logged days", state.daysLogged.toString())
+                StatRow("Logged days", "${state.loggedDaysInWindow} / 14")
             }
         }
     }

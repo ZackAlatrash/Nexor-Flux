@@ -59,7 +59,7 @@ data class DashboardUiState(
     val weightTrendKgPerWeek: Double = 0.0,
     val waistTrendCmPerWeek: Double = 0.0,
     val adherencePercent: Double = 0.0,
-    val daysLogged: Int = 0,
+    val loggedDaysInWindow: Int = 0,   // food-logged days within the last 14 (matches adherence window)
     val last7DaysCalories: ImmutableList<DayCalories> = persistentListOf(),
     val inZoneDays7: Int = 0,
     val result: AdjustmentResult = AdjustmentResult(
@@ -180,7 +180,8 @@ class DashboardViewModel(
 
         val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
         val waistTrend   = trendCalculator.trendPerWeek(waistPoints)
-        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories, expectedDays = 14)
+        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories)
+        val loggedDaysInWindow = nutritionDays.count { it.calories > 0 }
         val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }
@@ -196,6 +197,8 @@ class DashboardViewModel(
             cachedEngine = AdjustmentEngine(thresholds)
         }
         val adjustmentInput = AdjustmentInput(
+            // Engine data-sufficiency gate: counts ANY logged day (incl. body-only) in the window.
+            // Distinct from the UI's loggedDaysInWindow, which counts only food-logged days.
             daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today },
             adherencePercent = adherence,
             weeksSincePhaseStart = weeksSincePhaseStart,
@@ -233,7 +236,7 @@ class DashboardViewModel(
             weightTrendKgPerWeek = weightTrend,
             waistTrendCmPerWeek = waistTrend,
             adherencePercent = adherence,
-            daysLogged = loggedDates.size,
+            loggedDaysInWindow = loggedDaysInWindow,
             last7DaysCalories = last7DaysCalories,
             inZoneDays7 = inZoneDays7,
             motivationalMessage = todayMessage,

@@ -5,6 +5,7 @@ import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -91,6 +92,14 @@ class AdjustmentEngineTest {
         assertEquals(AdjustmentVerdict.HOLD, result.verdict)
         assertEquals(0, result.recommendedCalorieChange)
         assertTrue(result.reasonCodes.contains("EARLY_SCALE_JUMP"))
+    }
+
+    @Test
+    fun adherenceBetween80And85NoLongerBlocks() {
+        // 82% would have failed the old 85 gate; with the new 80 default it must pass through
+        // to the trend rules instead of returning WAIT_FOR_DATA / LOW_ADHERENCE.
+        val result = AdjustmentEngine().evaluate(baseInput(adherencePercent = 82.0))
+        assertFalse(result.reasonCodes.contains("LOW_ADHERENCE"))
     }
 
     private fun baseInput(

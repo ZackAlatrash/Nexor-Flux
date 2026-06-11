@@ -436,7 +436,7 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `get_weekly_trends returns JSON with week_start, daily_calories and adherence`() = runTest {
+    fun `get_weekly_trends returns graded adherence and days_logged`() = runTest {
         val today = LocalDate.of(2026, 6, 5)
         val start = today.minusDays(6) // 2026-05-30
         // getWeekMacros returns only dates that have entries; absent = not logged
@@ -452,15 +452,35 @@ class CoachToolExecutorTest {
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
         whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
+        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 2550)))
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("get_weekly_trends", emptyMap())
 
         assertTrue("Should contain week_start", result.contains("2026-05-30"))
         assertTrue("Should contain week_end", result.contains("2026-06-05"))
-        assertTrue("Should contain adherence_percent", result.contains("adherence_percent"))
-        // 6 out of 7 days logged → 85%
-        assertTrue("Should have correct adherence", result.contains("85"))
+        // 6 of 7 days logged, surfaced as its own signal
+        assertTrue("Should report days_logged", result.contains("\"days_logged\":6"))
+        // Graded quality across the 6 logged days averages ~94 (not the old 6/7 = 85 count)
+        assertTrue("Should report graded adherence ~94", result.contains("\"adherence_percent\":94"))
+    }
+
+    @Test
+    fun `get_weekly_trends does not score an over-target day as fully adherent`() = runTest {
+        val today = LocalDate.of(2026, 6, 5)
+        val start = today.minusDays(6)
+        // Single logged day, far over target → graded score must be well below 100.
+        val macroMap = mapOf(LocalDate.of(2026, 6, 5) to MacroTotals(calories = 4000))
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
+        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 2550)))
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val result = executor.execute("get_weekly_trends", emptyMap())
+
+        assertFalse("Over-target day must not be 100% adherent", result.contains("\"adherence_percent\":100"))
+        assertTrue("Should still report one logged day", result.contains("\"days_logged\":1"))
     }
 
     @Test

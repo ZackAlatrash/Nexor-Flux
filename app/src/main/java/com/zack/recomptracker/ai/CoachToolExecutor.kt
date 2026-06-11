@@ -7,6 +7,8 @@ import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.domain.adherence.AdherenceCalculator
+import com.zack.recomptracker.domain.adherence.NutritionDay
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -16,6 +18,7 @@ class CoachToolExecutor(
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
 ) {
+    private val adherenceCalculator = AdherenceCalculator()
 
     suspend fun execute(name: String, args: Map<String, String>): String = when (name) {
         "get_today_summary" -> getTodaySummary(args)
@@ -58,6 +61,7 @@ class CoachToolExecutor(
         val today = dateProvider.today()
         val start = today.minusDays(6)
         val macroMap = logRepository.getWeekMacros(start, today)
+        val targetCalories = planRepository.preferences.first().targetCalories
         val dailyEntries = (0..6).joinToString(separator = ",") { offset ->
             val date = start.plusDays(offset.toLong())
             val m = macroMap[date]
@@ -67,10 +71,15 @@ class CoachToolExecutor(
             val fat = m?.fatG ?: 0.0
             """{"date":"$date","calories":$cals,"protein_g":$prot,"carbs_g":$carbs,"fat_g":$fat}"""
         }
-        val totalDays = 7
-        val loggedDays = macroMap.values.count { it.calories > 0 }
-        val adherencePercent = (loggedDays.toDouble() / totalDays * 100).toInt()
-        return """{"week_start":"$start","week_end":"$today","daily_macros":[$dailyEntries],"adherence_percent":$adherencePercent}"""
+        val nutritionDays = (0..6).map { offset ->
+            val date = start.plusDays(offset.toLong())
+            NutritionDay(date, macroMap[date]?.calories ?: 0)
+        }
+        // adherence_percent = graded closeness on logged days; days_logged = the separate
+        // logging-consistency signal. A logged-but-over-target day no longer reads as 100%.
+        val adherencePercent = adherenceCalculator.calculate(nutritionDays, targetCalories).toInt()
+        val daysLogged = macroMap.values.count { it.calories > 0 }
+        return """{"week_start":"$start","week_end":"$today","daily_macros":[$dailyEntries],"adherence_percent":$adherencePercent,"days_logged":$daysLogged}"""
     }
 
     private suspend fun searchFoodLibrary(args: Map<String, String>): String {

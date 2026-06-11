@@ -11,7 +11,7 @@ data class PlanPreferences(
     val maintenancePhaseStartDate: String? = null,
     val weightTrendThresholdKgPerWeek: Double = 0.20,
     val waistIncreaseThresholdCm: Double = 0.5,
-    val adherenceMinimumPercent: Double = 85.0,
+    val adherenceMinimumPercent: Double = 80.0,
     val reviewCadenceDays: Int = 7,
     val useMetricUnits: Boolean = true,
     val calorieZoneLowerBound: Int = 2400,

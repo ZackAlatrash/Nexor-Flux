@@ -100,20 +100,6 @@ fun AppNavGraph(
             HomeDashboardScreen(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
                 weeklyReviewViewModel = viewModel<WeeklyReviewViewModel>(factory = factory),
-                onCheckIn = {
-                    navController.navigate(TopLevelDestination.Body.route) {
-                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onLogFood = {
-                    navController.navigate(Routes.Food) {
-                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
                 onOpenCoach = {
                     navController.navigate(TopLevelDestination.Coach.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }

@@ -27,6 +27,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -56,15 +58,13 @@ import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
-import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
-import com.zack.recomptracker.ui.review.WeeklyReviewTeaserCard
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -74,8 +74,6 @@ import java.util.Locale
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
     weeklyReviewViewModel: WeeklyReviewViewModel,
-    onCheckIn: () -> Unit,
-    onLogFood: () -> Unit,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -86,8 +84,6 @@ fun HomeDashboardScreen(
 
     HomeDashboardContent(
         state = state,
-        onCheckIn = onCheckIn,
-        onLogFood = onLogFood,
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
     )
@@ -115,8 +111,6 @@ fun HomeDashboardScreen(
 @Composable
 fun HomeDashboardContent(
     state: DashboardUiState,
-    onCheckIn: () -> Unit,
-    onLogFood: () -> Unit,
     modifier: Modifier = Modifier,
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
@@ -156,15 +150,6 @@ fun HomeDashboardContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (onOpenWeeklyReview != null) {
-                    item {
-                        WeeklyReviewTeaserCard(
-                            showBadge = showWeeklyReviewBadge,
-                            onClick = onOpenWeeklyReview,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                    }
-                }
                 item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state) }
                 item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }
@@ -172,28 +157,38 @@ fun HomeDashboardContent(
             }
         }
 
-        // Floating liquid glass pill buttons above the nav bar
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = FloatingNavHeight + 12.dp)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(9.dp),
+        // Floating wide liquid-glass Weekly Review pill above the nav bar
+        if (onOpenWeeklyReview != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = FloatingNavHeight + 12.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                LiquidPrimaryButton(
-                    text = "Daily Check-In",
-                    onClick = onCheckIn,
-                    modifier = Modifier.weight(1f),
+                // Accent glow halo behind the pill — brighter when a fresh review is waiting.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .blur(radius = 26.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        .clip(RoundedCornerShape(100))
+                        .background(accent.accent.copy(alpha = if (showWeeklyReviewBadge) 0.55f else 0.32f)),
                 )
-                LiquidSecondaryButton(
-                    text = "Log Food",
-                    onClick = onLogFood,
-                    modifier = Modifier.weight(1f),
-                )
+                LiquidGlassButton(
+                    onClick = onOpenWeeklyReview,
+                    modifier = Modifier.fillMaxWidth(),
+                    tint = accent.accent,
+                    surfaceColor = Color.White.copy(alpha = 0.10f),
+                ) {
+                    Text(
+                        text = "✦  Weekly Review",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+                }
             }
         }
     }

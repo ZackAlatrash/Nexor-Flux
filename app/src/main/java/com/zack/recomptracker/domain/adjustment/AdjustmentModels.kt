@@ -20,7 +20,7 @@ data class AdjustmentResult(
 data class AdjustmentThresholds(
     val weightTrendThresholdKgPerWeek: Double = 0.20,
     val waistIncreaseThresholdCmAcrossTwoWeeks: Double = 0.5,
-    val adherenceMinimumPercent: Double = 85.0,
+    val adherenceMinimumPercent: Double = 80.0,
 )
 
 enum class AdjustmentVerdict {

@@ -27,7 +27,7 @@ class AppPreferences(
             maintenancePhaseStartDate = prefs[Keys.MaintenancePhaseStartDate],
             weightTrendThresholdKgPerWeek = prefs[Keys.WeightTrendThresholdKgPerWeek] ?: 0.20,
             waistIncreaseThresholdCm = prefs[Keys.WaistIncreaseThresholdCm] ?: 0.5,
-            adherenceMinimumPercent = prefs[Keys.AdherenceMinimumPercent] ?: 85.0,
+            adherenceMinimumPercent = prefs[Keys.AdherenceMinimumPercent] ?: 80.0,
             reviewCadenceDays = prefs[Keys.ReviewCadenceDays] ?: 7,
             useMetricUnits = prefs[Keys.UseMetricUnits] ?: true,
             healthConnectEnabled = prefs[Keys.HealthConnectEnabled] ?: false,

@@ -116,10 +116,18 @@ fun AppNavGraph(
                 },
                 onOpenCoach = {
                     navController.navigate(TopLevelDestination.Coach.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
                         launchSingleTop = true
+                        restoreState = true
                     }
                 },
-                onOpenSettings = { navController.navigate(TopLevelDestination.More.route) },
+                onOpenSettings = {
+                    navController.navigate(TopLevelDestination.More.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
         composable(

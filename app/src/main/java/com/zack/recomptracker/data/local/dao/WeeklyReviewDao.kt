@@ -16,6 +16,9 @@ interface WeeklyReviewDao {
     @Query("SELECT * FROM weekly_reviews ORDER BY weekStart DESC")
     suspend fun getAll(): List<WeeklyReviewEntity>
 
+    @Query("SELECT * FROM weekly_reviews WHERE weekStart = :weekStart LIMIT 1")
+    suspend fun getByWeekStart(weekStart: String): WeeklyReviewEntity?
+
     @Upsert
     suspend fun upsert(review: WeeklyReviewEntity)
 

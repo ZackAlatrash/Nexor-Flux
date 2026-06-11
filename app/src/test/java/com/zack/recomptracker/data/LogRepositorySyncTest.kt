@@ -198,6 +198,7 @@ private object NoopPerformanceDao : PerformanceDao {
 private object NoopWeeklyReviewDao : WeeklyReviewDao {
     override fun observeAll(): Flow<List<WeeklyReviewEntity>> = flow { emit(emptyList()) }
     override suspend fun getAll(): List<WeeklyReviewEntity> = emptyList()
+    override suspend fun getByWeekStart(weekStart: String): WeeklyReviewEntity? = null
     override suspend fun upsert(review: WeeklyReviewEntity) = Unit
     override suspend fun insertAll(reviews: List<WeeklyReviewEntity>) = Unit
     override suspend fun deleteAll() = Unit

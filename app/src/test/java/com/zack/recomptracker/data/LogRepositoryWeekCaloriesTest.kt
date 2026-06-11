@@ -175,6 +175,7 @@ private object WcNoopPerformanceDao : PerformanceDao {
 private object WcNoopWeeklyReviewDao : WeeklyReviewDao {
     override fun observeAll(): Flow<List<WeeklyReviewEntity>> = flow { emit(emptyList()) }
     override suspend fun getAll() = emptyList<WeeklyReviewEntity>()
+    override suspend fun getByWeekStart(weekStart: String): WeeklyReviewEntity? = null
     override suspend fun upsert(review: WeeklyReviewEntity) = Unit
     override suspend fun insertAll(reviews: List<WeeklyReviewEntity>) = Unit
     override suspend fun deleteAll() = Unit

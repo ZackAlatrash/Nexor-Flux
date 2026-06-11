@@ -60,6 +60,29 @@ import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.RecipeRepository
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ai.WeeklyBriefingGenerator
+import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
+import com.zack.recomptracker.domain.review.WeeklyReviewComputer
+import com.zack.recomptracker.domain.review.WeeklyReviewData
+import com.zack.recomptracker.ui.review.WeeklyReviewConfig
+import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
+import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
+import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.domain.adherence.NutritionDay
+import com.zack.recomptracker.domain.adjustment.AdjustmentInput
+import com.zack.recomptracker.domain.trend.MeasurementPoint
+import com.zack.recomptracker.domain.trend.PerformancePoint
+import com.zack.recomptracker.domain.trend.RecoveryPoint
+import com.zack.recomptracker.data.repository.macroTotals
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
 
 class AppContainer(context: Context) {
     val dateProvider: DateProvider = SystemDateProvider()
@@ -136,6 +159,76 @@ class AppContainer(context: Context) {
     )
 
     val coachHandoffStore = CoachHandoffStore()
+
+    val weeklyReviewComputer = WeeklyReviewComputer()
+    val weeklyBriefingGenerator = WeeklyBriefingGenerator(openAiCompatClient)
+    val weeklyBriefingRepository = WeeklyBriefingRepository(database.weeklyReviewDao())
+
+    /** Feature gate: cloud backend selected, config complete, AI enabled. */
+    val cloudBriefingActive: StateFlow<Boolean> = combine(
+        uiPreferences.aiBackend,
+        cloudConfigComplete,
+        uiPreferences.aiInsightsEnabled,
+    ) { backend, complete, enabled ->
+        backend == AiBackend.CLOUD && complete && enabled
+    }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    /** Current review week's deterministic data, recomputed from the same sources as the dashboard. */
+    val weeklyReviewDataFlow: Flow<WeeklyReviewData?> = combine(
+        logRepository.observeDailyLogs(),
+        logRepository.observeMealEntriesSince(dateProvider.today().minusDays(27)),
+        logRepository.observePerformances(),
+        planRepository.preferences,
+    ) { logs, meals, performances, prefs ->
+        computeWeeklyReviewData(logs, meals, performances, prefs)
+    }
+
+    fun cloudConfigForBriefing(): CloudConfig? = cloudConfigFlow.value
+
+    private fun computeWeeklyReviewData(
+        logs: List<DailyLogEntity>,
+        allMeals: List<MealEntryEntity>,
+        performances: List<LiftPerformanceEntity>,
+        prefs: PlanPreferences,
+    ): WeeklyReviewData? {
+        val today = dateProvider.today()
+        val meals = allMeals.filterNot { it.planned }
+        val last14Start = today.minusDays(13)
+        val last28Start = today.minusDays(27)
+        val logs28 = logs.filter { LocalDate.parse(it.date) in last28Start..today }
+        val meals14 = meals.filter { LocalDate.parse(it.date) in last14Start..today }
+        val mealsByDate = meals14.groupBy { LocalDate.parse(it.date) }
+        val nutritionDays = (0..13).map { off ->
+            val d = last14Start.plusDays(off.toLong())
+            NutritionDay(d, mealsByDate[d].orEmpty().macroTotals().calories)
+        }
+        val loggedDates = logs28.map { it.date }.toSet() + meals14.map { it.date }.toSet()
+        val daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today }
+        if (daysLogged == 0) return null
+        val weightPoints = logs28.map { MeasurementPoint(LocalDate.parse(it.date), it.bodyWeightKg) }
+        val waistPoints = logs28.map { MeasurementPoint(LocalDate.parse(it.date), it.waistCm) }
+        val perfPoints = performances
+            .filter { LocalDate.parse(it.date) in last28Start..today }
+            .map { PerformancePoint(LocalDate.parse(it.date), it.weight, it.reps, it.sets) }
+        val recPoints = logs
+            .filter { LocalDate.parse(it.date) in last14Start..today }
+            .map { RecoveryPoint(LocalDate.parse(it.date), it.sleepHours, it.energyScore, it.sorenessScore) }
+        val weeksSincePhase = prefs.maintenancePhaseStartDate
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }?.toInt() ?: 4
+        val input = AdjustmentInput(
+            daysLogged = daysLogged,
+            adherencePercent = adherenceCalculator.calculate(nutritionDays, prefs.targetCalories, expectedDays = 14),
+            weeksSincePhaseStart = weeksSincePhase,
+            weightTrendKgPerWeek = trendCalculator.trendPerWeek(weightPoints),
+            waistTrendCmPerWeek = trendCalculator.trendPerWeek(waistPoints),
+            performanceTrend = trendCalculator.performanceTrend(perfPoints),
+            recoveryTrend = trendCalculator.recoveryTrend(recPoints),
+        )
+        val result = adjustmentEngine.evaluate(input)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
+        return weeklyReviewComputer.build(weekStart, input, result, prefs.targetCalories)
+    }
 
     // ── Cloud coordinators ─────────────────────────────────────────────────────────
     private val cloudInsightCoordinator: AiInsightCoordinator = CloudInsightCoordinator(
@@ -262,6 +355,30 @@ private class AppViewModelFactory(
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,
             )
+            WeeklyReviewViewModel::class.java -> WeeklyReviewViewModel(
+                WeeklyReviewConfig(
+                    cloudActiveFlow = container.cloudBriefingActive,
+                    reviewDataFlow = container.weeklyReviewDataFlow,
+                    signatureOf = { container.weeklyReviewComputer.signature(it) },
+                    briefingFor = { weekStart, signature, generate ->
+                        container.weeklyBriefingRepository.briefingFor(weekStart, signature, generate)
+                    },
+                    generate = { data ->
+                        val config = container.cloudConfigForBriefing() ?: error("Cloud not configured")
+                        container.weeklyBriefingGenerator.generate(config, data) ?: error("Generation failed")
+                    },
+                    saveCalorieTarget = { target ->
+                        val prefs = container.planRepository.preferences.first()
+                        container.planRepository.save(prefs.copy(targetCalories = target))
+                    },
+                    markSeen = { signature -> container.uiPreferences.setLastSeenBriefingSignature(signature) },
+                    lastSeenSignatureFlow = container.uiPreferences.lastSeenBriefingSignature,
+                    startCoachHandoff = { data, briefing ->
+                        container.coachHandoffStore.set(buildCoachHandoffContext(data, briefing))
+                        container.coachCoordinator.clearHistory()
+                    },
+                ),
+            )
             RecipeBuilderViewModel::class.java -> RecipeBuilderViewModel(
                 recipeRepository = container.recipeRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
@@ -269,4 +386,22 @@ private class AppViewModelFactory(
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T
     }
+}
+
+private fun buildCoachHandoffContext(
+    data: WeeklyReviewData,
+    briefing: com.zack.recomptracker.ai.WeeklyBriefing,
+): String = buildString {
+    appendLine("=== WEEKLY BRIEFING CONTEXT ===")
+    appendLine("The user just read this week's briefing and opened chat to ask about it.")
+    appendLine("Do NOT re-explain or summarize the briefing. Greet in at most one short line, then wait for their question and answer concisely from the data below.")
+    appendLine()
+    appendLine("Week starting: ${data.weekStart} | Phase: ${data.phase.name}")
+    appendLine("Verdict: ${briefing.action.verdict} | Days logged: ${data.daysLogged} | Adherence: ${data.input.adherencePercent.toInt()}%")
+    appendLine("Recommended calorie change: ${data.result.recommendedCalorieChange} kcal")
+    appendLine("Signals:")
+    briefing.signals.forEach { appendLine("- ${it.label}: ${it.value} — ${it.interpretation}") }
+    appendLine("Headline shown: ${briefing.headline}")
+    appendLine("Narrative shown: ${briefing.narrative}")
+    append("=== END WEEKLY BRIEFING CONTEXT ===")
 }

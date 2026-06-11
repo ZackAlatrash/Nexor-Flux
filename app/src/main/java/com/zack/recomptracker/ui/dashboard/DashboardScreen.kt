@@ -63,6 +63,9 @@ import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
+import com.zack.recomptracker.ui.review.WeeklyReviewButton
+import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -70,11 +73,43 @@ import java.util.Locale
 @Composable
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
+    weeklyReviewViewModel: WeeklyReviewViewModel,
     onCheckIn: () -> Unit,
     onLogFood: () -> Unit,
+    onOpenCoach: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeDashboardContent(state = state, onCheckIn = onCheckIn, onLogFood = onLogFood)
+    val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
+    val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
+    val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
+
+    HomeDashboardContent(
+        state = state,
+        onCheckIn = onCheckIn,
+        onLogFood = onLogFood,
+        showWeeklyReviewBadge = badge,
+        onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+    )
+
+    WeeklyBriefingOverlay(
+        state = reviewState,
+        pendingApply = pendingApply,
+        onDismiss = { weeklyReviewViewModel.dismiss() },
+        onRegenerate = { weeklyReviewViewModel.regenerate() },
+        onRequestApply = { weeklyReviewViewModel.requestApply(it) },
+        onConfirmApply = { weeklyReviewViewModel.confirmApply() },
+        onCancelApply = { weeklyReviewViewModel.cancelApply() },
+        onDiscussWithCoach = {
+            weeklyReviewViewModel.discussWithCoach()
+            weeklyReviewViewModel.dismiss()
+            onOpenCoach()
+        },
+        onOpenSettings = {
+            weeklyReviewViewModel.dismiss()
+            onOpenSettings()
+        },
+    )
 }
 
 @Composable
@@ -83,6 +118,8 @@ fun HomeDashboardContent(
     onCheckIn: () -> Unit,
     onLogFood: () -> Unit,
     modifier: Modifier = Modifier,
+    showWeeklyReviewBadge: Boolean = false,
+    onOpenWeeklyReview: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -119,6 +156,15 @@ fun HomeDashboardContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (onOpenWeeklyReview != null) {
+                    item {
+                        WeeklyReviewButton(
+                            showBadge = showWeeklyReviewBadge,
+                            onClick = onOpenWeeklyReview,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                }
                 item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state) }
                 item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }

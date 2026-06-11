@@ -5,6 +5,7 @@ import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.domain.export.BackupPayload
+import com.zack.recomptracker.domain.export.RecipeBackup
 import java.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -30,6 +31,9 @@ class BackupRepository(
             liftPerformances = database.performanceDao().getAll(),
             weeklyReviews = database.weeklyReviewDao().getAll(),
             mealSlots = database.mealSlotDao().getAll(),
+            recipes = database.recipeDao().getAllWithIngredients().map {
+                RecipeBackup(recipe = it.recipe, ingredients = it.ingredients)
+            },
         )
         return json.encodeToString(BackupPayload.serializer(), payload)
     }
@@ -51,6 +55,15 @@ class BackupRepository(
             database.savedMealDao().insertAll(payload.savedMeals)
             database.performanceDao().insertAll(payload.liftPerformances)
             database.weeklyReviewDao().insertAll(payload.weeklyReviews)
+            // Re-insert recipes with fresh ids so ingredient->recipe links stay consistent.
+            payload.recipes.forEach { backup ->
+                val newRecipeId = database.recipeDao().insertRecipe(backup.recipe.copy(id = 0))
+                backup.ingredients.forEach { ingredient ->
+                    database.recipeDao().insertIngredient(
+                        ingredient.copy(id = 0, recipeId = newRecipeId),
+                    )
+                }
+            }
         }
         planRepository.save(payload.preferences)
     }

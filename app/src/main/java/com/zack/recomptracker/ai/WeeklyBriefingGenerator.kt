@@ -13,7 +13,7 @@ class WeeklyBriefingGenerator(
     private val client: OpenAiCompatClient,
     private val promptBuilder: WeeklyBriefingPromptBuilder = WeeklyBriefingPromptBuilder(),
 ) {
-    /** Returns the merged briefing, or null only if the cloud call itself throws. */
+    /** Returns the merged briefing. Uses AI prose when available, deterministic engine summary as fallback. */
     suspend fun generate(config: CloudConfig, data: WeeklyReviewData): WeeklyBriefing? {
         val prompt = promptBuilder.build(data)
         val narration = requestNarration(config, prompt) ?: requestNarration(config, prompt)
@@ -31,6 +31,8 @@ class WeeklyBriefingGenerator(
                 toolSchemasJson = emptyList(),
             )
             parseBriefingNarration(response.text)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             null
         }

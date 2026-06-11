@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
+
+// Shared signing: one fixed key for every build type and machine (incl. CI), so the app
+// signature is stable and installs never force an uninstall (which would wipe app data).
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        FileInputStream(keystorePropertiesFile).use { load(it) }
+    }
+}
+val hasSharedSigning = keystorePropertiesFile.exists()
 
 android {
     namespace = "com.zack.recomptracker"
@@ -31,7 +44,22 @@ android {
         abortOnError = false
     }
 
+    signingConfigs {
+        create("shared") {
+            if (hasSharedSigning) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // CI distributes the debug APK, so the debug type must use the fixed key.
+            if (hasSharedSigning) signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -39,10 +67,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.getByName(if (hasSharedSigning) "shared" else "debug")
         }
         create("benchmark") {
             initWith(buildTypes.getByName("release"))
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (hasSharedSigning) "shared" else "debug")
             matchingFallbacks += listOf("release")
             isDebuggable = false
         }

@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
+import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
@@ -225,7 +226,12 @@ class AppContainer(context: Context) {
             performanceTrend = trendCalculator.performanceTrend(perfPoints),
             recoveryTrend = trendCalculator.recoveryTrend(recPoints),
         )
-        val result = adjustmentEngine.evaluate(input)
+        val thresholds = AdjustmentThresholds(
+            weightTrendThresholdKgPerWeek = prefs.weightTrendThresholdKgPerWeek,
+            waistIncreaseThresholdCmAcrossTwoWeeks = prefs.waistIncreaseThresholdCm,
+            adherenceMinimumPercent = prefs.adherenceMinimumPercent,
+        )
+        val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
         return weeklyReviewComputer.build(weekStart, input, result, prefs.targetCalories)
     }

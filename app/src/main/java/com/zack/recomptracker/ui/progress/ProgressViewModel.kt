@@ -41,6 +41,7 @@ data class ProgressUiState(
     val carbs: ChartSeries = ChartSeries("Carbs", "g", emptyList()),
     val fat: ChartSeries = ChartSeries("Fat", "g", emptyList()),
     val adherence: ChartSeries = ChartSeries("Adherence", "%", emptyList()),
+    val logging: ChartSeries = ChartSeries("Logging", "%", emptyList()),
     val lifts: ChartSeries = ChartSeries("Marker lift e1RM", "kg", emptyList()),
     val insightContext: ProgressInsightContext? = null,
 )
@@ -157,6 +158,18 @@ class ProgressViewModel(
                         trendLabel = adherenceLast?.let { "${"%.0f".format(it)}%" } ?: "",
                         trendIsGood = (adherenceLast ?: 0f) >= 80f,
                     ),
+                    logging = run {
+                        val loggedFlags = calValues.map { if (it > 0f) 100f else 0f }
+                        val pct = if (loggedFlags.isNotEmpty()) {
+                            loggedFlags.count { it > 0f }.toFloat() / loggedFlags.size * 100f
+                        } else 0f
+                        ChartSeries(
+                            "Logging", "%", loggedFlags,
+                            currentValue = pct,
+                            trendLabel = "${"%.0f".format(pct)}%",
+                            trendIsGood = pct >= 80f,
+                        )
+                    },
                     lifts = ChartSeries(
                         "Lifts e1RM", "kg", liftValues,
                         currentValue = liftValues.lastOrNull(),

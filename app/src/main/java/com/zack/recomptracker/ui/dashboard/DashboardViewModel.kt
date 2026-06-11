@@ -180,7 +180,7 @@ class DashboardViewModel(
 
         val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
         val waistTrend   = trendCalculator.trendPerWeek(waistPoints)
-        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories, expectedDays = 14)
+        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories)
         val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }

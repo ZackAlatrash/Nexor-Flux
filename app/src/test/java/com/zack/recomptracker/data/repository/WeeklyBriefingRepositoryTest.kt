@@ -60,4 +60,19 @@ class WeeklyBriefingRepositoryTest {
         assertEquals("second", result.headline)
         assertEquals("sig-2", dao.rows["2026-06-08"]?.briefingSignature)
     }
+
+    @Test
+    fun `regenerates when cached json is corrupt`() = runTest {
+        val dao = FakeDao()
+        dao.rows["2026-06-08"] = WeeklyReviewEntity(
+            weekStart = "2026-06-08", verdict = "", recommendedCalorieChange = 0,
+            reasonCodes = "", generatedAt = "",
+            briefingJson = "{ not valid", briefingSignature = "sig-1", briefingGeneratedAt = "t",
+        )
+        val repo = WeeklyBriefingRepository(dao)
+        var calls = 0
+        val result = repo.briefingFor("2026-06-08", "sig-1") { calls++; briefing("regen") }
+        assertEquals("regen", result.headline)
+        assertEquals(1, calls)
+    }
 }

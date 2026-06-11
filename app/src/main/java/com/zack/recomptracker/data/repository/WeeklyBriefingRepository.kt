@@ -7,6 +7,7 @@ import com.zack.recomptracker.ai.SignalLine
 import com.zack.recomptracker.ai.WeeklyBriefing
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
+import java.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -45,7 +46,7 @@ class WeeklyBriefingRepository(
             base.copy(
                 briefingJson = json.encodeToString(BriefingDto.serializer(), fresh.toDto()),
                 briefingSignature = signature,
-                briefingGeneratedAt = "cached",
+                briefingGeneratedAt = Instant.now().toString(),
             ),
         )
         return fresh

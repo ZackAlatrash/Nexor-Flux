@@ -43,10 +43,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.SettingRow
 import com.zack.recomptracker.ui.integrations.SettingsCard
-import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
-import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -153,30 +150,22 @@ fun DataBackupScreen(
             item { SectionLabel("Full backup") }
             item {
                 SettingsCard {
-                    SettingRow(
+                    DataRow(
                         emoji = "⬆️",
                         title = "Export backup",
                         detail = "Save all data to a JSON file",
                         showDivider = true,
-                    ) {
-                        LiquidPrimaryButton(
-                            text = "Export",
-                            onClick = { exportLauncher.launch("recomp-tracker-${LocalDate.now()}.json") },
-                            enabled = !state.busy,
-                        )
-                    }
-                    SettingRow(
+                        onClick = { exportLauncher.launch("recomp-tracker-${LocalDate.now()}.json") },
+                        enabled = !state.busy,
+                    )
+                    DataRow(
                         emoji = "⬇️",
                         title = "Import backup",
                         detail = "Restore everything from a JSON file",
                         showDivider = false,
-                    ) {
-                        LiquidSecondaryButton(
-                            text = "Import",
-                            onClick = { showImportConfirm = true },
-                            enabled = !state.busy,
-                        )
-                    }
+                        onClick = { showImportConfirm = true },
+                        enabled = !state.busy,
+                    )
                 }
             }
 
@@ -184,38 +173,30 @@ fun DataBackupScreen(
             item { SectionLabel("Personal foods") }
             item {
                 SettingsCard {
-                    SettingRow(
+                    DataRow(
                         emoji = "🍎",
                         title = "Export personal foods",
                         detail = "Save your food library to JSON",
                         showDivider = true,
-                    ) {
-                        LiquidSecondaryButton(
-                            text = "Export",
-                            onClick = {
-                                personalFoodsExportLauncher.launch(
-                                    "recomp-tracker-personal-foods-${LocalDate.now()}.json",
-                                )
-                            },
-                            enabled = !state.busy,
-                        )
-                    }
-                    SettingRow(
+                        onClick = {
+                            personalFoodsExportLauncher.launch(
+                                "recomp-tracker-personal-foods-${LocalDate.now()}.json",
+                            )
+                        },
+                        enabled = !state.busy,
+                    )
+                    DataRow(
                         emoji = "📦",
                         title = "Import personal foods",
                         detail = "Add foods from a JSON or CSV file",
                         showDivider = false,
-                    ) {
-                        LiquidSecondaryButton(
-                            text = "Import",
-                            onClick = {
-                                personalFoodsImportLauncher.launch(
-                                    arrayOf("application/json", "text/*", "*/*"),
-                                )
-                            },
-                            enabled = !state.busy,
-                        )
-                    }
+                        onClick = {
+                            personalFoodsImportLauncher.launch(
+                                arrayOf("application/json", "text/*", "*/*"),
+                            )
+                        },
+                        enabled = !state.busy,
+                    )
                 }
             }
 
@@ -223,29 +204,32 @@ fun DataBackupScreen(
             item { SectionLabel("Danger zone") }
             item {
                 DangerCard {
-                    DangerRow(
+                    DataRow(
                         emoji = "🗑️",
                         title = "Clear food library",
                         detail = "Delete personal foods; keep logs & plan",
                         showDivider = true,
                         onClick = { showClearFoodLibraryConfirm = true },
                         enabled = !state.busy,
+                        danger = true,
                     )
-                    DangerRow(
+                    DataRow(
                         emoji = "📋",
                         title = "Reset logs only",
                         detail = "Delete all food & body log entries",
                         showDivider = true,
                         onClick = { showResetLogsConfirm = true },
                         enabled = !state.busy,
+                        danger = true,
                     )
-                    DangerRow(
+                    DataRow(
                         emoji = "💥",
                         title = "Reset all local data",
                         detail = "Permanently delete everything",
                         showDivider = false,
                         onClick = { showResetAllConfirm = true },
                         enabled = !state.busy,
+                        danger = true,
                     )
                 }
             }
@@ -312,15 +296,28 @@ private fun DangerCard(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
+/**
+ * Uniform tappable row used across every section. The whole row launches [onClick].
+ *
+ * - Normal variant ([danger] = false): violet-tinted icon box, white title, muted chevron.
+ * - Danger variant ([danger] = true): [ErrorRed] icon box, title, and chevron.
+ */
 @Composable
-private fun DangerRow(
+private fun DataRow(
     emoji: String,
     title: String,
     detail: String,
     showDivider: Boolean,
     onClick: () -> Unit,
     enabled: Boolean,
+    danger: Boolean = false,
 ) {
+    val accent = LocalAppAccent.current
+    val iconTint = if (danger) ErrorRed else accent.accent
+    val titleColor = if (danger) ErrorRed else Color.White
+    val chevronColor = if (danger) ErrorRed else Color(0x33FFFFFF)
+    val dividerColor = if (danger) ErrorRed.copy(alpha = 0.12f) else Color(0x0DFFFFFF)
+
     Column {
         Row(
             modifier = Modifier
@@ -334,24 +331,24 @@ private fun DangerRow(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(ErrorRed.copy(alpha = 0.10f))
-                    .border(1.dp, ErrorRed.copy(alpha = 0.25f), RoundedCornerShape(10.dp)),
+                    .background(iconTint.copy(alpha = 0.10f))
+                    .border(1.dp, iconTint.copy(alpha = 0.25f), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(emoji, fontSize = 16.sp)
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = ErrorRed)
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = titleColor)
                 Text(detail, fontSize = 11.sp, color = TextMuted)
             }
-            Text(text = "›", fontSize = 18.sp, color = ErrorRed)
+            Text(text = "›", fontSize = 18.sp, color = chevronColor)
         }
         if (showDivider) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(ErrorRed.copy(alpha = 0.12f)),
+                    .background(dividerColor),
             )
         }
     }

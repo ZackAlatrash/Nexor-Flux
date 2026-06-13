@@ -218,7 +218,7 @@ fun AppNavGraph(
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
         ) {
-            DashboardScreen(viewModel<DashboardViewModel>(factory = factory))
+            DashboardScreen(viewModel<DashboardViewModel>(factory = factory), onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.Charts,

@@ -2,6 +2,7 @@ package com.zack.recomptracker.ui.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,10 +57,8 @@ import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
-import com.zack.recomptracker.ui.component.CalorieZoneBar
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
-import com.zack.recomptracker.ui.component.MacroMiniBar
 import com.zack.recomptracker.ui.component.SectionCard
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
@@ -658,7 +661,7 @@ private fun StatTile(
 // ── Legacy Stats sub-screen (accessible via More → Stats) ─────────────────────
 
 @Composable
-fun DashboardScreen(viewModel: DashboardViewModel) {
+fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
     // Key on result.key() so the effect only restarts when verdict/reasons/change differ —
@@ -671,9 +674,40 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Stats", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text("Current status and calorie decision")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Calorie Decision",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        letterSpacing = (-0.8).sp,
+                    )
+                    Text(
+                        text = "Today's recommendation",
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                    )
+                }
             }
         }
         item {
@@ -697,41 +731,6 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
             SectionCard("Current targets") {
                 Text("${state.preferences.targetCalories} kcal")
                 Text("${state.preferences.targetProteinG}P / ${state.preferences.targetCarbsG}C / ${state.preferences.targetFatG}F")
-            }
-        }
-        item {
-            SectionCard("Today") {
-                CalorieZoneBar(
-                    eaten = state.todayTotals.calories,
-                    zoneLower = state.preferences.calorieZoneLowerBound,
-                    zoneUpper = state.preferences.calorieZoneUpperBound,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    MacroMiniBar(
-                        label = "Protein",
-                        eaten = state.todayTotals.proteinG,
-                        target = state.preferences.targetProteinG,
-                        modifier = Modifier.weight(1f),
-                    )
-                    MacroMiniBar(
-                        label = "Carbs",
-                        eaten = state.todayTotals.carbsG,
-                        target = state.preferences.targetCarbsG,
-                        modifier = Modifier.weight(1f),
-                    )
-                    MacroMiniBar(
-                        label = "Fat",
-                        eaten = state.todayTotals.fatG,
-                        target = state.preferences.targetFatG,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
             }
         }
         item {

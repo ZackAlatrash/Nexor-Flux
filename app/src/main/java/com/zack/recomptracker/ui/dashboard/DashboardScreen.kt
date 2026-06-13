@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.animateFloatAsState
@@ -711,12 +710,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
             }
         }
         item {
-            SectionCard("Calorie verdict") {
-                Text(state.result.verdict.label(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(state.result.summary)
-                Text("Change: ${state.result.recommendedCalorieChange} kcal/day")
-                Text("Reasons: ${state.result.reasonCodes.joinToString()}")
-            }
+            VerdictHero(result = state.result)
         }
         item {
             AiInsightSection(
@@ -729,8 +723,11 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
         }
         item {
             SectionCard("Current targets") {
-                Text("${state.preferences.targetCalories} kcal")
-                Text("${state.preferences.targetProteinG}P / ${state.preferences.targetCarbsG}C / ${state.preferences.targetFatG}F")
+                StatRow("Calories", "${state.preferences.targetCalories} kcal")
+                StatRow(
+                    "Protein / Carbs / Fat",
+                    "${state.preferences.targetProteinG} / ${state.preferences.targetCarbsG} / ${state.preferences.targetFatG} g",
+                )
             }
         }
         item {
@@ -743,6 +740,93 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+// ── Verdict HERO ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun VerdictHero(result: AdjustmentResult) {
+    val accent = LocalAppAccent.current
+    val heroBrush = remember(accent.accent) {
+        Brush.linearGradient(
+            colors = listOf(
+                accent.accent.copy(alpha = 0.26f),
+                accent.accentDark.copy(alpha = 0.06f),
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+        )
+    }
+
+    val deltaText = when (result.verdict) {
+        AdjustmentVerdict.WAIT_FOR_DATA -> "Not enough data yet"
+        else -> {
+            val change = result.recommendedCalorieChange
+            val sign = if (change > 0) "+" else ""
+            "Recommended change · $sign$change kcal/day"
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(heroBrush)
+            .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(22.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "TODAY'S VERDICT",
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = accent.accentLight,
+            letterSpacing = 1.2.sp,
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = result.verdict.heroLabel(),
+            fontSize = 32.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White,
+            letterSpacing = (-0.6).sp,
+            lineHeight = 36.sp,
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text = deltaText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = accent.accentLighter,
+        )
+
+        val reasons = result.reasonCodes.filter { it.isNotBlank() }
+        if (reasons.isNotEmpty()) {
+            Spacer(Modifier.height(13.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            ) {
+                reasons.forEach { code ->
+                    ReasonChip(text = code.humanizeReasonCode())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReasonChip(text: String) {
+    Text(
+        text = text,
+        fontSize = 10.sp,
+        color = Color(0xB3FFFFFF),
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0x14FFFFFF))
+            .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(20.dp))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
@@ -950,6 +1034,29 @@ private fun AdjustmentVerdict.label(): String = when (this) {
     AdjustmentVerdict.HOLD             -> "Hold"
     AdjustmentVerdict.INCREASE_CALORIES -> "Increase"
     AdjustmentVerdict.REDUCE_CALORIES   -> "Reduce"
+}
+
+/** Full-phrase verdict word for the hero card (e.g. "Hold steady"). */
+private fun AdjustmentVerdict.heroLabel(): String = when (this) {
+    AdjustmentVerdict.WAIT_FOR_DATA     -> "Keep logging"
+    AdjustmentVerdict.HOLD              -> "Hold steady"
+    AdjustmentVerdict.INCREASE_CALORIES -> "Increase"
+    AdjustmentVerdict.REDUCE_CALORIES   -> "Reduce"
+}
+
+/**
+ * Turns an enum-ish reason code (e.g. "TREND_ON_TRACK") into a tidy chip label
+ * ("Trend on track"). Already human-readable strings pass through with just a
+ * capitalised first letter.
+ */
+private fun String.humanizeReasonCode(): String {
+    val cleaned = trim()
+    val words = if (cleaned.contains('_')) {
+        cleaned.split('_').filter { it.isNotBlank() }.joinToString(" ") { it.lowercase() }
+    } else {
+        cleaned.lowercase()
+    }
+    return words.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }
 }
 
 private fun safeFrac(value: Double, target: Int): Float =

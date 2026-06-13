@@ -22,8 +22,12 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.zack.recomptracker.ui.component.AmountMode
+import com.zack.recomptracker.domain.food.FoodScaling
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -162,5 +166,103 @@ class RecipeBuilderViewModelTest {
             .encodeToString(json.toByteArray(Charsets.UTF_8))
         val vm = RecipeBuilderViewModel(stubRepo(), FakeNamer(Result.success("X")), seedHandle(encoded))
         assertEquals(listOf("Chicken", "Fries"), vm.uiState.value.ingredients.map { it.name })
+    }
+
+    // ── Ingredient amount editor ──────────────────────────────────────────────
+
+    private fun scalableIngredient(name: String = "Rice", grams: Double = 200.0, byServings: Boolean = false) =
+        RecipeIngredientEntity(
+            recipeId = 0, name = name, sortOrder = 0,
+            calories = 260, proteinG = 5.0, carbsG = 56.0, fatG = 0.6,
+            amountGrams = grams,
+            basePer100Calories = 130, basePer100ProteinG = 2.5, basePer100CarbsG = 28.0, basePer100FatG = 0.3,
+            entryServingName = "cup", entryServingGrams = 100.0, loggedByServings = byServings,
+        )
+
+    private fun vmWith(vararg ings: RecipeIngredientEntity): RecipeBuilderViewModel {
+        val vm = RecipeBuilderViewModel(stubRepo(), FakeNamer(Result.success("X")), SavedStateHandle())
+        ings.forEach(vm::addIngredient)
+        return vm
+    }
+
+    @Test
+    fun `startEditing opens grams mode for scalable ingredient`() {
+        val vm = vmWith(scalableIngredient(grams = 200.0))
+        vm.startEditingIngredient(0)
+        val ed = vm.uiState.value.ingredientEditor!!
+        assertTrue(ed.scalable)
+        assertTrue(ed.hasServings)
+        assertEquals(AmountMode.GRAMS, ed.mode)
+        assertEquals("200", ed.gramsInput)
+        assertEquals(260, ed.preview?.calories)
+    }
+
+    @Test
+    fun `editing grams rescales macros on confirm`() {
+        val vm = vmWith(scalableIngredient(grams = 200.0))
+        vm.startEditingIngredient(0)
+        vm.onEditorGramsChanged("100")
+        vm.confirmIngredientEdit()
+        val ing = vm.uiState.value.ingredients[0]
+        assertEquals(100.0, ing.amountGrams!!, 0.0)
+        assertEquals(130, ing.calories)
+        assertEquals(2.5, ing.proteinG, 0.001)
+        assertNull(vm.uiState.value.ingredientEditor)
+    }
+
+    @Test
+    fun `servings mode converts to grams on confirm`() {
+        val vm = vmWith(scalableIngredient(grams = 200.0, byServings = true))
+        vm.startEditingIngredient(0)
+        val ed = vm.uiState.value.ingredientEditor!!
+        assertEquals(AmountMode.SERVINGS, ed.mode)
+        assertEquals("2", ed.servingsInput)
+        vm.onEditorServingsChanged("3")
+        vm.confirmIngredientEdit()
+        val ing = vm.uiState.value.ingredients[0]
+        assertEquals(300.0, ing.amountGrams!!, 0.0)
+        assertEquals(390, ing.calories)
+        assertTrue(ing.loggedByServings)
+    }
+
+    @Test
+    fun `startEditing opens raw mode for non-scalable ingredient`() {
+        val vm = vmWith(ingredient("Mystery"))
+        vm.startEditingIngredient(0)
+        val ed = vm.uiState.value.ingredientEditor!!
+        assertFalse(ed.scalable)
+        assertEquals("100", ed.caloriesInput)
+    }
+
+    @Test
+    fun `raw macro edit updates ingredient on confirm`() {
+        val vm = vmWith(ingredient("Mystery"))
+        vm.startEditingIngredient(0)
+        vm.onEditorCaloriesChanged("250")
+        vm.onEditorProteinChanged("30")
+        vm.confirmIngredientEdit()
+        val ing = vm.uiState.value.ingredients[0]
+        assertEquals(250, ing.calories)
+        assertEquals(30.0, ing.proteinG, 0.001)
+        assertNull(vm.uiState.value.ingredientEditor)
+    }
+
+    @Test
+    fun `cancel closes editor without changing the ingredient`() {
+        val vm = vmWith(ingredient("Mystery"))
+        vm.startEditingIngredient(0)
+        vm.onEditorCaloriesChanged("999")
+        vm.cancelIngredientEdit()
+        assertNull(vm.uiState.value.ingredientEditor)
+        assertEquals(100, vm.uiState.value.ingredients[0].calories)
+    }
+
+    @Test
+    fun `grams below minimum clamps on confirm`() {
+        val vm = vmWith(scalableIngredient(grams = 200.0))
+        vm.startEditingIngredient(0)
+        vm.onEditorGramsChanged("0")
+        vm.confirmIngredientEdit()
+        assertEquals(FoodScaling.MIN_GRAMS, vm.uiState.value.ingredients[0].amountGrams!!, 0.0)
     }
 }

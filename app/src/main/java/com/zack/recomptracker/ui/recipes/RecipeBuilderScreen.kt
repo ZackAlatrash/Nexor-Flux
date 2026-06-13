@@ -19,7 +19,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -41,7 +44,6 @@ import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.TextMuted
@@ -144,6 +146,45 @@ fun RecipeBuilderScreen(
                     onValueChange = viewModel::onNameChanged,
                     label = { Text("Recipe name") },
                     singleLine = true,
+                    enabled = !state.isGeneratingName,
+                    trailingIcon = {
+                        if (state.aiAvailable) {
+                            val enabled = state.ingredients.isNotEmpty() && !state.isGeneratingName
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 6.dp)
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (enabled)
+                                            Brush.linearGradient(listOf(accent.accent, accent.accentLight))
+                                        else SolidColor(accent.accent.copy(alpha = 0.16f))
+                                    )
+                                    .then(
+                                        if (enabled) Modifier.clickable(
+                                            remember { MutableInteractionSource() }, null,
+                                            onClick = viewModel::generateName,
+                                        ) else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (state.isGeneratingName) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "Generate name with AI",
+                                        tint = if (enabled) Color.White else accent.accentLight.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(16.dp))
@@ -177,7 +218,7 @@ fun RecipeBuilderScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(shape)
-                            .background(CardSurface),
+                            .background(Color(0x0FFFFFFF)),
                     ) {
                         if (!isFirst) {
                             Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x0AFFFFFF)))

@@ -2,6 +2,8 @@ package com.zack.recomptracker.ui.plan
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,8 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.DatePicker
@@ -22,9 +26,7 @@ import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -38,19 +40,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
 import com.zack.recomptracker.ui.toast.ToastType
+import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
-import com.zack.recomptracker.ui.component.NumberField
-import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.ToggleRow
+import com.zack.recomptracker.ui.component.VioletToggle
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -111,26 +117,42 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
             }
         }
         item {
-            LiquidSecondaryButton(
-                text = "Generate from profile",
-                onClick = viewModel::generateFromProfile,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            GenerateHeroCard(onClick = viewModel::generateFromProfile)
         }
         item {
-            SectionCard("Nutrition targets") {
-                NumberField("Calories", state.targetCalories, viewModel::updateTargetCalories, suffix = "kcal")
+            FrostedCard {
+                SectionLabel("Nutrition targets")
+                GlassInputField(
+                    label = "Calories",
+                    value = state.targetCalories,
+                    onValueChange = viewModel::updateTargetCalories,
+                    unit = "kcal",
+                    keyboardType = KeyboardType.Number,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    NumberField("Protein", state.targetProteinG, viewModel::updateProtein, Modifier.weight(1f), "g")
-                    NumberField("Carbs", state.targetCarbsG, viewModel::updateCarbs, Modifier.weight(1f), "g")
-                    NumberField("Fat", state.targetFatG, viewModel::updateFat, Modifier.weight(1f), "g")
+                    GlassInputField("Protein", state.targetProteinG, viewModel::updateProtein, Modifier.weight(1f), "g", KeyboardType.Number)
+                    GlassInputField("Carbs", state.targetCarbsG, viewModel::updateCarbs, Modifier.weight(1f), "g", KeyboardType.Number)
+                    GlassInputField("Fat", state.targetFatG, viewModel::updateFat, Modifier.weight(1f), "g", KeyboardType.Number)
                 }
             }
         }
         item {
-            SectionCard("Calorie zone") {
-                NumberField("Calorie zone lower", state.calorieZoneLowerBound, viewModel::updateZoneLower, suffix = "kcal")
-                NumberField("Calorie zone upper", state.calorieZoneUpperBound, viewModel::updateZoneUpper, suffix = "kcal")
+            FrostedCard {
+                SectionLabel("Calorie zone")
+                GlassInputField(
+                    label = "Lower bound",
+                    value = state.calorieZoneLowerBound,
+                    onValueChange = viewModel::updateZoneLower,
+                    unit = "kcal",
+                    keyboardType = KeyboardType.Number,
+                )
+                GlassInputField(
+                    label = "Upper bound",
+                    value = state.calorieZoneUpperBound,
+                    onValueChange = viewModel::updateZoneUpper,
+                    unit = "kcal",
+                    keyboardType = KeyboardType.Number,
+                )
             }
         }
         item {
@@ -150,32 +172,24 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = if (advancedOpen) "Collapse advanced" else "Expand advanced",
+                    tint = Color(0x66FFFFFF),
                     modifier = Modifier.rotate(chevronRotation),
                 )
             }
         }
         item {
             AnimatedVisibility(visible = advancedOpen) {
-                SectionCard("Review rules") {
-                    NumberField("Weight trend threshold", state.weightTrendThresholdKgPerWeek, viewModel::updateWeightThreshold, suffix = "kg/week")
-                    NumberField("Waist increase threshold", state.waistIncreaseThresholdCm, viewModel::updateWaistThreshold, suffix = "cm / 2 weeks")
-                    NumberField("Adherence minimum", state.adherenceMinimumPercent, viewModel::updateAdherence, suffix = "%")
-                    NumberField("Review cadence", state.reviewCadenceDays, viewModel::updateReviewCadence, suffix = "days")
-                    OutlinedTextField(
+                FrostedCard {
+                    SectionLabel("Review rules")
+                    GlassInputField("Weight trend threshold", state.weightTrendThresholdKgPerWeek, viewModel::updateWeightThreshold, unit = "kg/week")
+                    GlassInputField("Waist increase threshold", state.waistIncreaseThresholdCm, viewModel::updateWaistThreshold, unit = "cm / 2 weeks")
+                    GlassInputField("Adherence minimum", state.adherenceMinimumPercent, viewModel::updateAdherence, unit = "%", keyboardType = KeyboardType.Number)
+                    GlassInputField("Review cadence", state.reviewCadenceDays, viewModel::updateReviewCadence, unit = "days", keyboardType = KeyboardType.Number)
+                    PhaseStartField(
                         value = state.maintenancePhaseStartDate,
-                        onValueChange = {},
-                        label = { Text("Phase start date") },
-                        placeholder = { Text("Not set") },
-                        readOnly = true,
-                        singleLine = true,
-                        trailingIcon = {
-                            IconButton(onClick = { showDatePicker = true }) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick date")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { showDatePicker = true },
                     )
-                    ToggleRow("Metric units", state.useMetricUnits, viewModel::updateUnits)
+                    VioletToggle("Metric units", state.useMetricUnits, viewModel::updateUnits)
                 }
             }
         }
@@ -232,5 +246,101 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
             onDismiss = viewModel::dismissGenerationDialog,
         )
         null -> Unit
+    }
+}
+
+// ── Generate-from-profile hero card ──────────────────────────────────────────
+// Violet-tinted glass card; the whole surface triggers generation.
+
+@Composable
+private fun GenerateHeroCard(onClick: () -> Unit) {
+    val accent = LocalAppAccent.current
+    val heroBrush = Brush.linearGradient(
+        listOf(accent.accent.copy(alpha = 0.22f), accent.accent.copy(alpha = 0.05f)),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(heroBrush)
+            .border(1.dp, accent.accent.copy(alpha = 0.34f), RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(accent.accent.copy(alpha = 0.20f))
+                .border(1.dp, accent.accent.copy(alpha = 0.30f), RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = accent.accentLighter,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Generate from profile",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text(
+                "Auto-calc targets from your TDEE",
+                fontSize = 10.sp,
+                color = Color(0x80FFFFFF),
+            )
+        }
+        Text(
+            "Run ›",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = accent.accentLight,
+        )
+    }
+}
+
+// ── Phase-start date — glass tappable row matching GlassInputField ───────────
+
+@Composable
+private fun PhaseStartField(value: String, onClick: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(
+            text = "PHASE START DATE",
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0x59FFFFFF),
+            letterSpacing = 0.10.sp,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0x40000000))
+                .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(10.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = value.ifBlank { "Not set" },
+                fontSize = 15.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (value.isBlank()) Color(0x59FFFFFF) else Color.White,
+            )
+            Icon(
+                Icons.Default.CalendarToday,
+                contentDescription = "Pick date",
+                tint = Color(0x80FFFFFF),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }

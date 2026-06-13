@@ -58,7 +58,8 @@ import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
-import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -722,21 +723,29 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
             )
         }
         item {
-            SectionCard("Current targets") {
-                StatRow("Calories", "${state.preferences.targetCalories} kcal")
-                StatRow(
-                    "Protein / Carbs / Fat",
-                    "${state.preferences.targetProteinG} / ${state.preferences.targetCarbsG} / ${state.preferences.targetFatG} g",
-                )
+            FrostedCard {
+                SectionLabel("Current targets")
+                Spacer(Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatRow("Calories", "${state.preferences.targetCalories} kcal")
+                    StatRow(
+                        "Protein / Carbs / Fat",
+                        "${state.preferences.targetProteinG} / ${state.preferences.targetCarbsG} / ${state.preferences.targetFatG} g",
+                    )
+                }
             }
         }
         item {
-            SectionCard("Trend summary") {
-                StatRow("7-day weight average", state.sevenDayWeightAverage?.let { "${String.format(Locale.US, "%.1f", it)} kg" } ?: "No data")
-                StatRow("Weight trend", "${state.weightTrendKgPerWeek.formatSignedOneDecimal()} kg/week")
-                StatRow("Waist trend", "${state.waistTrendCmPerWeek.formatSignedOneDecimal()} cm/week")
-                StatRow("Adherence", state.adherencePercent.formatPercent())
-                StatRow("Logged days", "${state.loggedDaysInWindow} / 14")
+            FrostedCard {
+                SectionLabel("Trend summary")
+                Spacer(Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatRow("7-day weight average", state.sevenDayWeightAverage?.let { "${String.format(Locale.US, "%.1f", it)} kg" } ?: "No data")
+                    StatRow("Weight trend", "${state.weightTrendKgPerWeek.formatSignedOneDecimal()} kg/week")
+                    StatRow("Waist trend", "${state.waistTrendCmPerWeek.formatSignedOneDecimal()} cm/week")
+                    StatRow("Adherence", state.adherencePercent.formatPercent())
+                    StatRow("Logged days", "${state.loggedDaysInWindow} / 14")
+                }
             }
         }
     }
@@ -747,16 +756,6 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
 @Composable
 private fun VerdictHero(result: AdjustmentResult) {
     val accent = LocalAppAccent.current
-    val heroBrush = remember(accent.accent) {
-        Brush.linearGradient(
-            colors = listOf(
-                accent.accent.copy(alpha = 0.26f),
-                accent.accentDark.copy(alpha = 0.06f),
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-        )
-    }
 
     val deltaText = when (result.verdict) {
         AdjustmentVerdict.WAIT_FOR_DATA -> "Not enough data yet"
@@ -767,48 +766,47 @@ private fun VerdictHero(result: AdjustmentResult) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(heroBrush)
-            .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(22.dp))
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "TODAY'S VERDICT",
-            fontSize = 9.5.sp,
-            fontWeight = FontWeight.Bold,
-            color = accent.accentLight,
-            letterSpacing = 1.2.sp,
-        )
-        Spacer(Modifier.height(7.dp))
-        Text(
-            text = result.verdict.heroLabel(),
-            fontSize = 32.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
-            letterSpacing = (-0.6).sp,
-            lineHeight = 36.sp,
-        )
-        Spacer(Modifier.height(3.dp))
-        Text(
-            text = deltaText,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = accent.accentLighter,
-        )
+    TintedCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "TODAY'S VERDICT",
+                fontSize = 9.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = accent.accentLight,
+                letterSpacing = 1.2.sp,
+            )
+            Spacer(Modifier.height(7.dp))
+            Text(
+                text = result.verdict.heroLabel(),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = (-0.6).sp,
+                lineHeight = 36.sp,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = deltaText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = accent.accentLighter,
+            )
 
-        val reasons = result.reasonCodes.filter { it.isNotBlank() }
-        if (reasons.isNotEmpty()) {
-            Spacer(Modifier.height(13.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-            ) {
-                reasons.forEach { code ->
-                    ReasonChip(text = code.humanizeReasonCode())
+            val reasons = result.reasonCodes.filter { it.isNotBlank() }
+            if (reasons.isNotEmpty()) {
+                Spacer(Modifier.height(13.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                ) {
+                    reasons.forEach { code ->
+                        ReasonChip(text = code.humanizeReasonCode())
+                    }
                 }
             }
         }

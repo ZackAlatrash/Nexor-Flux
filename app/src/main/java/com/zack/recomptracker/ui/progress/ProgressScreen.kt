@@ -112,7 +112,7 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
                         )
                     }
                     Text(
-                        text = "Progress",
+                        text = "Trends",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
@@ -273,18 +273,22 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
             }
-        }
-        if (series.trendLabel.isNotEmpty()) {
-            // Neutral when the series has no current value (no data to judge a trend);
-            // otherwise good/off-track from trendIsGood. ChartSeries has no flat flag,
-            // so currentValue == null is the simplest correct neutral signal.
-            VioletBadge(
-                status = pillStatus(
-                    trendIsGood = series.trendIsGood,
-                    isNeutral = series.currentValue == null,
-                ),
-                text = series.trendLabel,
-            )
+            if (series.trendLabel.isNotEmpty()) {
+                // Neutral when the series has no current value (no data to judge a trend);
+                // otherwise good/off-track from trendIsGood. ChartSeries has no flat flag,
+                // so currentValue == null is the simplest correct neutral signal.
+                VioletBadge(
+                    status = pillStatus(
+                        trendIsGood = series.trendIsGood,
+                        isNeutral = series.currentValue == null,
+                    ),
+                    text = series.trendLabel,
+                    compact = true,
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(bottom = 2.dp),
+                )
+            }
         }
         Spacer(Modifier.height(3.dp))
         if (series.values.isNotEmpty() && series.values.any { it != 0f }) {
@@ -331,16 +335,20 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                         modifier = Modifier.padding(bottom = 3.dp),
                     )
                 }
-            }
-            if (series.trendLabel.isNotEmpty()) {
-                // See MiniChartCard: neutral only when there is no current value.
-                VioletBadge(
-                    status = pillStatus(
-                        trendIsGood = series.trendIsGood,
-                        isNeutral = series.currentValue == null,
-                    ),
-                    text = series.trendLabel,
-                )
+                if (series.trendLabel.isNotEmpty()) {
+                    // See MiniChartCard: neutral only when there is no current value.
+                    VioletBadge(
+                        status = pillStatus(
+                            trendIsGood = series.trendIsGood,
+                            isNeutral = series.currentValue == null,
+                        ),
+                        text = series.trendLabel,
+                        compact = true,
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .padding(bottom = 3.dp),
+                    )
+                }
             }
         }
     }

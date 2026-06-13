@@ -203,9 +203,24 @@ fun VioletBadge(text: String, modifier: Modifier = Modifier) {
  * color trio changes per [PillStatus].
  */
 @Composable
-fun VioletBadge(status: PillStatus, text: String, modifier: Modifier = Modifier) {
+fun VioletBadge(
+    status: PillStatus,
+    text: String,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
     when (status) {
-        PillStatus.NEUTRAL -> VioletBadge(text = text, modifier = modifier)
+        PillStatus.NEUTRAL -> {
+            val accent = LocalAppAccent.current
+            BadgePill(
+                text = text,
+                bg = accent.accent.copy(alpha = 0.12f),
+                border = accent.accent.copy(alpha = 0.20f),
+                textColor = accent.accentLight,
+                modifier = modifier,
+                compact = compact,
+            )
+        }
         PillStatus.GOOD -> {
             val green = Color(0xFF86efac)
             BadgePill(
@@ -214,6 +229,7 @@ fun VioletBadge(status: PillStatus, text: String, modifier: Modifier = Modifier)
                 border = green.copy(alpha = 0.28f),
                 textColor = green,
                 modifier = modifier,
+                compact = compact,
             )
         }
         PillStatus.CAUTION -> {
@@ -224,6 +240,7 @@ fun VioletBadge(status: PillStatus, text: String, modifier: Modifier = Modifier)
                 border = amber.copy(alpha = 0.28f),
                 textColor = amber,
                 modifier = modifier,
+                compact = compact,
             )
         }
         PillStatus.OFF_TRACK -> BadgePill(
@@ -232,6 +249,7 @@ fun VioletBadge(status: PillStatus, text: String, modifier: Modifier = Modifier)
             border = ErrorRed.copy(alpha = 0.28f),
             textColor = ErrorRed,
             modifier = modifier,
+            compact = compact,
         )
     }
 }
@@ -243,17 +261,22 @@ private fun BadgePill(
     border: Color,
     textColor: Color,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
+    val corner = if (compact) 12.dp else 20.dp
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(corner))
             .background(bg)
-            .border(1.dp, border, RoundedCornerShape(20.dp))
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .border(1.dp, border, RoundedCornerShape(corner))
+            .padding(
+                horizontal = if (compact) 6.dp else 8.dp,
+                vertical = if (compact) 1.dp else 2.dp,
+            ),
     ) {
         Text(
             text = text,
-            fontSize = 9.sp,
+            fontSize = if (compact) 8.sp else 9.sp,
             fontWeight = FontWeight.Bold,
             color = textColor,
         )

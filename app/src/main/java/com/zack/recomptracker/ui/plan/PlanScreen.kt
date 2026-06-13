@@ -79,6 +79,13 @@ fun PlanScreen(viewModel: PlanViewModel) {
             }
         }
         item {
+            LiquidSecondaryButton(
+                text = "Generate from profile",
+                onClick = viewModel::generateFromProfile,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
             SectionCard("Nutrition targets") {
                 NumberField("Calories", state.targetCalories, viewModel::updateTargetCalories, suffix = "kcal")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -151,5 +158,20 @@ fun PlanScreen(viewModel: PlanViewModel) {
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    when (val dialog = state.generationDialog) {
+        is PlanGenerationDialog.Preview -> PlanPreviewDialog(
+            plan = dialog.plan,
+            onApply = viewModel::applyGeneratedPlan,
+            onDismiss = viewModel::dismissGenerationDialog,
+        )
+        is PlanGenerationDialog.WeightEntry -> WeightEntryDialog(
+            state = dialog,
+            onValueChange = viewModel::updateGenerationWeightInput,
+            onConfirm = { viewModel.submitWeight(dialog.weightInput) },
+            onDismiss = viewModel::dismissGenerationDialog,
+        )
+        null -> Unit
     }
 }

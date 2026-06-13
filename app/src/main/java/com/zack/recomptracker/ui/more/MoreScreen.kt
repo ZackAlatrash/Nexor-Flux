@@ -53,8 +53,10 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.FontPicker
 import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.MenuIcon
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SettingRow
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -753,59 +755,6 @@ private fun MenuRow(
                     .background(Color(0x0DFFFFFF)),
             )
         }
-    }
-}
-
-// ── Settings Row ──────────────────────────────────────────────────────────────
-
-@Composable
-private fun SettingRow(
-    emoji: String,
-    title: String,
-    detail: String,
-    showDivider: Boolean,
-    control: @Composable () -> Unit,
-) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            MenuIcon(emoji)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                Text(detail, fontSize = 11.sp, color = TextMuted)
-            }
-            control()
-        }
-        if (showDivider) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color(0x0DFFFFFF)),
-            )
-        }
-    }
-}
-
-// ── Menu Icon ─────────────────────────────────────────────────────────────────
-
-@Composable
-private fun MenuIcon(emoji: String) {
-    val accent = LocalAppAccent.current
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(accent.tintedSurface)
-            .border(1.dp, accent.tintedBorder, RoundedCornerShape(10.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(emoji, fontSize = 16.sp)
     }
 }
 

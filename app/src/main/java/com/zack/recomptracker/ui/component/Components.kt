@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -51,6 +52,7 @@ import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.TextMuted
 
 private val SuccessGreen = Color(0xFF34d399)
 
@@ -327,5 +329,57 @@ internal fun AccentThemePicker(
                 }
             }
         }
+    }
+}
+
+// ── Settings Row ──────────────────────────────────────────────────────────────
+// Shared between the More hub and the new settings-family screens.
+
+@Composable
+internal fun SettingRow(
+    emoji: String,
+    title: String,
+    detail: String,
+    showDivider: Boolean,
+    control: @Composable () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MenuIcon(emoji)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text(detail, fontSize = 11.sp, color = TextMuted)
+            }
+            control()
+        }
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color(0x0DFFFFFF)),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun MenuIcon(emoji: String) {
+    val accent = LocalAppAccent.current
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(accent.tintedSurface)
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(emoji, fontSize = 16.sp)
     }
 }

@@ -11,33 +11,22 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,14 +44,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.preferences.ActivityLevel
 import com.zack.recomptracker.data.preferences.BiologicalSex
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.displayName
-import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
-import com.zack.recomptracker.domain.foodimport.identity
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AccentThemePicker
 import com.zack.recomptracker.ui.component.ConfirmDialog
@@ -72,21 +58,19 @@ import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.ScoreStepper
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.theme.AccentTheme
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
-import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.TextFaint
 import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.integrations.CardDivider
+import com.zack.recomptracker.ui.integrations.HealthConnectSection
+import com.zack.recomptracker.ui.integrations.HistoricalFoodReviewDialog
+import com.zack.recomptracker.ui.integrations.SettingsCard
 import java.time.LocalDate
-
-private val HealthConnectGreen = Color(0xFF34D399)
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -501,207 +485,7 @@ private fun ActivityLevel.shortDesc(): String = when (this) {
     ActivityLevel.VERY_ACTIVE        -> "6–7 hard workout days / week"
 }
 
-// ── Health Connect Section ────────────────────────────────────────────────────
-
-@Composable
-private fun HealthConnectSection(
-    availability: HealthConnectAvailability,
-    enabled: Boolean,
-    hasPermissions: Boolean,
-    syncing: Boolean,
-    message: String?,
-    messageKind: MessageKind = MessageKind.INFO,
-    onToggle: (Boolean) -> Unit,
-    onSyncNow: () -> Unit,
-    importingFoods: Boolean,
-    onImportFoods: () -> Unit,
-    onInstall: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SettingsCard(modifier = modifier) {
-        // Header with icon
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x1A34D399))
-                    .border(1.dp, Color(0x3334D399), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MonitorHeart,
-                    contentDescription = null,
-                    tint = HealthConnectGreen,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Column {
-                Text(
-                    "Health Connect",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                )
-                Text(
-                    "Auto-fill steps, weight & sleep",
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                )
-            }
-        }
-
-        CardDivider()
-
-        when (availability) {
-            HealthConnectAvailability.NotInstalled -> {
-                HcStatusRow(dotColor = TextMuted, text = "Health Connect isn't installed on this device.")
-                LiquidGlassButton(
-                    onClick = onInstall,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Install Health Connect")
-                }
-            }
-
-            HealthConnectAvailability.NotSupported -> {
-                HcStatusRow(dotColor = TextMuted, text = "Health Connect isn't supported on this device.")
-            }
-
-            HealthConnectAvailability.Available -> {
-                VioletToggle(
-                    label = "Sync automatically",
-                    checked = enabled,
-                    onCheckedChange = onToggle,
-                )
-
-                val (dotColor, statusText) = when {
-                    enabled && hasPermissions  -> HealthConnectGreen to "Connected"
-                    enabled && !hasPermissions -> Color(0xFFfb7185) to "Permission needed — tap toggle to reconnect"
-                    else                       -> TextMuted to "Not connected"
-                }
-                HcStatusRow(dotColor = dotColor, text = statusText)
-
-                if (enabled && hasPermissions) {
-                    LiquidGlassButton(
-                        onClick = onSyncNow,
-                        enabled = !syncing,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (syncing) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Syncing…")
-                        } else {
-                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Sync now")
-                        }
-                    }
-                }
-
-                LiquidSecondaryButton(
-                    text = if (importingFoods) "Scanning food history…" else "Import foods from Health Connect",
-                    onClick = onImportFoods,
-                    enabled = !importingFoods,
-                )
-            }
-        }
-
-        MessageText(message, messageKind)
-    }
-}
-
-// ── Historical food review dialog ─────────────────────────────────────────────
-
-@Composable
-private fun HistoricalFoodReviewDialog(
-    candidates: List<FoodImportCandidate>,
-    selected: Set<com.zack.recomptracker.domain.foodimport.FoodIdentity>,
-    onToggle: (FoodImportCandidate) -> Unit,
-    onDismiss: () -> Unit,
-    onImport: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Review historical foods") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100 g baseline.",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    lineHeight = 17.sp,
-                )
-                androidx.compose.foundation.lazy.LazyColumn(
-                    modifier = Modifier.heightIn(max = 360.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(candidates.size) { index ->
-                        val candidate = candidates[index]
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Checkbox(
-                                checked = candidate.identity() in selected,
-                                onCheckedChange = { onToggle(candidate) },
-                            )
-                            Column {
-                                Text(candidate.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                Text(
-                                    "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
-                                    fontSize = 11.sp,
-                                    color = TextMuted,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onImport, enabled = selected.isNotEmpty()) { Text("Import selected") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-// ── Shared sub-components ─────────────────────────────────────────────────────
-
-@Composable
-private fun SettingsCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        content = content,
-    )
-}
-
-@Composable
-private fun CardDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(Color(0x0DFFFFFF)),
-    )
-}
+// ── Profile sub-components ────────────────────────────────────────────────────
 
 @Composable
 private fun ProfileOptionRow(
@@ -787,22 +571,5 @@ private fun SexChip(
             fontWeight = FontWeight.SemiBold,
             color = if (selected) accent.accentLighter else Color.White.copy(alpha = 0.5f),
         )
-    }
-}
-
-
-@Composable
-private fun HcStatusRow(dotColor: Color, text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .clip(CircleShape)
-                .background(dotColor),
-        )
-        Text(text = text, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
     }
 }

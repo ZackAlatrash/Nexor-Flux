@@ -115,10 +115,7 @@ class PlanViewModel(
     }
 
     fun generateFromProfile() {
-        viewModelScope.launch {
-            val profile = userProfileStore.preferences.first()
-            handleOutcome(planGenerator.generate(profile, latestLoggedWeightKg()))
-        }
+        viewModelScope.launch { runGeneration(latestLoggedWeightKg()) }
     }
 
     fun submitWeight(value: String) {
@@ -134,10 +131,7 @@ class PlanViewModel(
             }
             return
         }
-        viewModelScope.launch {
-            val profile = userProfileStore.preferences.first()
-            handleOutcome(planGenerator.generate(profile, weight))
-        }
+        viewModelScope.launch { runGeneration(weight) }
     }
 
     fun updateGenerationWeightInput(value: String) {
@@ -172,6 +166,11 @@ class PlanViewModel(
 
     fun dismissGenerationDialog() {
         _uiState.update { it.copy(generationDialog = null) }
+    }
+
+    private suspend fun runGeneration(weightKg: Double?) {
+        val profile = userProfileStore.preferences.first()
+        handleOutcome(planGenerator.generate(profile, weightKg))
     }
 
     private suspend fun latestLoggedWeightKg(): Double? =

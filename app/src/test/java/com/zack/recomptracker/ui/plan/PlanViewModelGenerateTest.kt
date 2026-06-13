@@ -112,6 +112,23 @@ class PlanViewModelGenerateTest {
     }
 
     @Test
+    fun submitInvalidWeightKeepsEntryDialogWithError() = runTest(dispatcher) {
+        whenever(profileStore.preferences).thenReturn(flowOf(completeProfile))
+        whenever(logRepo.observeDailyLogs()).thenReturn(flowOf(emptyList()))
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.generateFromProfile()
+        advanceUntilIdle()
+
+        vm.submitWeight("0")
+        advanceUntilIdle()
+
+        val dialog = vm.uiState.value.generationDialog
+        assertTrue(dialog is PlanGenerationDialog.WeightEntry)
+        assertEquals("Enter a valid weight in kg.", (dialog as PlanGenerationDialog.WeightEntry).error)
+    }
+
+    @Test
     fun applyGeneratedPlanPopulatesFieldsAndMarksDirty() = runTest(dispatcher) {
         whenever(profileStore.preferences).thenReturn(flowOf(completeProfile))
         whenever(logRepo.observeDailyLogs()).thenReturn(

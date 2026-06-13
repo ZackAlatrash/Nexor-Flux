@@ -54,7 +54,7 @@ fun migrateLegacyProfileJson(raw: String, today: LocalDate = LocalDate.now()): U
     if (base.birthDate != null) return base
     val legacyAge = runCatching {
         migrationJson.parseToJsonElement(raw).jsonObject["ageYears"]?.jsonPrimitive?.intOrNull
-    }.getOrNull() ?: return base
+    }.getOrNull()?.takeIf { it > 0 } ?: return base
     return base.copy(birthDate = LocalDate.of(today.year - legacyAge, 1, 1).toString())
 }
 

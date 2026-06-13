@@ -1,7 +1,6 @@
 package com.zack.recomptracker.data.preferences
 
 import androidx.datastore.preferences.core.mutablePreferencesOf
-import androidx.datastore.preferences.core.stringPreferencesKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -14,16 +13,16 @@ import org.junit.Test
 class UserProfilePreferencesStoreTest {
 
     @Test
-    fun `round-trips all fields including training experience and planned days`() {
+    fun `round-trips all fields`() {
         val profile = UserProfilePreferences(
+            name = "Alex",
+            profilePhotoUri = "content://photo/1",
             heightCm = 180,
-            ageYears = 28,
+            birthDate = "1998-01-01",
             biologicalSex = BiologicalSex.MALE,
             activityLevel = ActivityLevel.MODERATELY_ACTIVE,
             weeklyGymSessions = 5,
             goal = FitnessGoal.RECOMP,
-            trainingExperience = TrainingExperience.BEGINNER,
-            plannedTrainingDays = 4,
         )
 
         val restored = mutablePreferencesOf()
@@ -34,20 +33,22 @@ class UserProfilePreferencesStoreTest {
     }
 
     @Test
-    fun `new fields persist with their own values`() {
+    fun `fields persist with their own values`() {
         val prefs = mutablePreferencesOf().apply {
             writeUserProfilePreferences(
                 UserProfilePreferences(
-                    trainingExperience = TrainingExperience.ADVANCED,
-                    plannedTrainingDays = 6,
+                    name = "Sam",
+                    birthDate = "1986-01-01",
+                    goal = FitnessGoal.LEAN_BULK,
                 ),
             )
         }
 
         val restored = prefs.toUserProfilePreferences()
 
-        assertEquals(TrainingExperience.ADVANCED, restored.trainingExperience)
-        assertEquals(6, restored.plannedTrainingDays)
+        assertEquals("Sam", restored.name)
+        assertEquals("1986-01-01", restored.birthDate)
+        assertEquals(FitnessGoal.LEAN_BULK, restored.goal)
     }
 
     @Test
@@ -57,8 +58,9 @@ class UserProfilePreferencesStoreTest {
             .toUserProfilePreferences()
 
         assertEquals(UserProfilePreferences(), restored)
-        assertNull(restored.trainingExperience)
-        assertNull(restored.plannedTrainingDays)
+        assertNull(restored.name)
+        assertNull(restored.birthDate)
+        assertNull(restored.goal)
     }
 
     @Test
@@ -66,26 +68,19 @@ class UserProfilePreferencesStoreTest {
         val prefs = mutablePreferencesOf().apply {
             writeUserProfilePreferences(
                 UserProfilePreferences(
-                    trainingExperience = TrainingExperience.INTERMEDIATE,
-                    plannedTrainingDays = 3,
+                    name = "Jordan",
+                    birthDate = "1990-05-02",
+                    goal = FitnessGoal.MODERATE_CUT,
                 ),
             )
-            // Re-save with both unset — should remove, not retain stale values.
+            // Re-save with everything unset — should remove, not retain stale values.
             writeUserProfilePreferences(UserProfilePreferences())
         }
 
         val restored = prefs.toUserProfilePreferences()
 
-        assertNull(restored.trainingExperience)
-        assertNull(restored.plannedTrainingDays)
-    }
-
-    @Test
-    fun `invalid stored training experience falls back to null`() {
-        val prefs = mutablePreferencesOf(
-            stringPreferencesKey("training_experience") to "NOT_A_LEVEL",
-        )
-
-        assertNull(prefs.toUserProfilePreferences().trainingExperience)
+        assertNull(restored.name)
+        assertNull(restored.birthDate)
+        assertNull(restored.goal)
     }
 }

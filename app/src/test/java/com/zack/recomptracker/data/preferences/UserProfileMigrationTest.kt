@@ -34,4 +34,10 @@ class UserProfileMigrationTest {
         val migrated = migrateLegacyProfileJson("{}", today = LocalDate.of(2026, 6, 13))
         assertNull(migrated.birthDate)
     }
+
+    @Test
+    fun negativeOrZeroAge_staysNull() {
+        val migrated = migrateLegacyProfileJson("""{"ageYears":0}""", today = LocalDate.of(2026, 6, 13))
+        assertNull(migrated.birthDate)
+    }
 }

@@ -132,6 +132,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     var showResetAllConfirm by remember { mutableStateOf(false) }
     var showRemoveNevoConfirm by remember { mutableStateOf(false) }
     var showImportConfirm by remember { mutableStateOf(false) }
+    var showClearFoodLibraryConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.pendingHcPermissionRequest) {
         if (state.pendingHcPermissionRequest) {
@@ -313,6 +314,11 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsCard {
                     LiquidSecondaryButton(
+                        text = "Clear food library",
+                        onClick = { showClearFoodLibraryConfirm = true },
+                        enabled = !state.busy,
+                    )
+                    LiquidSecondaryButton(
                         text = "Reset logs only",
                         onClick = { showResetLogsConfirm = true },
                         enabled = !state.busy,
@@ -345,6 +351,16 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             isDestructive = true,
             onConfirm = { viewModel.resetEverything(); showResetAllConfirm = false },
             onDismiss = { showResetAllConfirm = false },
+        )
+    }
+    if (showClearFoodLibraryConfirm) {
+        ConfirmDialog(
+            title = "Clear food library?",
+            body = "All foods in your personal library (Samsung Health imports and manually added foods) will be deleted. Your logs, plan, and the NEVO catalog are kept. This cannot be undone.",
+            confirmLabel = "Clear",
+            isDestructive = true,
+            onConfirm = { viewModel.clearFoodLibrary(); showClearFoodLibraryConfirm = false },
+            onDismiss = { showClearFoodLibraryConfirm = false },
         )
     }
     if (showRemoveNevoConfirm) {

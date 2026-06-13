@@ -14,6 +14,13 @@ class PersonalFoodRepository(
     suspend fun getPersonalFoods(): List<FoodImportCandidate> =
         savedFoodDao.getAll().map(SavedFoodEntity::toImportCandidate)
 
+    /** Removes every personal/saved food. Returns how many were deleted. */
+    suspend fun clearPersonalFoods(): Int {
+        val count = savedFoodDao.getAll().size
+        savedFoodDao.deleteAll()
+        return count
+    }
+
     suspend fun createPersonalFoodsJson(): String = jsonCodec.encode(
         getPersonalFoods(),
     )

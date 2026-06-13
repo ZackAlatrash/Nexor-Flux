@@ -184,6 +184,25 @@ class SettingsViewModel(
         }
     }
 
+    fun clearFoodLibrary() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, message = null, messageKind = MessageKind.INFO) }
+            runCatching { personalFoodRepository.clearPersonalFoods() }
+                .onSuccess { count ->
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            message = if (count == 0) "Food library was already empty." else "Cleared $count foods from your library.",
+                            messageKind = MessageKind.SUCCESS,
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(busy = false, message = error.message ?: "Couldn't clear the food library.", messageKind = MessageKind.ERROR) }
+                }
+        }
+    }
+
     fun resetLogsOnly() {
         viewModelScope.launch {
             runBusy("Logs reset. Saved foods and meals kept.") {

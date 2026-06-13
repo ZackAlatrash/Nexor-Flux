@@ -3,6 +3,8 @@ package com.zack.recomptracker.ui.recipes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.RecipeNamer
+import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.repository.RecipeRepository
 import com.zack.recomptracker.ui.component.MessageKind
@@ -10,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 data class RecipeBuilderUiState(
     val recipeId: Long? = null,
@@ -19,10 +23,15 @@ data class RecipeBuilderUiState(
     val isDirty: Boolean = false,
     val message: String? = null,
     val messageKind: MessageKind = MessageKind.ERROR,
+    /** Whether the ✨ AI-name button should be shown at all (model present / cloud configured). */
+    val aiAvailable: Boolean = false,
+    /** True while a name is being generated. */
+    val isGeneratingName: Boolean = false,
 )
 
 class RecipeBuilderViewModel(
     private val recipeRepository: RecipeRepository,
+    private val recipeNamer: RecipeNamer,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -42,6 +51,25 @@ class RecipeBuilderViewModel(
                     _uiState.update { it.copy(name = existing.recipe.name, ingredients = existing.ingredients) }
                 }
             }
+        } else {
+            // New recipe: load seed ingredients passed from a meal slot, if any.
+            decodeSeed(savedStateHandle.get<String>("seedIngredients"))?.let { seeded ->
+                _uiState.update { it.copy(ingredients = seeded) }
+            }
+        }
+
+        viewModelScope.launch {
+            recipeNamer.available.collect { avail -> _uiState.update { it.copy(aiAvailable = avail) } }
+        }
+    }
+
+    private fun decodeSeed(encoded: String?): List<RecipeIngredientEntity>? {
+        if (encoded.isNullOrBlank()) return null
+        return try {
+            val json = String(java.util.Base64.getUrlDecoder().decode(encoded), Charsets.UTF_8)
+            Json.decodeFromString<List<RecipeIngredientEntity>>(json)
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -62,6 +90,36 @@ class RecipeBuilderViewModel(
         val list = state.ingredients.toMutableList()
         list[index] = updated
         state.copy(ingredients = list, isDirty = true)
+    }
+
+    /** Generate (or reroll) a gym-bro name from the current ingredients + macros. */
+    fun generateName() {
+        val state = _uiState.value
+        if (state.ingredients.isEmpty() || state.isGeneratingName) return
+        _uiState.update { it.copy(isGeneratingName = true, message = null) }
+        viewModelScope.launch {
+            val totals = MacroTotals(
+                calories = state.ingredients.sumOf { it.calories },
+                proteinG = state.ingredients.sumOf { it.proteinG },
+                carbsG = state.ingredients.sumOf { it.carbsG },
+                fatG = state.ingredients.sumOf { it.fatG },
+            )
+            val result = recipeNamer.generate(state.ingredients, totals)
+            result.fold(
+                onSuccess = { name ->
+                    _uiState.update { it.copy(name = name, isGeneratingName = false, isDirty = true) }
+                },
+                onFailure = {
+                    _uiState.update {
+                        it.copy(
+                            isGeneratingName = false,
+                            message = "Couldn't think of a name — try again.",
+                            messageKind = MessageKind.ERROR,
+                        )
+                    }
+                },
+            )
+        }
     }
 
     fun save() {

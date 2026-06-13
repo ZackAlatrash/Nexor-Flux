@@ -27,11 +27,16 @@ import com.zack.recomptracker.ai.CoachCoordinator
 import com.zack.recomptracker.ai.CoachToolExecutor
 import com.zack.recomptracker.ai.CoachHandoffStore
 import com.zack.recomptracker.ai.CoachToolsAdapter
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.CloudNameGenerator
 import com.zack.recomptracker.ai.GemmaServiceHolder
 import com.zack.recomptracker.ai.GemmaCoachCoordinator
 import com.zack.recomptracker.ai.GemmaInsightCoordinator
+import com.zack.recomptracker.ai.LocalNameGenerator
+import com.zack.recomptracker.ai.RecipeNamer
 import com.zack.recomptracker.ai.RoutingCoachCoordinator
 import com.zack.recomptracker.ai.RoutingInsightCoordinator
+import com.zack.recomptracker.ai.RoutingRecipeNamer
 import com.zack.recomptracker.data.preferences.SecureKeyStore
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
@@ -269,6 +274,34 @@ class AppContainer(context: Context) {
         cloudConfigCompleteFlow = cloudConfigComplete,
         scope = appScope,
     )
+
+    // Effective backend for naming — same rule as RoutingInsightCoordinator.
+    private val recipeNamerBackend: StateFlow<AiBackend> =
+        combine(uiPreferences.aiBackend, cloudConfigComplete) { backend, complete ->
+            if (backend == AiBackend.CLOUD && complete) AiBackend.CLOUD else AiBackend.LOCAL
+        }.stateIn(appScope, SharingStarted.Eagerly, AiBackend.LOCAL)
+
+    // Naming is available exactly when the routed insight model is usable (covers
+    // AI-enabled, backend, cloud-config, and on-device model presence in one signal).
+    private val recipeNamerAvailable: StateFlow<Boolean> =
+        aiInsightCoordinator.state.map { state ->
+            when (state) {
+                AiInsightState.Disabled,
+                AiInsightState.ModelMissing,
+                is AiInsightState.Downloading,
+                AiInsightState.DownloadFailed,
+                AiInsightState.ModelVerifying -> false
+                else -> true
+            }
+        }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    val recipeNamer: RecipeNamer = RoutingRecipeNamer(
+        local = LocalNameGenerator(gemmaServiceHolder) { gemmaInsightCoordinator.selectedModel.value },
+        cloud = CloudNameGenerator(openAiCompatClient, cloudConfigFlow),
+        effectiveBackend = recipeNamerBackend,
+        available = recipeNamerAvailable,
+    )
+
     val coachCoordinator: CoachCoordinator = RoutingCoachCoordinator(
         local = gemmaCoachCoordinator,
         cloud = cloudCoachCoordinator,
@@ -387,6 +420,7 @@ private class AppViewModelFactory(
             )
             RecipeBuilderViewModel::class.java -> RecipeBuilderViewModel(
                 recipeRepository = container.recipeRepository,
+                recipeNamer = container.recipeNamer,
                 savedStateHandle = extras.createSavedStateHandle(),
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")

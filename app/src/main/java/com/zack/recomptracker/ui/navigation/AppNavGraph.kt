@@ -30,6 +30,8 @@ import com.zack.recomptracker.ui.settings.SettingsScreen
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.profile.ProfileScreen
 import com.zack.recomptracker.ui.profile.ProfileViewModel
+import com.zack.recomptracker.ui.aicoach.AiCoachScreen
+import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceScreen
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.integrations.IntegrationsScreen
@@ -74,6 +76,7 @@ object Routes {
     const val Settings  = "settings"
     const val Profile      = "profile"
     const val Appearance   = "appearance"
+    const val AiCoach      = "ai_coach"
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
     const val BodyHistory = "body_history"
@@ -410,6 +413,16 @@ fun AppNavGraph(
         ) {
             AppearanceScreen(
                 viewModel<AppearanceViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.AiCoach,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            AiCoachScreen(
+                viewModel = viewModel<AiCoachViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

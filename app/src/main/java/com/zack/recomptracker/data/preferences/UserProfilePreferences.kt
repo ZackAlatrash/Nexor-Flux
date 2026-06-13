@@ -10,10 +10,19 @@ data class UserProfilePreferences(
     val activityLevel: ActivityLevel? = null,
     val weeklyGymSessions: Int? = null,
     val goal: FitnessGoal? = null,
+    val trainingExperience: TrainingExperience? = null,
+    val plannedTrainingDays: Int? = null,
 )
 
 @Serializable
 enum class BiologicalSex { MALE, FEMALE }
+
+@Serializable
+enum class TrainingExperience {
+    BEGINNER,
+    INTERMEDIATE,
+    ADVANCED,
+}
 
 @Serializable
 enum class ActivityLevel {
@@ -54,4 +63,10 @@ fun ActivityLevel.displayName(): String = when (this) {
     ActivityLevel.LIGHTLY_ACTIVE -> "Lightly Active"
     ActivityLevel.MODERATELY_ACTIVE -> "Moderately Active"
     ActivityLevel.VERY_ACTIVE -> "Very Active"
+}
+
+fun TrainingExperience.displayName(): String = when (this) {
+    TrainingExperience.BEGINNER -> "Beginner"
+    TrainingExperience.INTERMEDIATE -> "Intermediate"
+    TrainingExperience.ADVANCED -> "Advanced"
 }

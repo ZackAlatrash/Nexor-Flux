@@ -59,6 +59,7 @@ import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.preferences.ActivityLevel
 import com.zack.recomptracker.data.preferences.BiologicalSex
 import com.zack.recomptracker.data.preferences.FitnessGoal
+import com.zack.recomptracker.data.preferences.TrainingExperience
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.displayName
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
@@ -459,11 +460,43 @@ private fun UserProfileSection(
 
         Spacer(Modifier.height(16.dp))
 
+        // ── Training experience ───────────────────────────────────────────────
+        SectionLabel("Training experience")
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TrainingExperience.entries.forEach { e ->
+                SexChip(
+                    label = e.displayName(),
+                    selected = profile.trainingExperience == e,
+                    onClick = {
+                        onProfileChange(
+                            profile.copy(
+                                trainingExperience = if (profile.trainingExperience == e) null else e,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
         // ── Gym sessions ──────────────────────────────────────────────────────
         ScoreStepper(
             label = "Gym sessions / week",
             value = profile.weeklyGymSessions ?: 0,
             onValueChange = { onProfileChange(profile.copy(weeklyGymSessions = it)) },
+            range = 0..7,
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Planned training days ─────────────────────────────────────────────
+        ScoreStepper(
+            label = "Planned training days / week",
+            value = profile.plannedTrainingDays ?: 0,
+            onValueChange = { onProfileChange(profile.copy(plannedTrainingDays = it)) },
             range = 0..7,
         )
 

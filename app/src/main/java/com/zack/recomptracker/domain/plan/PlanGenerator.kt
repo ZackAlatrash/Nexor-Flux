@@ -1,6 +1,8 @@
 package com.zack.recomptracker.domain.plan
 
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
+import com.zack.recomptracker.data.preferences.ageYears
+import java.time.LocalDate
 
 /** Outcome of attempting to generate a plan from the current profile + weight. */
 sealed interface PlanGenerationOutcome {
@@ -16,10 +18,15 @@ sealed interface PlanGenerationOutcome {
 class PlanGenerator(
     private val calculator: PlanCalculator = PlanCalculator(),
 ) {
-    fun generate(profile: UserProfilePreferences, weightKg: Double?): PlanGenerationOutcome {
+    fun generate(
+        profile: UserProfilePreferences,
+        weightKg: Double?,
+        today: LocalDate = LocalDate.now(),
+    ): PlanGenerationOutcome {
+        val age = profile.ageYears(today)
         val missing = buildList {
             if (profile.heightCm == null) add("Height")
-            if (profile.ageYears == null) add("Age")
+            if (age == null) add("Age")
             if (profile.biologicalSex == null) add("Sex")
             if (profile.activityLevel == null) add("Activity level")
             if (profile.goal == null) add("Goal")
@@ -30,7 +37,7 @@ class PlanGenerator(
         val plan = calculator.generate(
             PlanCalculatorInput(
                 heightCm = profile.heightCm!!,
-                ageYears = profile.ageYears!!,
+                ageYears = age!!,
                 sex = profile.biologicalSex!!,
                 activityLevel = profile.activityLevel!!,
                 goal = profile.goal!!,

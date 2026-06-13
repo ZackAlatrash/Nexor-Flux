@@ -2,7 +2,7 @@ package com.zack.recomptracker.ui
 
 import com.zack.recomptracker.data.local.entity.CatalogFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
-import com.zack.recomptracker.ui.foodlibrary.AmountMode
+import com.zack.recomptracker.ui.component.AmountMode
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryUiState
 import org.junit.Assert.assertEquals
 import org.junit.Test

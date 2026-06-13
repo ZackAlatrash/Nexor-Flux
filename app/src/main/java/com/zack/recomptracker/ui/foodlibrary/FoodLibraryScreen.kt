@@ -73,6 +73,9 @@ import com.zack.recomptracker.ui.toast.ToastMessage
 import com.zack.recomptracker.ui.toast.ToastType
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.component.AmountMode
+import com.zack.recomptracker.ui.component.AmountPreviewStat
+import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -936,74 +939,6 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                 onClick = viewModel::confirmAmount,
             )
         }
-    }
-}
-
-@Composable
-private fun AmountStepper(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onMinus: () -> Unit,
-    onPlus: () -> Unit,
-    caption: String,
-    suffix: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(CornerSmall))
-                .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerSmall))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onMinus,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("−", fontSize = 20.sp, color = Color.White)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                suffix = { Text(suffix) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (caption.isNotBlank()) {
-                Text(caption, color = TextSecondary, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-            }
-        }
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(CornerSmall))
-                .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerSmall))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onPlus,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("+", fontSize = 20.sp, color = Color.White)
-        }
-    }
-}
-
-@Composable
-private fun AmountPreviewStat(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-        Text(label, color = TextSecondary, fontSize = 10.sp)
     }
 }
 

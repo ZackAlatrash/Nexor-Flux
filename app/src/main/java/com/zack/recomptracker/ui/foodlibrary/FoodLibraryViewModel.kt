@@ -15,6 +15,7 @@ import com.zack.recomptracker.domain.food.FoodMacros
 import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.domain.food.RecipeWithIngredients
+import com.zack.recomptracker.ui.component.AmountMode
 import com.zack.recomptracker.ui.component.MessageKind
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,8 +31,6 @@ import kotlinx.coroutines.launch
 private const val DEBOUNCE_SEARCH_MS = 600L
 
 enum class FoodCategory { ALL, PROTEINS, CARBS, MEALS, NEVO, OFF }
-
-enum class AmountMode { SERVINGS, GRAMS }
 
 data class FoodLibraryItem(
     val key: String,

@@ -57,7 +57,6 @@ import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
-import com.zack.recomptracker.ui.more.MoreViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.profile.ProfileViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
@@ -396,14 +395,6 @@ private class AppViewModelFactory(
                 barcodeRepository = container.barcodeRepository,
                 logRepository = container.logRepository,
                 dateProvider = container.dateProvider,
-            )
-            MoreViewModel::class.java -> MoreViewModel(
-                uiPreferences = container.uiPreferences,
-                hcRepository = container.healthConnectRepository,
-                backupRepository = container.backupRepository,
-                aiInsightCoordinator = container.aiInsightCoordinator,
-                secureKeyStore = container.secureKeyStore,
-                openAiCompatClient = container.openAiCompatClient,
             )
             AiCoachViewModel::class.java -> AiCoachViewModel(
                 uiPreferences = container.uiPreferences,

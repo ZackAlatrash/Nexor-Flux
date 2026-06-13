@@ -1,5 +1,8 @@
 package com.zack.recomptracker.ui.plan
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.DatePicker
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
@@ -26,7 +30,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,6 +43,7 @@ import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.ToggleRow
 import java.time.Instant
 import java.time.ZoneOffset
@@ -45,6 +52,7 @@ import java.time.ZoneOffset
 fun PlanScreen(viewModel: PlanViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showDatePicker by remember { mutableStateOf(false) }
+    var advancedOpen by remember { mutableStateOf(false) }
     val initialDateMillis = remember(state.maintenancePhaseStartDate) {
         state.maintenancePhaseStartDate.takeIf { it.isNotBlank() }?.let {
             runCatching {
@@ -96,28 +104,55 @@ fun PlanScreen(viewModel: PlanViewModel) {
             }
         }
         item {
-            SectionCard("Review rules") {
-                NumberField("Weight trend threshold", state.weightTrendThresholdKgPerWeek, viewModel::updateWeightThreshold, suffix = "kg/week")
-                NumberField("Waist increase threshold", state.waistIncreaseThresholdCm, viewModel::updateWaistThreshold, suffix = "cm / 2 weeks")
-                NumberField("Adherence minimum", state.adherenceMinimumPercent, viewModel::updateAdherence, suffix = "%")
-                NumberField("Review cadence", state.reviewCadenceDays, viewModel::updateReviewCadence, suffix = "days")
+            SectionCard("Calorie zone") {
                 NumberField("Calorie zone lower", state.calorieZoneLowerBound, viewModel::updateZoneLower, suffix = "kcal")
                 NumberField("Calorie zone upper", state.calorieZoneUpperBound, viewModel::updateZoneUpper, suffix = "kcal")
-                OutlinedTextField(
-                    value = state.maintenancePhaseStartDate,
-                    onValueChange = {},
-                    label = { Text("Phase start date") },
-                    placeholder = { Text("Not set") },
-                    readOnly = true,
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = "Pick date")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+            }
+        }
+        item {
+            val chevronRotation by animateFloatAsState(
+                targetValue = if (advancedOpen) 180f else 0f,
+                label = "advancedChevron",
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { advancedOpen = !advancedOpen }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionLabel("Advanced")
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (advancedOpen) "Collapse advanced" else "Expand advanced",
+                    modifier = Modifier.rotate(chevronRotation),
                 )
-                ToggleRow("Metric units", state.useMetricUnits, viewModel::updateUnits)
+            }
+        }
+        item {
+            AnimatedVisibility(visible = advancedOpen) {
+                SectionCard("Review rules") {
+                    NumberField("Weight trend threshold", state.weightTrendThresholdKgPerWeek, viewModel::updateWeightThreshold, suffix = "kg/week")
+                    NumberField("Waist increase threshold", state.waistIncreaseThresholdCm, viewModel::updateWaistThreshold, suffix = "cm / 2 weeks")
+                    NumberField("Adherence minimum", state.adherenceMinimumPercent, viewModel::updateAdherence, suffix = "%")
+                    NumberField("Review cadence", state.reviewCadenceDays, viewModel::updateReviewCadence, suffix = "days")
+                    OutlinedTextField(
+                        value = state.maintenancePhaseStartDate,
+                        onValueChange = {},
+                        label = { Text("Phase start date") },
+                        placeholder = { Text("Not set") },
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick date")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ToggleRow("Metric units", state.useMetricUnits, viewModel::updateUnits)
+                }
             }
         }
         item {

@@ -288,14 +288,7 @@ internal fun AccentThemePicker(
             .background(CardSurface)
             .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "Accent color",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-        )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(vertical = 2.dp),

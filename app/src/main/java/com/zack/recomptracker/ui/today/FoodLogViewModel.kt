@@ -10,6 +10,7 @@ import com.zack.recomptracker.ai.RestOfDayInsightContext
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DayCalorieSummary
 import com.zack.recomptracker.data.repository.LogRepository
@@ -39,6 +40,8 @@ data class FoodLogUiState(
     val hasPlannedEntries: Boolean = false,
     val slots: ImmutableList<MealSlotWithEntries> = persistentListOf(),
     val slotsEditMode: Boolean = false,
+    /** Active "save as recipe" selection, or null when not selecting. */
+    val recipeSelection: RecipeSelection? = null,
     val weekSummary: ImmutableList<DayCalorieSummary> = persistentListOf(),
     val message: String? = null,
     val restOfDayInsightContext: RestOfDayInsightContext? = null,
@@ -130,7 +133,7 @@ class FoodLogViewModel(
         // Allow navigating back through history and forward to plan meals ahead.
         val clamped = date.coerceIn(today.minusDays(NAV_WINDOW_DAYS), today.plusDays(NAV_WINDOW_DAYS))
         _selectedDate.value = clamped
-        _uiState.update { it.copy(selectedDate = clamped) }
+        _uiState.update { it.copy(selectedDate = clamped, recipeSelection = null) }
     }
 
     /** Confirm a single planned entry — it becomes an eaten entry that counts toward totals. */
@@ -156,6 +159,21 @@ class FoodLogViewModel(
     }
 
     fun toggleEditMode() = _uiState.update { it.copy(slotsEditMode = !it.slotsEditMode) }
+
+    fun startRecipeSelection(slotId: Long) =
+        _uiState.update { it.copy(recipeSelection = RecipeSelection(slotId, emptySet())) }
+
+    fun toggleRecipeSelection(entryId: Long) = _uiState.update { state ->
+        val sel = state.recipeSelection ?: return@update state
+        val ids = if (entryId in sel.selectedIds) sel.selectedIds - entryId else sel.selectedIds + entryId
+        state.copy(recipeSelection = sel.copy(selectedIds = ids))
+    }
+
+    fun cancelRecipeSelection() = _uiState.update { it.copy(recipeSelection = null) }
+
+    /** Ingredients for the current selection, in slot order. Empty if nothing selected. */
+    fun selectedRecipeIngredients(): List<RecipeIngredientEntity> =
+        recipeIngredientsFromSelection(_uiState.value.slots, _uiState.value.recipeSelection)
 
     fun addSlot(name: String) {
         if (name.isBlank()) return

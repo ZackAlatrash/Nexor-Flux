@@ -221,7 +221,7 @@ fun AppNavGraph(
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
         ) {
-            PlanScreen(viewModel<PlanViewModel>(factory = factory))
+            PlanScreen(viewModel<PlanViewModel>(factory = factory), onBack = { navController.popBackStack() })
         }
         composable(
             route = TopLevelDestination.More.route,

@@ -523,7 +523,7 @@ private fun OptionSheet(
     }
 }
 
-// ── Profile option row (copied from SettingsScreen — SettingsScreen is deleted later) ──
+// ── Profile option row (selectable row inside the option bottom sheets) ───────
 
 @Composable
 private fun ProfileOptionRow(
@@ -577,7 +577,7 @@ private fun ProfileOptionRow(
     }
 }
 
-// ── Goal / activity descriptions (copied from SettingsScreen) ─────────────────
+// ── Goal / activity descriptions ──────────────────────────────────────────────
 
 private fun FitnessGoal.shortDesc(): String = when (this) {
     FitnessGoal.AGGRESSIVE_CUT  -> "~500+ kcal deficit"

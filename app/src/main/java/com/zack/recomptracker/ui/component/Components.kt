@@ -276,7 +276,7 @@ internal fun FontPicker(selected: String, onSelect: (String) -> Unit) {
 }
 
 // ── Accent theme picker ───────────────────────────────────────────────────────
-// Shared between the Appearance screen and the legacy Settings screen.
+// Used by the Appearance screen.
 
 @Composable
 internal fun AccentThemePicker(

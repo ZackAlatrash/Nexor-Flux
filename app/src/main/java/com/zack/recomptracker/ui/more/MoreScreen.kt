@@ -1,7 +1,5 @@
 package com.zack.recomptracker.ui.more
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,79 +16,50 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.AiBackend
-import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.aicoach.AiEngineSelector
-import com.zack.recomptracker.ui.aicoach.AiModelSection
-import com.zack.recomptracker.ui.aicoach.CloudStatusLine
-import com.zack.recomptracker.ui.aicoach.ProviderPresetChips
-import com.zack.recomptracker.ui.component.FontPicker
 import com.zack.recomptracker.ui.component.MenuIcon
-import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.SettingRow
+import com.zack.recomptracker.ui.component.TintedCard
+import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.TextFaint
-import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import java.time.LocalDate
+import com.zack.recomptracker.ui.theme.TextMuted
 
 @Composable
 fun MoreScreen(
-    viewModel: MoreViewModel,
-    onStatsClick: () -> Unit,
-    onChartsClick: () -> Unit,
-    onPlanClick: () -> Unit,
-    onProgressClick: () -> Unit,
-    onSettingsClick: () -> Unit,
+    dashboardViewModel: DashboardViewModel,
+    onCalorieDecision: () -> Unit,
+    onTrends: () -> Unit,
+    onProfile: () -> Unit,
+    onPlan: () -> Unit,
+    onAppearance: () -> Unit,
+    onAiCoach: () -> Unit,
+    onIntegrations: () -> Unit,
+    onDataBackup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
-    val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val state by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val moreOrbBrush = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.15f), Color.Transparent))
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri != null) viewModel.exportToUri(context, uri)
-    }
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) viewModel.importFromUri(context, uri)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -99,9 +68,7 @@ fun MoreScreen(
             modifier = Modifier
                 .size(280.dp)
                 .offset(x = (-70).dp, y = (-90).dp)
-                .background(
-                    moreOrbBrush,
-                ),
+                .background(moreOrbBrush),
         )
 
         LazyColumn(
@@ -113,11 +80,13 @@ fun MoreScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // ── Header ────────────────────────────────────────────────────────
             item {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
                         text = "More",
@@ -126,274 +95,148 @@ fun MoreScreen(
                         color = Color.White,
                         letterSpacing = (-0.8).sp,
                     )
+                    Text(
+                        text = "Insights & setup",
+                        fontSize = 13.sp,
+                        color = TextMuted,
+                    )
                 }
-            }
-
-            if (state.message != null) {
-                item { MessageText(state.message) }
             }
 
             // ── Insights ──────────────────────────────────────────────────────
             item { SectionLabel("Insights") }
+            item { CalorieDecisionCard(state, onCalorieDecision) }
             item {
                 MenuCard {
                     MenuRow(
-                        emoji = "📊",
-                        title = "Stats",
-                        detail = "Verdict, targets and trend summary",
-                        onClick = onStatsClick,
-                        showDivider = true,
-                    )
-                    MenuRow(
                         emoji = "📈",
-                        title = "Charts",
-                        detail = "Weight, waist, nutrition and lifts",
-                        onClick = onChartsClick,
-                        showDivider = true,
-                    )
-                    MenuRow(
-                        emoji = "📉",
-                        title = "Progress",
-                        detail = "Trends and adherence history",
-                        onClick = onProgressClick,
+                        title = "Trends",
+                        detail = "Weight, waist, nutrition & lifts",
+                        onClick = onTrends,
                         showDivider = false,
                     )
                 }
             }
 
-            // ── Planning ──────────────────────────────────────────────────────
-            item { SectionLabel("Planning") }
+            // ── Setup ─────────────────────────────────────────────────────────
+            item { SectionLabel("Setup") }
             item {
                 MenuCard {
+                    MenuRow(
+                        emoji = "👤",
+                        title = "Profile",
+                        detail = "You, goal & activity",
+                        onClick = onProfile,
+                        showDivider = true,
+                    )
                     MenuRow(
                         emoji = "🎯",
                         title = "Plan",
-                        detail = "Targets, zones and review cadence",
-                        onClick = onPlanClick,
-                        showDivider = false,
-                    )
-                }
-            }
-
-            // ── Appearance ────────────────────────────────────────────────────
-            item { SectionLabel("Appearance") }
-            item {
-                MenuCard {
-                    SettingRow(
-                        emoji = "🔤",
-                        title = "Font",
-                        detail = "Display typeface",
-                        showDivider = false,
-                    ) {
-                        FontPicker(
-                            selected = state.selectedFont,
-                            onSelect = viewModel::setFont,
-                        )
-                    }
-                }
-            }
-
-            // ── App ───────────────────────────────────────────────────────────
-            item { SectionLabel("App") }
-            item {
-                MenuCard {
-                    MenuRow(
-                        emoji = "⚙️",
-                        title = "Settings",
-                        detail = "Profile, backup, food catalog and more",
-                        onClick = onSettingsClick,
+                        detail = "Targets, zones & review cadence",
+                        onClick = onPlan,
                         showDivider = true,
                     )
-                    SettingRow(
-                        emoji = "❤️",
-                        title = "Health Connect",
-                        detail = "Sync steps and heart rate",
+                    MenuRow(
+                        emoji = "🎨",
+                        title = "Appearance",
+                        detail = "Font & accent color",
+                        onClick = onAppearance,
+                        showDivider = true,
+                    )
+                    MenuRow(
+                        emoji = "🤖",
+                        title = "AI & Coach",
+                        detail = "Engine, cloud & on-device model",
+                        onClick = onAiCoach,
+                        showDivider = true,
+                    )
+                    MenuRow(
+                        emoji = "🔗",
+                        title = "Integrations",
+                        detail = "Health Connect, Samsung, food catalogs",
+                        onClick = onIntegrations,
+                        showDivider = true,
+                    )
+                    MenuRow(
+                        emoji = "💾",
+                        title = "Data & Backup",
+                        detail = "Export, import & reset",
+                        onClick = onDataBackup,
                         showDivider = false,
-                    ) {
-                        if (state.healthConnectConnected) {
-                            HealthConnectedBadge()
-                        } else {
-                            Text("Disconnected", fontSize = 10.sp, color = TextMuted)
-                        }
-                    }
-                }
-            }
-
-            // ── AI ──────────────────────────────────────────────────────────────
-            item { SectionLabel("AI") }
-            item {
-                MenuCard {
-                    SettingRow(
-                        emoji = "✨",
-                        title = "Enable AI",
-                        detail = "Insights & coach",
-                        showDivider = state.aiInsightsEnabled,
-                    ) {
-                        Switch(
-                            checked = state.aiInsightsEnabled,
-                            onCheckedChange = viewModel::setAiInsights,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = accent.accent,
-                                uncheckedThumbColor = Color(0x80FFFFFF),
-                                uncheckedTrackColor = Color(0x1AFFFFFF),
-                                uncheckedBorderColor = Color(0x26FFFFFF),
-                            ),
-                        )
-                    }
-                    if (state.aiInsightsEnabled) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        ) {
-                            Text(
-                                "ENGINE",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextFaint,
-                                letterSpacing = 0.14.sp,
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            AiEngineSelector(
-                                backend = state.aiBackend,
-                                onSelect = viewModel::setAiBackend,
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Cloud config — only when AI is enabled and the Cloud engine is selected
-            if (state.aiInsightsEnabled && state.aiBackend == AiBackend.CLOUD) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(CornerCard))
-                            .background(CardSurface)
-                            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
-                            .padding(horizontal = 14.dp, vertical = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        CloudStatusLine(
-                            testingConnection = state.testingConnection,
-                            testConnectionResult = state.testConnectionResult,
-                            cloudHasKey = state.cloudHasKey,
-                        )
-                        Text(
-                            text = "Your logged data is sent to the API you configure. Switch to On-device to keep everything private.",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
-                        )
-                        Text(
-                            "QUICK FILL",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextFaint,
-                            letterSpacing = 0.14.sp,
-                        )
-                        ProviderPresetChips(onPick = viewModel::setCloudBaseUrl)
-                        OutlinedTextField(
-                            value = state.cloudBaseUrl,
-                            onValueChange = viewModel::setCloudBaseUrl,
-                            label = { Text("Base URL") },
-                            placeholder = { Text("https://openrouter.ai/api/v1") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = state.cloudModelId,
-                            onValueChange = viewModel::setCloudModelId,
-                            label = { Text("Model ID") },
-                            placeholder = { Text("openai/gpt-oss-20b") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        var apiKeyInput by remember { mutableStateOf("") }
-                        OutlinedTextField(
-                            value = apiKeyInput,
-                            onValueChange = { apiKeyInput = it },
-                            label = { Text(if (state.cloudHasKey) "API key (saved — type to replace)" else "API key") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(
-                                onClick = {
-                                    if (apiKeyInput.isNotBlank()) {
-                                        viewModel.setCloudApiKey(apiKeyInput)
-                                        apiKeyInput = ""
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Save key", fontSize = 13.sp) }
-                            if (state.cloudHasKey) {
-                                Button(
-                                    onClick = { viewModel.clearCloudApiKey() },
-                                    modifier = Modifier.weight(1f),
-                                ) { Text("Clear", fontSize = 13.sp) }
-                            }
-                        }
-                        Button(
-                            onClick = { viewModel.testCloudConnection() },
-                            enabled = !state.testingConnection,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (state.testingConnection) "Testing…" else "Test connection", fontSize = 13.sp)
-                        }
-                    }
-                }
-            }
-
-            // On-device model card — only in On-device (Local) mode
-            if (state.aiInsightsEnabled && state.aiBackend == AiBackend.LOCAL && aiState != AiInsightState.Disabled) {
-                item {
-                    AiModelSection(
-                        aiState = aiState,
-                        selectedModel = selectedModel,
-                        onModelSelect = viewModel::setModel,
-                        onDownload = viewModel::requestModelDownload,
-                        onCancel = viewModel::cancelDownload,
-                        onDelete = viewModel::deleteModel,
-                    )
-                }
-            }
-
-            // ── Data ─────────────────────────────────────────────────────────
-            item { SectionLabel("Data") }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    DataActionCard(
-                        emoji = "📤",
-                        label = "Export backup",
-                        isPrimary = true,
-                        enabled = !state.busy,
-                        onClick = {
-                            exportLauncher.launch("recomp-backup-${LocalDate.now()}.json")
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                    DataActionCard(
-                        emoji = "📥",
-                        label = "Import backup",
-                        isPrimary = false,
-                        enabled = !state.busy,
-                        onClick = {
-                            importLauncher.launch(arrayOf("application/json"))
-                        },
-                        modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
     }
+}
+
+// ── Featured Calorie Decision Card ──────────────────────────────────────────────
+
+@Composable
+private fun CalorieDecisionCard(
+    state: com.zack.recomptracker.ui.dashboard.DashboardUiState,
+    onClick: () -> Unit,
+) {
+    val accent = LocalAppAccent.current
+    val result = state.result
+    val verdictLabel = result.verdict.label()
+
+    val change = result.recommendedCalorieChange
+    val changeText = when (result.verdict) {
+        AdjustmentVerdict.WAIT_FOR_DATA -> "Not enough data yet"
+        else -> {
+            val sign = if (change > 0) "+" else ""
+            "$sign$change kcal/day"
+        }
+    }
+    val subtitle = "$changeText · adherence ${"%.0f".format(state.adherencePercent)}% · " +
+        "${state.loggedDaysInWindow} days logged"
+
+    TintedCard(
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                text = "CALORIE DECISION",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = accent.accentLight,
+                letterSpacing = 0.12.sp,
+            )
+            Text("›", fontSize = 16.sp, color = Color(0x59FFFFFF))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = verdictLabel,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            letterSpacing = (-1).sp,
+            lineHeight = 32.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            fontSize = 12.sp,
+            color = TextMuted,
+            lineHeight = 16.sp,
+        )
+    }
+}
+
+private fun AdjustmentVerdict.label(): String = when (this) {
+    AdjustmentVerdict.WAIT_FOR_DATA     -> "Wait"
+    AdjustmentVerdict.HOLD              -> "Hold"
+    AdjustmentVerdict.INCREASE_CALORIES -> "Increase"
+    AdjustmentVerdict.REDUCE_CALORIES   -> "Reduce"
 }
 
 // ── Menu Card ─────────────────────────────────────────────────────────────────
@@ -447,70 +290,5 @@ private fun MenuRow(
                     .background(Color(0x0DFFFFFF)),
             )
         }
-    }
-}
-
-// ── Health Connect Badge ──────────────────────────────────────────────────────
-
-@Composable
-private fun HealthConnectedBadge() {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0x1F34D399))
-            .border(1.dp, Color(0x4034D399), RoundedCornerShape(20.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(5.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF34D399)),
-        )
-        Text("Connected", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
-    }
-}
-
-// ── Data Action Cards ─────────────────────────────────────────────────────────
-
-@Composable
-private fun DataActionCard(
-    emoji: String,
-    label: String,
-    isPrimary: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val accent = LocalAppAccent.current
-    val alpha = if (enabled) 1f else 0.5f
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(CornerCard))
-            .background(if (isPrimary) accent.tintedSurface else CardSurface)
-            .border(
-                1.dp,
-                if (isPrimary) accent.tintedBorder else CardBorder,
-                RoundedCornerShape(CornerCard),
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            )
-            .padding(vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(emoji, fontSize = 18.sp)
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isPrimary) accent.accentLighter.copy(alpha = alpha) else Color(0x73FFFFFF),
-        )
     }
 }

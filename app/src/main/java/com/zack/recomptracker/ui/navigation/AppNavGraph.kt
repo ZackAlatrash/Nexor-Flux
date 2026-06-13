@@ -21,12 +21,10 @@ import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.foods.FoodsScreen
 import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.more.MoreScreen
-import com.zack.recomptracker.ui.more.MoreViewModel
 import com.zack.recomptracker.ui.plan.PlanScreen
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.progress.ProgressScreen
 import com.zack.recomptracker.ui.progress.ProgressViewModel
-import com.zack.recomptracker.ui.settings.SettingsScreen
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.profile.ProfileScreen
 import com.zack.recomptracker.ui.profile.ProfileViewModel
@@ -61,19 +59,17 @@ enum class TopLevelDestination(
 ) {
     Home("home", "Home"),
     Body("body", "Body"),
-    Progress("progress", "Progress"),
     Coach("coach", "Coach"),
     More("more", "More"),
 }
 
 object Routes {
     const val Food      = "food"
-    const val Stats     = "stats"
-    const val Charts    = "charts"
+    const val CalorieDecision = "calorie_decision"
+    const val Trends    = "trends"
     const val Plan      = "plan"
     const val FoodLibrary = "food_library"
     const val Foods     = "foods"
-    const val Settings  = "settings"
     const val Profile      = "profile"
     const val Appearance   = "appearance"
     const val AiCoach      = "ai_coach"
@@ -172,13 +168,6 @@ fun AppNavGraph(
             )
         }
         composable(
-            route = TopLevelDestination.Progress.route,
-            enterTransition = { tabEnter },
-            exitTransition  = { tabExit },
-        ) {
-            ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
-        }
-        composable(
             route = TopLevelDestination.Coach.route,
             enterTransition = { tabEnter },
             exitTransition  = { tabExit },
@@ -214,18 +203,18 @@ fun AppNavGraph(
             )
         }
         composable(
-            route = Routes.Stats,
+            route = Routes.CalorieDecision,
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
         ) {
             DashboardScreen(viewModel<DashboardViewModel>(factory = factory), onBack = { navController.popBackStack() })
         }
         composable(
-            route = Routes.Charts,
+            route = Routes.Trends,
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
         ) {
-            ProgressScreen(viewModel<ProgressViewModel>(factory = factory))
+            ProgressScreen(viewModel<ProgressViewModel>(factory = factory), onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.Plan,
@@ -240,12 +229,15 @@ fun AppNavGraph(
             exitTransition  = { tabExit },
         ) {
             MoreScreen(
-                viewModel       = viewModel<MoreViewModel>(factory = factory),
-                onStatsClick    = { navController.navigate(Routes.Stats) },
-                onChartsClick   = { navController.navigate(Routes.Charts) },
-                onPlanClick     = { navController.navigate(Routes.Plan) },
-                onProgressClick = { navController.navigate(TopLevelDestination.Progress.route) },
-                onSettingsClick = { navController.navigate(Routes.Settings) },
+                dashboardViewModel = viewModel<DashboardViewModel>(factory = factory),
+                onCalorieDecision = { navController.navigate(Routes.CalorieDecision) },
+                onTrends = { navController.navigate(Routes.Trends) },
+                onProfile = { navController.navigate(Routes.Profile) },
+                onPlan = { navController.navigate(Routes.Plan) },
+                onAppearance = { navController.navigate(Routes.Appearance) },
+                onAiCoach = { navController.navigate(Routes.AiCoach) },
+                onIntegrations = { navController.navigate(Routes.Integrations) },
+                onDataBackup = { navController.navigate(Routes.DataBackup) },
             )
         }
         composable(
@@ -387,13 +379,6 @@ fun AppNavGraph(
                 },
                 onBack = { navController.popBackStack() },
             )
-        }
-        composable(
-            route = Routes.Settings,
-            enterTransition = { screenEnter },
-            exitTransition  = { screenExit },
-        ) {
-            SettingsScreen(viewModel<SettingsViewModel>(factory = factory))
         }
         composable(
             route = Routes.Profile,

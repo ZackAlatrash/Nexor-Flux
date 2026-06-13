@@ -25,6 +25,7 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import java.time.LocalDate
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlanViewModelGenerateTest {
@@ -34,8 +35,11 @@ class PlanViewModelGenerateTest {
     private lateinit var profileStore: UserProfilePreferencesStore
     private lateinit var logRepo: LogRepository
 
+    // birthDate computed at runtime so derived age is always 30 regardless of run date.
+    // Jan-1 birthday has already passed by test time, so age == currentYear - birthYear.
     private val completeProfile = UserProfilePreferences(
-        heightCm = 180, ageYears = 30, biologicalSex = BiologicalSex.MALE,
+        heightCm = 180, birthDate = "${LocalDate.now().year - 30}-01-01",
+        biologicalSex = BiologicalSex.MALE,
         activityLevel = ActivityLevel.MODERATELY_ACTIVE, goal = FitnessGoal.RECOMP,
     )
 

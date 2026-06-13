@@ -64,6 +64,17 @@ class PlanCalculatorTest {
     }
 
     @Test
+    fun goalDeltasMatchTableForEveryGoal() {
+        assertEquals(-25, calculator.generate(input(goal = FitnessGoal.AGGRESSIVE_CUT)).goalDeltaPercent)
+        assertEquals(-18, calculator.generate(input(goal = FitnessGoal.MODERATE_CUT)).goalDeltaPercent)
+        assertEquals(-22, calculator.generate(input(goal = FitnessGoal.MINI_CUT)).goalDeltaPercent)
+        assertEquals(-5, calculator.generate(input(goal = FitnessGoal.RECOMP)).goalDeltaPercent)
+        assertEquals(8, calculator.generate(input(goal = FitnessGoal.LEAN_BULK)).goalDeltaPercent)
+        assertEquals(12, calculator.generate(input(goal = FitnessGoal.MODERATE_BULK)).goalDeltaPercent)
+        assertEquals(18, calculator.generate(input(goal = FitnessGoal.AGGRESSIVE_BULK)).goalDeltaPercent)
+    }
+
+    @Test
     fun veryActiveUsesHighestFactor() {
         val plan = calculator.generate(input(activityLevel = ActivityLevel.VERY_ACTIVE))
         assertEquals(1.725, plan.activityFactor, 0.0001)

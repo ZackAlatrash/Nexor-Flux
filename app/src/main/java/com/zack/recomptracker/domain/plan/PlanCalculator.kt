@@ -30,6 +30,7 @@ class PlanCalculator {
         val proteinG = (proteinPerKg * input.weightKg).roundToInt()
         val fatG = (0.25 * target / 9.0).roundToInt()
         val carbsKcal = target - proteinG * 4 - fatG * 9
+        // coerceAtLeast(0) is a defensive guard; not reachable for valid clamped targets.
         val carbsG = (carbsKcal / 4.0).roundToInt().coerceAtLeast(0)
 
         return GeneratedPlan(

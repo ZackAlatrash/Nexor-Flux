@@ -51,6 +51,7 @@ import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
@@ -356,6 +357,9 @@ private class AppViewModelFactory(
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+            )
+            AppearanceViewModel::class.java -> AppearanceViewModel(
+                uiPreferences = container.uiPreferences,
             )
             FoodsViewModel::class.java -> FoodsViewModel(
                 logRepository = container.logRepository,

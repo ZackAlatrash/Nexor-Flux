@@ -64,6 +64,7 @@ import com.zack.recomptracker.data.preferences.displayName
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 import com.zack.recomptracker.domain.foodimport.identity
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.AccentThemePicker
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.GlassInputField
@@ -789,60 +790,6 @@ private fun SexChip(
     }
 }
 
-// ── Accent theme picker ───────────────────────────────────────────────────────
-
-@Composable
-private fun AccentThemePicker(
-    selected: AccentTheme,
-    onSelect: (AccentTheme) -> Unit,
-) {
-    SettingsCard {
-        Text(
-            text = "Accent color",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(vertical = 2.dp),
-        ) {
-            items(AccentTheme.entries) { theme ->
-                val isSelected = theme == selected
-                // Light-coloured accents need dark ink so the tick/ring stays legible
-                // Perceived brightness (NTSC luma): red/green/blue are 0..1 floats in Compose
-                val luma = 0.299f * theme.accent.red + 0.587f * theme.accent.green + 0.114f * theme.accent.blue
-                val isLight = luma > 0.55f
-                val ringColor = if (isLight) Color.Black.copy(alpha = 0.55f) else Color.White
-                val tickColor = if (isLight) Color.Black.copy(alpha = 0.70f) else Color.White
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(theme.accent)
-                        .then(
-                            if (isSelected) Modifier.border(2.dp, ringColor, CircleShape)
-                            else Modifier.border(1.dp, ringColor.copy(alpha = 0.20f), CircleShape),
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { onSelect(theme) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isSelected) {
-                        Text(
-                            text = "✓",
-                            color = tickColor,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun HcStatusRow(dotColor: Color, text: String) {

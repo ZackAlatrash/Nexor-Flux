@@ -51,6 +51,7 @@ import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.FontPicker
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
@@ -805,40 +806,6 @@ private fun MenuIcon(emoji: String) {
         contentAlignment = Alignment.Center,
     ) {
         Text(emoji, fontSize = 16.sp)
-    }
-}
-
-// ── Font Picker ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun FontPicker(selected: String, onSelect: (String) -> Unit) {
-    val accent = LocalAppAccent.current
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        listOf("default" to "Default", "space" to "Space", "jakarta" to "Jakarta").forEach { (key, label) ->
-            val isActive = selected == key
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else Color(0x0FFFFFFF))
-                    .border(
-                        1.dp,
-                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
-                        RoundedCornerShape(7.dp),
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { onSelect(key) }
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
-                )
-            }
-        }
     }
 }
 

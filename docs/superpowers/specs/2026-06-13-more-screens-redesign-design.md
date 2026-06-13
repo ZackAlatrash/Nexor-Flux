@@ -30,6 +30,33 @@ trend, adherence, plan calculator).
 - Section headers: small uppercase muted labels. Rows: icon tile · title ·
   subtitle · chevron.
 
+## Component reuse (mandatory)
+
+**Reuse the existing liquid-glass components in `ui/component/`. Do not create new
+composables unless no existing one fits — and when a new one is unavoidable, build
+it from the existing primitives (`FrostedCard`/`TintedCard`/`NeutralCard`) so it
+matches.** The library already covers nearly the entire redesign; this work is
+largely recomposition. Concrete mapping:
+
+| Screen | Reuse |
+|---|---|
+| **Hub (More)** | `MenuCard`/`SettingsCard` + `MenuRow`/`SettingRow` for setup rows; `TintedCard` for the featured Calorie-Decision card; `SectionLabel`. |
+| **Calorie Decision** | `SectionCard`, `AiInsightCard`/`GeneratedInsightCard`/`AiCard` for the "why", `CalorieZoneBar`/`MacroMiniBar` not needed (Today removed), `StatRow`/`BreakdownRow` for targets + trend summary, `VioletBadge` for chips. |
+| **Trends** | `RangeSelector`, `FeaturedChartCard`, `ShortChartCard`, `MiniChartCard`, `SparklineChart`/`MiniSparkline`, `ChartStat`, `AiInsightCard` for trend analysis. |
+| **Plan** | `SectionCard`, `GlassInputField`/`NumberField`, `ToggleRow`/`VioletToggle`, existing generate/preview dialogs, `ConfirmDialog`. |
+| **Profile** | `ProfileOptionRow`, `SexChip`, `ScoreStepper`, `GlassInputField`, `SectionLabel`, `FrostedCard`. |
+| **Appearance** | `FontPicker`, `AccentThemePicker` (both already exist) + `TintedCard`/`FrostedCard` for the preview. |
+| **AI & Coach** | `AiEngineSelector`, `ModelVariantSelector`, `ProviderPresetChip`, `CloudStat`, `AiCard`/`AiBadge`, `ToggleRow`, `GlassInputField`/`GlassTextArea` — this screen is almost entirely existing parts. |
+| **Integrations** | `SettingsCard`, `HcStatusRow`, `HealthConnectedBadge`, `SettingRow`, `DataActionCard`, `ConfirmDialog`. |
+| **Data & Backup** | `DataActionCard`, `SettingRow`, `ConfirmDialog` (danger zone = red-tinted variant of existing card). |
+
+**Genuinely new pieces (only because nothing fits):**
+1. **Colored verdict pill** on Trends chart cards (green/amber/rose/neutral). Prefer
+   extending `VioletBadge`/`MacroChip` to accept a status color rather than a new component.
+2. **Profile avatar with photo upload** — no avatar composable exists today.
+
+Anything beyond these two must be justified before adding.
+
 ## Information architecture — the new "More" hub
 
 More dissolves the standalone "Settings" screen entirely. It becomes two groups:

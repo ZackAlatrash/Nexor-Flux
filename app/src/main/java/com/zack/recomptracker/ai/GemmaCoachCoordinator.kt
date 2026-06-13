@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.preferences.ageYears
 import com.zack.recomptracker.data.preferences.displayName
 import com.zack.recomptracker.data.repository.PlanRepository
 import kotlinx.coroutines.CancellationException
@@ -397,7 +398,7 @@ class GemmaCoachCoordinator(
         val profileParts = buildList {
             profile.goal?.let { add("Goal: ${it.displayName()}") }
             profile.biologicalSex?.let { add("Sex: ${it.displayName()}") }
-            profile.ageYears?.let { add("Age: $it") }
+            profile.ageYears()?.let { add("Age: $it") }
             profile.heightCm?.let { add("Height: $it cm") }
             profile.activityLevel?.let { add("Activity: ${it.displayName()}") }
             profile.weeklyGymSessions?.let { add("Gym sessions/week: $it") }

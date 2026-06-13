@@ -42,7 +42,10 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import java.time.LocalDate
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 enum class TopLevelDestination(
     val route: String,
@@ -71,8 +74,11 @@ object Routes {
     fun barcodeScanner(slotId: Long?, slotName: String, pickerMode: Boolean = false) =
         "barcode_scanner?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&pickerMode=$pickerMode"
 
-    const val RecipeBuilder = "recipe_builder?recipeId={recipeId}"
-    fun recipeBuilder(recipeId: Long? = null) = "recipe_builder?recipeId=${recipeId ?: -1L}"
+    const val RecipeBuilder = "recipe_builder?recipeId={recipeId}&seedIngredients={seedIngredients}"
+    fun recipeBuilder(recipeId: Long? = null, seedIngredients: String? = null): String {
+        val seedPart = seedIngredients?.let { "&seedIngredients=$it" }.orEmpty()
+        return "recipe_builder?recipeId=${recipeId ?: -1L}$seedPart"
+    }
 
     fun foodLibraryPicker() = "${FoodLibrary}?pickerMode=true"
 }
@@ -133,6 +139,12 @@ fun AppNavGraph(
                     navController.navigate(
                         "${Routes.FoodLibrary}?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&editEntryId=$entryId&date=$date"
                     )
+                },
+                onCreateRecipeFromSelection = { ingredients ->
+                    val json = Json.encodeToString(ingredients)
+                    val seed = java.util.Base64.getUrlEncoder().withoutPadding()
+                        .encodeToString(json.toByteArray(Charsets.UTF_8))
+                    navController.navigate(Routes.recipeBuilder(seedIngredients = seed))
                 },
             )
         }
@@ -337,6 +349,11 @@ fun AppNavGraph(
                 androidx.navigation.navArgument("recipeId") {
                     type = androidx.navigation.NavType.LongType
                     defaultValue = -1L
+                },
+                androidx.navigation.navArgument("seedIngredients") {
+                    type = androidx.navigation.NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 },
             ),
             enterTransition = { screenEnter },

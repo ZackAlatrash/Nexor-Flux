@@ -81,6 +81,7 @@ fun FoodScreen(
     onAddToSlot: (slotId: Long, slotName: String, date: LocalDate) -> Unit,
     onBrowseLibrary: () -> Unit,
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long, date: LocalDate) -> Unit,
+    onCreateRecipeFromSelection: (List<com.zack.recomptracker.data.local.entity.RecipeIngredientEntity>) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val restOfDayInsightState by viewModel.restOfDayInsightState.collectAsStateWithLifecycle()
@@ -109,6 +110,13 @@ fun FoodScreen(
         restOfDayAvailable     = state.restOfDayInsightContext?.hasSufficientData == true,
         onRevealRestOfDay      = viewModel::onRestOfDayInsightVisible,
         onRetryRestOfDay       = viewModel::retryRestOfDayInsight,
+        onStartRecipeSelection = viewModel::startRecipeSelection,
+        onToggleRecipeSelection = viewModel::toggleRecipeSelection,
+        onCancelRecipeSelection = viewModel::cancelRecipeSelection,
+        onSaveRecipeSelection = {
+            onCreateRecipeFromSelection(viewModel.selectedRecipeIngredients())
+            viewModel.cancelRecipeSelection()
+        },
     )
 }
 
@@ -138,6 +146,10 @@ fun FoodContent(
     restOfDayAvailable: Boolean = false,
     onRevealRestOfDay: () -> Unit = {},
     onRetryRestOfDay: () -> Unit = {},
+    onStartRecipeSelection: (Long) -> Unit = {},
+    onToggleRecipeSelection: (Long) -> Unit = {},
+    onCancelRecipeSelection: () -> Unit = {},
+    onSaveRecipeSelection: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val foodScreenOrbBrush = remember(accent.accent) {
@@ -262,6 +274,7 @@ fun FoodContent(
                             )
                         }
                     } else {
+                        val sel = state.recipeSelection?.takeIf { it.slotId == slotWithEntries.slot.id }
                         LockedSlotCard(
                             slotWithEntries   = slotWithEntries,
                             isFuture          = state.isFuture,
@@ -272,6 +285,12 @@ fun FoodContent(
                             onEditMacros      = actions.onEditMacros,
                             onConfirmEntry    = actions.onConfirmMeal,
                             onPostponeEntry   = actions.onPostponeMeal,
+                            isSelecting       = sel != null,
+                            selectedIds       = sel?.selectedIds.orEmpty(),
+                            onStartRecipeSelection = { onStartRecipeSelection(slotWithEntries.slot.id) },
+                            onToggleSelection = onToggleRecipeSelection,
+                            onCancelSelection = onCancelRecipeSelection,
+                            onSaveSelection   = onSaveRecipeSelection,
                         )
                     }
                 }
@@ -643,6 +662,12 @@ private fun LockedSlotCard(
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
     onConfirmEntry: (Long) -> Unit,
     onPostponeEntry: (Long) -> Unit,
+    isSelecting: Boolean = false,
+    selectedIds: Set<Long> = emptySet(),
+    onStartRecipeSelection: () -> Unit = {},
+    onToggleSelection: (Long) -> Unit = {},
+    onCancelSelection: () -> Unit = {},
+    onSaveSelection: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val hasEntries = slotWithEntries.entries.isNotEmpty()
@@ -679,12 +704,38 @@ private fun LockedSlotCard(
                     color = if (hasEntries) accent.accentLight else TextMuted,
                 )
             }
-            LiquidActionButton(
-                text = "＋ Add",
-                onClick = onAddClick,
-                isPrimary = true,
-                small = true,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (hasEntries && !isSelecting) {
+                    var menuOpen by remember { mutableStateOf(false) }
+                    Box {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0x0FFFFFFF))
+                                .border(1.dp, Color(0x17FFFFFF), RoundedCornerShape(8.dp))
+                                .clickable(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null) { menuOpen = true },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("⋯", fontSize = 15.sp, color = Color(0xBFFFFFFF))
+                        }
+                        androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Save as recipe") },
+                                onClick = { menuOpen = false; onStartRecipeSelection() },
+                            )
+                        }
+                    }
+                }
+                if (!isSelecting) {
+                    LiquidActionButton(
+                        text = "＋ Add",
+                        onClick = onAddClick,
+                        isPrimary = true,
+                        small = true,
+                    )
+                }
+            }
         }
 
         if (hasEntries) {
@@ -723,6 +774,9 @@ private fun LockedSlotCard(
                             onPostpone = { onPostponeEntry(entry.id) },
                             onEditAmount = { onEditEntryAmount(entry.id) },
                             onEditMacros = onEditMacros,
+                            isSelecting = isSelecting,
+                            isSelected = entry.id in selectedIds,
+                            onToggleSelection = { onToggleSelection(entry.id) },
                         )
                     }
                 }
@@ -750,6 +804,31 @@ private fun LockedSlotCard(
                 Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0x0DFFFFFF)))
             }
         }
+
+        if (isSelecting) {
+            val accentBar = LocalAppAccent.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(accentBar.accent.copy(alpha = 0.12f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "${selectedIds.size} selected",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = accentBar.accentLight,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LiquidActionButton(text = "Cancel", onClick = onCancelSelection, isPrimary = false, small = true)
+                    if (selectedIds.isNotEmpty()) {
+                        LiquidActionButton(text = "Save as recipe", onClick = onSaveSelection, isPrimary = true, small = true)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -763,6 +842,9 @@ private fun SlotEntryRow(
     onPostpone: () -> Unit,
     onEditAmount: () -> Unit,
     onEditMacros: (MealEntryEntity, Int, Double, Double, Double) -> Unit,
+    isSelecting: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelection: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     var showMacroEdit by remember { mutableStateOf(false) }
@@ -782,7 +864,10 @@ private fun SlotEntryRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true }
+            .clickable {
+                if (isSelecting) onToggleSelection()
+                else if (amountEditable) onEditAmount() else showMacroEdit = true
+            }
             .drawBehind {
                 drawRect(
                     color    = railColor,
@@ -794,6 +879,24 @@ private fun SlotEntryRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (isSelecting) {
+            val accentSel = LocalAppAccent.current
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isSelected) accentSel.accent else Color(0x14FFFFFF))
+                    .border(
+                        1.dp,
+                        if (isSelected) accentSel.accent else Color(0x33FFFFFF),
+                        RoundedCornerShape(6.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isSelected) Text("✓", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.width(4.dp))
+        }
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -828,54 +931,56 @@ private fun SlotEntryRow(
             fontWeight = FontWeight.Bold,
             color = Color(0x66FFFFFF),
         )
-        // Confirm button (planned → eaten) — replaces edit for confirmable plans
-        if (canConfirm) {
+        if (!isSelecting) {
+            // Confirm button (planned → eaten) — replaces edit for confirmable plans
+            if (canConfirm) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0x2234D399))
+                        .clickable { onConfirm() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✓", fontSize = 13.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Bold)
+                }
+            } else {
+                // Edit button
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(accent.tintedSurface)
+                        .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✎", fontSize = 12.sp, color = accent.accentLight)
+                }
+            }
+            // Postpone button (move to next day) — only when not viewing a past day
+            if (canPostpone) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0x12FFFFFF))
+                        .clickable { onPostpone() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("⤍", fontSize = 13.sp, color = Color(0x99FFFFFF))
+                }
+            }
+            // Delete button
             Box(
                 modifier = Modifier
                     .size(26.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x2234D399))
-                    .clickable { onConfirm() },
+                    .background(Color(0x1AFB7185))
+                    .clickable { showDeleteConfirm = true },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✓", fontSize = 13.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Bold)
+                Text("✕", fontSize = 12.sp, color = ErrorRed.copy(alpha = 0.6f))
             }
-        } else {
-            // Edit button
-            Box(
-                modifier = Modifier
-                    .size(26.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(accent.tintedSurface)
-                    .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("✎", fontSize = 12.sp, color = accent.accentLight)
-            }
-        }
-        // Postpone button (move to next day) — only when not viewing a past day
-        if (canPostpone) {
-            Box(
-                modifier = Modifier
-                    .size(26.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x12FFFFFF))
-                    .clickable { onPostpone() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("⤍", fontSize = 13.sp, color = Color(0x99FFFFFF))
-            }
-        }
-        // Delete button
-        Box(
-            modifier = Modifier
-                .size(26.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0x1AFB7185))
-                .clickable { showDeleteConfirm = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("✕", fontSize = 12.sp, color = ErrorRed.copy(alpha = 0.6f))
         }
     }
 

@@ -5,14 +5,26 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.util.toNullableDouble
 import com.zack.recomptracker.core.util.toNullableInt
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.domain.plan.GeneratedPlan
+import com.zack.recomptracker.domain.plan.PlanGenerationOutcome
+import com.zack.recomptracker.domain.plan.PlanGenerator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** Drives the generate-plan dialog: either a computed preview or an inline weight prompt. */
+sealed interface PlanGenerationDialog {
+    data class Preview(val plan: GeneratedPlan) : PlanGenerationDialog
+    data class WeightEntry(val weightInput: String = "", val error: String? = null) : PlanGenerationDialog
+}
 
 data class PlanUiState(
     val targetCalories: String = "2550",
@@ -29,10 +41,14 @@ data class PlanUiState(
     val useMetricUnits: Boolean = true,
     val dirty: Boolean = false,
     val message: String? = null,
+    val generationDialog: PlanGenerationDialog? = null,
 )
 
 class PlanViewModel(
     private val planRepository: PlanRepository,
+    private val userProfileStore: UserProfilePreferencesStore,
+    private val logRepository: LogRepository,
+    private val planGenerator: PlanGenerator = PlanGenerator(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlanUiState())
     val uiState: StateFlow<PlanUiState> = _uiState.asStateFlow()
@@ -95,6 +111,89 @@ class PlanViewModel(
             planRepository.resetDefaults()
             _uiState.update { PlanUiState() }
             _savedEvent.emit(Unit)
+        }
+    }
+
+    fun generateFromProfile() {
+        viewModelScope.launch {
+            val profile = userProfileStore.preferences.first()
+            handleOutcome(planGenerator.generate(profile, latestLoggedWeightKg()))
+        }
+    }
+
+    fun submitWeight(value: String) {
+        val weight = value.toNullableDouble()
+        if (weight == null || weight <= 0.0) {
+            _uiState.update {
+                val dialog = it.generationDialog
+                if (dialog is PlanGenerationDialog.WeightEntry) {
+                    it.copy(generationDialog = dialog.copy(error = "Enter a valid weight in kg."))
+                } else {
+                    it
+                }
+            }
+            return
+        }
+        viewModelScope.launch {
+            val profile = userProfileStore.preferences.first()
+            handleOutcome(planGenerator.generate(profile, weight))
+        }
+    }
+
+    fun updateGenerationWeightInput(value: String) {
+        _uiState.update {
+            val dialog = it.generationDialog
+            if (dialog is PlanGenerationDialog.WeightEntry) {
+                it.copy(generationDialog = dialog.copy(weightInput = value, error = null))
+            } else {
+                it
+            }
+        }
+    }
+
+    fun applyGeneratedPlan() {
+        val dialog = _uiState.value.generationDialog
+        if (dialog !is PlanGenerationDialog.Preview) return
+        val plan = dialog.plan
+        _uiState.update {
+            it.copy(
+                targetCalories = plan.targetCalories.toString(),
+                targetProteinG = plan.proteinG.toString(),
+                targetCarbsG = plan.carbsG.toString(),
+                targetFatG = plan.fatG.toString(),
+                calorieZoneLowerBound = plan.zoneLower.toString(),
+                calorieZoneUpperBound = plan.zoneUpper.toString(),
+                generationDialog = null,
+                dirty = true,
+                message = null,
+            )
+        }
+    }
+
+    fun dismissGenerationDialog() {
+        _uiState.update { it.copy(generationDialog = null) }
+    }
+
+    private suspend fun latestLoggedWeightKg(): Double? =
+        logRepository.observeDailyLogs().first()
+            .filter { it.bodyWeightKg != null }
+            .maxByOrNull { it.date }
+            ?.bodyWeightKg
+
+    private fun handleOutcome(outcome: PlanGenerationOutcome) {
+        _uiState.update { state ->
+            when (outcome) {
+                is PlanGenerationOutcome.Ready ->
+                    state.copy(generationDialog = PlanGenerationDialog.Preview(outcome.plan), message = null)
+                is PlanGenerationOutcome.NeedsWeight ->
+                    state.copy(generationDialog = PlanGenerationDialog.WeightEntry(), message = null)
+                is PlanGenerationOutcome.MissingProfileFields ->
+                    state.copy(
+                        generationDialog = null,
+                        message = "Complete your profile in Settings first: " +
+                            "${outcome.fields.joinToString(", ")}.",
+                    )
+            }
         }
     }
 

@@ -1,13 +1,6 @@
 package com.zack.recomptracker.ui.progress
 
-/**
- * Status of a chart's trend verdict, rendered as a colored pill on the Trends screen.
- *
- * CAUTION is reserved for future "slightly over/under target" logic — no current input
- * produces it, but it is kept in the enum (and given a color) so the rendering path is
- * ready when that signal is added.
- */
-enum class PillStatus { GOOD, CAUTION, OFF_TRACK, NEUTRAL }
+import com.zack.recomptracker.ui.component.PillStatus
 
 /**
  * Pure mapping from a [ChartSeries] trend signal to a [PillStatus].

@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.progress
 
+import com.zack.recomptracker.ui.component.PillStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

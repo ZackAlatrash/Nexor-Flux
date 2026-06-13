@@ -18,6 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.Hub
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -109,7 +118,7 @@ fun MoreScreen(
             item {
                 MenuCard {
                     MenuRow(
-                        emoji = "📈",
+                        icon = Icons.AutoMirrored.Rounded.ShowChart,
                         title = "Trends",
                         detail = "Weight, waist, nutrition & lifts",
                         onClick = onTrends,
@@ -123,42 +132,42 @@ fun MoreScreen(
             item {
                 MenuCard {
                     MenuRow(
-                        emoji = "👤",
+                        icon = Icons.Rounded.Person,
                         title = "Profile",
                         detail = "You, goal & activity",
                         onClick = onProfile,
                         showDivider = true,
                     )
                     MenuRow(
-                        emoji = "🎯",
+                        icon = Icons.Rounded.TrackChanges,
                         title = "Plan",
                         detail = "Targets, zones & review cadence",
                         onClick = onPlan,
                         showDivider = true,
                     )
                     MenuRow(
-                        emoji = "🎨",
+                        icon = Icons.Rounded.Palette,
                         title = "Appearance",
                         detail = "Font & accent color",
                         onClick = onAppearance,
                         showDivider = true,
                     )
                     MenuRow(
-                        emoji = "🤖",
+                        icon = Icons.Rounded.AutoAwesome,
                         title = "AI & Coach",
                         detail = "Engine, cloud & on-device model",
                         onClick = onAiCoach,
                         showDivider = true,
                     )
                     MenuRow(
-                        emoji = "🔗",
+                        icon = Icons.Rounded.Hub,
                         title = "Integrations",
                         detail = "Health Connect, Samsung, food catalogs",
                         onClick = onIntegrations,
                         showDivider = true,
                     )
                     MenuRow(
-                        emoji = "💾",
+                        icon = Icons.Rounded.Backup,
                         title = "Data & Backup",
                         detail = "Export, import & reset",
                         onClick = onDataBackup,
@@ -256,7 +265,7 @@ private fun MenuCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun MenuRow(
-    emoji: String,
+    icon: ImageVector,
     title: String,
     detail: String,
     onClick: () -> Unit,
@@ -275,7 +284,7 @@ private fun MenuRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            MenuIcon(emoji)
+            MenuIcon(icon)
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                 Text(detail, fontSize = 11.sp, color = TextMuted)

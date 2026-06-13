@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -129,7 +130,12 @@ fun AiCoachScreen(
                                 .background(accent.tintedSurface),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("🤖", fontSize = 18.sp)
+                            Icon(
+                                imageVector = Icons.Rounded.AutoAwesome,
+                                contentDescription = null,
+                                tint = accent.accent,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(

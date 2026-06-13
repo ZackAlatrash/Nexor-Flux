@@ -22,6 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.FileOpen
+import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.RestaurantMenu
+import androidx.compose.material.icons.rounded.Upload
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -151,7 +159,7 @@ fun DataBackupScreen(
             item {
                 SettingsCard {
                     DataRow(
-                        emoji = "⬆️",
+                        icon = Icons.Rounded.Upload,
                         title = "Export backup",
                         detail = "Save all data to a JSON file",
                         showDivider = true,
@@ -159,7 +167,7 @@ fun DataBackupScreen(
                         enabled = !state.busy,
                     )
                     DataRow(
-                        emoji = "⬇️",
+                        icon = Icons.Rounded.Download,
                         title = "Import backup",
                         detail = "Restore everything from a JSON file",
                         showDivider = false,
@@ -174,7 +182,7 @@ fun DataBackupScreen(
             item {
                 SettingsCard {
                     DataRow(
-                        emoji = "🍎",
+                        icon = Icons.Rounded.RestaurantMenu,
                         title = "Export personal foods",
                         detail = "Save your food library to JSON",
                         showDivider = true,
@@ -186,7 +194,7 @@ fun DataBackupScreen(
                         enabled = !state.busy,
                     )
                     DataRow(
-                        emoji = "📦",
+                        icon = Icons.Rounded.FileOpen,
                         title = "Import personal foods",
                         detail = "Add foods from a JSON or CSV file",
                         showDivider = false,
@@ -205,7 +213,7 @@ fun DataBackupScreen(
             item {
                 DangerCard {
                     DataRow(
-                        emoji = "🗑️",
+                        icon = Icons.Rounded.DeleteOutline,
                         title = "Clear food library",
                         detail = "Delete personal foods; keep logs & plan",
                         showDivider = true,
@@ -214,7 +222,7 @@ fun DataBackupScreen(
                         danger = true,
                     )
                     DataRow(
-                        emoji = "📋",
+                        icon = Icons.Rounded.RestartAlt,
                         title = "Reset logs only",
                         detail = "Delete all food & body log entries",
                         showDivider = true,
@@ -223,7 +231,7 @@ fun DataBackupScreen(
                         danger = true,
                     )
                     DataRow(
-                        emoji = "💥",
+                        icon = Icons.Rounded.WarningAmber,
                         title = "Reset all local data",
                         detail = "Permanently delete everything",
                         showDivider = false,
@@ -304,7 +312,7 @@ private fun DangerCard(content: @Composable ColumnScope.() -> Unit) {
  */
 @Composable
 private fun DataRow(
-    emoji: String,
+    icon: ImageVector,
     title: String,
     detail: String,
     showDivider: Boolean,
@@ -335,7 +343,12 @@ private fun DataRow(
                     .border(1.dp, iconTint.copy(alpha = 0.25f), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(emoji, fontSize = 16.sp)
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp),
+                )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = titleColor)

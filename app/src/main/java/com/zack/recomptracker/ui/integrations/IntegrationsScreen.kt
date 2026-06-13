@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Restaurant
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -185,7 +187,7 @@ fun IntegrationsScreen(
                 SettingsCard {
                     // Samsung Health
                     SettingRow(
-                        emoji = "📥",
+                        icon = Icons.Rounded.Smartphone,
                         title = "Samsung Health",
                         detail = "Import food log from a data export",
                         showDivider = true,
@@ -204,7 +206,7 @@ fun IntegrationsScreen(
 
                     // NEVO catalog
                     SettingRow(
-                        emoji = "🇳🇱",
+                        icon = Icons.Rounded.Restaurant,
                         title = "NEVO catalog",
                         detail = state.nevoSourceVersion
                             ?.let { "Dutch food database · v$it" }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -337,7 +339,7 @@ internal fun AccentThemePicker(
 
 @Composable
 internal fun SettingRow(
-    emoji: String,
+    icon: ImageVector,
     title: String,
     detail: String,
     showDivider: Boolean,
@@ -351,7 +353,7 @@ internal fun SettingRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            MenuIcon(emoji)
+            MenuIcon(icon)
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                 Text(detail, fontSize = 11.sp, color = TextMuted)
@@ -370,7 +372,7 @@ internal fun SettingRow(
 }
 
 @Composable
-internal fun MenuIcon(emoji: String) {
+internal fun MenuIcon(icon: ImageVector) {
     val accent = LocalAppAccent.current
     Box(
         modifier = Modifier
@@ -380,6 +382,11 @@ internal fun MenuIcon(emoji: String) {
             .border(1.dp, accent.tintedBorder, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(emoji, fontSize = 16.sp)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent.accent,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }

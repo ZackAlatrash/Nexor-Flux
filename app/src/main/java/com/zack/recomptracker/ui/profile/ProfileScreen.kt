@@ -25,8 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -417,7 +417,7 @@ private fun AvatarPicker(
                 )
             } else {
                 Icon(
-                    Icons.Default.Person,
+                    Icons.Rounded.Person,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.75f),
                     modifier = Modifier.size(44.dp),
@@ -434,7 +434,7 @@ private fun AvatarPicker(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Default.PhotoCamera,
+                Icons.Rounded.PhotoCamera,
                 contentDescription = "Change photo",
                 tint = Color.White,
                 modifier = Modifier.size(16.dp),

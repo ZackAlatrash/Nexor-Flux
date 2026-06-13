@@ -1,28 +1,23 @@
 package com.zack.recomptracker.data.preferences
 
 import kotlinx.serialization.Serializable
+import java.time.LocalDate
+import java.time.Period
 
 @Serializable
 data class UserProfilePreferences(
+    val name: String? = null,
+    val profilePhotoUri: String? = null,
     val heightCm: Int? = null,
-    val ageYears: Int? = null,
+    val birthDate: String? = null,          // ISO yyyy-MM-dd
     val biologicalSex: BiologicalSex? = null,
     val activityLevel: ActivityLevel? = null,
     val weeklyGymSessions: Int? = null,
     val goal: FitnessGoal? = null,
-    val trainingExperience: TrainingExperience? = null,
-    val plannedTrainingDays: Int? = null,
 )
 
 @Serializable
 enum class BiologicalSex { MALE, FEMALE }
-
-@Serializable
-enum class TrainingExperience {
-    BEGINNER,
-    INTERMEDIATE,
-    ADVANCED,
-}
 
 @Serializable
 enum class ActivityLevel {
@@ -65,8 +60,9 @@ fun ActivityLevel.displayName(): String = when (this) {
     ActivityLevel.VERY_ACTIVE -> "Very Active"
 }
 
-fun TrainingExperience.displayName(): String = when (this) {
-    TrainingExperience.BEGINNER -> "Beginner"
-    TrainingExperience.INTERMEDIATE -> "Intermediate"
-    TrainingExperience.ADVANCED -> "Advanced"
+/** Age in whole years derived from birthDate, relative to [today]. Null if unset/invalid. */
+fun UserProfilePreferences.ageYears(today: LocalDate = LocalDate.now()): Int? {
+    val dob = birthDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+    if (dob.isAfter(today)) return null
+    return Period.between(dob, today).years
 }

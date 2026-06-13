@@ -226,6 +226,20 @@ class RecipeBuilderViewModelTest {
     }
 
     @Test
+    fun `servings available for scalable ingredient without an explicit serving size`() {
+        val vm = vmWith(scalableIngredient(grams = 200.0).copy(entryServingGrams = null))
+        vm.startEditingIngredient(0)
+        val ed = vm.uiState.value.ingredientEditor!!
+        assertTrue(ed.hasServings)
+        assertEquals("2", ed.servingsInput) // default 100 g/serving → 200 g == 2 servings
+        vm.onEditorAmountModeChanged(AmountMode.SERVINGS)
+        vm.onEditorServingsChanged("3")
+        vm.confirmIngredientEdit()
+        assertEquals(300.0, vm.uiState.value.ingredients[0].amountGrams!!, 0.0)
+        assertEquals(390, vm.uiState.value.ingredients[0].calories)
+    }
+
+    @Test
     fun `startEditing opens raw mode for non-scalable ingredient`() {
         val vm = vmWith(ingredient("Mystery"))
         vm.startEditingIngredient(0)

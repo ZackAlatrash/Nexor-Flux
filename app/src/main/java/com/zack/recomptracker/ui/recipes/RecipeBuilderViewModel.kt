@@ -119,16 +119,18 @@ class RecipeBuilderViewModel(
     fun startEditingIngredient(index: Int) {
         val ing = _uiState.value.ingredients.getOrNull(index) ?: return
         val base = ing.basePer100()
-        val hasServings = ing.entryServingGrams != null
         val editor = if (ing.amountGrams != null && base != null) {
             val grams = ing.amountGrams
-            val mode = if (ing.loggedByServings && hasServings) AmountMode.SERVINGS else AmountMode.GRAMS
-            val servings = ing.entryServingGrams?.let { grams / it } ?: 0.0
+            // Servings is always available for a scalable ingredient — fall back to a
+            // default per-serving size when the food has none, matching the add-food sheet.
+            val perServing = ing.entryServingGrams ?: FoodScaling.DEFAULT_SERVING_GRAMS
+            val mode = if (ing.loggedByServings) AmountMode.SERVINGS else AmountMode.GRAMS
+            val servings = grams / perServing
             IngredientEditorState(
                 index = index,
                 name = ing.name,
                 scalable = true,
-                hasServings = hasServings,
+                hasServings = true,
                 mode = mode,
                 gramsInput = formatAmount(grams),
                 servingsInput = formatAmount(servings),
@@ -219,7 +221,7 @@ class RecipeBuilderViewModel(
             AmountMode.GRAMS -> editor.gramsInput.toDoubleOrNull()
             AmountMode.SERVINGS -> {
                 val servings = editor.servingsInput.toDoubleOrNull() ?: return null
-                val servingGrams = ing.entryServingGrams ?: return null
+                val servingGrams = ing.entryServingGrams ?: FoodScaling.DEFAULT_SERVING_GRAMS
                 servings * servingGrams
             }
         }

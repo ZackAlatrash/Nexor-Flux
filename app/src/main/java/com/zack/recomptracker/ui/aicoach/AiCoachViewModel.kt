@@ -1,0 +1,145 @@
+package com.zack.recomptracker.ui.aicoach
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.AiBackend
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.ModelVariant
+import com.zack.recomptracker.data.preferences.SecureKeyStore
+import com.zack.recomptracker.data.preferences.UiPreferences
+import com.zack.recomptracker.data.remote.ChatRequestMessage
+import com.zack.recomptracker.data.remote.CloudConfig
+import com.zack.recomptracker.data.remote.OpenAiCompatClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private data class AiCoachFlags(
+    val ai: Boolean,
+    val backend: AiBackend,
+)
+
+data class AiCoachUiState(
+    val aiInsightsEnabled: Boolean = false,
+    val busy: Boolean = false,
+    val message: String? = null,
+    val aiBackend: AiBackend = AiBackend.LOCAL,
+    val cloudBaseUrl: String = "",
+    val cloudModelId: String = "",
+    val cloudHasKey: Boolean = false,
+    val testConnectionResult: String? = null,
+    val testingConnection: Boolean = false,
+)
+
+class AiCoachViewModel(
+    private val uiPreferences: UiPreferences,
+    private val aiInsightCoordinator: AiInsightCoordinator,
+    private val secureKeyStore: SecureKeyStore,
+    private val openAiCompatClient: OpenAiCompatClient,
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(AiCoachUiState())
+    val uiState: StateFlow<AiCoachUiState> = _uiState.asStateFlow()
+
+    val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
+    val selectedModel: StateFlow<ModelVariant> = aiInsightCoordinator.selectedModel
+
+    init {
+        // Reactive toggles/selectors (not free-text, so no typing race).
+        viewModelScope.launch {
+            combine(
+                uiPreferences.aiInsightsEnabled,
+                uiPreferences.aiBackend,
+            ) { ai, backend ->
+                AiCoachFlags(ai, backend)
+            }.collect { f ->
+                _uiState.update {
+                    it.copy(
+                        aiInsightsEnabled = f.ai,
+                        aiBackend = f.backend,
+                    )
+                }
+            }
+        }
+        // Free-text fields are seeded ONCE from persisted prefs. They must NOT be re-collected
+        // from DataStore — echoing the async value back into the TextField resets the cursor and
+        // scrambles fast input. Edits update _uiState synchronously (see setters) and persist async.
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    cloudBaseUrl = uiPreferences.cloudBaseUrl.first(),
+                    cloudModelId = uiPreferences.cloudModelId.first(),
+                )
+            }
+        }
+        viewModelScope.launch {
+            secureKeyStore.hasKey.collect { hasKey ->
+                _uiState.update { it.copy(cloudHasKey = hasKey) }
+            }
+        }
+    }
+
+    fun setAiInsights(enabled: Boolean) {
+        viewModelScope.launch { uiPreferences.setAiInsights(enabled) }
+    }
+
+    fun setAiBackend(backend: AiBackend) {
+        viewModelScope.launch { uiPreferences.setAiBackend(backend) }
+    }
+
+    fun setCloudBaseUrl(url: String) {
+        _uiState.update { it.copy(cloudBaseUrl = url) }      // synchronous → field updates instantly
+        viewModelScope.launch { uiPreferences.setCloudBaseUrl(url) }  // persist (async side effect)
+    }
+
+    fun setCloudModelId(model: String) {
+        _uiState.update { it.copy(cloudModelId = model) }
+        viewModelScope.launch { uiPreferences.setCloudModelId(model) }
+    }
+
+    fun setCloudApiKey(key: String) {
+        viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.setApiKey(key) } }
+    }
+
+    fun clearCloudApiKey() {
+        viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.clearApiKey() } }
+    }
+
+    fun testCloudConnection() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(testingConnection = true, testConnectionResult = null) }
+            val s = _uiState.value
+            val key = secureKeyStore.getApiKey()
+            if (s.cloudBaseUrl.isBlank() || s.cloudModelId.isBlank() || key.isBlank()) {
+                _uiState.update { it.copy(testingConnection = false, testConnectionResult = "Fill in URL, model, and API key first.") }
+                return@launch
+            }
+            val result = try {
+                withContext(Dispatchers.IO) {
+                    openAiCompatClient.completion(
+                        config = CloudConfig(baseUrl = s.cloudBaseUrl, apiKey = key, model = s.cloudModelId),
+                        messages = listOf(ChatRequestMessage(role = "user", content = "ping")),
+                        toolSchemasJson = emptyList(),
+                    )
+                }
+                "Connection OK"
+            } catch (e: Exception) {
+                "Failed: ${e.message?.take(120) ?: "unknown error"}"
+            }
+            _uiState.update { it.copy(testingConnection = false, testConnectionResult = result) }
+        }
+    }
+
+    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
+    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
+    fun deleteModel() = aiInsightCoordinator.deleteModel()
+    fun setModel(variant: ModelVariant) = aiInsightCoordinator.setSelectedModel(variant)
+
+    fun clearMessage() = _uiState.update { it.copy(message = null) }
+}

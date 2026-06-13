@@ -51,6 +51,7 @@ import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
@@ -400,6 +401,12 @@ private class AppViewModelFactory(
                 uiPreferences = container.uiPreferences,
                 hcRepository = container.healthConnectRepository,
                 backupRepository = container.backupRepository,
+                aiInsightCoordinator = container.aiInsightCoordinator,
+                secureKeyStore = container.secureKeyStore,
+                openAiCompatClient = container.openAiCompatClient,
+            )
+            AiCoachViewModel::class.java -> AiCoachViewModel(
+                uiPreferences = container.uiPreferences,
                 aiInsightCoordinator = container.aiInsightCoordinator,
                 secureKeyStore = container.secureKeyStore,
                 openAiCompatClient = container.openAiCompatClient,

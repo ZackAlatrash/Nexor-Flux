@@ -28,6 +28,12 @@ import com.zack.recomptracker.ui.progress.ProgressScreen
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsScreen
 import com.zack.recomptracker.ui.settings.SettingsViewModel
+import com.zack.recomptracker.ui.profile.ProfileScreen
+import com.zack.recomptracker.ui.profile.ProfileViewModel
+import com.zack.recomptracker.ui.appearance.AppearanceScreen
+import com.zack.recomptracker.ui.appearance.AppearanceViewModel
+import com.zack.recomptracker.ui.integrations.IntegrationsScreen
+import com.zack.recomptracker.ui.databackup.DataBackupScreen
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryScreen
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.today.BodyRecoveryScreen
@@ -66,6 +72,10 @@ object Routes {
     const val FoodLibrary = "food_library"
     const val Foods     = "foods"
     const val Settings  = "settings"
+    const val Profile      = "profile"
+    const val Appearance   = "appearance"
+    const val Integrations = "integrations"
+    const val DataBackup   = "data_backup"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -381,6 +391,47 @@ fun AppNavGraph(
             exitTransition  = { screenExit },
         ) {
             SettingsScreen(viewModel<SettingsViewModel>(factory = factory))
+        }
+        composable(
+            route = Routes.Profile,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            ProfileScreen(
+                viewModel = viewModel<ProfileViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+                onOpenBody = { navController.navigate(TopLevelDestination.Body.route) },
+            )
+        }
+        composable(
+            route = Routes.Appearance,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            AppearanceScreen(
+                viewModel<AppearanceViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.Integrations,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            IntegrationsScreen(
+                viewModel<SettingsViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.DataBackup,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            DataBackupScreen(
+                viewModel<SettingsViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }

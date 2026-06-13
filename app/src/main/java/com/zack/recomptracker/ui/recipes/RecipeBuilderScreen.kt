@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -24,9 +25,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,11 +43,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
+import com.zack.recomptracker.domain.food.FoodScaling
+import com.zack.recomptracker.ui.component.AmountMode
+import com.zack.recomptracker.ui.component.AmountPreviewStat
+import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.theme.CardBorder
@@ -225,6 +237,7 @@ fun RecipeBuilderScreen(
                         }
                         IngredientRow(
                             ingredient = ingredient,
+                            onClick = { viewModel.startEditingIngredient(index) },
                             onRemove = { viewModel.removeIngredientAt(index) },
                         )
                     }
@@ -265,11 +278,16 @@ fun RecipeBuilderScreen(
             }
         }
     }
+
+    state.ingredientEditor?.let { editor ->
+        IngredientAmountSheet(editor = editor, viewModel = viewModel)
+    }
 }
 
 @Composable
 private fun IngredientRow(
     ingredient: RecipeIngredientEntity,
+    onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
     Row(
@@ -279,7 +297,12 @@ private fun IngredientRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 ingredient.name,
                 fontWeight = FontWeight.SemiBold,
@@ -307,4 +330,89 @@ private fun IngredientRow(
             Text("✕", fontSize = 13.sp, color = Color(0xBFFF4444))
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun IngredientAmountSheet(
+    editor: IngredientEditorState,
+    viewModel: RecipeBuilderViewModel,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = viewModel::cancelIngredientEdit,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(editor.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+
+            if (editor.scalable) {
+                if (editor.hasServings) {
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = editor.mode == AmountMode.SERVINGS,
+                            onClick = { viewModel.onEditorAmountModeChanged(AmountMode.SERVINGS) },
+                            shape = SegmentedButtonDefaults.itemShape(0, 2),
+                        ) { Text("Servings") }
+                        SegmentedButton(
+                            selected = editor.mode == AmountMode.GRAMS,
+                            onClick = { viewModel.onEditorAmountModeChanged(AmountMode.GRAMS) },
+                            shape = SegmentedButtonDefaults.itemShape(1, 2),
+                        ) { Text("Grams") }
+                    }
+                }
+                if (editor.mode == AmountMode.SERVINGS) {
+                    AmountStepper(
+                        value = editor.servingsInput,
+                        onValueChange = viewModel::onEditorServingsChanged,
+                        onMinus = { viewModel.stepEditorServings(-FoodScaling.SERVING_STEP) },
+                        onPlus = { viewModel.stepEditorServings(FoodScaling.SERVING_STEP) },
+                        caption = "",
+                        suffix = "servings",
+                    )
+                } else {
+                    AmountStepper(
+                        value = editor.gramsInput,
+                        onValueChange = viewModel::onEditorGramsChanged,
+                        onMinus = { viewModel.stepEditorGrams(-10) },
+                        onPlus = { viewModel.stepEditorGrams(10) },
+                        caption = "",
+                        suffix = "g",
+                    )
+                }
+                val preview = editor.preview
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
+                    AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
+                    AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
+                    AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+                }
+            } else {
+                MacroEditField("Calories (kcal)", editor.caloriesInput, viewModel::onEditorCaloriesChanged)
+                MacroEditField("Protein (g)", editor.proteinInput, viewModel::onEditorProteinChanged)
+                MacroEditField("Carbs (g)", editor.carbsInput, viewModel::onEditorCarbsChanged)
+                MacroEditField("Fat (g)", editor.fatInput, viewModel::onEditorFatChanged)
+            }
+
+            LiquidPrimaryButton(text = "Save", onClick = viewModel::confirmIngredientEdit)
+        }
+    }
+}
+
+@Composable
+private fun MacroEditField(label: String, value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

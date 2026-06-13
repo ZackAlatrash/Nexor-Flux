@@ -50,9 +50,11 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
+import com.zack.recomptracker.ui.progress.PillStatus
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
+import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.FrostedBorder
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.TextFaint
@@ -187,18 +189,74 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun VioletBadge(text: String, modifier: Modifier = Modifier) {
     val accent = LocalAppAccent.current
+    BadgePill(
+        text = text,
+        bg = accent.accent.copy(alpha = 0.12f),
+        border = accent.accent.copy(alpha = 0.20f),
+        textColor = accent.accentLight,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Status-colored variant of [VioletBadge] used for the Trends verdict pills.
+ * Keeps the same shape / padding / typography as the default violet badge; only the
+ * color trio changes per [PillStatus].
+ */
+@Composable
+fun VioletBadge(status: PillStatus, text: String, modifier: Modifier = Modifier) {
+    when (status) {
+        PillStatus.NEUTRAL -> VioletBadge(text = text, modifier = modifier)
+        PillStatus.GOOD -> {
+            val green = Color(0xFF86efac)
+            BadgePill(
+                text = text,
+                bg = green.copy(alpha = 0.12f),
+                border = green.copy(alpha = 0.28f),
+                textColor = green,
+                modifier = modifier,
+            )
+        }
+        PillStatus.CAUTION -> {
+            val amber = Color(0xFFfbbf24)
+            BadgePill(
+                text = text,
+                bg = amber.copy(alpha = 0.12f),
+                border = amber.copy(alpha = 0.28f),
+                textColor = amber,
+                modifier = modifier,
+            )
+        }
+        PillStatus.OFF_TRACK -> BadgePill(
+            text = text,
+            bg = ErrorRed.copy(alpha = 0.12f),
+            border = ErrorRed.copy(alpha = 0.28f),
+            textColor = ErrorRed,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun BadgePill(
+    text: String,
+    bg: Color,
+    border: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(accent.accent.copy(alpha = 0.12f))
-            .border(1.dp, accent.accent.copy(alpha = 0.20f), RoundedCornerShape(20.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(20.dp))
             .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
         Text(
             text = text,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = accent.accentLight,
+            color = textColor,
         )
     }
 }

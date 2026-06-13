@@ -39,13 +39,13 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.charts.MiniSparkline
 import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
-import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 
@@ -222,7 +222,6 @@ private fun MiniChartPair(left: ChartSeries, right: ChartSeries) {
 
 @Composable
 private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
-    val accent = LocalAppAccent.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(CornerCard))
@@ -259,11 +258,15 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
             }
         }
         if (series.trendLabel.isNotEmpty()) {
-            Text(
+            // Neutral when the series has no current value (no data to judge a trend);
+            // otherwise good/off-track from trendIsGood. ChartSeries has no flat flag,
+            // so currentValue == null is the simplest correct neutral signal.
+            VioletBadge(
+                status = pillStatus(
+                    trendIsGood = series.trendIsGood,
+                    isNeutral = series.currentValue == null,
+                ),
                 text = series.trendLabel,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (series.trendIsGood) accent.accentLight else ErrorRed,
             )
         }
         Spacer(Modifier.height(3.dp))
@@ -277,7 +280,6 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
-    val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -314,11 +316,13 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                 }
             }
             if (series.trendLabel.isNotEmpty()) {
-                Text(
+                // See MiniChartCard: neutral only when there is no current value.
+                VioletBadge(
+                    status = pillStatus(
+                        trendIsGood = series.trendIsGood,
+                        isNeutral = series.currentValue == null,
+                    ),
                     text = series.trendLabel,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (series.trendIsGood) accent.accentLight else ErrorRed,
                 )
             }
         }

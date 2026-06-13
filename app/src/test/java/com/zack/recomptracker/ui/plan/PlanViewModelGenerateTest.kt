@@ -11,6 +11,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -148,5 +149,25 @@ class PlanViewModelGenerateTest {
         assertEquals("2720", state.calorieZoneUpperBound)
         assertEquals(null, state.generationDialog)
         assertTrue(state.dirty)
+    }
+
+    @Test
+    fun preferencesRefreshKeepsOpenDialog() = runTest(dispatcher) {
+        val prefsFlow = MutableSharedFlow<PlanPreferences>(replay = 1)
+        prefsFlow.emit(PlanPreferences())
+        whenever(planRepo.preferences).thenReturn(prefsFlow)
+        whenever(profileStore.preferences).thenReturn(flowOf(completeProfile))
+        whenever(logRepo.observeDailyLogs()).thenReturn(flowOf(emptyList()))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.generateFromProfile() // no logged weight -> WeightEntry dialog opens
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.generationDialog is PlanGenerationDialog.WeightEntry)
+
+        prefsFlow.emit(PlanPreferences()) // a non-dirty refresh
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.generationDialog is PlanGenerationDialog.WeightEntry)
     }
 }

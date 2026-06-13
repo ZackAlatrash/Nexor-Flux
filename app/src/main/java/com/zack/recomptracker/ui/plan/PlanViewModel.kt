@@ -60,7 +60,8 @@ class PlanViewModel(
         viewModelScope.launch {
             planRepository.preferences.collect { prefs ->
                 _uiState.update { current ->
-                    if (current.dirty) current else prefs.toUiState()
+                    if (current.dirty) current
+                    else prefs.toUiState().copy(generationDialog = current.generationDialog)
                 }
             }
         }

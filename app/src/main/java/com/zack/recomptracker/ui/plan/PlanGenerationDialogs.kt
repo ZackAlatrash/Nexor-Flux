@@ -28,7 +28,7 @@ fun PlanPreviewDialog(
         title = { Text("Generated plan") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                BreakdownRow("Weight used", "${plan.weightKgUsed} kg")
+                BreakdownRow("Weight used", "%.1f kg".format(java.util.Locale.US, plan.weightKgUsed))
                 BreakdownRow("BMR", "${plan.bmr} kcal")
                 BreakdownRow("TDEE (×${plan.activityFactor})", "${plan.tdee} kcal")
                 BreakdownRow("Goal adjustment", "${plan.goalDeltaPercent}%")

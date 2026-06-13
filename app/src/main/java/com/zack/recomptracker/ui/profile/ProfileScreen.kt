@@ -83,6 +83,8 @@ fun ProfileScreen(
     onOpenBody: () -> Unit,
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val nameInput by viewModel.nameInput.collectAsStateWithLifecycle()
+    val heightInput by viewModel.heightInput.collectAsStateWithLifecycle()
     val currentWeightKg by viewModel.currentWeightKg.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val accent = LocalAppAccent.current
@@ -187,8 +189,8 @@ fun ProfileScreen(
                     )
                     GlassInputField(
                         label = "Name",
-                        value = profile.name.orEmpty(),
-                        onValueChange = { viewModel.update(profile.copy(name = it.ifBlank { null })) },
+                        value = nameInput,
+                        onValueChange = viewModel::setName,
                         keyboardType = KeyboardType.Text,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -282,12 +284,8 @@ fun ProfileScreen(
                     Spacer(Modifier.height(16.dp))
                     GlassInputField(
                         label = "Height",
-                        value = profile.heightCm?.toString() ?: "",
-                        onValueChange = { raw ->
-                            viewModel.update(
-                                profile.copy(heightCm = raw.filter { it.isDigit() }.take(3).toIntOrNull()),
-                            )
-                        },
+                        value = heightInput,
+                        onValueChange = viewModel::setHeight,
                         unit = "cm",
                         keyboardType = KeyboardType.Number,
                         modifier = Modifier.fillMaxWidth(),

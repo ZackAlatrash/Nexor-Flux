@@ -53,9 +53,30 @@ be injected per question. Therefore **retrieval quality matters far more than co
 
 ## Content source
 
-The corpus is built from **specific sources the user will provide** (trusted books / articles /
-PDFs), not general knowledge. This requires an offline **ingestion step** that converts those
-sources into the shipped corpus.
+**Guiding principle: ship distilled notes, not verbatim text.** Shipping verbatim chunks of
+copyrighted material inside the APK is both legally risky (redistribution) and lower quality
+(messy PDF extraction noise hurts a small model). Instead, the corpus is composed of original,
+condensed, **cited** notes — e.g. *"ISSN concludes 1.4–2.0 g/kg protein supports muscle gain
+[ISSN 2017]."* Trusted books are *what we distill from*, not *what we ship*. The sole exception
+is openly-licensed / public-domain sources, where verbatim text is legally fine.
+
+**Sourcing tiers (best → fallback):**
+
+1. **Open-access authoritative** *(v1 starter corpus)* — ISSN position stands (open-access,
+   written as evidence summaries: protein, nutrient timing, creatine, caffeine, meal frequency,
+   diet & body composition), US Dietary Guidelines / Dietary Reference Intakes (public domain),
+   USDA FoodData Central (public domain; also the source for any later food-DB expansion).
+   Legally shippable, high signal, requires no input from the user to begin.
+2. **User's trusted books/articles, distilled** — user supplies PDFs in `knowledge-sources/`;
+   they are read and condensed into original cited notes (never shipped verbatim).
+3. **Synthesis from established consensus** — gap-filler only, for topics no clean source covers;
+   drafted then user-verified.
+
+**v1 decision: build the starter corpus from Tier 1 now; layer in Tier-2 distilled notes from the
+user's own books afterward.** This delivers real content immediately without blocking on the user
+gathering material. The user remains the final accuracy/trust gate on all chunks.
+
+This requires an offline **ingestion step** that converts sources into the shipped corpus.
 
 ## Architecture
 
@@ -146,17 +167,22 @@ Insights-injection and food-DB expansion are explicitly staged as fast-follows.
 ## Ingestion workflow (dev-time, never on-device)
 
 ```
-knowledge-sources/          ← trusted PDFs/articles (default: git-tracked for reproducibility;
-                              gitignore instead if any source is large or copyright-restricted)
-   ├─ source-a.pdf
-   └─ source-b.md
+knowledge-sources/          ← distilled notes (.md) + openly-licensed raw sources
+                              (default: git-tracked; gitignore any copyright-restricted raw PDF)
+   ├─ issn-protein.md       ← Tier 1: distilled cited notes from open-access position stands
+   ├─ dietary-guidelines.md ← Tier 1
+   └─ (user book notes).md  ← Tier 2: added later, distilled from trusted books
         │  ingestion script (standalone, run manually when sources change)
         ▼
-   extract text → chunk by section (~150–400 tokens) → tag → attach provenance
+   chunk by section (~150–400 tokens) → tag → attach provenance
         │
         ▼
 app/src/main/assets/knowledge/corpus.json   ← shipped artifact
 ```
+
+Because the corpus is authored as clean distilled markdown notes (not raw PDF extraction),
+the ingestion script's job is primarily chunking + tagging + provenance, not heavy text cleanup.
+Raw PDF text extraction is only needed for the rare openly-licensed source we ship closer to verbatim.
 
 - **Chunking by section/heading**, ~150–400 tokens each — small enough to inject 2–3, large
   enough to be self-contained.

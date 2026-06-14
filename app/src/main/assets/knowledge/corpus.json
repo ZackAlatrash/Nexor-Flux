@@ -1,72 +1,1281 @@
 {
   "chunks": [
     {
-      "id": "energy-balance-1",
-      "title": "Energy balance and body recomposition",
+      "id": "nut-fiber-satiety-2019-1",
+      "title": "Fiber is the strongest dietary predictor of weight loss and adherence",
       "tags": [
+        "fiber",
+        "fibre",
+        "satiety",
+        "full",
+        "hunger",
+        "appetite",
+        "adherence",
+        "weight",
+        "loss",
         "calories",
-        "deficit",
-        "surplus",
-        "fat-loss"
+        "diet"
       ],
-      "source": "Dietary Guidelines / energy balance basics",
-      "text": "Fat loss requires eating fewer calories than you burn; muscle gain is supported by adequate protein and roughly maintenance-or-slightly-above calories. A moderate deficit of about 300 to 500 calories per day supports fat loss while preserving muscle when protein is high and training is hard."
+      "source": "\"Miketinas DC et al. Fiber Intake Predicts Weight Loss and Dietary Adherence in Adults Consuming Calorie-Restricted Diets: The POUNDS Lost Study. J Nutr. 2019;149(10):1742–1748. doi:10.1093/jn/nxz117. PMC6768815. — AND — Salleh SN et al. Unravelling the Effects of Soluble Dietary Fibre Supplementation on Energy Intake and Perceived Satiety in Healthy Adults. Foods. 2019;8(1):15. doi:10.3390/foods8010015. PMC6352252.\"",
+      "text": "In the POUNDS Lost RCT (345 adults, 750 kcal/day deficit, 6 months), dietary fiber was **the most influential predictor of weight loss** among all dietary variables tested (partial R² = 0.17). Every **3.7 g/day increase in fiber** predicted **1.4 kg of additional weight loss** over 6 months. Participants in the highest fiber-increase group (+8–29 g/day) lost **10.3 kg** vs. 5.8 kg in the lowest group. Meeting the Adequate Intake for fiber (25 g/day women, 38 g/day men) was associated with **2.94× higher odds of diet adherence** (99% CI: 1.56–5.55). Fiber is not just a health metric — it is an adherence lever."
     },
     {
-      "id": "energy-balance-2",
-      "title": "Rate of weight change",
+      "id": "nut-fiber-satiety-2019-2",
+      "title": "Fiber targets and how to hit them",
       "tags": [
+        "fiber",
+        "fibre",
+        "satiety",
+        "full",
+        "hunger",
+        "how-much",
         "calories",
-        "deficit",
-        "surplus",
-        "fat-loss"
+        "calorie",
+        "diet",
+        "adherence"
       ],
-      "source": "Dietary Guidelines / energy balance basics",
-      "text": "A sustainable rate of fat loss is about 0.5 to 1 percent of bodyweight per week. Faster loss raises the risk of muscle loss and low energy. If weight is dropping much faster than this, a small calorie increase is usually warranted."
+      "source": "\"Miketinas DC et al. Fiber Intake Predicts Weight Loss and Dietary Adherence in Adults Consuming Calorie-Restricted Diets: The POUNDS Lost Study. J Nutr. 2019;149(10):1742–1748. doi:10.1093/jn/nxz117. PMC6768815. — AND — Salleh SN et al. Unravelling the Effects of Soluble Dietary Fibre Supplementation on Energy Intake and Perceived Satiety in Healthy Adults. Foods. 2019;8(1):15. doi:10.3390/foods8010015. PMC6352252.\"",
+      "text": "The U.S. Adequate Intake for fiber is **25 g/day for women** and **38 g/day for men** (14 g per 1,000 kcal consumed). Average U.S. intake is only ~15 g/day. A 3–4 g/day increase is meaningful — achievable by adding one serving of legumes, an extra serving of vegetables, or a tablespoon of psyllium husk. High-fiber foods that also contribute protein include lentils, chickpeas, edamame, and black beans — practical double-duty choices for recomp goals."
     },
     {
-      "id": "protein-intake-1",
-      "title": "Daily protein target for muscle gain",
+      "id": "nut-fiber-satiety-2019-3",
+      "title": "Soluble fiber is most potent for hunger suppression",
+      "tags": [
+        "fiber",
+        "fibre",
+        "hunger",
+        "appetite",
+        "satiety",
+        "full",
+        "fullness",
+        "craving",
+        "diet"
+      ],
+      "source": "\"Miketinas DC et al. Fiber Intake Predicts Weight Loss and Dietary Adherence in Adults Consuming Calorie-Restricted Diets: The POUNDS Lost Study. J Nutr. 2019;149(10):1742–1748. doi:10.1093/jn/nxz117. PMC6768815. — AND — Salleh SN et al. Unravelling the Effects of Soluble Dietary Fibre Supplementation on Energy Intake and Perceived Satiety in Healthy Adults. Foods. 2019;8(1):15. doi:10.3390/foods8010015. PMC6352252.\"",
+      "text": "A meta-analysis of 17 RCTs (Salleh 2019) ranked soluble fiber types by satiety effect: **guar gum** (effect size −0.90) was strongest, followed by **beta-glucan** (−0.44, found in oats), **alginate** (−0.42), polydextrose (−0.36), and pectin (−0.26). Soluble fibers increase digesta viscosity, delay gastric emptying, and extend fullness signals. Liquid delivery (smoothies with psyllium, oat-based drinks) produced stronger satiety than solid form. Practical picks: oats, psyllium husk, lentils, and legumes are the most accessible high-soluble-fiber foods for someone managing hunger on a calorie deficit."
+    },
+    {
+      "id": "nut-helms-roberts-cutting-2014-2020-1",
+      "title": "Protein target while cutting — lean body mass based",
+      "tags": [
+        "protein",
+        "cut",
+        "cutting",
+        "deficit",
+        "lose",
+        "loss",
+        "lean",
+        "muscle",
+        "macros",
+        "how-much"
+      ],
+      "source": "\"Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. J Int Soc Sports Nutr. 2014;11:20. doi:10.1186/1550-2783-11-20. PMC4033492. — AND — Roberts BM, Helms ER, Trexler ET, Fitschen PJ. Nutritional Recommendations for Physique Athletes. J Hum Kinet. 2020;71:79–108. doi:10.2478/hukin-2019-0096. PMC7052702.\"",
+      "text": "When in a calorie deficit, protein needs are higher than for maintenance or surplus. The evidence-based target is **2.3–3.1 g/kg of lean body mass per day** (use LBM, not total body weight, especially for individuals with higher body fat). In one study, subjects eating only 1.0 g/kg lost 1.6 kg of lean mass in 2 weeks; at 2.3 g/kg with the same deficit they lost only 0.3 kg. Go toward the upper end of 2.3–3.1 as leanness increases — leaner individuals have less fat to burn and more muscle at risk. Roberts 2020 extends this to **up to 3.5 g/kg for hunger control** during aggressive cuts."
+    },
+    {
+      "id": "nut-helms-roberts-cutting-2014-2020-2",
+      "title": "How fast should you lose weight — deficit and rate",
+      "tags": [
+        "weight",
+        "rate",
+        "fat",
+        "loss",
+        "lose",
+        "cut",
+        "cutting",
+        "lean",
+        "muscle",
+        "sustainable",
+        "scale",
+        "deficit",
+        "calories"
+      ],
+      "source": "\"Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. J Int Soc Sports Nutr. 2014;11:20. doi:10.1186/1550-2783-11-20. PMC4033492. — AND — Roberts BM, Helms ER, Trexler ET, Fitschen PJ. Nutritional Recommendations for Physique Athletes. J Hum Kinet. 2020;71:79–108. doi:10.2478/hukin-2019-0096. PMC7052702.\"",
+      "text": "Target **0.5–1% of body weight per week** (Helms 2014). Physique athletes who lost at ≤0.5%/week placed better in competitions than those losing faster (Roberts 2020). A slower group losing 0.7%/week lost 31% of their fat mass and actually gained 2.1% lean mass over the diet; a faster group (1.4%/week) lost only 21% of fat mass with no lean gain. In practice: a 70 kg person targets 350–700 g/week of weight loss. Diets lasting 2–4+ months at this rate yield better lean mass retention than aggressive crash diets."
+    },
+    {
+      "id": "nut-helms-roberts-cutting-2014-2020-3",
+      "title": "Fat intake floor during a cut — don't go too low",
+      "tags": [
+        "fat",
+        "dietary-fat",
+        "cut",
+        "cutting",
+        "deficit",
+        "calories",
+        "hormones",
+        "macros",
+        "how-much"
+      ],
+      "source": "\"Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. J Int Soc Sports Nutr. 2014;11:20. doi:10.1186/1550-2783-11-20. PMC4033492. — AND — Roberts BM, Helms ER, Trexler ET, Fitschen PJ. Nutritional Recommendations for Physique Athletes. J Hum Kinet. 2020;71:79–108. doi:10.2478/hukin-2019-0096. PMC7052702.\"",
+      "text": "Do not drop dietary fat below **15% of total calories** (Helms 2014) or **10% as an absolute minimum** (Roberts 2020). Very low fat intake reduces testosterone, though the primary hormonal driver is caloric deficit and body fat loss, not fat percentage per se. At very low fat intakes, essential fatty acid and fat-soluble vitamin needs may go unmet. A practical rule: set protein first, set fat at 15–25% of calories, use the remaining calories for carbohydrate."
+    },
+    {
+      "id": "nut-helms-roberts-cutting-2014-2020-4",
+      "title": "Carbohydrate during a cut — fill in after protein and fat",
+      "tags": [
+        "carbs",
+        "carb",
+        "cut",
+        "cutting",
+        "deficit",
+        "fuel",
+        "calories",
+        "calorie",
+        "muscle",
+        "energy"
+      ],
+      "source": "\"Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. J Int Soc Sports Nutr. 2014;11:20. doi:10.1186/1550-2783-11-20. PMC4033492. — AND — Roberts BM, Helms ER, Trexler ET, Fitschen PJ. Nutritional Recommendations for Physique Athletes. J Hum Kinet. 2020;71:79–108. doi:10.2478/hukin-2019-0096. PMC7052702.\"",
+      "text": "Carbohydrate is the flexible residual macro: set protein (2.3–3.1 g/kg LBM) and fat (15–25% kcal) first, then fill remaining calories with carbohydrate. Carbs serve as primary fuel for resistance training, so keeping them as high as possible within the calorie budget protects training performance and helps retain muscle. Target **2–5 g/kg/day** carbohydrate for physique athletes in a cut (Roberts 2020). Cutting carbs below training energy demands is one of the most common and avoidable errors during prep."
+    },
+    {
+      "id": "nut-helms-roberts-cutting-2014-2020-5",
+      "title": "NEAT suppression during dieting — the hidden calorie drain",
+      "tags": [
+        "calories",
+        "calorie",
+        "tdee",
+        "plateau",
+        "metabolic-adaptation",
+        "weight",
+        "fat",
+        "loss",
+        "deficit"
+      ],
+      "source": "\"Helms ER, Aragon AA, Fitschen PJ. Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation. J Int Soc Sports Nutr. 2014;11:20. doi:10.1186/1550-2783-11-20. PMC4033492. — AND — Roberts BM, Helms ER, Trexler ET, Fitschen PJ. Nutritional Recommendations for Physique Athletes. J Hum Kinet. 2020;71:79–108. doi:10.2478/hukin-2019-0096. PMC7052702.\"",
+      "text": "Non-exercise activity thermogenesis (NEAT) — fidgeting, walking, daily movement — can vary by up to **2,000 kcal/day** between individuals. A 10% reduction in body weight causes roughly **262 kcal/day** of NEAT suppression; 20% weight loss causes ~500 kcal/day. This involuntary energy compensation is a primary reason fat loss stalls. Users who report strict adherence but plateau are likely experiencing NEAT suppression, not cheating. Calorie targets may need to be revised downward as the diet progresses."
+    },
+    {
+      "id": "nut-issn-diets-body-composition-2017-1",
+      "title": "Energy balance — the foundation of fat loss and muscle gain",
+      "tags": [
+        "calories",
+        "calorie",
+        "energy",
+        "energy-balance",
+        "tdee",
+        "deficit",
+        "surplus",
+        "fat",
+        "loss",
+        "lean",
+        "macros"
+      ],
+      "source": "\"Aragon AA et al. International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16. doi:10.1186/s12970-017-0174-y. PMC5470183.\"",
+      "text": "All diet approaches — low-fat, low-carb, ketogenic, intermittent fasting — produce comparable fat loss and muscle gain results **when total calories and protein are equated**. The ISSN position stand is explicit: no diet style has been shown to produce superior body composition outcomes after controlling for energy intake and protein. The implication for coaching: calorie target and protein intake are the levers that matter; the macro split is a compliance tool."
+    },
+    {
+      "id": "nut-issn-diets-body-composition-2017-2",
+      "title": "How fast to lose weight — recommended rate of fat loss",
+      "tags": [
+        "weight",
+        "rate",
+        "fat",
+        "loss",
+        "lose",
+        "cut",
+        "cutting",
+        "lean",
+        "muscle",
+        "sustainable",
+        "scale"
+      ],
+      "source": "\"Aragon AA et al. International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16. doi:10.1186/s12970-017-0174-y. PMC5470183.\"",
+      "text": "A fat loss rate of **0.5–1.0% of body weight per week** preserves lean mass for most individuals. Faster loss (>1%/week) risks disproportionate muscle breakdown, especially in already-lean people. Larger caloric surpluses (up to 544–2,010 kcal/day above maintenance) are appropriate for untrained beginners building muscle fast; trained athletes should use much smaller surpluses to avoid excess fat gain."
+    },
+    {
+      "id": "nut-issn-diets-body-composition-2017-3",
+      "title": "Ketogenic diet for fat loss — what the evidence actually shows",
+      "tags": [
+        "keto",
+        "carb",
+        "low-carb",
+        "cut",
+        "cutting",
+        "fat",
+        "loss",
+        "calories",
+        "calorie",
+        "macros"
+      ],
+      "source": "\"Aragon AA et al. International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16. doi:10.1186/s12970-017-0174-y. PMC5470183.\"",
+      "text": "Every controlled study that matched protein and calories between a ketogenic diet and a standard diet found **no fat-loss advantage for keto**. Under ad libitum (eat freely) conditions, keto produced about **294 kcal/day spontaneous intake reduction** — a real appetite-suppression effect, but not a metabolic magic trick. Keto may impair high-intensity performance (strength, power) due to reduced pyruvate dehydrogenase activity. Choose keto if it helps you adhere to your calorie target; do not choose it expecting faster fat loss from the diet type itself."
+    },
+    {
+      "id": "nut-issn-diets-body-composition-2017-4",
+      "title": "Metabolic adaptation — why dieting gets harder over time",
+      "tags": [
+        "plateau",
+        "metabolic-adaptation",
+        "diet-break",
+        "deficit",
+        "calories",
+        "calories",
+        "tdee",
+        "weight",
+        "fat",
+        "loss"
+      ],
+      "source": "\"Aragon AA et al. International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16. doi:10.1186/s12970-017-0174-y. PMC5470183.\"",
+      "text": "Adaptive thermogenesis reduces total energy expenditure by **10–15% beyond** what tissue loss alone predicts when someone loses ≥10% of body weight. This means calorie targets must be periodically revised downward as weight is lost — a target set at the start of a diet will over-estimate TDEE after significant weight loss. Higher protein intake and resistance training are the best-evidenced strategies to blunt this adaptation. The Biggest Loser data (Fothergill 2016) documents adaptation persisting for years; the MATADOR study (Byrne 2018) shows structured diet breaks attenuate it."
+    },
+    {
+      "id": "nut-issn-protein-exercise-2017-1",
+      "title": "How much protein per day for exercising adults",
+      "tags": [
+        "protein",
+        "macros",
+        "muscle",
+        "gain",
+        "build",
+        "how-much",
+        "calories",
+        "goal"
+      ],
+      "source": "\"Jäger R et al. International Society of Sports Nutrition Position Stand: protein and exercise. J Int Soc Sports Nutr. 2017;14:20. doi:10.1186/s12970-017-0177-8. PMC5477153.\"",
+      "text": "For most exercising individuals, **1.4–2.0 g of protein per kg of bodyweight per day** is sufficient to build and maintain muscle mass. Athletes who are comfortable hitting the lower end (1.4 g/kg) can still make solid progress; pushing toward 2.0 g/kg is a safe ceiling for those in a caloric surplus or at maintenance. Going higher than 2.0 g/kg during a surplus produces little additional muscle-building benefit."
+    },
+    {
+      "id": "nut-issn-protein-exercise-2017-2",
+      "title": "Protein when cutting — how much to eat in a calorie deficit",
+      "tags": [
+        "protein",
+        "cut",
+        "cutting",
+        "deficit",
+        "lose",
+        "loss",
+        "lean",
+        "muscle",
+        "macros",
+        "how-much"
+      ],
+      "source": "\"Jäger R et al. International Society of Sports Nutrition Position Stand: protein and exercise. J Int Soc Sports Nutr. 2017;14:20. doi:10.1186/s12970-017-0177-8. PMC5477153.\"",
+      "text": "During a calorie deficit, protein needs rise substantially to prevent muscle breakdown. Resistance-trained individuals should target **2.3–3.1 g/kg/day** (based on total bodyweight, or lean body mass for very lean athletes). Higher intakes at the upper end (approaching 3.1 g/kg) also promote additional fat loss via thermic and satiating effects — every gram of protein burned generates 20–35% heat vs. 2–3% for fat."
+    },
+    {
+      "id": "nut-issn-protein-exercise-2017-3",
+      "title": "Protein per meal — how to distribute protein through the day",
+      "tags": [
+        "protein",
+        "meal",
+        "meals",
+        "frequency",
+        "timing",
+        "leucine",
+        "muscle",
+        "gain"
+      ],
+      "source": "\"Jäger R et al. International Society of Sports Nutrition Position Stand: protein and exercise. J Int Soc Sports Nutr. 2017;14:20. doi:10.1186/s12970-017-0177-8. PMC5477153.\"",
+      "text": "Each meal or protein feeding should contain **0.25 g/kg (roughly 20–40 g)** of high-quality protein. Aim for at least **700–3,000 mg of leucine** per dose to reliably trigger muscle protein synthesis. Space meals **every 3–4 hours**. For older adults (>45 years), lean toward 40 g per dose since the leucine threshold rises with age."
+    },
+    {
+      "id": "nut-issn-protein-exercise-2017-4",
+      "title": "Pre-sleep protein — casein before bed",
+      "tags": [
+        "protein",
+        "meal",
+        "timing",
+        "sleep",
+        "bedtime",
+        "casein",
+        "muscle",
+        "gain"
+      ],
+      "source": "\"Jäger R et al. International Society of Sports Nutrition Position Stand: protein and exercise. J Int Soc Sports Nutr. 2017;14:20. doi:10.1186/s12970-017-0177-8. PMC5477153.\"",
+      "text": "Consuming **30–40 g of casein protein** 30–60 minutes before sleep increases overnight muscle protein synthesis and resting metabolic rate without impairing fat burning (lipolysis). Cottage cheese, Greek yogurt, or a casein shake are practical choices. This is one of the few timing windows where protein source choice (slow-digesting casein vs. fast whey) meaningfully changes the outcome."
+    },
+    {
+      "id": "nut-matador-metabolic-adaptation-2018-2016-1",
+      "title": "Diet breaks produce more fat loss than continuous dieting",
+      "tags": [
+        "diet-break",
+        "plateau",
+        "fat",
+        "loss",
+        "lose",
+        "cut",
+        "cutting",
+        "adherence",
+        "calories",
+        "calorie",
+        "refeed",
+        "weight"
+      ],
+      "source": "\"Byrne NM et al. Intermittent energy restriction improves weight loss efficiency in obese men: the MATADOR study. Int J Obes. 2018;42(2):129–138. doi:10.1038/ijo.2017.206. PMC5803575. — AND — Fothergill E et al. Persistent metabolic adaptation 6 years after The Biggest Loser competition. Obesity (Silver Spring). 2016;24(8):1612–1619. doi:10.1002/oby.21538. PMC4989512.\"",
+      "text": "The MATADOR RCT (47 men, same total caloric deficit) compared 16 weeks of continuous restriction versus alternating 2-week restriction / 2-week maintenance blocks over 30 weeks. The intermittent group lost **14.1 kg vs. 9.1 kg** — roughly 47–80% more fat loss — with no additional lean mass loss (both groups lost ~1.5 kg lean). At 6-month follow-up, only the diet-break group maintained >5% weight loss (−11.1 kg vs. −3.0 kg). The mechanism: diet breaks reduced metabolic suppression by ~90 kcal/day, allowing resting energy expenditure to partially recover before the next restriction phase."
+    },
+    {
+      "id": "nut-matador-metabolic-adaptation-2018-2016-2",
+      "title": "Metabolic adaptation is real and persistent",
+      "tags": [
+        "plateau",
+        "metabolic-adaptation",
+        "tdee",
+        "calories",
+        "calorie",
+        "weight",
+        "fat",
+        "loss",
+        "deficit",
+        "diet-break"
+      ],
+      "source": "\"Byrne NM et al. Intermittent energy restriction improves weight loss efficiency in obese men: the MATADOR study. Int J Obes. 2018;42(2):129–138. doi:10.1038/ijo.2017.206. PMC5803575. — AND — Fothergill E et al. Persistent metabolic adaptation 6 years after The Biggest Loser competition. Obesity (Silver Spring). 2016;24(8):1612–1619. doi:10.1002/oby.21538. PMC4989512.\"",
+      "text": "The Biggest Loser study (14 contestants, 6-year follow-up) quantified how persistently dieting slows metabolism. After the competition, resting metabolic rate was **610 kcal/day below baseline**; six years later it was still **704 kcal/day below baseline** — the adaptation worsened over time rather than recovering. The body composition-adjusted component (true metabolic slowing beyond tissue loss) reached **−499 kcal/day** at the 6-year mark. This study used extreme rapid weight loss which amplifies adaptation, but the persistence finding matters for all dieters. Practical takeaway: calorie targets set at the start of a diet will progressively over-estimate TDEE; recalibrate every 4–8 weeks of active dieting."
+    },
+    {
+      "id": "nut-matador-metabolic-adaptation-2018-2016-3",
+      "title": "When to recommend a diet break",
+      "tags": [
+        "diet-break",
+        "refeed",
+        "plateau",
+        "adherence",
+        "fat",
+        "loss",
+        "calories",
+        "calorie",
+        "weight",
+        "tdee",
+        "metabolic-adaptation"
+      ],
+      "source": "\"Byrne NM et al. Intermittent energy restriction improves weight loss efficiency in obese men: the MATADOR study. Int J Obes. 2018;42(2):129–138. doi:10.1038/ijo.2017.206. PMC5803575. — AND — Fothergill E et al. Persistent metabolic adaptation 6 years after The Biggest Loser competition. Obesity (Silver Spring). 2016;24(8):1612–1619. doi:10.1002/oby.21538. PMC4989512.\"",
+      "text": "A structured diet break — eating at maintenance for **2 weeks** after every 6–8 weeks of restriction — is supported by MATADOR evidence. Key points: (1) participants maintained weight during breaks (0.0±0.3 kg change); (2) lean mass was not lost during breaks; (3) breaks attenuated adaptive thermogenesis, making subsequent restriction phases more effective. Practical coaching signal: recommend a diet break when a user has been in a deficit for 6–8+ weeks, weight loss has stalled for 2–3 weeks despite reported adherence, or subjective fatigue and hunger are very high. Breaking does not undo progress."
+    },
+    {
+      "id": "nut-morton-meta-analysis-2018-1",
+      "title": "Protein ceiling for muscle gain — what the meta-analysis says",
       "tags": [
         "protein",
         "muscle",
-        "recomposition"
+        "gain",
+        "build",
+        "bulk",
+        "mass",
+        "how-much",
+        "macros",
+        "calories"
       ],
-      "source": "ISSN Position Stand — Protein and Exercise (2017)",
-      "text": "For building or retaining muscle during body recomposition, aim for roughly 1.6 to 2.2 grams of protein per kilogram of bodyweight per day. Intakes in this range maximize muscle protein synthesis for most trainees; going higher offers little additional benefit for muscle."
+      "source": "\"Morton RW et al. A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults. Br J Sports Med. 2018;52(6):376–384. doi:10.1136/bjsports-2017-097608. PMC5867436.\"",
+      "text": "The largest meta-analysis on protein and resistance training (49 RCTs, 1,863 participants) found that protein supplementation significantly increased fat-free mass by **+0.30 kg** and 1-rep-max strength by **+2.49 kg** above training alone. The critical finding: beyond **1.62 g/kg/day**, extra protein produced no further muscle gain. The upper confidence interval of this break point is **2.2 g/kg/day**, making that the practical ceiling for muscle-building contexts. Eating more protein above 2.2 g/kg/day is not harmful, but the muscle-building signal is saturated."
     },
     {
-      "id": "protein-intake-2",
-      "title": "Protein distribution across the day",
+      "id": "nut-morton-meta-analysis-2018-2",
+      "title": "Protein and age — older adults respond differently",
       "tags": [
         "protein",
+        "macros",
         "muscle",
-        "recomposition"
+        "gain",
+        "women",
+        "advanced",
+        "how-much",
+        "goal"
       ],
-      "source": "ISSN Position Stand — Protein and Exercise (2017)",
-      "text": "Spreading protein across three to four meals of about 0.4 grams per kilogram each is a practical way to support muscle protein synthesis throughout the day. Total daily protein matters most, but even distribution is a reasonable default."
+      "source": "\"Morton RW et al. A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults. Br J Sports Med. 2018;52(6):376–384. doi:10.1136/bjsports-2017-097608. PMC5867436.\"",
+      "text": "The benefit of additional protein for muscle gain decreases with age: the effect was **+0.55 kg fat-free mass** in adults under 45, but only **+0.06 kg** in those over 45. Resistance-trained individuals gained more from added protein (+0.75 kg FFM, p=0.03) than untrained subjects. This does not mean older adults should eat less protein — research elsewhere supports higher per-meal doses (~40 g) for older adults to overcome the blunted anabolic response. The muscle-building ceiling number (1.62 g/kg) applies to surpluses; deficits require higher protein to protect existing muscle."
     },
     {
-      "id": "recovery-sleep-1",
-      "title": "Sleep duration for recovery",
+      "id": "nut-protein-quality-meal-distribution-2013-2018-1",
+      "title": "How to spread protein through the day for muscle building",
       "tags": [
-        "sleep",
-        "recovery",
-        "fatigue"
+        "protein",
+        "meal",
+        "meals",
+        "frequency",
+        "timing",
+        "muscle",
+        "gain",
+        "how-much",
+        "how-many"
       ],
-      "source": "NIH / Sleep Foundation guidance",
-      "text": "Most adults need seven to nine hours of sleep per night. Consistently getting less impairs recovery, raises perceived effort in training, and can blunt muscle gain and fat loss. Prioritize sleep when recovery scores are low."
+      "source": "\"Areta JL et al. Timing and distribution of protein ingestion during prolonged recovery from resistance exercise alters myofibrillar protein synthesis. J Physiol. 2013;591(Pt 9):2319–2331. doi:10.1113/jphysiol.2012.244897. PMC3650697. — AND — Schoenfeld BJ, Aragon AA. How much protein can the body use in a single meal for muscle-building? Implications for daily protein distribution. J Int Soc Sports Nutr. 2018;15:10. doi:10.1186/s12970-018-0215-1. PMC5828430. — AND — Marinangeli CPF, House JD. Potential impact of the digestible indispensable amino acid score as a measure of protein quality on dietary regulations and health. Nutr Rev. 2017;75(8):658–667. doi:10.1093/nutrit/nux025. PMC5914309.\"",
+      "text": "Areta 2013 directly tested three ways to distribute 80 g of whey protein over 12 hours post-exercise: 8×10 g every 1.5 h (PULSE), 4×20 g every 3 h (INT), and 2×40 g every 6 h (BOLUS). The **4×20 g every 3 hours produced 31–48% greater myofibrillar protein synthesis** than either extreme. Spreading too thin (10 g doses) fails to reliably hit the leucine threshold; spacing too wide (40 g every 6 h) leaves long gaps without amino acid signal. Practical takeaway: **4 protein meals per day, roughly every 3–4 hours**, is the evidence-based sweet spot."
     },
     {
-      "id": "recovery-sleep-2",
-      "title": "Managing high soreness and low energy",
+      "id": "nut-protein-quality-meal-distribution-2013-2018-2",
+      "title": "Is there a protein per meal ceiling — can you eat too much in one sitting?",
+      "tags": [
+        "protein",
+        "meal",
+        "meals",
+        "how-much",
+        "muscle",
+        "gain",
+        "leucine",
+        "timing",
+        "frequency"
+      ],
+      "source": "\"Areta JL et al. Timing and distribution of protein ingestion during prolonged recovery from resistance exercise alters myofibrillar protein synthesis. J Physiol. 2013;591(Pt 9):2319–2331. doi:10.1113/jphysiol.2012.244897. PMC3650697. — AND — Schoenfeld BJ, Aragon AA. How much protein can the body use in a single meal for muscle-building? Implications for daily protein distribution. J Int Soc Sports Nutr. 2018;15:10. doi:10.1186/s12970-018-0215-1. PMC5828430. — AND — Marinangeli CPF, House JD. Potential impact of the digestible indispensable amino acid score as a measure of protein quality on dietary regulations and health. Nutr Rev. 2017;75(8):658–667. doi:10.1093/nutrit/nux025. PMC5914309.\"",
+      "text": "The old \"20–25 g ceiling per meal\" is outdated. Schoenfeld & Aragon 2018 reviewed evidence that **40 g whey produced ~20% greater myofibrillar MPS than 20 g** over 12 hours post-exercise. Mixed meals with beef showed dose-dependent anabolic responses up to 40–70 g protein (slower digestion extends amino acid availability). The practical formula: **0.4 g/kg per meal × 4 meals = 1.6 g/kg/day minimum**; for a 75 kg person that is 30 g per meal. Going up to 0.55 g/kg per meal (4 meals = 2.2 g/kg/day) captures the upper range. There is no confirmed hard ceiling per meal when protein is slow-digesting or consumed with other foods."
+    },
+    {
+      "id": "nut-protein-quality-meal-distribution-2013-2018-3",
+      "title": "Protein quality — which sources are best for muscle building",
+      "tags": [
+        "protein-quality",
+        "diaas",
+        "pdcaas",
+        "sources",
+        "whey",
+        "high-protein",
+        "leucine",
+        "amino-acids",
+        "muscle",
+        "gain"
+      ],
+      "source": "\"Areta JL et al. Timing and distribution of protein ingestion during prolonged recovery from resistance exercise alters myofibrillar protein synthesis. J Physiol. 2013;591(Pt 9):2319–2331. doi:10.1113/jphysiol.2012.244897. PMC3650697. — AND — Schoenfeld BJ, Aragon AA. How much protein can the body use in a single meal for muscle-building? Implications for daily protein distribution. J Int Soc Sports Nutr. 2018;15:10. doi:10.1186/s12970-018-0215-1. PMC5828430. — AND — Marinangeli CPF, House JD. Potential impact of the digestible indispensable amino acid score as a measure of protein quality on dietary regulations and health. Nutr Rev. 2017;75(8):658–667. doi:10.1093/nutrit/nux025. PMC5914309.\"",
+      "text": "The DIAAS system (FAO-recommended) scores protein quality more accurately than the old PDCAAS by measuring amino acid digestibility individually. High-quality sources: **whole milk (DIAAS 114), eggs (113), chicken breast (108)** — all exceed the 75 threshold needed for a \"good source\" claim. Plant sources: **oatmeal (84), chickpeas (83)** qualify; **tofu (52)** falls below the threshold as a standalone source. Soy protein isolate (~91) and pea protein (~82) are the strongest plant options. Practical guidance: animal proteins (eggs, dairy, meat, fish) and soy are the gold standard; users relying on plant proteins should eat 10–30% more total protein grams or combine complementary sources (rice + beans) to ensure complete amino acid coverage."
+    },
+    {
+      "id": "rec-addleman-hrv-2024-1",
+      "title": "What is HRV and what does it tell you about recovery",
+      "tags": [
+        "hrv",
+        "monitoring",
+        "readiness",
+        "stress",
+        "fatigue",
+        "tired",
+        "recovery",
+        "overtraining"
+      ],
+      "source": "Addleman JS, Lackey NS, DeBlauw JA, Hajduczok AG. Heart rate variability applications in strength and conditioning: A narrative review. J Funct Morphol Kinesiol. 2024;9(2):93. doi:10.3390/jfmk9020093. PMCID: PMC11204851",
+      "text": "Heart rate variability (HRV) is the fluctuation in time between consecutive heartbeats — a proxy for autonomic nervous system (ANS) function. The most useful metric is **RMSSD** (root mean square of successive differences), which reflects parasympathetic (rest-and-recovery) activity and is less sensitive to breathing rate than frequency-domain measures. Higher RMSSD = better parasympathetic tone = better recovered. Lower RMSSD = more physiological stress = less ready to train hard.\n\nHRV is not meaningful in isolation — it must be interpreted **relative to your own personal baseline**, not population norms. Individual values vary widely. After 2–4 weeks of daily measurements, you establish your baseline and a \"smallest worthwhile change\" (SWC) window around it. When your RMSSD is inside the SWC, train at moderate-to-high intensity as planned. When it drops below the SWC, reduce intensity or take a recovery day. When it rises above, you may be primed for a hard session."
+    },
+    {
+      "id": "rec-addleman-hrv-2024-2",
+      "title": "How to use HRV (or energy scores) to guide training intensity",
+      "tags": [
+        "hrv",
+        "monitoring",
+        "readiness",
+        "fatigue",
+        "tired",
+        "deload",
+        "recovery",
+        "overtraining"
+      ],
+      "source": "Addleman JS, Lackey NS, DeBlauw JA, Hajduczok AG. Heart rate variability applications in strength and conditioning: A narrative review. J Funct Morphol Kinesiol. 2024;9(2):93. doi:10.3390/jfmk9020093. PMCID: PMC11204851",
+      "text": "In practice, few recreational athletes have a validated HRV monitoring protocol. The energy score (1–10) tracked daily in this app functions as a subjective proxy for the same signal: it captures perceived recovery capacity and correlates with autonomic state.\n\nApply the same principle: track your baseline over 2–4 weeks, then respond to deviations:\n- Energy score at or above your normal range → train hard as planned\n- Energy score below baseline for **1–2 days** → reduce session intensity, don't push through\n- Energy score below baseline for **3+ consecutive days** → consider a deload or rest day; this mirrors the suppressed HRV pattern associated with insufficient recovery or early overreaching\n\nPost-workout HRV suppression that normalises within 24 hours reflects normal functional overreaching. Suppression lasting >48 hours signals inadequate recovery from that session. With a consistent monitoring habit, these patterns become clear over 4–8 weeks of data — allowing the coach to give intensity recommendations grounded in your individual physiology rather than generic schedules."
+    },
+    {
+      "id": "rec-armstrong-carrard-overtraining-2022-1",
+      "title": "What is the difference between overreaching and overtraining syndrome",
+      "tags": [
+        "overtraining",
+        "overreaching",
+        "burnout",
+        "under-recovery",
+        "fatigue",
+        "tired",
+        "deload",
+        "recovery",
+        "stress"
+      ],
+      "source": "Armstrong LE, Bergeron MF, Lee EC, Mershon JE, Armstrong EM. Overtraining syndrome as a complex systems phenomenon. Front Netw Physiol. 2022;1:794392. doi:10.3389/fnetp.2021.794392. PMCID: PMC10013019; Carrard J, Rigort AC, Appenzeller-Herzog C, et al. Diagnosing overtraining syndrome: A scoping review. Sports Health. 2022;14(5):665-673. doi:10.1177/19417381211044739. PMCID: PMC9460078",
+      "text": "There are three distinct states of excessive training load, each with a different recovery timeline:\n\n**Functional overreaching (FOR):** Short-term performance drop from intensified training that resolves within **days to 2 weeks** with rest. This is a normal, desirable part of training — the body is being pushed and will supercompensate. A hard training week followed by a deload is intentional FOR.\n\n**Nonfunctional overreaching (NFOR):** Prolonged training stress producing maladaptations that require **months** of recovery. Performance does not fully recover between blocks. Requires significant training reduction or temporary cessation.\n\n**Overtraining syndrome (OTS):** Accumulation of training AND non-training stress (poor sleep, low calories, psychological load) causing long-term performance decrements lasting **several weeks to months**. The treatment is rest with optimal nutrition — timeline is unpredictable. Research shows **64% of female and 66% of male** elite distance runners reported experiencing staleness at some point in their careers. OTS is not rare."
+    },
+    {
+      "id": "rec-armstrong-carrard-overtraining-2022-2",
+      "title": "How to recognise overtraining before it becomes serious",
+      "tags": [
+        "overtraining",
+        "overreaching",
+        "burnout",
+        "fatigue",
+        "tired",
+        "low-energy",
+        "stress",
+        "deload"
+      ],
+      "source": "Armstrong LE, Bergeron MF, Lee EC, Mershon JE, Armstrong EM. Overtraining syndrome as a complex systems phenomenon. Front Netw Physiol. 2022;1:794392. doi:10.3389/fnetp.2021.794392. PMCID: PMC10013019; Carrard J, Rigort AC, Appenzeller-Herzog C, et al. Diagnosing overtraining syndrome: A scoping review. Sports Health. 2022;14(5):665-673. doi:10.1177/19417381211044739. PMCID: PMC9460078",
+      "text": "Warning signs that distinguish chronic overreaching from normal training fatigue:\n- Generalised fatigue and low energy that doesn't resolve with a day or two of rest\n- Insomnia or disrupted sleep despite feeling exhausted\n- Loss of appetite or change in appetite\n- Irritability, loss of motivation, difficulty concentrating\n- Declining training performance over **2+ consecutive weeks** despite consistent training\n- Frequent minor infections (suppressed immune function)\n\nKey risk factors that compound the risk: **insufficient calorie intake, low protein/carbohydrate intake, poor sleep quality, and high psychological stress** outside training. Recomposition athletes — running a calorie deficit while training hard — face elevated OTS risk because low energy availability is a primary trigger.\n\nA performance decrement lasting **>2 weeks** is the practical threshold to act: this meets the criteria for at minimum nonfunctional overreaching. At this point, add a structured deload (reduce volume 40–60%, keep intensity the same) and optimise sleep and nutrition before resuming progressive overload.\n\nTracking energy score (1–10), soreness, and mood over time reveals overreaching patterns early — these subjective markers (Profile of Mood States: fatigue up, vigor down, tension up) are among the most consistently reported diagnostic signals across studies (Carrard et al. 2022). Blood tests and resting hormones are often normal even in overtrained athletes — don't wait for lab confirmation to act."
+    },
+    {
+      "id": "rec-armstrong-carrard-overtraining-2022-3",
+      "title": "What is a deload and how to do one",
+      "tags": [
+        "deload",
+        "taper",
+        "recovery",
+        "recover",
+        "fatigue",
+        "overtraining",
+        "readiness",
+        "rest"
+      ],
+      "source": "Armstrong LE, Bergeron MF, Lee EC, Mershon JE, Armstrong EM. Overtraining syndrome as a complex systems phenomenon. Front Netw Physiol. 2022;1:794392. doi:10.3389/fnetp.2021.794392. PMCID: PMC10013019; Carrard J, Rigort AC, Appenzeller-Herzog C, et al. Diagnosing overtraining syndrome: A scoping review. Sports Health. 2022;14(5):665-673. doi:10.1177/19417381211044739. PMCID: PMC9460078",
+      "text": "A deload is a planned reduction in training load to allow accumulated fatigue to dissipate while preserving fitness. Evidence from endurance tapering research (Wang et al. 2023, meta-analysis of 14 studies) confirms the optimal approach: **reduce volume by 41–60%** (approximately half) while **keeping training intensity (weights used) and frequency the same**. This is best done over **8–14 days** for maximum benefit — a standard 1-week deload sits within the optimal range.\n\nKey reassurance for users afraid of losing gains: VO₂max and strength are maintained during a 1-week deload. Performance typically **improves** after a deload, not decreases — fatigue is cleared, revealing underlying fitness that was masked. You are not going backwards during a deload; you are allowing your body to express the gains you've already built.\n\nSchedule a deload every **4–8 weeks** of progressive training, or any time energy scores drop below your personal average for 5–7 consecutive days."
+    },
+    {
+      "id": "rec-covassin-sleep-restriction-2022-1",
+      "title": "Poor sleep makes you eat 300 extra calories a day without realising it",
       "tags": [
         "sleep",
+        "appetite",
+        "hunger",
+        "intake",
+        "tired"
+      ],
+      "source": "Covassin N, Singh P, McCrady-Spitzer SK, et al. Effects of experimental sleep restriction on energy intake, energy expenditure, and visceral obesity. J Am Coll Cardiol. 2022;79(13):1254-1265. doi:10.1016/j.jacc.2022.01.038. PMCID: PMC9187217; Spaeth AM, Dinges DF, Goel N. Effects of experimental sleep restriction on weight gain, caloric intake, and meal timing in healthy adults. Sleep. 2013;36(7):981-990. doi:10.5665/sleep.2792",
+      "text": "In a controlled 21-day inpatient crossover study comparing 4-hour vs 9-hour sleep opportunity, sleep-restricted adults consumed **308 additional calories per day** (about 17% more than baseline) with unlimited food access. Critically, their energy expenditure did not change at all — resting metabolic rate, thermic effect of food, and activity expenditure were identical between conditions. Every extra calorie eaten was surplus. Over the restriction period, sleep-restricted subjects gained **0.5 kg more weight** and accumulated **+11% more visceral fat** (+7.8 cm²). After returning to normal sleep, calorie intake normalised within 3 days — but visceral fat continued accumulating for longer.\n\nIf you are tracking calories carefully but still gaining fat or weight, poor sleep may be causing unconscious overconsumption. You don't feel like you're eating more — but the data shows otherwise. Getting 7–9 hours is a direct tool for keeping calorie intake in range."
+    },
+    {
+      "id": "rec-covassin-sleep-restriction-2022-2",
+      "title": "Late-night eating from poor sleep adds 550+ extra calories",
+      "tags": [
+        "sleep",
+        "appetite",
+        "hunger",
+        "intake",
+        "tired"
+      ],
+      "source": "Covassin N, Singh P, McCrady-Spitzer SK, et al. Effects of experimental sleep restriction on energy intake, energy expenditure, and visceral obesity. J Am Coll Cardiol. 2022;79(13):1254-1265. doi:10.1016/j.jacc.2022.01.038. PMCID: PMC9187217; Spaeth AM, Dinges DF, Goel N. Effects of experimental sleep restriction on weight gain, caloric intake, and meal timing in healthy adults. Sleep. 2013;36(7):981-990. doi:10.5665/sleep.2792",
+      "text": "In a 5-night sleep restriction experiment (Spaeth et al. 2013, N=225), subjects sleeping only 4 hours/night consumed **553 additional calories** during the late-night window (22:00–03:59). These late-night calories came disproportionately from higher-fat foods (33% fat vs 28% during daytime). Sleep-restricted subjects gained significantly more weight than controls. The mechanism is extended wakefulness: more hours awake = more opportunities and lower impulse control for eating. The simplest intervention is also the most powerful — **go to bed earlier**, which eliminates the late-night eating window entirely."
+    },
+    {
+      "id": "rec-craven-hatia-hamlin-sleep-performance-2022-1",
+      "title": "How much does one bad night of sleep hurt training",
+      "tags": [
+        "sleep",
+        "performance",
+        "tired",
+        "fatigue",
+        "strength",
+        "power",
+        "output",
+        "hours"
+      ],
+      "source": "Craven J, McCartney D, Desbrow B, et al. Effects of acute sleep loss on physical performance: A systematic and meta-analytical review. Sports Med. 2022;52(11):2669-2690. doi:10.1007/s40279-022-01706-y. PMCID: PMC9584849; Hatia M, Loureiro N, Ribeiro J, et al. A narrative review of the impact of sleep on athletes. Cureus. 2024;16(12):e76635. doi:10.7759/cureus.76635; Hamlin MJ, Deuchrass RW, Olsen PD, et al. The effect of sleep quality and quantity on athlete's health and perceived training quality. Front Sports Act Living. 2021;3:705650. doi:10.3389/fspor.2021.705650",
+      "text": "A meta-analysis of 77 studies (Craven et al. 2022) found that acute sleep loss reduces overall physical performance by an average of **−7.6%**. The worst-hit category is skill tasks (technique-heavy movements, court sports): **−20.9%**. Anaerobic power drops **−6.3%**, high-intensity interval performance **−6.2%**, endurance **−5.6%**, and maximal strength **−2.9%**. Performance declines approximately **0.4% for every additional hour awake** after sleep deprivation. Afternoon/evening training is hurt more than morning sessions — if you slept poorly, train in the morning when the impact is smallest.\n\nAfter a single night of only 4 hours, average and maximum power output on anaerobic cycle tests declines measurably (Hatia 2024). For recomposition, a consistent pattern of short sleep means your workouts are regularly operating at a quality deficit, limiting the stimulus for muscle growth and calorie burn."
+    },
+    {
+      "id": "rec-craven-hatia-hamlin-sleep-performance-2022-2",
+      "title": "Sleep under 8 hours raises injury risk significantly",
+      "tags": [
+        "sleep",
+        "injury",
+        "hours",
         "recovery",
+        "tired",
+        "fatigue",
+        "performance",
+        "readiness"
+      ],
+      "source": "Craven J, McCartney D, Desbrow B, et al. Effects of acute sleep loss on physical performance: A systematic and meta-analytical review. Sports Med. 2022;52(11):2669-2690. doi:10.1007/s40279-022-01706-y. PMCID: PMC9584849; Hatia M, Loureiro N, Ribeiro J, et al. A narrative review of the impact of sleep on athletes. Cureus. 2024;16(12):e76635. doi:10.7759/cureus.76635; Hamlin MJ, Deuchrass RW, Olsen PD, et al. The effect of sleep quality and quantity on athlete's health and perceived training quality. Front Sports Act Living. 2021;3:705650. doi:10.3389/fspor.2021.705650",
+      "text": "Athletes sleeping under 8 hours per night are **1.7 times more likely to sustain an injury** (Hatia 2024, adolescent cohort). Hamlin et al. (2021), tracking 82 university athletes daily over an academic year, found that sleeping ≥8 hours was associated with **20% lower injury and illness risk** (OR = 0.8). Sleep quality adds even more protection — athletes reporting good sleep quality had **40% lower injury/illness risk** (OR = 0.6) compared to those with poor quality sleep, regardless of hours.\n\nSo both quantity (≥8 h) and quality (feeling rested) matter independently. Energy and mood also improve: sleeping ≥8 hours was associated with higher energy (OR = 1.2) and better perceived training quality (OR = 1.3). These are concrete, measurable benefits, not vague wellness claims."
+    },
+    {
+      "id": "rec-craven-hatia-hamlin-sleep-performance-2022-3",
+      "title": "Sleep extension and napping: the most effective sleep interventions",
+      "tags": [
+        "sleep",
+        "nap",
+        "napping",
+        "recovery",
+        "tired",
+        "hours",
+        "sleep-quality",
+        "performance"
+      ],
+      "source": "Craven J, McCartney D, Desbrow B, et al. Effects of acute sleep loss on physical performance: A systematic and meta-analytical review. Sports Med. 2022;52(11):2669-2690. doi:10.1007/s40279-022-01706-y. PMCID: PMC9584849; Hatia M, Loureiro N, Ribeiro J, et al. A narrative review of the impact of sleep on athletes. Cureus. 2024;16(12):e76635. doi:10.7759/cureus.76635; Hamlin MJ, Deuchrass RW, Olsen PD, et al. The effect of sleep quality and quantity on athlete's health and perceived training quality. Front Sports Act Living. 2021;3:705650. doi:10.3389/fspor.2021.705650",
+      "text": "The most effective sleep interventions for athletes are simply sleeping more and strategic napping (Cunha et al. 2023, systematic review of 25 studies). Extending sleep by **46–113 minutes per night** in people habitually getting ~7 hours produces consistent performance improvements across all included studies. A **20–90-minute nap** can restore performance that was impaired by the previous night's partial sleep restriction, and also improves performance even after a normal sleep night. Sleep hygiene advice (screens off, consistent schedule) has weaker direct performance evidence but is worthwhile as a habit foundation. Light therapy (morning bright light, evening blue-light blocking) shows promise for circadian alignment. Start with the simplest fix: go to bed 30 minutes earlier."
+    },
+    {
+      "id": "rec-driller-recovery-modalities-2023-1",
+      "title": "Recovery hierarchy: sleep and nutrition first, gadgets second",
+      "tags": [
+        "recovery",
+        "sleep",
+        "tired",
+        "fatigue",
+        "active-recovery",
+        "modalities",
+        "deload",
+        "rest"
+      ],
+      "source": "Driller M, Leabeater A. Fundamentals or icing on top of the cake? A narrative review of recovery strategies and devices for athletes. Sports (Basel). 2023;11(11):213. doi:10.3390/sports11110213. PMCID: PMC10674277",
+      "text": "The evidence on recovery strategies places **sleep, nutrition, and periodisation as foundational** — described as \"the cake\" — while recovery devices (ice baths, foam rollers, massage guns, compression gear) are \"the icing.\" Skipping fundamentals and investing in gadgets is a common mistake. In order of priority:\n\n1. **Sleep (7–9 h/night):** The most powerful recovery tool available. Sleep loss impairs cognition, immunity, and performance.\n2. **Nutrition:** Three pillars post-exercise — refuel (carbohydrates), rebuild (protein), rehydrate.\n3. **Periodisation (deload/taper):** Structured training manipulation with planned reduced-load weeks is a fundamental, not optional, part of adaptation.\n4. Then: modalities as adjuncts."
+    },
+    {
+      "id": "rec-driller-recovery-modalities-2023-2",
+      "title": "What the evidence says about common recovery tools",
+      "tags": [
+        "cold-water",
+        "ice-bath",
+        "foam-rolling",
+        "active-recovery",
+        "sore",
+        "soreness",
+        "muscle-soreness",
+        "massage"
+      ],
+      "source": "Driller M, Leabeater A. Fundamentals or icing on top of the cake? A narrative review of recovery strategies and devices for athletes. Sports (Basel). 2023;11(11):213. doi:10.3390/sports11110213. PMCID: PMC10674277",
+      "text": "**Cold water immersion (CWI):** Use water at **11–15°C for 11–15 minutes**. Effective for reducing pain and inflammation after intense training. However, **chronic use after resistance training may blunt muscle-building adaptations** — CWI suppresses the post-training inflammatory signals that drive hypertrophy. Use it for competition weeks or acute soreness management, not as a routine post-strength session habit. For a muscle-gain or recomposition goal, limit CWI in the days following heavy strength sessions.\n\n**Foam rolling:** Optimal dose is **90–120 seconds per muscle group**. Reduces DOMS and improves range of motion. Evidence for direct performance gains is limited but soreness reduction is consistent. Easy to implement, low risk.\n\n**Compression garments:** Most effective when worn **>24 hours post-resistance exercise**. Consistently reduces perceived muscle soreness; 71% of elite athletes use them at least once per week. Low risk, easy to wear overnight.\n\n**Active recovery:** Light-to-moderate exercise well below the lactate threshold reduces soreness perception — an easy walk or bike ride the day after a hard session is often better than full rest. Evidence for performance outcomes is mixed, but for feeling better it works.\n\n**Massage guns:** Only limited evidence; two case reports of serious injury (rhabdomyolysis, haemothorax) from improper use. Use cautiously.\n\n**High-dose antioxidants (Vitamin C/E as supplements):** May blunt training adaptations — avoid routine supplementation at high doses specifically for recovery purposes (consistent with DOMS evidence from Schroeter et al. 2024)."
+    },
+    {
+      "id": "rec-hirshkowitz-nsf-2015-1",
+      "title": "How much sleep do I need to recover and perform",
+      "tags": [
+        "sleep",
+        "rest",
+        "hours",
+        "tired",
+        "fatigue",
+        "sleep-quality",
+        "recovery",
+        "how-much"
+      ],
+      "source": "Hirshkowitz M, Whiton K, Albert SM, et al. National Sleep Foundation's sleep time duration recommendations: methodology and results summary. Sleep Health. 2015;1(1):40-43. doi:10.1016/j.sleh.2014.12.010",
+      "text": "The National Sleep Foundation's expert panel (18 members from 12 scientific organisations, reviewing 312 articles) recommends **7–9 hours per night** for adults aged 18–64, and **7–8 hours** for adults 65 and over. Teenagers (14–17) need **8–10 hours**. Sleeping **less than 6 hours** is in the \"not recommended\" zone for all adults — associated with attention problems, increased injury risk, obesity, and diabetes. Anything **above 10–11 hours** for adults is also considered outside the healthy range.\n\nFor active people training regularly, the upper end of the range (8–9 h) is more appropriate. Athletes specifically may need **8–10 hours** per the 2021 IOC/BJSM consensus (Walsh et al.), as intense training raises recovery demand. If you are chronically sleeping under 7 hours, improving sleep duration is one of the highest-leverage actions you can take for recovery, body composition, and long-term health — more impactful than most supplements or training tweaks."
+    },
+    {
+      "id": "rec-hirshkowitz-nsf-2015-2",
+      "title": "Is 6 hours of sleep enough if I feel okay",
+      "tags": [
+        "sleep",
+        "hours",
+        "tired",
+        "fatigue",
+        "rest",
+        "sleep-quality",
+        "low-energy",
+        "energy"
+      ],
+      "source": "Hirshkowitz M, Whiton K, Albert SM, et al. National Sleep Foundation's sleep time duration recommendations: methodology and results summary. Sleep Health. 2015;1(1):40-43. doi:10.1016/j.sleh.2014.12.010",
+      "text": "Six hours sits at or below the lower boundary of recommended adult sleep duration. The NSF panel rates it as \"may be appropriate\" for a minority of individuals, but \"not recommended\" as a regular habit. The challenge is that people adapt subjectively to chronic sleep restriction — they stop feeling as sleepy but objective performance and recovery markers remain impaired. If you regularly get 6 hours and wonder why your energy scores are low, training feels harder than expected, or fat loss has stalled, sleep extension (moving bedtime 30–60 minutes earlier) is the first thing to address."
+    },
+    {
+      "id": "rec-nedeltcheva-sleep-restriction-2010-1",
+      "title": "Sleep restriction destroys fat loss even when calories are controlled",
+      "tags": [
+        "sleep",
+        "fat",
+        "loss",
+        "muscle",
+        "weight-loss"
+      ],
+      "source": "Nedeltcheva AV, Kilkus JM, Imperial J, Schoeller DA, Penev PD. Insufficient sleep undermines dietary efforts to reduce adiposity. Ann Intern Med. 2010;153(7):435-441. doi:10.7326/0003-4819-153-7-201010050-00006",
+      "text": "In a randomised crossover trial, overweight adults spent 14 days on a 680 kcal/day deficit under either 5.5 hours or 8.5 hours of sleep per night. The total weight lost was the same in both conditions (~3 kg). But what was lost differed dramatically: those sleeping 5.5 hours lost **55% less of their weight as fat** and **60% more as lean (muscle) mass** compared to the 8.5-hour group.\n\nThis is the most important sleep finding for anyone on a cut: **not sleeping enough doesn't just slow fat loss — it actively causes muscle wasting, even when protein and calories are on track.** You can eat perfectly and still lose mostly muscle if you're consistently under 7 hours. For recomposition goals, sleep duration belongs alongside calorie and protein targets as a non-negotiable."
+    },
+    {
+      "id": "rec-nedeltcheva-sleep-restriction-2010-2",
+      "title": "Sleep deprivation raises hunger and ghrelin during a calorie deficit",
+      "tags": [
+        "sleep",
+        "appetite",
+        "hunger",
+        "cravings",
+        "tired",
+        "low-energy"
+      ],
+      "source": "Nedeltcheva AV, Kilkus JM, Imperial J, Schoeller DA, Penev PD. Insufficient sleep undermines dietary efforts to reduce adiposity. Ann Intern Med. 2010;153(7):435-441. doi:10.7326/0003-4819-153-7-201010050-00006",
+      "text": "In the same Nedeltcheva trial, cutting sleep to 5.5 hours elevated hunger ratings and circulating ghrelin (the hunger hormone) despite identical caloric intake in both conditions. Sleep-restricted subjects also felt more fatigued and less satisfied. This is a physiological response — not a willpower failure. When you're in a deficit and sleeping poorly, your body is hormonally signalling for more food. Prioritising 7–9 hours of sleep during a cut makes adherence significantly easier because it keeps appetite hormones in check."
+    },
+    {
+      "id": "rec-schroeter-doms-2024-1",
+      "title": "What is DOMS and when does it peak",
+      "tags": [
+        "sore",
+        "soreness",
+        "doms",
+        "ache",
+        "muscle-soreness",
+        "recovery",
+        "tired",
         "fatigue"
       ],
-      "source": "NIH / Sleep Foundation guidance",
-      "text": "Persistent soreness, low energy, and poor sleep together signal under-recovery. Reducing training volume for a few days, ensuring adequate protein and calories, and improving sleep usually restores readiness faster than pushing through."
+      "source": "Schroeter S, Bloch W, Hirschmüller A, Engelhardt M, Grim C, Heiss R, Hotfiel T. Update: Delayed Onset Muscle Soreness (DOMS) – muscle biomechanics, pathophysiology and therapeutic approaches. Dtsch Z Sportmed. 2024;75:189-194. doi:10.5960/dzsm.2024.608",
+      "text": "Delayed onset muscle soreness (DOMS) is caused by mechanical overload — particularly **eccentric contractions** (lowering weight, downhill running) — that exceeds the ultrastructural capacity of muscle fibres, causing micro-damage and an inflammatory response. It has nothing to do with lactic acid, which has been debunked as the cause.\n\nThe timeline: initial symptoms appear **6–12 hours after exercise**; soreness peaks at **48–72 hours** post-exercise; and fully resolves within **one week** in most cases without complications. So the soreness you feel two days after a hard leg session is normal physiology, not injury. Elevated biomarkers (creatine kinase, IL-6, CRP) confirm the inflammatory phase is real but temporary."
+    },
+    {
+      "id": "rec-schroeter-doms-2024-2",
+      "title": "What actually helps soreness vs what doesn't",
+      "tags": [
+        "sore",
+        "soreness",
+        "doms",
+        "ice-bath",
+        "cold-water",
+        "active-recovery",
+        "massage",
+        "foam-rolling"
+      ],
+      "source": "Schroeter S, Bloch W, Hirschmüller A, Engelhardt M, Grim C, Heiss R, Hotfiel T. Update: Delayed Onset Muscle Soreness (DOMS) – muscle biomechanics, pathophysiology and therapeutic approaches. Dtsch Z Sportmed. 2024;75:189-194. doi:10.5960/dzsm.2024.608",
+      "text": "**Effective for DOMS:**\n- **Cold water immersion (cryotherapy):** Reduces inflammation and pain/swelling. Use for soreness relief after very hard sessions — but see the Driller caution about chronic use after resistance training (below).\n- **Heat therapy:** Warm baths and heat patches reduce pain and normalise muscle tone by increasing blood perfusion.\n- **Massage:** Increases intramuscular blood flow; evidence supports faster recovery. Practical for targeted sore muscles.\n- **Low-intensity active recovery:** Light walking, easy cycling, or swimming accelerates debris clearance via increased blood flow. This is the most accessible and consistently recommended option.\n- **Compression garments:** Promising evidence for reducing perceived soreness post-resistance training.\n\n**Does NOT help DOMS well:**\n- **Antioxidant supplements (Vitamin C, Vitamin E):** May interfere with the necessary cellular repair processes — no clear benefit and possible harm to training adaptation. Do not take antioxidant supplements specifically to manage DOMS.\n- **Gelatin:** No functional recovery benefit.\n- **BCAA supplements:** Evidence is controversial — some studies show modest benefit, others none.\n- **NSAIDs (ibuprofen etc.):** Timing and dosage matter; chronic use may impair long-term training adaptation.\n\nThe best defence against severe DOMS is **gradual progression**: increasing training load incrementally prevents the muscle damage that triggers it. After a first exposure, subsequent bouts cause significantly less soreness (\"repeated bout effect\")."
+    },
+    {
+      "id": "sup-citrulline-combined-1",
+      "title": "Does citrulline malate actually work for training performance",
+      "tags": [
+        "citrulline",
+        "citrulline-malate",
+        "pump",
+        "supplement",
+        "worth-it",
+        "evidence",
+        "dose",
+        "endurance"
+      ],
+      "source": "\"Gough LA, Sparks SA, McNaughton LR, et al. A critical review of citrulline malate supplementation and exercise performance. Eur J Appl Physiol. 2021;121(12):3283-3295. doi: 10.1007/s00421-021-04774-6 | Harnden CS, Agu J, Gascoyne T. Effects of citrulline on endurance performance in young healthy adults: a systematic review and meta-analysis. J Int Soc Sports Nutr. 2023;20(1):2209056. doi: 10.1080/15502783.2023.2209056\"",
+      "text": "Evidence strength: LIMITED/MIXED overall. ISSN Category B (limited evidence). L-citrulline for endurance: LOW (meta-analysis shows no significant effect).\n\n**Standard acute dose studied:** 8 g citrulline malate (CM) ~60 minutes before exercise.\n\n**What the evidence shows:**\n- **Muscular endurance in resistance training:** the only area with any consistent positive signal. Several studies show modest increases in reps-to-failure in later sets (e.g., bench press set 4–5, leg press) with effect sizes of 0.23–0.59 — described as \"subtle.\" Not all studies replicate this.\n- **Aerobic / endurance performance (L-citrulline):** a 2023 meta-analysis of 9 RCTs found NO significant effect on time-to-exhaustion (SMD = 0.03, p = 0.83) or time-to-completion (SMD = −0.07, p = 0.67) in cycling and running. Evidence strength here is LOW.\n- **Muscle blood flow and nitric oxide:** 8 g CM did not significantly elevate NO or muscle blood flow in human exercise studies. The proposed \"pump\" mechanism is not confirmed by performance data.\n- **Maximal strength and power:** no benefit documented.\n\n**Quality control issue:** independent testing finds commercial CM products deliver less citrulline than labeled — actual citrulline:malate ratio is often 1.1:1 to 1.6:1 instead of the stated 2:1, meaning an 8 g dose may deliver only ~4.2 g citrulline.\n\n**Safety:** well-tolerated at doses up to 12 g; no adverse blood marker effects.\n\n**Coaching bottom line:** present citrulline as \"may modestly help late-set muscular endurance, evidence is mixed.\" Do not recommend for aerobic performance. The \"pump\" effect some users feel is real subjectively but does not consistently translate to measurable performance improvement."
+    },
+    {
+      "id": "sup-issn-beta-alanine-2015-1",
+      "title": "How much beta-alanine should I take and does it work",
+      "tags": [
+        "beta-alanine",
+        "carnosine",
+        "dose",
+        "how-much",
+        "supplement",
+        "worth-it",
+        "endurance",
+        "buffering"
+      ],
+      "source": "\"Trexler ET, Smith-Ryan AE, Stout JR, Hoffman JR, Wilborn CD, Sale C, Kreider RB, Jäger R, Earnest CP, Bannock L, Campbell B, Kalman D, Ziegenfuss TN, Antonio J. International society of sports nutrition position stand: Beta-Alanine. J Int Soc Sports Nutr. 2015;12:30. doi: 10.1186/s12970-015-0090-y\"",
+      "text": "Evidence strength: STRONG for high-intensity exercise lasting 1–4 minutes; limited for longer endurance or pure strength work (AIS Group A / ISSN Category A).\n\n**Dose:** 4–6 g/day, split into multiple doses of ≤2 g each. Do not take one large 4–6 g dose — boluses >800 mg cause paresthesia (tingling). Sustained-release capsules allow larger single doses without tingling.\n\n**Duration before effect:** minimum 2–4 weeks of daily dosing. Muscle carnosine rises ~20–30% after 2 weeks, ~40–60% after 4 weeks, and up to 80% after 10 weeks.\n\n**Best exercise type:** high-intensity efforts lasting 1–4 minutes — 400–1500 m runs, rowing 500 m–2000 m, HIIT intervals, combat sports rounds. Physical working capacity at fatigue threshold improves 14–20%. Modest benefit up to ~25 minutes; very limited evidence beyond that.\n\n**Mechanism:** beta-alanine combines with histidine in muscle to form carnosine, a intramuscular pH buffer that delays hydrogen ion (H⁺) accumulation and fatigue during glycolytic work."
+    },
+    {
+      "id": "sup-issn-beta-alanine-2015-2",
+      "title": "The tingling from beta-alanine — what it is and how to reduce it",
+      "tags": [
+        "beta-alanine",
+        "tingles",
+        "paresthesia",
+        "dose",
+        "supplement",
+        "safe",
+        "pre-workout"
+      ],
+      "source": "\"Trexler ET, Smith-Ryan AE, Stout JR, Hoffman JR, Wilborn CD, Sale C, Kreider RB, Jäger R, Earnest CP, Bannock L, Campbell B, Kalman D, Ziegenfuss TN, Antonio J. International society of sports nutrition position stand: Beta-Alanine. J Int Soc Sports Nutr. 2015;12:30. doi: 10.1186/s12970-015-0090-y\"",
+      "text": "Evidence strength: N/A (this is a known pharmacological effect, not a safety concern).\n\nBeta-alanine causes a flushing/tingling sensation (paresthesia) on the skin — most noticeable on the face, ears, and arms — within 20–30 minutes of taking a dose >800 mg as a standard (non-SR) formulation. It is completely benign and resolves within 60–90 minutes. No tissue damage occurs.\n\n**To reduce or eliminate tingling:**\n1. Split doses into ≤1.6 g per serving, spread 3–4 times through the day.\n2. Take with food.\n3. Use a sustained-release (SR) formulation — same daily dose, much less tingling.\n\nMany pre-workout supplements include 1.6–3.2 g beta-alanine per serving; if you take one scoop you may feel tingling. With consistent daily use some individuals report reduced sensitivity over time."
+    },
+    {
+      "id": "sup-issn-caffeine-2021-1",
+      "title": "Is caffeine worth taking before training — dose and timing",
+      "tags": [
+        "caffeine",
+        "pre-workout",
+        "preworkout",
+        "dose",
+        "how-much",
+        "timing",
+        "stimulant",
+        "supplement"
+      ],
+      "source": "\"Guest NS, VanDusseldorp TA, Nelson MT, Grgic J, et al. International society of sports nutrition position stand: caffeine and exercise performance. J Int Soc Sports Nutr. 2021;18(1):1. doi: 10.1186/s12970-020-00383-4. PMID: 33388079\"",
+      "text": "Evidence strength: STRONG (one of the best-evidenced ergogenic aids; ISSN and AIS both classify it as Group/Category A).\n\n**Dose:** 3–6 mg/kg body weight. For an 80 kg person that is 240–480 mg. A minimal effective dose may be as low as 2 mg/kg (~160 mg), so even a single strong cup of coffee (150–200 mg) provides benefit. Doses ≥9 mg/kg add no further benefit and markedly increase side effects.\n\n**Timing:** approximately 60 minutes before exercise. Caffeine gum and mouth rinses may act faster (10–20 minutes) due to buccal absorption.\n\n**What it helps:** aerobic endurance sees the most consistent moderate-to-large benefit (time-trial and time-to-exhaustion). Smaller but real benefits also exist for muscular endurance, movement velocity, muscular strength, sprinting, and jumping.\n\n**FDA upper limit:** 400 mg/day for healthy adults."
+    },
+    {
+      "id": "sup-issn-caffeine-2021-2",
+      "title": "Caffeine tolerance and sleep — practical warnings",
+      "tags": [
+        "caffeine",
+        "coffee",
+        "sleep",
+        "energy-drink",
+        "stimulant",
+        "pre-workout",
+        "timing",
+        "safe"
+      ],
+      "source": "\"Guest NS, VanDusseldorp TA, Nelson MT, Grgic J, et al. International society of sports nutrition position stand: caffeine and exercise performance. J Int Soc Sports Nutr. 2021;18(1):1. doi: 10.1186/s12970-020-00383-4. PMID: 33388079\"",
+      "text": "Evidence strength: STRONG.\n\n**Sleep:** caffeine half-life is approximately 5–6 hours. Taking 300 mg at 4 pm still leaves ~75 mg circulating at 10 pm. ISSN recommends the last dose be ≥8 hours before bedtime. Training after 4–5 pm? Use a lower dose or skip caffeine.\n\n**Tolerance:** regular caffeine users experience attenuated ergogenic effects. A 7-day abstinence period can restore sensitivity — optional but effective before a key event. Habitual intake does not completely eliminate the benefit, but reduces its magnitude.\n\n**Individual variation:** genetic differences in CYP1A2 and ADORA2A mean some people are \"non-responders\" or are especially sensitive to side effects (jitteriness, anxiety, GI upset). Start at the low end of the dose range (2–3 mg/kg) to assess personal response."
+    },
+    {
+      "id": "sup-issn-creatine-2017-1",
+      "title": "How much creatine should I take — loading and maintenance dose",
+      "tags": [
+        "creatine",
+        "creatine-monohydrate",
+        "loading",
+        "dose",
+        "how-much",
+        "maintenance",
+        "supplement"
+      ],
+      "source": "\"Kreider RB, Kalman DS, Antonio J, et al. International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. J Int Soc Sports Nutr. 2017;14:18. doi: 10.1186/s12970-017-0173-z\"",
+      "text": "Evidence strength: STRONG (1,000+ studies; ISSN calls creatine \"the most effective ergogenic nutritional supplement currently available\").\n\n**Maintenance (recommended for most people):** 3–5 g/day of creatine monohydrate indefinitely. Larger athletes (>90 kg) may need 5–10 g/day. No cycling required.\n\n**Optional loading phase (for faster saturation):** 20 g/day (5 g × 4 doses) for 5–7 days, then drop to 3–5 g/day maintenance. Achieves a 20–40% increase in muscle creatine within one week. Slower alternative: 3 g/day for 28 days reaches the same endpoint without loading.\n\nCreatine monohydrate is the best-studied and cheapest form. No need to buy \"advanced\" creatine forms (HCl, ethyl ester, etc.) — monohydrate outperforms them all in head-to-head research."
+    },
+    {
+      "id": "sup-issn-creatine-2017-2",
+      "title": "Will creatine hurt my kidneys or make me gain fat",
+      "tags": [
+        "creatine",
+        "creatine-monohydrate",
+        "safe",
+        "safety",
+        "worth-it",
+        "supplement",
+        "weight"
+      ],
+      "source": "\"Kreider RB, Kalman DS, Antonio J, et al. International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. J Int Soc Sports Nutr. 2017;14:18. doi: 10.1186/s12970-017-0173-z\"",
+      "text": "Evidence strength: STRONG. Long-term use up to 30 g/day for 5 years documented as safe in healthy individuals with no evidence of renal harm.\n\nThe only expected side effect is a scale weight increase of ~1–2 kg in the first 1–2 weeks — this is intramuscular water retention and lean mass gain, not fat. Creatine does not cause dehydration, cramping, or musculoskeletal injury; studies show the opposite (lower injury rates vs. placebo). Individuals with pre-existing kidney disease should consult a doctor before use, but healthy adults have no concern."
+    },
+    {
+      "id": "sup-issn-creatine-2017-3",
+      "title": "What does creatine actually do for muscle and strength",
+      "tags": [
+        "creatine",
+        "creatine-monohydrate",
+        "strength",
+        "muscle",
+        "gains",
+        "mass",
+        "build"
+      ],
+      "source": "\"Kreider RB, Kalman DS, Antonio J, et al. International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. J Int Soc Sports Nutr. 2017;14:18. doi: 10.1186/s12970-017-0173-z\"",
+      "text": "Evidence strength: STRONG. Creatine replenishes phosphocreatine (PCr), the primary fuel for very short, explosive efforts (ATP resynthesis during the first 10–30 seconds of high-intensity work).\n\nIn resistance training studies vs. placebo: 10–20% improvement in high-intensity and repetitive exercise performance, consistently greater strength gains and lean mass gains. Effect is most pronounced for multi-set resistance training, sprinting, and repeated-sprint sports. Less impact on single-rep max or aerobic endurance exercise."
+    },
+    {
+      "id": "sup-issn-hmb-combined-1",
+      "title": "What is HMB and how much should I take",
+      "tags": [
+        "hmb",
+        "dose",
+        "how-much",
+        "supplement",
+        "muscle",
+        "recovery",
+        "safe"
+      ],
+      "source": "\"Wilson JM, Fitschen PJ, Campbell B, et al. International Society of Sports Nutrition Position Stand: beta-hydroxy-beta-methylbutyrate (HMB). J Int Soc Sports Nutr. 2013;10:6. doi: 10.1186/1550-2783-10-6. PMID: 23374455 | Rathmacher JA, Pitchford LM, Stout JR, et al. International society of sports nutrition position stand: β-hydroxy-β-methylbutyrate (HMB). J Int Soc Sports Nutr. 2024;21(1):2434734. doi: 10.1080/15502783.2024.2434734\"",
+      "text": "Evidence strength: MODERATE-TO-STRONG for body composition and recovery in untrained/beginner populations; MIXED in trained athletes (ISSN Category B).\n\nHMB (beta-hydroxy-beta-methylbutyrate) is a metabolite of the amino acid leucine. It activates mTORC1 (a key muscle protein synthesis pathway) independently of leucine sensing, and reduces muscle damage markers.\n\n**Dose (both 2013 and 2024 ISSN stands agree):** 38 mg/kg body weight/day — approximately **3 g/day** for a 75–80 kg person — divided into 2–3 servings.\n\n**Forms:**\n- **CaHMB** (calcium salt, most common): take 60–120 minutes pre-exercise.\n- **HMB-FA** (free acid): faster absorption; 30–60 minutes pre-exercise; ~91–97% greater plasma area-under-the-curve than CaHMB, but less commonly available and more expensive.\n\n**Duration:** at least 3–4 weeks to see body composition changes; trained athletes may need ≥6 weeks to show consistent benefits.\n\n**Safety:** chronic use (up to 1 year) documented as safe with no adverse effects on blood glucose, insulin sensitivity, or kidney markers."
+    },
+    {
+      "id": "sup-issn-hmb-combined-2",
+      "title": "Who benefits most from HMB",
+      "tags": [
+        "hmb",
+        "supplement",
+        "muscle",
+        "gains",
+        "recovery",
+        "sore",
+        "soreness",
+        "beginner",
+        "advanced"
+      ],
+      "source": "\"Wilson JM, Fitschen PJ, Campbell B, et al. International Society of Sports Nutrition Position Stand: beta-hydroxy-beta-methylbutyrate (HMB). J Int Soc Sports Nutr. 2013;10:6. doi: 10.1186/1550-2783-10-6. PMID: 23374455 | Rathmacher JA, Pitchford LM, Stout JR, et al. International society of sports nutrition position stand: β-hydroxy-β-methylbutyrate (HMB). J Int Soc Sports Nutr. 2024;21(1):2434734. doi: 10.1080/15502783.2024.2434734\"",
+      "text": "Evidence strength: MODERATE; most consistent for beginners, returning athletes, and high-damage training blocks.\n\n**Best candidates for HMB:**\n- Beginners or those returning after a training break — studies in untrained individuals show fat-free mass gains of +0.4 to +2.4 kg and strength improvements of 7–45% in 3–8 week protocols.\n- Anyone doing intensified training blocks with high eccentric loading — HMB reduces creatine kinase (CK) by 20–60% and LDH significantly, indicating less muscle membrane damage and faster recovery.\n\n**Trained athletes:** evidence is mixed. Most studies show modest or no hypertrophy benefit unless duration is >6 weeks. A 2013 outlier study (Wilson et al.) reported +5.3 kg LBM over 12 weeks, which is not replicated at the same magnitude in subsequent work.\n\n**Bottom line:** HMB is most useful for beginners, older adults (55+ years), or periods of unusually high training damage (new program, deload return, injury comeback). For experienced athletes chasing marginal gains, it is a reasonable but unproven add-on."
+    },
+    {
+      "id": "sup-issn-sodium-bicarbonate-2021-1",
+      "title": "Does baking soda (sodium bicarbonate) improve performance and how much to take",
+      "tags": [
+        "sodium-bicarbonate",
+        "baking-soda",
+        "bicarb",
+        "buffering",
+        "dose",
+        "how-much",
+        "supplement",
+        "worth-it"
+      ],
+      "source": "\"Grgic J, Pedisic Z, Saunders B, Artioli GG, Schoenfeld BJ, McKenna MJ, Bishop DJ, Kreider RB, Stout JR, Kalman DS, Arent SM, VanDusseldorp TA, Lopez HL, Ziegenfuss TN, Burke LM, Antonio J, Campbell BI. International Society of Sports Nutrition position stand: sodium bicarbonate and exercise performance. J Int Soc Sports Nutr. 2021;18(1):61. doi: 10.1186/s12970-021-00458-w\"",
+      "text": "Evidence strength: STRONG for high-intensity efforts lasting 30 seconds to 12 minutes (ISSN Category A / AIS Group A). Limited for longer efforts.\n\n**Mechanism:** sodium bicarbonate (NaHCO₃) is an extracellular pH buffer. It attenuates accumulation of lactate and hydrogen ions (H⁺) during glycolytic metabolism, delaying fatigue in high-intensity efforts.\n\n**Single-dose protocol:**\n- Dose: **0.3 g/kg body weight** (optimal). Minimum effective dose is 0.2 g/kg.\n- Timing: **60–180 minutes before exercise**. Peak blood buffering occurs ~60–90 minutes post-ingestion.\n- Example: 80 kg athlete → 24 g (~1.5 tablespoons or ~6 × 500 mg capsules).\n\n**Multi-day loading (reduces GI side effects):** 0.4–0.5 g/kg/day for 3–7 consecutive days; achieves equivalent blood buffering with less acute GI distress.\n\n**Best exercise types (documented benefit):** boxing, judo, wrestling, karate, taekwondo; high-intensity cycling; 200–400 m swimming; 2000 m rowing; any single or repeated sprint lasting ~30 s–12 min."
+    },
+    {
+      "id": "sup-issn-sodium-bicarbonate-2021-2",
+      "title": "Managing the GI side effects of sodium bicarbonate",
+      "tags": [
+        "sodium-bicarbonate",
+        "baking-soda",
+        "bicarb",
+        "supplement",
+        "safe",
+        "dose",
+        "timing"
+      ],
+      "source": "\"Grgic J, Pedisic Z, Saunders B, Artioli GG, Schoenfeld BJ, McKenna MJ, Bishop DJ, Kreider RB, Stout JR, Kalman DS, Arent SM, VanDusseldorp TA, Lopez HL, Ziegenfuss TN, Burke LM, Antonio J, Campbell BI. International Society of Sports Nutrition position stand: sodium bicarbonate and exercise performance. J Int Soc Sports Nutr. 2021;18(1):61. doi: 10.1186/s12970-021-00458-w\"",
+      "text": "Evidence strength: STRONG; strategies are well-documented in the ISSN position stand.\n\nGI distress (bloating, nausea, abdominal pain, vomiting) is the primary barrier to sodium bicarbonate use. Incidence is variable between individuals.\n\n**Mitigation strategies (in order of effectiveness):**\n1. Reduce dose to 0.2–0.25 g/kg and build up gradually.\n2. Time ingestion ~180 minutes (3 hours) before exercise — buffering still peaks before competition.\n3. Consume with a high-carbohydrate meal to slow absorption.\n4. Use enteric-coated capsules (slower GI transit; less acute irritation).\n5. Use the multi-day loading protocol (0.4–0.5 g/kg/day × 3–7 days) instead of a single acute dose.\n\n**Who this is relevant for:** most useful for competitive athletes in combat sports, rowing, track events, or swimming. Less practical for recreational gym-goers whose training doesn't feature 30-second to 12-minute high-intensity intervals. Experiment in training before race day."
+    },
+    {
+      "id": "sup-issn-sports-review-2018-ais-2022-1",
+      "title": "Which supplements are actually proven to work — evidence tiers",
+      "tags": [
+        "supplement",
+        "supplements",
+        "evidence",
+        "effective",
+        "worth-it",
+        "safe",
+        "creatine",
+        "caffeine",
+        "beta-alanine"
+      ],
+      "source": "\"Kerksick CM, Wilborn CD, Roberts MD, et al. ISSN exercise & sports nutrition review update: research & recommendations. J Int Soc Sports Nutr. 2018;15:38. doi: 10.1186/s12970-018-0242-y | Australian Institute of Sport. AIS Sports Supplement Framework. Australian Sports Commission. Updated August 2022. https://www.ausport.gov.au/ais/nutrition/supplements/about-the-ais-sports-supplement-framework\"",
+      "text": "Two independent expert bodies — the International Society of Sports Nutrition (ISSN 2018) and the Australian Institute of Sport (AIS 2022) — classify supplements into evidence tiers. Their top-tier lists are nearly identical.\n\n**ISSN Category A / AIS Group A — STRONG evidence; safe and effective when used correctly:**\n- **Creatine monohydrate:** 3–5 g/day maintenance; optional 20 g/day × 5 days loading.\n- **Caffeine:** 3–6 mg/kg ~60 min pre-exercise.\n- **Sodium bicarbonate:** 0.3 g/kg ~60–180 min pre-exercise; high-intensity 30 s–12 min efforts only.\n- **Beta-alanine:** 4–6 g/day in divided doses ≤2 g; needs 4+ weeks; best for 1–4 min high-intensity work.\n- **Protein supplements** (whey, casein, soy): when whole food cannot meet daily protein targets.\n- **Dietary nitrate / beetroot juice** (AIS Group A): pre-exercise nitric oxide support; especially aerobic endurance.\n\nThese are the **only** supplements that should be proactively recommended for body recomposition or performance."
+    },
+    {
+      "id": "sup-issn-sports-review-2018-ais-2022-2",
+      "title": "Which supplements have limited or no evidence",
+      "tags": [
+        "supplement",
+        "supplements",
+        "evidence",
+        "worth-it",
+        "hmb",
+        "citrulline",
+        "safe"
+      ],
+      "source": "\"Kerksick CM, Wilborn CD, Roberts MD, et al. ISSN exercise & sports nutrition review update: research & recommendations. J Int Soc Sports Nutr. 2018;15:38. doi: 10.1186/s12970-018-0242-y | Australian Institute of Sport. AIS Sports Supplement Framework. Australian Sports Commission. Updated August 2022. https://www.ausport.gov.au/ais/nutrition/supplements/about-the-ais-sports-supplement-framework\"",
+      "text": "**ISSN Category B / AIS Group B — LIMITED or MIXED evidence (discuss with caveats if user asks):**\n- HMB: more consistent for beginners and recovery; mixed in trained athletes.\n- Citrulline / citrulline malate: may modestly help late-set muscular endurance; no aerobic benefit.\n- BCAAs: insufficient evidence for hypertrophy benefit beyond adequate total protein intake.\n- Beetroot juice / nitrate (ISSN B): emerging evidence; AIS upgraded to Group A.\n\n**ISSN Category C — LITTLE TO NO evidence; NOT recommended:**\n- Glutamine: no hypertrophy benefit in healthy exercising adults.\n- Tribulus terrestris: no ergogenic effect documented.\n- Most thermogenics beyond caffeine.\n- Most proprietary \"proprietary blend\" products.\n\n**AIS Group D — BANNED or HIGH contamination risk:**\n- Prohormones, SARMs, ephedra, and other WADA-prohibited substances. Never recommend."
+    },
+    {
+      "id": "sup-protein-quality-foods-1",
+      "title": "Which protein source is best — DIAAS quality rankings",
+      "tags": [
+        "protein-quality",
+        "diaas",
+        "pdcaas",
+        "whey",
+        "sources",
+        "amino-acids",
+        "leucine",
+        "plant-based"
+      ],
+      "source": "\"Adhikari S, Schop M, de Boer IJM, Huppertz T. Protein Quality in Perspective: A Review of Protein Quality Metrics and Their Applications. Nutrients. 2022;14(5):947. doi: 10.3390/nu14050947 | Ciuris C, Lynch HM, Wharton C, Johnston CS. A Comparison of Dietary Protein Digestibility, Based on DIAAS Scoring, in Vegetarian and Non-Vegetarian Athletes. Nutrients. 2019;11(12):3016. doi: 10.3390/nu11123016 | Antonio J, Evans C, Ferrando AA, et al. Common questions and misconceptions about protein supplementation: what does the scientific evidence really show? J Int Soc Sports Nutr. 2024;21(1):2341903. doi: 10.1080/15502783.2024.2341903\"",
+      "text": "Evidence strength: STRONG methodological consensus; DIAAS is the FAO-preferred protein quality standard since 2013.\n\nDIAAS (Digestible Indispensable Amino Acid Score) measures how well each amino acid in a protein is actually absorbed and used by the body — it is more accurate than the older PDCAAS method, which used fecal digestibility and capped scores at 100%.\n\n**DIAAS scores for common protein sources:**\n| Source | DIAAS | Notes |\n|---|---|---|\n| Whey protein concentrate | 133% | Highest quality; 11% leucine content |\n| Egg | 122% | Near-ideal EAA profile |\n| Whey protein isolate | 125% | |\n| Soy protein isolate | 98% | Best plant-based option |\n| Pea protein concentrate | 82% | Limited by sulfur amino acids |\n| Rice protein | 60% | Limited by lysine |\n\n**Animal flesh (chicken, fish, beef, turkey):** effectively 100% — all amino acids fully available.\n\n**Key rule:** protein complementarity must happen at the meal level, not across the day. A lysine-deficient cereal breakfast cannot be corrected by a high-quality dinner. Pair plant proteins within the same meal (e.g., rice + beans, pea + rice protein blend)."
+    },
+    {
+      "id": "sup-protein-quality-foods-2",
+      "title": "How much protein do plant-based and vegetarian athletes need",
+      "tags": [
+        "plant-based",
+        "vegan",
+        "vegetarian",
+        "protein",
+        "protein-quality",
+        "diaas",
+        "sources",
+        "how-much"
+      ],
+      "source": "\"Adhikari S, Schop M, de Boer IJM, Huppertz T. Protein Quality in Perspective: A Review of Protein Quality Metrics and Their Applications. Nutrients. 2022;14(5):947. doi: 10.3390/nu14050947 | Ciuris C, Lynch HM, Wharton C, Johnston CS. A Comparison of Dietary Protein Digestibility, Based on DIAAS Scoring, in Vegetarian and Non-Vegetarian Athletes. Nutrients. 2019;11(12):3016. doi: 10.3390/nu11123016 | Antonio J, Evans C, Ferrando AA, et al. Common questions and misconceptions about protein supplementation: what does the scientific evidence really show? J Int Soc Sports Nutr. 2024;21(1):2341903. doi: 10.1080/15502783.2024.2341903\"",
+      "text": "Evidence strength: STRONG (consistent finding across DIAAS literature and ISSN protein stand).\n\nBecause plant proteins score lower on DIAAS than animal proteins, vegetarian and vegan athletes must eat more total grams to deliver the same amino acid stimulus for muscle protein synthesis.\n\n**Practical guidance:**\n- Vegetarian/vegan athletes: target **1.8–2.4 g/kg/day** total protein (vs. ~1.6–2.0 g/kg/day for omnivores).\n- Need 20–40% more plant protein grams to match the EAA and leucine delivery of animal protein.\n- A 2019 study found vegetarian athletes had 43% less \"available protein\" (DIAAS-adjusted) than omnivores eating the same gram count — the digestibility gap, not just the quantity gap, matters.\n- Soy protein isolate is the exception (~98% DIAAS) — treat it nearly on par with whey.\n- Corn-based foods (tortillas, corn cereals) are particularly poor protein sources due to severe lysine limitation (~66% DIAAS).\n\n**For a plant-based athlete needing 160 g protein/day (animal equivalent):** target approximately 190–224 g/day from plant sources."
+    },
+    {
+      "id": "sup-protein-quality-foods-3",
+      "title": "Best high-protein foods by protein density",
+      "tags": [
+        "high-protein",
+        "food",
+        "foods",
+        "sources",
+        "chicken",
+        "eggs",
+        "protein",
+        "food-database"
+      ],
+      "source": "\"Adhikari S, Schop M, de Boer IJM, Huppertz T. Protein Quality in Perspective: A Review of Protein Quality Metrics and Their Applications. Nutrients. 2022;14(5):947. doi: 10.3390/nu14050947 | Ciuris C, Lynch HM, Wharton C, Johnston CS. A Comparison of Dietary Protein Digestibility, Based on DIAAS Scoring, in Vegetarian and Non-Vegetarian Athletes. Nutrients. 2019;11(12):3016. doi: 10.3390/nu11123016 | Antonio J, Evans C, Ferrando AA, et al. Common questions and misconceptions about protein supplementation: what does the scientific evidence really show? J Int Soc Sports Nutr. 2024;21(1):2341903. doi: 10.1080/15502783.2024.2341903\"",
+      "text": "Evidence strength: STRONG; data sourced from USDA FoodData Central and ISSN 2024 protein review.\n\n**Top animal-source high-protein foods (per 100 g cooked/as-served):**\n- Cooked skinless chicken breast: 32 g protein, 158 kcal — best protein-to-calorie ratio.\n- Turkey breast (cooked): ~30 g protein, ~160 kcal.\n- Canned tuna (in water): ~26 g protein, ~110 kcal.\n- Eggs (whole, large): ~13 g protein per 100 g (~6 g per egg), ~143 kcal/100 g.\n- Cheddar cheese: 23 g protein per 100 g but 409 kcal — calorie-dense; use sparingly when cutting.\n- Peanut butter: 24 g protein per 100 g but 632 kcal — not a lean protein source.\n\n**Key takeaway for recomp:** lean meats (chicken breast, turkey, white fish) deliver the most protein per calorie, making them the most useful for hitting high protein targets while managing overall calorie intake."
+    },
+    {
+      "id": "sup-usda-fooddata-central-1",
+      "title": "What is USDA FoodData Central and why does this app use it",
+      "tags": [
+        "food-database",
+        "usda",
+        "food",
+        "foods",
+        "macros",
+        "sources"
+      ],
+      "source": "\"USDA Agricultural Research Service. FoodData Central. United States Department of Agriculture. Available at: https://fdc.nal.usda.gov/. Data current through April 2026. License: CC0 1.0 Universal (public domain).\"",
+      "text": "USDA FoodData Central (FDC) is the official U.S. government nutrient composition database and the gold-standard source for food macronutrient and micronutrient data. It is published under CC0 1.0 Universal (public domain) — no licensing restrictions for use in apps or commercial products.\n\n**Five data types available:**\n- **Foundation Foods** — highest analytical quality; commodity and minimally processed foods; updated semi-annually. Best source for whole-food macros (chicken breast, oats, eggs, etc.).\n- **Branded Foods** — commercial product nutrition label data from manufacturers; updated monthly. Enables branded product and barcode lookups. Latest update: April 2026.\n- **SR Legacy (Standard Reference)** — historical dataset; last updated April 2018; no longer updated but widely referenced by third-party databases.\n- **Survey Foods (FNDDS)** — used in NHANES national dietary surveys; updated every 2 years.\n- **Experimental Foods** — peer-reviewed academic research data.\n\n**Access options:**\n- Web: fdc.nal.usda.gov (free, no login).\n- RESTful JSON API (free; requires data.gov API key) — supports real-time food search and single-record retrieval.\n- Bulk CSV/JSON download — full offline dataset for embedding in an app food library.\n\n**Nutrient coverage per food record:** calories, protein, fat (total, saturated, mono, poly), carbohydrates, fiber, sugars, sodium, potassium, calcium, iron, zinc, vitamins A/C/D/E/K, B vitamins, and (for Foundation Foods) full amino acid and fatty acid profiles."
+    },
+    {
+      "id": "sup-usda-fooddata-central-2",
+      "title": "How to look up food protein and calorie data accurately",
+      "tags": [
+        "food-database",
+        "usda",
+        "food",
+        "foods",
+        "macros",
+        "high-protein",
+        "sources",
+        "protein"
+      ],
+      "source": "\"USDA Agricultural Research Service. FoodData Central. United States Department of Agriculture. Available at: https://fdc.nal.usda.gov/. Data current through April 2026. License: CC0 1.0 Universal (public domain).\"",
+      "text": "When looking up nutrient values for a specific food, prefer **Foundation Foods** data over SR Legacy for whole, minimally processed foods — Foundation Foods uses the most rigorous analytical methodology and is updated semi-annually.\n\n**Practical reference values from USDA FDC (Foundation Foods):**\n- Cooked skinless chicken breast: ~32 g protein, ~3 g fat, ~158 kcal per 100 g.\n- Large egg (50 g): ~6 g protein, ~5 g fat, ~70 kcal.\n- Oats (dry): ~17 g protein, ~7 g fat, ~389 kcal per 100 g.\n- Greek yogurt (plain, non-fat): ~10 g protein, ~0 g fat, ~59 kcal per 100 g.\n- Cottage cheese (2% fat): ~11 g protein, ~2 g fat, ~72 kcal per 100 g.\n\n**For branded/packaged foods:** use Branded Foods data or scan the product barcode — values come directly from the manufacturer nutrition label and are updated monthly. Always check the serving size listed to avoid miscalculating.\n\nThe food library in this app draws on USDA FDC data, so nutrient values you see for common whole foods match the USDA government standard."
+    },
+    {
+      "id": "trn-androulakis-technique-2023-1",
+      "title": "Full stretch under load — train muscles at long length for best growth",
+      "tags": [
+        "exercise",
+        "technique",
+        "range-of-motion",
+        "rom",
+        "muscle-length",
+        "hypertrophy",
+        "muscle",
+        "growth",
+        "selection"
+      ],
+      "source": "\"Androulakis Korakakis P, Wolf M, Coleman M, Burke R, Piñero A, Nippard J, Schoenfeld BJ. Optimizing Resistance Training Technique to Maximize Muscle Hypertrophy: A Narrative Review. J Funct Morphol Kinesiol. 2024;9(1):9. doi:10.3390/jfmk9010009. PMC10801605.\"",
+      "text": "Training a muscle at its longest (most-stretched) position under load is one of the most important technique principles for hypertrophy. Multiple studies cited in this narrative review (co-authored by Schoenfeld) show that \"training at long muscle lengths elicits more distal hypertrophy than training at short muscle lengths,\" and that a partial range of motion performed at the **lengthened position** was \"potentially superior to full ROM for hypertrophy.\" In practice: prioritise exercises and rep ranges that place the muscle under load when it is fully stretched — deep squats (quad length), Romanian deadlifts (hamstring length), incline dumbbell curls (bicep length at the bottom), and deficit push-ups or deep dips (chest length). Partial reps at the shortened end of the range (top of a curl, top of a press) are counterproductive for hypertrophy."
+    },
+    {
+      "id": "trn-baz-valle-volume-2022-1",
+      "title": "How many sets per week to build muscle (weekly volume target)",
+      "tags": [
+        "volume",
+        "sets",
+        "sets-per-week",
+        "weekly-sets",
+        "hypertrophy",
+        "muscle",
+        "growth",
+        "how-many"
+      ],
+      "source": "\"Baz-Valle E, Balsalobre-Fernández C, Alix-Fages C, Santos-Concejero J. A Systematic Review of The Effects of Different Resistance Training Volumes on Muscle Hypertrophy. J Hum Kinet. 2022;81:199–210. doi:10.2478/hukin-2022-0017. PMC8884877.\"",
+      "text": "The evidence-based sweet spot for muscle hypertrophy in trained individuals is **12–20 direct sets per muscle group per week**. Fewer than 12 sets/week is classified as low volume and yields suboptimal results for trained people; more than 20 sets/week shows no consistent additional benefit and increases fatigue. This systematic review and meta-analysis (7 studies, trained men, 6–24 weeks) found no statistically significant difference between moderate volume (12–20 sets/week) and high volume (>20 sets/week) for the quadriceps (ES −0.2) or biceps (ES −0.1), though the triceps showed a clear dose-response favouring high volume (ES −0.5, p = 0.01). The practical takeaway: work up to 12–20 direct sets per muscle per week before going higher, and personalise from there — 62.5 % of subjects responded better when volume was individualised."
+    },
+    {
+      "id": "trn-baz-valle-volume-2022-2",
+      "title": "Frequency and volume interact — train each muscle at least twice a week",
+      "tags": [
+        "frequency",
+        "volume",
+        "sets",
+        "sets-per-week",
+        "hypertrophy",
+        "muscle",
+        "sessions",
+        "split",
+        "how-often"
+      ],
+      "source": "\"Baz-Valle E, Balsalobre-Fernández C, Alix-Fages C, Santos-Concejero J. A Systematic Review of The Effects of Different Resistance Training Volumes on Muscle Hypertrophy. J Hum Kinet. 2022;81:199–210. doi:10.2478/hukin-2022-0017. PMC8884877.\"",
+      "text": "Training frequency is a tool for managing weekly volume, not an independent driver of growth. Within the same total weekly sets, splitting volume across 3 sessions per muscle per week appeared to enable greater benefit from elevated volumes compared with 2 sessions per week. If you cannot reach 12–20 sets in two sessions without excessive fatigue, add a third session rather than cramming more sets into each existing workout. The minimum recommended starting point is 4 sets per muscle per week (a finding consistent across multiple meta-analyses), with 10+ sets/week representing the threshold above which consistent hypertrophy is reliably observed."
+    },
+    {
+      "id": "trn-currier-prescription-2023-1",
+      "title": "Optimal training prescription for muscle strength (sets, frequency, load)",
+      "tags": [
+        "strength",
+        "muscle",
+        "sets",
+        "frequency",
+        "load",
+        "intensity",
+        "1rm",
+        "reps",
+        "rep-range",
+        "how-many",
+        "how-often"
+      ],
+      "source": "\"Currier BS, McLeod JC et al. Resistance training prescription for muscle strength and hypertrophy in healthy adults: a systematic review and Bayesian network meta-analysis. Br J Sports Med. 2023. doi:10.1136/bjsports-2023-106807. PMID:37414459. PMC10579494.\"",
+      "text": "For **muscle strength**, the top-ranked prescription in this Bayesian network meta-analysis of 178 studies (5,097 participants, 45 % women) was higher-load, multi-set training performed **3 times per week per muscle group** — SMD 1.60 (95 % CI 1.38–1.82). There was a 95 % probability that this combination caused the largest strength gains of any prescription tested. The minimum viable dose for near-certain strength improvement was **at least 2 sets or 2 sessions per week** (95 % probability of meaningful gain). Importantly, every resistance training prescription tested — even low-volume, low-frequency — was superior to no training at all, making the first priority simply starting and being consistent."
+    },
+    {
+      "id": "trn-currier-prescription-2023-2",
+      "title": "Optimal training prescription for hypertrophy (sets, frequency, load)",
+      "tags": [
+        "hypertrophy",
+        "muscle",
+        "sets",
+        "frequency",
+        "load",
+        "intensity",
+        "1rm",
+        "reps",
+        "rep-range",
+        "gains",
+        "how-many",
+        "how-often"
+      ],
+      "source": "\"Currier BS, McLeod JC et al. Resistance training prescription for muscle strength and hypertrophy in healthy adults: a systematic review and Bayesian network meta-analysis. Br J Sports Med. 2023. doi:10.1136/bjsports-2023-106807. PMID:37414459. PMC10579494.\"",
+      "text": "For **muscle hypertrophy**, the top-ranked prescription in this analysis of 119 studies (3,364 participants, 47 % women) was higher-load, multi-set training done **2 times per week per muscle group** — SMD 0.66 (95 % CI 0.47–0.85), with an 86.9 % probability of ranking in the top three. Importantly, **load was less influential than volume for hypertrophy** — meaning that accumulating enough total sets matters more than whether those sets are heavy or moderate. Training 3 × /week also worked well for hypertrophy; the 2 × /week edge in this ranking likely reflects the most commonly studied protocol rather than a hard rule. The practical prescription: 2–3 sessions per muscle per week, multiple sets per session (3–5), with loads in the 60–85 % 1RM range (6–20 rep range), taken to 1–3 reps in reserve."
+    },
+    {
+      "id": "trn-evans-periodization-2019-1",
+      "title": "Should you periodize your training? Periodized always beats random/non-progressive",
+      "tags": [
+        "periodization",
+        "program",
+        "programming",
+        "mesocycle",
+        "deload",
+        "strength",
+        "hypertrophy",
+        "muscle",
+        "progression"
+      ],
+      "source": "\"Evans JW. Periodized Resistance Training for Enhancing Skeletal Muscle Hypertrophy and Strength: A Mini-Review. Front Physiol. 2019;10:13. doi:10.3389/fphys.2019.00013. PMC6351492.\"",
+      "text": "Structured periodization consistently outperforms non-periodized (random or constant-load) training for maximal strength — multiple meta-analyses reviewed here all agree on this. For hypertrophy the evidence is less clear-cut, but having any structured, progressive plan still outperforms training without one. Periodization works by systematically varying training stress (load, volume, intensity, or rep range) to drive continued adaptation, prevent plateaus, and manage fatigue. Even a simple scheme — 4–6 weeks of moderate reps (8–12), then 4–6 weeks of lower reps (4–6), then a deload week — qualifies as linear periodization and yields better long-term strength outcomes than doing the same workout indefinitely."
+    },
+    {
+      "id": "trn-huiberts-concurrent-2023-1",
+      "title": "Does cardio hurt muscle and strength gains? (concurrent training interference)",
+      "tags": [
+        "cardio",
+        "concurrent",
+        "running",
+        "interference",
+        "strength",
+        "muscle",
+        "gains",
+        "hypertrophy",
+        "conditioning"
+      ],
+      "source": "\"Huiberts RO, Wüst RCI, van der Zwaard S. Concurrent Strength and Endurance Training: A Systematic Review and Meta-Analysis on the Impact of Sex and Training Status. Sports Med. 2023. doi:10.1007/s40279-023-01943-9. PMC10933151.\"",
+      "text": "Combining cardio and resistance training in the same programme creates a measurable interference effect on lower-body strength — but the impact is sex-dependent. This systematic review and meta-analysis found that **males** showed significant lower-body strength interference with concurrent training (ES = −0.43, meaning roughly 43 % of a standard deviation less strength gain compared to resistance training alone). **Females showed no significant interference** (ES = 0.08, not significant). Power adaptations were blunted in both sexes (males ES −0.27, females ES −0.52). Upper-body strength was unaffected by concurrent training in either sex. The interference effect is real for men doing moderate-volume cardio alongside leg training, but manageable — it is not a reason to avoid cardio entirely."
+    },
+    {
+      "id": "trn-huiberts-concurrent-2023-2",
+      "title": "How to minimise cardio interference with strength and muscle building",
+      "tags": [
+        "cardio",
+        "concurrent",
+        "running",
+        "interference",
+        "strength",
+        "muscle",
+        "gains",
+        "conditioning",
+        "program"
+      ],
+      "source": "\"Huiberts RO, Wüst RCI, van der Zwaard S. Concurrent Strength and Endurance Training: A Systematic Review and Meta-Analysis on the Impact of Sex and Training Status. Sports Med. 2023. doi:10.1007/s40279-023-01943-9. PMC10933151.\"",
+      "text": "Practical strategies to reduce concurrent training interference, based on this meta-analysis and the companion network meta-analysis (Chen et al. 2024, 40 RCTs): (1) **Choose HIIT over moderate steady-state** — HIIT running showed the least interference with lower-body strength (SMD = −0.08 vs resistance training alone) compared to moderate-intensity continuous cycling (SMD = −0.38). (2) **Prefer running over cycling** — running includes eccentric contractions that share more neural overlap with resistance training, but HIIT running's shorter duration limits glycogen depletion and fatigue transfer. (3) **Separate sessions** — doing cardio on different days from resistance training, or at least 6–8 hours apart, substantially reduces interference. (4) **Do resistance training first** if both must be done in the same session. For recomposition goals where some cardio is desired, HIIT-based cardio 2–3 × /week alongside 3–4 resistance sessions per week is a well-supported combination."
+    },
+    {
+      "id": "trn-iversen-minimum-dose-2021-1",
+      "title": "Minimum sets per week to build muscle — even 4 sets counts",
+      "tags": [
+        "minimum",
+        "minimum-dose",
+        "volume",
+        "sets",
+        "sets-per-week",
+        "hypertrophy",
+        "strength",
+        "muscle",
+        "beginner",
+        "how-many"
+      ],
+      "source": "\"Iversen VM, Norum M, Schoenfeld BJ, Fimland MS. No Time to Lift? Designing Time-Efficient Training Programs for Strength and Hypertrophy: A Narrative Review. Sports Med. 2021;51(10):2079–2095. doi:10.1007/s40279-021-01490-1. PMC8449772.\"",
+      "text": "A minimum of **4 direct sets per muscle group per week** is enough to produce measurable strength and hypertrophy gains, according to this narrative review co-authored with Schoenfeld. Reaching 10 or more sets per week yields incrementally better results, but 4 sets is the validated floor — far better than zero. Even training each muscle only **once per week** produces similar strength gains to training it 3 times per week when total weekly volume is equated. The load range of 6–15 RM (roughly 65–85 % 1RM) is most efficient; alternatively, 15–40 reps taken to volitional failure also works if heavy equipment is unavailable. For exercise selection, prioritise at least one bilateral lower-body compound (squat or leg press variant), one upper-body pull (row or pull-up), and one upper-body push (press or dip) to maximise returns per unit of time."
+    },
+    {
+      "id": "trn-pelland-dose-response-2024-1",
+      "title": "Diminishing returns: how much volume is too much?",
+      "tags": [
+        "volume",
+        "sets",
+        "sets-per-week",
+        "hypertrophy",
+        "strength",
+        "dose",
+        "gains",
+        "muscle",
+        "how-much"
+      ],
+      "source": "\"Pelland J, Remmert J, Robinson Z, Hinson S, Zourdos MC. The Resistance Training Dose-Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gain. SportRxiv. 2024. doi:10.51224/SRXIV.460. (Also published in J Strength Cond Res, PMID 41343037.)\"",
+      "text": "More weekly sets produce more muscle and strength — but with sharply diminishing returns beyond roughly 20 direct sets per muscle per week. This meta-regression of 67 studies (2,058 participants) showed that both hypertrophy and strength gains increase with volume, yet strength hits diminishing returns faster and harder than hypertrophy does. Practically: going from 5 → 10 sets/week yields a large jump in results; going from 15 → 20 sets/week still helps but less so; going beyond 20 sets/week is hard to justify for most natural trainees. For body recomposition, target 10–20 direct sets per muscle group per week to stay in the productive zone without accumulating unnecessary fatigue."
+    },
+    {
+      "id": "trn-pelland-dose-response-2024-2",
+      "title": "Count direct sets, not total sets — indirect volume counts less",
+      "tags": [
+        "volume",
+        "sets",
+        "hypertrophy",
+        "strength",
+        "muscle",
+        "exercise",
+        "selection",
+        "how-many"
+      ],
+      "source": "\"Pelland J, Remmert J, Robinson Z, Hinson S, Zourdos MC. The Resistance Training Dose-Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gain. SportRxiv. 2024. doi:10.51224/SRXIV.460. (Also published in J Strength Cond Res, PMID 41343037.)\"",
+      "text": "Not all sets are equal. This analysis distinguishes **direct sets** (the muscle is a primary mover, e.g., biceps curls for biceps) from **indirect sets** (the muscle is a secondary helper, e.g., rows for biceps). Counting indirect volume equally with direct volume overestimates effective training dose. When tracking weekly sets per muscle, count compound movements that directly target the muscle at full value, and give partial credit (roughly 0.5) to exercises where the muscle assists. For example: bench press counts fully for chest and triceps, partially for front delts; overhead press counts fully for shoulders and triceps, partially for chest. This distinction is essential for accurately judging whether you are training each muscle with enough stimulus."
+    },
+    {
+      "id": "trn-plotkin-progressive-overload-2022-1",
+      "title": "Progressive overload: adding reps works just as well as adding weight",
+      "tags": [
+        "progressive-overload",
+        "progression",
+        "overload",
+        "progress",
+        "hypertrophy",
+        "muscle",
+        "strength",
+        "gains"
+      ],
+      "source": "\"Plotkin D, Coleman M, Van Every D, Maldonado J, Oberlin DJ, Israetel M, Feather J, Alto A, Vigotsky AD, Schoenfeld BJ. Progressive overload without progressing load? The effects of load or repetition progression on muscular adaptations. PeerJ. 2022;10:e14142. doi:10.7717/peerj.14142. PMC9528903.\"",
+      "text": "Progressive overload is the single most important training principle for continued muscle and strength gains — but there are two equally valid ways to apply it. This 8-week RCT (43 resistance-trained participants) compared (a) increasing load each week vs (b) increasing reps each week and found **both groups gained appreciable muscle mass (6.7–12.9 % across sites)** with no practically significant difference between them. Strength gains also did not differ meaningfully (the load-progression group gained ~2 kg more on squat 1RM, within measurement noise). You do not need to add weight every session. Either progress — more reps OR more weight — signals sufficient overload for the muscle to grow."
+    },
+    {
+      "id": "trn-plotkin-progressive-overload-2022-2",
+      "title": "Double progression: the practical rep-range method",
+      "tags": [
+        "progressive-overload",
+        "progression",
+        "overload",
+        "progress",
+        "reps",
+        "rep-range",
+        "load",
+        "hypertrophy",
+        "muscle"
+      ],
+      "source": "\"Plotkin D, Coleman M, Van Every D, Maldonado J, Oberlin DJ, Israetel M, Feather J, Alto A, Vigotsky AD, Schoenfeld BJ. Progressive overload without progressing load? The effects of load or repetition progression on muscular adaptations. PeerJ. 2022;10:e14142. doi:10.7717/peerj.14142. PMC9528903.\"",
+      "text": "The most practical application of progressive overload for natural trainees is **double progression**: set a target rep range (e.g., 8–12 reps), then — once you hit the top of the range on all sets — increase the load by the smallest available increment (typically 2.5–5 kg) and work back up to the top of the range again. This approach combines both forms of overload (reps and load) in sequence, prevents stagnation, and gives clear objective milestones. The Plotkin 2022 data support this: both rep-progression and load-progression produce near-identical hypertrophy, so there is no need to force weight increases before you are ready. What matters is that something progressively increases over time — track both weight and reps each session so you have clear evidence of overload."
+    },
+    {
+      "id": "trn-robinson-rir-2024-1",
+      "title": "How close to failure should you train for muscle growth? (RIR for hypertrophy)",
+      "tags": [
+        "failure",
+        "rir",
+        "reps-in-reserve",
+        "effort",
+        "hypertrophy",
+        "muscle",
+        "growth",
+        "gains",
+        "hard",
+        "how-many"
+      ],
+      "source": "\"Robinson ZP, Pelland JC, Remmert JF, Refalo MC, Jukic I, Steele J, Zourdos MC. Exploring the Dose-Response Relationship Between Estimated Resistance Training Proximity to Failure, Strength Gain, and Muscle Hypertrophy: A Series of Meta-Regressions. Sports Med. 2024. doi:10.1007/s40279-024-02069-2. Preprint: SportRxiv doi:10.51224/SRXIV.295.\"",
+      "text": "Proximity to failure matters for muscle growth but not in an all-or-nothing way. This meta-regression found a clear, meaningful dose-response: the closer each set comes to failure, the more hypertrophy it produces (the slope for estimated RIR was consistently negative and its confidence interval excluded zero). The practical target is **0–3 reps in reserve (RIR)** per set — meaning you stop when you feel you have 0–3 reps left. A companion systematic review (Refalo et al. 2022, 15 studies) confirmed that training to absolute momentary muscular failure adds only a trivial advantage (ES = 0.12, p = 0.34) over non-failure training for hypertrophy, so grinding to true failure every set is unnecessary and increases injury risk and recovery costs. Stop 1–2 reps short of failure on most working sets; reserve absolute failure for occasional \"all-out\" sets on low-risk exercises (e.g., cables, machines)."
+    },
+    {
+      "id": "trn-robinson-rir-2024-2",
+      "title": "RIR for strength vs muscle growth — different rules apply",
+      "tags": [
+        "failure",
+        "rir",
+        "reps-in-reserve",
+        "effort",
+        "strength",
+        "hypertrophy",
+        "muscle",
+        "hard",
+        "load"
+      ],
+      "source": "\"Robinson ZP, Pelland JC, Remmert JF, Refalo MC, Jukic I, Steele J, Zourdos MC. Exploring the Dose-Response Relationship Between Estimated Resistance Training Proximity to Failure, Strength Gain, and Muscle Hypertrophy: A Series of Meta-Regressions. Sports Med. 2024. doi:10.1007/s40279-024-02069-2. Preprint: SportRxiv doi:10.51224/SRXIV.295.\"",
+      "text": "Proximity to failure has very different effects depending on your goal. For **strength**, this meta-regression found a negligible dose-response — you can leave 3–5 reps in reserve and still maximise strength gains. For **hypertrophy**, the dose-response is meaningful and closer to failure is consistently better. This means: if your current goal is body recomposition or muscle growth, push sets to 1–2 RIR regularly; if your primary goal is 1RM strength, you can train more conservatively (3–5 RIR) on heavy compound lifts without sacrificing strength gains, which also reduces injury risk during near-maximal loading."
+    },
+    {
+      "id": "trn-singer-rest-intervals-2024-1",
+      "title": "How long to rest between sets for muscle growth",
+      "tags": [
+        "rest",
+        "rest-interval",
+        "rest-time",
+        "hypertrophy",
+        "muscle",
+        "sets",
+        "gains",
+        "how-long"
+      ],
+      "source": "\"Singer B, Correa CS, Schoenfeld BJ et al. Give it a rest: a systematic review with Bayesian meta-analysis on the effect of inter-set rest interval duration on muscle hypertrophy. Front Sports Act Living. 2024;6. doi:10.3389/fspor.2024.1429789. PMC11349676.\"",
+      "text": "Rest 90–120 seconds between sets for hypertrophy — this is the practical sweet spot supported by a Bayesian meta-analysis of 9 RCTs (19 measurements). The analysis found that intermediate rest (61–119 s) produced the peak hypertrophic response (SMD = 0.65), outperforming both short rest (≤60 s, SMD = 0.47) and very long rest (≥180 s, SMD = 0.50). Resting longer than 90 seconds beyond that intermediate zone offers no additional hypertrophic benefit. The old guideline of 30–90 seconds for \"hypertrophy-specific\" training (previously promoted by NSCA) appears suboptimal — short rest compromises volume load and therefore the hypertrophic stimulus. For most working sets, a 90–120 second timer is practical and evidence-based."
     }
   ]
 }

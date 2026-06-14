@@ -1,0 +1,16 @@
+---
+source: "Areta JL et al. Timing and distribution of protein ingestion during prolonged recovery from resistance exercise alters myofibrillar protein synthesis. J Physiol. 2013;591(Pt 9):2319–2331. doi:10.1113/jphysiol.2012.244897. PMC3650697. — AND — Schoenfeld BJ, Aragon AA. How much protein can the body use in a single meal for muscle-building? Implications for daily protein distribution. J Int Soc Sports Nutr. 2018;15:10. doi:10.1186/s12970-018-0215-1. PMC5828430. — AND — Marinangeli CPF, House JD. Potential impact of the digestible indispensable amino acid score as a measure of protein quality on dietary regulations and health. Nutr Rev. 2017;75(8):658–667. doi:10.1093/nutrit/nux025. PMC5914309."
+tags: [protein, meal, meals, frequency, timing, muscle, gain, leucine, protein-quality, diaas, sources, post-workout]
+---
+
+## How to spread protein through the day for muscle building
+tags: protein, meal, meals, frequency, timing, muscle, gain, how-much, how-many
+Areta 2013 directly tested three ways to distribute 80 g of whey protein over 12 hours post-exercise: 8×10 g every 1.5 h (PULSE), 4×20 g every 3 h (INT), and 2×40 g every 6 h (BOLUS). The **4×20 g every 3 hours produced 31–48% greater myofibrillar protein synthesis** than either extreme. Spreading too thin (10 g doses) fails to reliably hit the leucine threshold; spacing too wide (40 g every 6 h) leaves long gaps without amino acid signal. Practical takeaway: **4 protein meals per day, roughly every 3–4 hours**, is the evidence-based sweet spot.
+
+## Is there a protein per meal ceiling — can you eat too much in one sitting?
+tags: protein, meal, meals, how-much, muscle, gain, leucine, timing, frequency
+The old "20–25 g ceiling per meal" is outdated. Schoenfeld & Aragon 2018 reviewed evidence that **40 g whey produced ~20% greater myofibrillar MPS than 20 g** over 12 hours post-exercise. Mixed meals with beef showed dose-dependent anabolic responses up to 40–70 g protein (slower digestion extends amino acid availability). The practical formula: **0.4 g/kg per meal × 4 meals = 1.6 g/kg/day minimum**; for a 75 kg person that is 30 g per meal. Going up to 0.55 g/kg per meal (4 meals = 2.2 g/kg/day) captures the upper range. There is no confirmed hard ceiling per meal when protein is slow-digesting or consumed with other foods.
+
+## Protein quality — which sources are best for muscle building
+tags: protein-quality, diaas, pdcaas, sources, whey, high-protein, leucine, amino-acids, muscle, gain
+The DIAAS system (FAO-recommended) scores protein quality more accurately than the old PDCAAS by measuring amino acid digestibility individually. High-quality sources: **whole milk (DIAAS 114), eggs (113), chicken breast (108)** — all exceed the 75 threshold needed for a "good source" claim. Plant sources: **oatmeal (84), chickpeas (83)** qualify; **tofu (52)** falls below the threshold as a standalone source. Soy protein isolate (~91) and pea protein (~82) are the strongest plant options. Practical guidance: animal proteins (eggs, dairy, meat, fish) and soy are the gold standard; users relying on plant proteins should eat 10–30% more total protein grams or combine complementary sources (rice + beans) to ensure complete amino acid coverage.

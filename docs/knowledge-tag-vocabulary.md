@@ -57,12 +57,12 @@ When you are in a calorie deficit...
 - **Periodization / programming:** periodization, program, programming, mesocycle, deload
 - **Minimum effective dose:** minimum, "minimum-dose", "time-efficient", maintenance
 - **Concurrent training / cardio:** cardio, concurrent, running, interference, conditioning
-- **Rest intervals:** rest, "rest-interval", "rest-time"
+- **Rest intervals:** rest, "rest-interval", "rest-time", "how-long", time
 - **Outcomes:** hypertrophy, muscle, strength, growth, gains, size
 
 ## RECOVERY & SLEEP
 
-- **Sleep:** sleep, rest, bed, bedtime, hours, "sleep-hygiene", "sleep-quality"
+- **Sleep:** sleep, rest, bed, bedtime, hours, "sleep-hygiene", "sleep-quality", nap, napping
 - **Sleep & appetite / fat loss:** appetite, hunger, "weight-loss", cravings
 - **Soreness / DOMS:** sore, soreness, doms, ache, stiff, "muscle-soreness"
 - **Fatigue / low energy:** fatigue, tired, drained, exhausted, "low-energy", energy
@@ -70,19 +70,20 @@ When you are in a calorie deficit...
 - **Deload / fatigue management:** deload, recovery, recover, taper, rest, readiness
 - **Monitoring / stress:** readiness, hrv, monitoring, stress
 - **Recovery modalities:** "cold-water", "ice-bath", "active-recovery", massage, "foam-rolling", modalities
+- **Injury / performance:** injury, performance, power, output
 
 ## SUPPLEMENTS & FOODS
 
 - **Creatine:** creatine, "creatine-monohydrate", mono, loading
 - **Caffeine / pre-workout:** caffeine, coffee, "pre-workout", preworkout, stimulant, "energy-drink"
-- **Beta-alanine:** "beta-alanine", carnosine, tingles, endurance
+- **Beta-alanine:** "beta-alanine", carnosine, tingles, paresthesia, buffering, endurance
 - **Protein supplements:** "protein-powder", whey, casein, shake, supplement
 - **HMB:** hmb
 - **Citrulline:** citrulline, "citrulline-malate", pump
-- **Sodium bicarbonate:** "sodium-bicarbonate", "baking-soda", bicarb
+- **Sodium bicarbonate:** "sodium-bicarbonate", "baking-soda", bicarb, buffering
 - **Supplement evidence / general:** supplement, supplements, evidence, effective, "worth-it", safe, dose
 - **Foods / food data:** food, foods, "high-protein", sources, eggs, chicken, "food-database", usda
-- **Protein quality:** "protein-quality", diaas, pdcaas, "amino-acids", leucine
+- **Protein quality:** "protein-quality", diaas, pdcaas, "amino-acids", leucine, "plant-based", vegan, vegetarian
 
 ---
 

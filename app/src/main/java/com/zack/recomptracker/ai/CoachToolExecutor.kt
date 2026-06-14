@@ -3,6 +3,8 @@ package com.zack.recomptracker.ai
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
+import com.zack.recomptracker.data.remote.WebSearchProvider
+import com.zack.recomptracker.data.remote.toToolJson
 import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
@@ -17,6 +19,7 @@ class CoachToolExecutor(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
+    private val webSearchProvider: WebSearchProvider? = null,
 ) {
     private val adherenceCalculator = AdherenceCalculator()
 
@@ -27,6 +30,7 @@ class CoachToolExecutor(
         "log_meal" -> logMeal(args)
         "log_metric" -> logMetric(args)
         "update_calorie_target" -> updateCalorieTarget(args)
+        "search_web" -> searchWeb(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -270,6 +274,14 @@ class CoachToolExecutor(
         val prefs = planRepository.preferences.first()
         planRepository.save(prefs.copy(targetCalories = newTarget))
         return """{"success":true,"new_target_calories":$newTarget}"""
+    }
+
+    private suspend fun searchWeb(args: Map<String, String>): String {
+        val query = args["query"]?.trim().orEmpty()
+        if (query.isEmpty()) return """{"error":"search_web requires 'query'"}"""
+        val provider = webSearchProvider ?: return """{"error":"web search unavailable"}"""
+        val result = provider.search(query) ?: return """{"error":"web search unavailable"}"""
+        return result.toToolJson()
     }
 
     private fun String.esc() = replace("\\", "\\\\")

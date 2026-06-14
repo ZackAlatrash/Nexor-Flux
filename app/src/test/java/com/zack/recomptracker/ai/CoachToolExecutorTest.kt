@@ -6,6 +6,9 @@ import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.remote.WebResult
+import com.zack.recomptracker.data.remote.WebSearchProvider
+import com.zack.recomptracker.data.remote.WebSearchResult
 import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
@@ -705,5 +708,40 @@ class CoachToolExecutorTest {
 
         assertTrue("Should use model calories as fallback", captured?.calories == 500)
         assertTrue("Should use model protein as fallback", captured?.proteinG == 30.0)
+    }
+
+    // ── search_web ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `search_web returns capped JSON from the provider`() = runTest {
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        val provider = object : WebSearchProvider {
+            override suspend fun search(query: String): WebSearchResult =
+                WebSearchResult(answer = "Big Mac is ~563 kcal.", results = listOf(
+                    WebResult("Big Mac", "https://example.com/bigmac", "563 calories"),
+                ))
+        }
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider, provider)
+        val result = executor.execute("search_web", mapOf("query" to "big mac calories"))
+        assertTrue("has answer", result.contains("563 kcal"))
+        assertTrue("has source url", result.contains("https://example.com/bigmac"))
+    }
+
+    @Test
+    fun `search_web is unavailable when no provider is configured`() = runTest {
+        val executor = CoachToolExecutor(mock(), mock(), fixedDateProvider) // provider defaults to null
+        val result = executor.execute("search_web", mapOf("query" to "big mac calories"))
+        assertEquals("""{"error":"web search unavailable"}""", result)
+    }
+
+    @Test
+    fun `search_web is unavailable when the provider returns null`() = runTest {
+        val provider = object : WebSearchProvider {
+            override suspend fun search(query: String): WebSearchResult? = null
+        }
+        val executor = CoachToolExecutor(mock(), mock(), fixedDateProvider, provider)
+        val result = executor.execute("search_web", mapOf("query" to "x"))
+        assertEquals("""{"error":"web search unavailable"}""", result)
     }
 }

@@ -52,6 +52,17 @@ val COACH_TOOL_SCHEMAS: List<String> = listOf(
 val COACH_WRITE_TOOLS: Set<String> = setOf("log_meal", "log_metric", "update_calorie_target")
 
 /**
+ * Web-search tool schema. CLOUD COACH ONLY — never added to the local Gemma tool list (the 2B
+ * model is poor at tool calls and the local backend is meant to work offline). Read-only, so it
+ * is not in [COACH_WRITE_TOOLS] and runs without user confirmation.
+ */
+val SEARCH_WEB_TOOL_SCHEMA: String =
+    """{"name":"search_web","description":"Search the public web for a fact you don't already have — e.g. calories or macros for a restaurant or packaged food that isn't in the user's library, or a general nutrition, supplement, or training question. Returns a short answer plus source URLs. Always cite the source URL in your reply.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"A concise search query, e.g. \"McDonald's Big Mac calories\""}},"required":["query"]}}"""
+
+/** The cloud coach's full tool list: the shared tools plus web search. */
+val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA
+
+/**
  * Drives the multi-turn AI coach conversation on top of LiteRT-LM.
  *
  * Tool calling is handled manually (automaticToolCalling = false): the engine surfaces

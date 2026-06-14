@@ -46,11 +46,9 @@ import com.zack.recomptracker.ui.component.MenuIcon
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 @Composable
 fun MoreScreen(
@@ -67,6 +65,7 @@ fun MoreScreen(
 ) {
     val state by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val moreOrbBrush = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.15f), Color.Transparent))
     }
@@ -101,13 +100,13 @@ fun MoreScreen(
                         text = "More",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                     Text(
                         text = "Insights & setup",
                         fontSize = 13.sp,
-                        color = TextMuted,
+                        color = appColors.textMuted,
                     )
                 }
             }
@@ -187,6 +186,7 @@ private fun CalorieDecisionCard(
     onClick: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val result = state.result
     val verdictLabel = result.verdict.label()
 
@@ -220,14 +220,14 @@ private fun CalorieDecisionCard(
                 color = accent.accentLight,
                 letterSpacing = 0.12.sp,
             )
-            Text("›", fontSize = 16.sp, color = Color(0x59FFFFFF))
+            Text("›", fontSize = 16.sp, color = appColors.textDim)
         }
         Spacer(Modifier.height(6.dp))
         Text(
             text = verdictLabel,
             fontSize = 30.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White,
+            color = appColors.textPrimary,
             letterSpacing = (-1).sp,
             lineHeight = 32.sp,
         )
@@ -235,7 +235,7 @@ private fun CalorieDecisionCard(
         Text(
             text = subtitle,
             fontSize = 12.sp,
-            color = TextMuted,
+            color = appColors.textMuted,
             lineHeight = 16.sp,
         )
     }
@@ -252,12 +252,13 @@ private fun AdjustmentVerdict.label(): String = when (this) {
 
 @Composable
 private fun MenuCard(content: @Composable () -> Unit) {
+    val appColors = LocalAppColors.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard)),
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard)),
     ) {
         content()
     }
@@ -271,6 +272,7 @@ private fun MenuRow(
     onClick: () -> Unit,
     showDivider: Boolean,
 ) {
+    val appColors = LocalAppColors.current
     Column {
         Row(
             modifier = Modifier
@@ -286,17 +288,17 @@ private fun MenuRow(
         ) {
             MenuIcon(icon)
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                Text(detail, fontSize = 11.sp, color = TextMuted)
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
+                Text(detail, fontSize = 11.sp, color = appColors.textMuted)
             }
-            Text("›", fontSize = 14.sp, color = Color(0x33FFFFFF))
+            Text("›", fontSize = 14.sp, color = appColors.textVeryMuted)
         }
         if (showDivider) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color(0x0DFFFFFF)),
+                    .background(appColors.cardBorder),
             )
         }
     }

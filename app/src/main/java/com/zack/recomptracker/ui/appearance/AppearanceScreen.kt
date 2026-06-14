@@ -39,7 +39,7 @@ import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 /**
  * Appearance settings: merges font selection and accent-colour selection. Both write to the
@@ -55,6 +55,7 @@ fun AppearanceScreen(
     val accent by viewModel.accent.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val theme = LocalAppAccent.current
+    val appColors = LocalAppColors.current
 
     val ambientOrb1 = remember(theme.accent) {
         Brush.radialGradient(listOf(theme.accent.copy(alpha = 0.15f), Color.Transparent))
@@ -106,14 +107,14 @@ fun AppearanceScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text(
                         text = "Appearance",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                 }
@@ -131,7 +132,7 @@ fun AppearanceScreen(
                             text = "Preview",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
+                            color = appColors.textPrimary,
                             letterSpacing = (-0.4).sp,
                         )
                         VioletBadge(text = "ACCENT")
@@ -139,7 +140,7 @@ fun AppearanceScreen(
                     Text(
                         text = "This is how buttons, badges, and highlights look with your current accent.",
                         fontSize = 12.sp,
-                        color = TextMuted,
+                        color = appColors.textMuted,
                     )
                     LiquidPrimaryButton(
                         text = "Sample button",

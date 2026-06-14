@@ -67,7 +67,7 @@ import com.zack.recomptracker.ui.component.ScoreStepper
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -88,6 +88,7 @@ fun ProfileScreen(
     val currentWeightKg by viewModel.currentWeightKg.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
 
     val ambientOrb1 = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.15f), Color.Transparent))
@@ -159,14 +160,14 @@ fun ProfileScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text(
                         text = "Profile",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                 }
@@ -217,7 +218,7 @@ fun ProfileScreen(
                                 text = currentWeightKg?.let { "%.1f kg".format(it) } ?: "—",
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White,
+                                color = appColors.textPrimary,
                                 letterSpacing = (-0.5).sp,
                             )
                         }
@@ -453,11 +454,12 @@ private fun PickerRow(
     onClick: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerSmall))
-            .border(1.dp, Color(0x0DFFFFFF), RoundedCornerShape(CornerSmall))
+            .border(1.dp, appColors.frostedBorder, RoundedCornerShape(CornerSmall))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -476,10 +478,10 @@ private fun PickerRow(
                 text = value,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+                color = appColors.textPrimary,
             )
             if (subtitle != null) {
-                Text(text = subtitle, fontSize = 11.sp, color = TextMuted)
+                Text(text = subtitle, fontSize = 11.sp, color = appColors.textMuted)
             }
         }
         Spacer(Modifier.width(8.dp))
@@ -496,6 +498,7 @@ private fun OptionSheet(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -513,7 +516,7 @@ private fun OptionSheet(
                 text = title,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = appColors.textPrimary,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
             content()
@@ -531,8 +534,9 @@ private fun ProfileOptionRow(
     onClick: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val bgColor = if (selected) accent.accent.copy(alpha = 0.10f) else Color.Transparent
-    val borderColor = if (selected) accent.accent.copy(alpha = 0.30f) else Color(0x0DFFFFFF)
+    val borderColor = if (selected) accent.accent.copy(alpha = 0.30f) else appColors.cardBorder
 
     Row(
         modifier = Modifier
@@ -557,10 +561,10 @@ private fun ProfileOptionRow(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (selected) Color.White else Color.White.copy(alpha = 0.75f),
+                color = if (selected) appColors.textPrimary else appColors.textDim,
             )
             if (subtitle != null) {
-                Text(text = subtitle, fontSize = 11.sp, color = TextMuted)
+                Text(text = subtitle, fontSize = 11.sp, color = appColors.textMuted)
             }
         }
         if (selected) {

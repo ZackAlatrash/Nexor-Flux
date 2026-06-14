@@ -760,7 +760,7 @@ fun LiquidPrimaryButton(
         tint = LocalAppAccent.current.accent,
         surfaceColor = Color.White.copy(alpha = 0.08f),
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = LocalAppAccent.current.onAccent)
     }
 }
 

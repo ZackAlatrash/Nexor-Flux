@@ -73,7 +73,7 @@ fun WeekCalorieStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0x0D000000), RoundedCornerShape(14.dp))
+            .background(if (appColors.isDark) Color(0x0D000000) else appColors.cardSurface, RoundedCornerShape(14.dp))
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -155,7 +155,7 @@ fun WeekCalorieStrip(
                         .take(2),
                     fontSize = if (sel) 9.sp else 8.sp,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                    color = if (sel) accent.accentLight else appColors.textDim,
+                    color = if (sel) accent.inkLight else appColors.textDim,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )

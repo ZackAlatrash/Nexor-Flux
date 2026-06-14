@@ -187,7 +187,7 @@ fun HomeDashboardContent(
                         text = "✦  Weekly Review",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
+                        color = accent.onAccent,
                     )
                 }
             }

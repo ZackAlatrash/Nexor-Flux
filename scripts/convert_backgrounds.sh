@@ -20,6 +20,12 @@ declare -a MAP=(
 for pair in "${MAP[@]}"; do
   hex="${pair%% *}"; name="${pair##* }"
   magick "DarkMode/#${hex}.png"  -blur "$BLUR" -quality 80 "${DEST}/bg_${name}_dark.webp"
-  magick "LightMode/#${hex}.png" -blur "$BLUR" -quality 80 "${DEST}/bg_${name}_light.webp"
+  if [ "$name" = "silver" ]; then
+    # Silver's light source is near-white and glares on a light UI. Desaturate +
+    # gently darken it into a soft neutral grey so the frosted-white cards still lift.
+    magick "LightMode/#${hex}.png" -blur "$BLUR" -modulate 84,25 -quality 80 "${DEST}/bg_${name}_light.webp"
+  else
+    magick "LightMode/#${hex}.png" -blur "$BLUR" -quality 80 "${DEST}/bg_${name}_light.webp"
+  fi
 done
 echo "Done: $(ls "${DEST}"/bg_*_*.webp | wc -l) webp files (blur $BLUR)"

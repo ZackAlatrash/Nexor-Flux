@@ -297,7 +297,7 @@ fun GlassInputField(
     val appColors = LocalAppColors.current
     var focused by remember { mutableStateOf(false) }
     val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else appColors.frostedBorder
-    val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
+    val bgColor = if (focused) accent.tintedSurface else if (appColors.isDark) Color(0x40000000) else appColors.cardSurface
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(
@@ -457,7 +457,7 @@ fun GlassTextArea(
     val appColors = LocalAppColors.current
     var focused by remember { mutableStateOf(false) }
     val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else appColors.frostedBorder
-    val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
+    val bgColor = if (focused) accent.tintedSurface else if (appColors.isDark) Color(0x40000000) else appColors.cardSurface
 
     BasicTextField(
         value = value,

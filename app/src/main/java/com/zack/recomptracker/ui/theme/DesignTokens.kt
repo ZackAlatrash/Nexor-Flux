@@ -49,6 +49,13 @@ data class AppAccent(val theme: AccentTheme = AccentTheme.VIOLET, val darkMode: 
     val inkBase: Color    = if (darkMode) theme.accent       else theme.accentInk
     val inkLight: Color   = if (darkMode) theme.accentLight  else theme.accentInk
     val inkLighter: Color = if (darkMode) theme.accentLighter else theme.accentInk
+    // Legible text/icon colour to paint ON TOP OF a solid [accent] fill (buttons, FABs).
+    // White reads on saturated/dark accents; pale accents (Silver, Lime, Amber) need dark ink.
+    // Independent of mode — depends only on the fill's perceived brightness.
+    val onAccent: Color = run {
+        val luma = 0.299f * accent.red + 0.587f * accent.green + 0.114f * accent.blue
+        if (luma > 0.62f) Color(0xFF141019) else Color.White
+    }
     // Derived opacities
     val tintedSurface: Color = accent.copy(alpha = 0.08f)
     val tintedBorder: Color  = accent.copy(alpha = 0.22f)

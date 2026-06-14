@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.data.repository.DayCalorieSummary
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -61,6 +62,7 @@ fun WeekCalorieStrip(
     if (weekData.isEmpty()) return
 
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val scaleMax = (targetHigh * 1.3f).toInt().coerceAtLeast(1)
     val zoneLowFrac   = (targetLow.toFloat()     / scaleMax).coerceIn(0f, 1f)
     val zoneHighFrac  = (targetHigh.toFloat()    / scaleMax).coerceIn(0f, 1f)
@@ -71,8 +73,8 @@ fun WeekCalorieStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0x0D000000), RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0x0FFFFFFF), RoundedCornerShape(14.dp))
+            .background(appColors.scrim, RoundedCornerShape(14.dp))
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -153,7 +155,7 @@ fun WeekCalorieStrip(
                         .take(2),
                     fontSize = if (sel) 9.sp else 8.sp,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                    color = if (sel) accent.accentLight else Color(0xFF555555),
+                    color = if (sel) accent.accentLight else appColors.textMuted,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )
@@ -202,12 +204,13 @@ private fun WeekBarItem(
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val empty = summary.calories == 0
     val targetFrac = if (empty) 0.04f else (summary.calories.toFloat() / scaleMax).coerceIn(0f, 1f)
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
     val barColor = when {
-        empty -> Color.White.copy(alpha = if (isSelected) 0.18f else 0.10f)
+        empty -> if (isSelected) appColors.textVeryMuted else appColors.textFaint
         summary.calories in targetLow..targetHigh -> accent.accentLight
         summary.calories > targetHigh -> Color(0xFFF97316)
         else -> accent.accentLighter.copy(alpha = 0.75f)

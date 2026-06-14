@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
 
 internal fun macroSweepAngles(
@@ -69,6 +70,8 @@ fun MacroRingChart(
     val carbsSweep   by animateFloatAsState(targetValue = carbsTarget,   animationSpec = ChartDefaults.AnimSpec.ringArc, label = "carbsArc")
     val fatSweep     by animateFloatAsState(targetValue = fatTarget,     animationSpec = ChartDefaults.AnimSpec.ringArc, label = "fatArc")
 
+    val appColors = LocalAppColors.current
+    val trackRingColor = MaterialTheme.colorScheme.surface
     val totalKcal = (proteinKcal + carbsKcal + fatKcal).toInt()
 
     Box(
@@ -83,7 +86,7 @@ fun MacroRingChart(
 
             // Track ring
             drawArc(
-                color      = Color(0xFF1a1a2e),
+                color      = trackRingColor,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter  = false,
@@ -141,14 +144,14 @@ fun MacroRingChart(
                 text          = "$totalKcal",
                 fontSize      = 20.sp,
                 fontWeight    = FontWeight.Black,
-                color         = Color.White,
+                color         = appColors.textPrimary,
                 letterSpacing = (-0.5).sp,
                 lineHeight    = 20.sp,
             )
             Text(
                 text     = "kcal",
                 fontSize = 9.sp,
-                color    = TextMuted,
+                color    = appColors.textMuted,
             )
         }
     }

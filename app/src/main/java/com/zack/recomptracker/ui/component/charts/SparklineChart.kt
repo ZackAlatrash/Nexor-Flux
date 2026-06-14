@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlin.math.abs
 
 internal fun dotScale(dotX: Float, totalWidth: Float, progress: Float): Float {
@@ -101,6 +102,9 @@ fun SparklineChart(
     } else Modifier
 
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    // Hoist chrome colors out of DrawScope
+    val gridLineColor = appColors.textFaint
     val progress = drawInProgress.value
 
     // Memoize range values — avoids two full-list scans every animation frame
@@ -134,7 +138,7 @@ fun SparklineChart(
         // Grid lines (4 horizontal, 4% opacity)
         for (frac in listOf(0.25f, 0.5f, 0.75f, 1.0f)) {
             drawLine(
-                color = Color.White.copy(alpha = ChartDefaults.gridAlpha),
+                color = gridLineColor,
                 start = Offset(0f, h * frac),
                 end   = Offset(w, h * frac),
                 strokeWidth = 0.5.dp.toPx(),

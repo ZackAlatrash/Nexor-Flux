@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 @Composable
 fun CalorieProgressBar(
@@ -29,6 +30,7 @@ fun CalorieProgressBar(
     plannedProgress: Float = 0f,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val animatedProgress by animateFloatAsState(
         targetValue   = progress.coerceIn(0f, 1f),
         animationSpec = ChartDefaults.AnimSpec.progressBar,
@@ -46,12 +48,14 @@ fun CalorieProgressBar(
             var positions: FloatArray = FloatArray(0)
         }
     }
+    // Hoist chrome colors out of DrawScope
+    val trackColor = appColors.cardBorder
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
         val r = h / 2f
 
-        drawRoundRect(color = Color(0x12FFFFFF), cornerRadius = CornerRadius(r))
+        drawRoundRect(color = trackColor, cornerRadius = CornerRadius(r))
 
         val zoneLeft  = (zoneLowFrac  * w).coerceIn(0f, w)
         val zoneRight = (zoneHighFrac * w).coerceIn(0f, w)

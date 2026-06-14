@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextVeryMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -51,6 +51,7 @@ fun StackedBarChart(
     if (days.isEmpty()) return
 
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val yScale = stackedYScale(days)
 
     // One Animatable per bar — animated via coroutines with stagger
@@ -155,7 +156,7 @@ fun StackedBarChart(
                     text       = day.label,
                     fontSize   = 9.sp,
                     fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
-                    color      = if (day.isToday) accent.accentLighter else TextVeryMuted,
+                    color      = if (day.isToday) accent.accentLighter else appColors.textVeryMuted,
                     modifier   = Modifier.weight(1f),
                 )
             }

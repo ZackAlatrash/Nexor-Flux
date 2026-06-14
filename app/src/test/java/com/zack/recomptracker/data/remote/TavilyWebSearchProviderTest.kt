@@ -17,4 +17,10 @@ class TavilyWebSearchProviderTest {
         val provider = TavilyWebSearchProvider(keyProvider = { "tvly-key" })
         assertNull(provider.search("   "))
     }
+
+    @Test
+    fun `returns null when the key is only whitespace`() = runTest {
+        val provider = TavilyWebSearchProvider(keyProvider = { "   " })
+        assertNull(provider.search("big mac calories"))
+    }
 }

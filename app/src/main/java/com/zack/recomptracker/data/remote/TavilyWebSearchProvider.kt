@@ -1,5 +1,6 @@
 package com.zack.recomptracker.data.remote
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
@@ -29,11 +30,12 @@ open class TavilyWebSearchProvider(
 
     override suspend fun search(query: String): WebSearchResult? {
         val key = keyProvider().trim()
-        if (key.isEmpty() || query.isBlank()) return null
+        val trimmedQuery = query.trim()
+        if (key.isEmpty() || trimmedQuery.isEmpty()) return null
 
         val bodyJson = buildJsonObject {
             put("api_key", key)
-            put("query", query.trim())
+            put("query", trimmedQuery)
             put("include_answer", true)
             put("max_results", 3)
         }.toString()
@@ -49,6 +51,8 @@ open class TavilyWebSearchProvider(
                     if (!response.isSuccessful) return@use null
                     parseTavilyResponse(response.body?.string().orEmpty())
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 null
             }

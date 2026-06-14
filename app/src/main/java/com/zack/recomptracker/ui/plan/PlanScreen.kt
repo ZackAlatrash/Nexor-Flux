@@ -57,11 +57,13 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.Instant
 import java.time.ZoneOffset
 
 @Composable
 fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
+    val appColors = LocalAppColors.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showDatePicker by remember { mutableStateOf(false) }
     var advancedOpen by remember { mutableStateOf(false) }
@@ -107,7 +109,7 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text("Plan", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -172,7 +174,7 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = if (advancedOpen) "Collapse advanced" else "Expand advanced",
-                    tint = Color(0x66FFFFFF),
+                    tint = appColors.textDim,
                     modifier = Modifier.rotate(chevronRotation),
                 )
             }
@@ -254,6 +256,7 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun GenerateHeroCard(onClick: () -> Unit) {
+    val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
     val heroBrush = Brush.linearGradient(
         listOf(accent.accent.copy(alpha = 0.22f), accent.accent.copy(alpha = 0.05f)),
@@ -289,12 +292,12 @@ private fun GenerateHeroCard(onClick: () -> Unit) {
                 "Generate from profile",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = appColors.textPrimary,
             )
             Text(
                 "Auto-calc targets from your TDEE",
                 fontSize = 10.sp,
-                color = Color(0x80FFFFFF),
+                color = appColors.textDim,
             )
         }
         Text(
@@ -310,12 +313,13 @@ private fun GenerateHeroCard(onClick: () -> Unit) {
 
 @Composable
 private fun PhaseStartField(value: String, onClick: () -> Unit) {
+    val appColors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(
             text = "PHASE START DATE",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0x59FFFFFF),
+            color = appColors.textMuted,
             letterSpacing = 0.10.sp,
         )
         Row(
@@ -323,7 +327,7 @@ private fun PhaseStartField(value: String, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color(0x40000000))
-                .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(10.dp))
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
                 .clickable(onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -333,12 +337,12 @@ private fun PhaseStartField(value: String, onClick: () -> Unit) {
                 text = value.ifBlank { "Not set" },
                 fontSize = 15.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (value.isBlank()) Color(0x59FFFFFF) else Color.White,
+                color = if (value.isBlank()) appColors.textMuted else appColors.textPrimary,
             )
             Icon(
                 Icons.Default.CalendarToday,
                 contentDescription = "Pick date",
-                tint = Color(0x80FFFFFF),
+                tint = appColors.textDim,
                 modifier = Modifier.size(18.dp),
             )
         }

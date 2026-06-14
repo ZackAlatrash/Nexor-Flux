@@ -46,15 +46,14 @@ import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.charts.MiniSparkline
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
-import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 @Composable
 fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
+    val appColors = LocalAppColors.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val insightState by viewModel.progressInsightState.collectAsStateWithLifecycle()
     LaunchedEffect(state.insightContext?.key()) {
@@ -108,14 +107,14 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text(
                         text = "Trends",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                 }
@@ -152,6 +151,7 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
+    val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -163,10 +163,10 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(CornerSmall))
-                    .background(if (isActive) accent.accent.copy(alpha = 0.20f) else CardSurface)
+                    .background(if (isActive) accent.accent.copy(alpha = 0.20f) else appColors.cardSurface)
                     .border(
                         1.dp,
-                        if (isActive) accent.accent.copy(alpha = 0.35f) else CardBorder,
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else appColors.cardBorder,
                         RoundedCornerShape(CornerSmall),
                     )
                     .clickable(
@@ -180,7 +180,7 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
                     text = "${days}d",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
+                    color = if (isActive) accent.accentLighter else appColors.textMuted,
                 )
             }
         }
@@ -239,11 +239,12 @@ private fun MiniChartPair(left: ChartSeries, right: ChartSeries) {
 
 @Composable
 private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
+    val appColors = LocalAppColors.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -251,7 +252,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
             text = series.title.uppercase(),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0x66FFFFFF),
+            color = appColors.textDim,
             letterSpacing = 0.08.sp,
         )
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -261,7 +262,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
                 } ?: "—",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White,
+                color = appColors.textPrimary,
                 letterSpacing = (-0.8).sp,
                 lineHeight = 20.sp,
             )
@@ -269,7 +270,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
                 Text(
                     series.unit,
                     fontSize = 10.sp,
-                    color = Color(0x4CFFFFFF),
+                    color = appColors.textMuted,
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
             }
@@ -301,6 +302,7 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -311,7 +313,7 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                 text = series.title.uppercase(),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextMuted,
+                color = appColors.textMuted,
                 letterSpacing = 0.08.sp,
             )
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -323,7 +325,7 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                     } ?: "—",
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     letterSpacing = (-1).sp,
                     lineHeight = 26.sp,
                 )
@@ -331,7 +333,7 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                     Text(
                         series.unit,
                         fontSize = 12.sp,
-                        color = Color(0x59FFFFFF),
+                        color = appColors.textMuted,
                         modifier = Modifier.padding(bottom = 3.dp),
                     )
                 }
@@ -356,12 +358,13 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
 
 @Composable
 private fun NoDataLabel() {
+    val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(44.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text("No data", fontSize = 11.sp, color = TextMuted)
+        Text("No data", fontSize = 11.sp, color = appColors.textMuted)
     }
 }

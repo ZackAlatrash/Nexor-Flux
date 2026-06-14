@@ -18,7 +18,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clipToBounds
 import kotlin.math.abs
 import androidx.compose.ui.graphics.graphicsLayer
@@ -30,8 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.zack.recomptracker.R
-import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.AccentTheme
+import com.zack.recomptracker.ui.theme.LocalAppColors
+import com.zack.recomptracker.ui.theme.backgroundRes
 
 // How much the raw rotation-vector reading maps to a tilt fraction
 private const val TILT_SCALE = 0.28f
@@ -45,7 +45,11 @@ private const val PARALLAX_DP = 24f
 private const val TILT_THRESHOLD = 0.004f
 
 @Composable
-fun GlassOrbBackground(modifier: Modifier = Modifier) {
+fun GlassOrbBackground(
+    accentTheme: AccentTheme,
+    darkMode: Boolean,
+    modifier: Modifier = Modifier,
+) {
     var rawTiltX by remember { mutableFloatStateOf(0f) }
     var rawTiltY by remember { mutableFloatStateOf(0f) }
 
@@ -99,7 +103,7 @@ fun GlassOrbBackground(modifier: Modifier = Modifier) {
             .clipToBounds(),
     ) {
         Image(
-            painter = painterResource(R.drawable.bg_glass_orbs_blurred),
+            painter = painterResource(accentTheme.backgroundRes(darkMode)),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -112,17 +116,11 @@ fun GlassOrbBackground(modifier: Modifier = Modifier) {
                     translationY = (tiltY / MAX_TILT) * parallaxPx
                 },
         )
-        // Dark scrim for card readability — tweak alpha to taste (0.55 = ~55% dark)
+        // Mode-aware scrim for card readability (dark veil in dark mode, light veil in light).
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0x8C000000)),
-        )
-        // Accent tint — shifts the background mood with the selected theme colour
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(LocalAppAccent.current.backgroundTint),
+                .background(LocalAppColors.current.scrim),
         )
     }
 }

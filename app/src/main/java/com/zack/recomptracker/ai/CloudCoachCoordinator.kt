@@ -1,5 +1,7 @@
 package com.zack.recomptracker.ai
 
+import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
 import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
@@ -46,6 +48,7 @@ class CloudCoachCoordinator(
     private val client: OpenAiCompatClient,
     private val tools: CoachReadTools,
     private val scope: CoroutineScope,
+    private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
 ) : CoachCoordinator {
 
     private val _state = MutableStateFlow<CoachState>(CoachState.Unavailable)
@@ -55,6 +58,9 @@ class CloudCoachCoordinator(
     private val turnLock = Mutex()
     private val requestMessages = mutableListOf<ChatRequestMessage>()
     private var systemSeeded = false
+    // The previous turn's injected reference message, dropped before injecting the next turn's so
+    // multi-turn context never accumulates reference blocks.
+    private var lastReferenceMessage: ChatRequestMessage? = null
 
     @Volatile private var pendingConfirmation: CompletableDeferred<Boolean>? = null
 
@@ -83,6 +89,7 @@ class CloudCoachCoordinator(
                 history.clear()
                 requestMessages.clear()
                 systemSeeded = false
+                lastReferenceMessage = null
                 if (_state.value != CoachState.Unavailable) _state.value = CoachState.Ready
             }
         }
@@ -104,6 +111,15 @@ class CloudCoachCoordinator(
                     requestMessages.add(ChatRequestMessage(role = "system", content = tools.systemPromptSnapshot()))
                     systemSeeded = true
                 }
+                // Refresh the per-turn knowledge block: drop the previous turn's block, inject a
+                // fresh one for THIS question, positioned immediately before the user message.
+                lastReferenceMessage?.let { requestMessages.remove(it) }
+                val reference = knowledgeInjector.referenceBlock(userText)
+                lastReferenceMessage = if (reference.isNotBlank()) {
+                    ChatRequestMessage(role = "system", content = reference).also { requestMessages.add(it) }
+                } else {
+                    null
+                }
                 requestMessages.add(ChatRequestMessage(role = "user", content = userText))
 
                 var rounds = 0
@@ -111,6 +127,7 @@ class CloudCoachCoordinator(
                     if (rounds++ >= MAX_TOOL_ROUNDS) {
                         requestMessages.clear()
                         systemSeeded = false
+                        lastReferenceMessage = null
                         _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
                         break
                     }
@@ -159,12 +176,14 @@ class CloudCoachCoordinator(
             } catch (e: TimeoutCancellationException) {
                 requestMessages.clear()
                 systemSeeded = false
+                lastReferenceMessage = null
                 _state.value = CoachState.Error(history.toList(), "Took too long — try again.")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 requestMessages.clear()
                 systemSeeded = false
+                lastReferenceMessage = null
                 _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
             }
         }

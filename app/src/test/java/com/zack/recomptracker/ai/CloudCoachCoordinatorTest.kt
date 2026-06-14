@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ai
 
+import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
 import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
@@ -26,12 +27,14 @@ class CloudCoachCoordinatorTest {
 
     private class ScriptedClient(private val responses: ArrayDeque<ParsedChatResponse>) : OpenAiCompatClient() {
         var lastToolSchemas: List<String> = emptyList()
+        var lastMessages: List<ChatRequestMessage> = emptyList()
         override suspend fun completion(
             config: CloudConfig,
             messages: List<ChatRequestMessage>,
             toolSchemasJson: List<String>,
         ): ParsedChatResponse {
             lastToolSchemas = toolSchemasJson
+            lastMessages = messages
             return responses.removeFirst()
         }
     }
@@ -123,6 +126,40 @@ class CloudCoachCoordinatorTest {
         advanceUntilIdle()
         assertTrue(executor.calls.isEmpty())
         assertTrue(coach.state.value is CoachState.Idle)
+        scope.cancel()
+    }
+
+    private class FixedInjector(private val block: String) : KnowledgeInjector {
+        override fun referenceBlock(query: String): String = block
+    }
+
+    @Test
+    fun `knowledge reference block is injected before the user message`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val client = ScriptedClient(ArrayDeque(listOf(ParsedChatResponse("Answer.", emptyList()))))
+        val block = "=== REFERENCE KNOWLEDGE ===\n[1] Protein — eat protein (Source: ISSN)\n=== END REFERENCE ==="
+        val coach = CloudCoachCoordinator(flowOf(true), config(), client, FakeExecutor(), scope, FixedInjector(block))
+        advanceUntilIdle()
+        coach.sendMessage("how much protein?")
+        advanceUntilIdle()
+        val msgs = client.lastMessages
+        val refIdx = msgs.indexOfFirst { it.role == "system" && it.content?.contains("REFERENCE KNOWLEDGE") == true }
+        val userIdx = msgs.indexOfFirst { it.role == "user" && it.content == "how much protein?" }
+        assertTrue("reference block present", refIdx >= 0)
+        assertTrue("reference precedes user message", refIdx < userIdx)
+        scope.cancel()
+    }
+
+    @Test
+    fun `blank injector adds no reference message`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val client = ScriptedClient(ArrayDeque(listOf(ParsedChatResponse("Answer.", emptyList()))))
+        val coach = CloudCoachCoordinator(flowOf(true), config(), client, FakeExecutor(), scope, FixedInjector(""))
+        advanceUntilIdle()
+        coach.sendMessage("hi")
+        advanceUntilIdle()
+        val refCount = client.lastMessages.count { it.content?.contains("REFERENCE KNOWLEDGE") == true }
+        assertEquals(0, refCount)
         scope.cancel()
     }
 }

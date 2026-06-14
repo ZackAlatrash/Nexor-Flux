@@ -175,7 +175,7 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                             },
                             backdrop = navBackdrop,
                             tabsCount = 5,
-                            accentColor = LocalAppAccent.current.accentLighter,
+                            accentColor = LocalAppAccent.current.inkLighter,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                         ) {
                             // Home

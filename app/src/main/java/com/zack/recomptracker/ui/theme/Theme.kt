@@ -43,7 +43,9 @@ private fun accentedLightColorScheme(accent: AppAccent) = lightColorScheme(
     onSurface            = Color(0xFF141019),
     surfaceVariant       = Color(0xFFE8E5EF),
     onSurfaceVariant     = Color(0x99141019),
-    outline              = Color(0x1A000000),
+    // Used by M3 OutlinedTextField (unfocused border), OutlinedButton, etc. A 10% black
+    // hairline is invisible on light; a ~34% grey reads as a clear field outline.
+    outline              = Color(0x57000000),
     error                = Color(0xFFD92D45),
     onError              = Color.White,
 )

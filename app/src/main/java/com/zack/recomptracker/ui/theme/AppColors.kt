@@ -47,8 +47,10 @@ data class AppColors(
             frostedSurface         = Color(0xCCFFFFFF),
             frostedSurfaceFallback = Color(0xE6FFFFFF),
             frostedBorder          = Color(0x1F000000),
-            cardSurface            = Color(0x14FFFFFF),
+            cardSurface            = Color(0x0A000000),
             cardBorder             = Color(0x1A000000),
+            // scrim is the full-screen background-IMAGE veil (not a modal dim): a pale
+            // veil mutes the bright themed background so dark text + light glass read well.
             scrim                  = Color(0x40FFFFFF),
         )
 

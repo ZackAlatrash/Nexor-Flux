@@ -32,8 +32,12 @@ class SecureKeyStore(context: Context) {
     private val _hasKey = MutableStateFlow(false)
     val hasKey: StateFlow<Boolean> = _hasKey.asStateFlow()
 
+    private val _hasWebSearchKey = MutableStateFlow(false)
+    val hasWebSearchKey: StateFlow<Boolean> = _hasWebSearchKey.asStateFlow()
+
     init {
         _hasKey.value = getApiKey().isNotBlank()
+        _hasWebSearchKey.value = getWebSearchKey().isNotBlank()
     }
 
     fun getApiKey(): String = prefs.getString(KEY_API, "").orEmpty()
@@ -48,7 +52,20 @@ class SecureKeyStore(context: Context) {
         _hasKey.value = false
     }
 
+    fun getWebSearchKey(): String = prefs.getString(KEY_WEB_SEARCH, "").orEmpty()
+
+    fun setWebSearchKey(value: String) {
+        prefs.edit().putString(KEY_WEB_SEARCH, value.trim()).apply()
+        _hasWebSearchKey.value = value.isNotBlank()
+    }
+
+    fun clearWebSearchKey() {
+        prefs.edit().remove(KEY_WEB_SEARCH).apply()
+        _hasWebSearchKey.value = false
+    }
+
     private companion object {
         const val KEY_API = "cloud_api_key"
+        const val KEY_WEB_SEARCH = "web_search_api_key"
     }
 }

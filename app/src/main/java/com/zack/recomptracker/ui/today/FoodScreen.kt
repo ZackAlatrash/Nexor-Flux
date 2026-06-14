@@ -637,7 +637,7 @@ private fun MacroProgressItem(
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(Color(0x12FFFFFF)),
+                .background(appColors.cardBorder),
         ) {
             Box(
                 modifier = Modifier

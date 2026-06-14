@@ -385,7 +385,7 @@ private fun MacroBarItem(
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(Color(0x12FFFFFF)),
+                .background(appColors.cardBorder),
         ) {
             Box(
                 modifier = Modifier
@@ -761,6 +761,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
 @Composable
 private fun VerdictHero(result: AdjustmentResult) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
 
     val deltaText = when (result.verdict) {
         AdjustmentVerdict.WAIT_FOR_DATA -> "Not enough data yet"
@@ -790,7 +791,7 @@ private fun VerdictHero(result: AdjustmentResult) {
                 text = result.verdict.heroLabel(),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = appColors.textPrimary,
                 letterSpacing = (-0.6).sp,
                 lineHeight = 36.sp,
             )
@@ -820,14 +821,15 @@ private fun VerdictHero(result: AdjustmentResult) {
 
 @Composable
 private fun ReasonChip(text: String) {
+    val appColors = LocalAppColors.current
     Text(
         text = text,
         fontSize = 10.sp,
-        color = Color(0xB3FFFFFF),
+        color = appColors.textDim,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0x14FFFFFF))
-            .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(20.dp))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(20.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }

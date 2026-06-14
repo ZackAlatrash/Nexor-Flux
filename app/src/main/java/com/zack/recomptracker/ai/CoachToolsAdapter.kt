@@ -12,6 +12,19 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /**
+ * Static coach guidelines appended to every system prompt. Extracted as a constant so the
+ * grounding rules are unit-testable without constructing the full adapter. The food-lookup rule
+ * is the fix for the cloud model inventing macros; the REFERENCE KNOWLEDGE clause lets it use the
+ * injected knowledge block as a legitimate source.
+ */
+internal const val COACH_PROMPT_GUIDELINES: String =
+    "- For today's data, you may answer from the snapshot above. Call get_today_summary(date=…) for any other date, and get_weekly_trends() for multi-day or adherence questions.\n" +
+        "- For any food's calories or macros you do not already have, you MUST call search_food_library to get them — never estimate numbers from memory. If a food is not found, say so and ask the user.\n" +
+        "- Use markdown when it improves clarity (short lists, bold key numbers). Answer only from logged data, tool results, and any REFERENCE KNOWLEDGE provided; never invent numbers.\n" +
+        "- To log food, call log_meal(...); the tool checks the food library automatically. To record a metric, call log_metric(...). These actions are confirmed by the user before they run.\n" +
+        "- Stay on topic: nutrition, body composition, training, and recovery."
+
+/**
  * Production [CoachReadTools]: dispatches tool calls to [CoachToolExecutor] and builds the coach
  * system prompt (plan + profile + today's snapshot + rules). Mirrors
  * `GemmaCoachCoordinator.buildSystemPrompt`, minus the 2B-specific anti-confusion wording — a
@@ -70,9 +83,6 @@ class CoachToolsAdapter(
         appendLine("=== END SNAPSHOT ===")
         appendLine()
         appendLine("Guidelines:")
-        appendLine("- For today's data, you may answer from the snapshot above. Call get_today_summary(date=…) for any other date, and get_weekly_trends() for multi-day or adherence questions.")
-        appendLine("- Use markdown when it improves clarity (short lists, bold key numbers). Answer only from logged data and tool results; never invent numbers.")
-        appendLine("- To log food, call log_meal(...); the tool checks the food library automatically. To record a metric, call log_metric(...). These actions are confirmed by the user before they run.")
-        append("- Stay on topic: nutrition, body composition, training, and recovery.")
+        append(COACH_PROMPT_GUIDELINES)
     }
 }

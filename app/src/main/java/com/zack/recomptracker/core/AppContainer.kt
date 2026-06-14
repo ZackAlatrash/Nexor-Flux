@@ -37,6 +37,7 @@ import com.zack.recomptracker.ai.LocalNameGenerator
 import com.zack.recomptracker.ai.RecipeNamer
 import com.zack.recomptracker.ai.RoutingCoachCoordinator
 import com.zack.recomptracker.ai.RoutingInsightCoordinator
+import com.zack.recomptracker.ai.CLOUD_COACH_TOOL_SCHEMAS
 import com.zack.recomptracker.ai.RoutingRecipeNamer
 import com.zack.recomptracker.ai.knowledge.KeywordKnowledgeRetriever
 import com.zack.recomptracker.ai.knowledge.KnowledgeCorpus
@@ -48,6 +49,7 @@ import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
+import com.zack.recomptracker.data.remote.TavilyWebSearchProvider
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -157,10 +159,14 @@ class AppContainer(context: Context) {
         serviceHolder = gemmaServiceHolder,
         uiPreferences = uiPreferences,
     )
+    private val webSearchProvider = TavilyWebSearchProvider(
+        keyProvider = { secureKeyStore.getWebSearchKey() },
+    )
     private val coachToolExecutor = CoachToolExecutor(
         logRepository = logRepository,
         planRepository = planRepository,
         dateProvider = dateProvider,
+        webSearchProvider = webSearchProvider,
     )
     private val gemmaCoachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
         serviceHolder = gemmaServiceHolder,
@@ -287,6 +293,7 @@ class AppContainer(context: Context) {
         ),
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
+        toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
     )
 
     // ── Routers (handed out to ViewModels) ──────────────────────────────────────────

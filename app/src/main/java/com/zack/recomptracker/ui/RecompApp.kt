@@ -84,7 +84,15 @@ private val tabRoutes = listOf(
 fun RecompApp(container: AppContainer) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
-    RecompTrackerTheme(accentTheme = accentTheme) {
+    val themeMode by container.uiPreferences.themeMode
+        .collectAsStateWithLifecycle(initialValue = com.zack.recomptracker.ui.theme.ThemeMode.SYSTEM)
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val darkMode = when (themeMode) {
+        com.zack.recomptracker.ui.theme.ThemeMode.SYSTEM -> systemDark
+        com.zack.recomptracker.ui.theme.ThemeMode.DARK -> true
+        com.zack.recomptracker.ui.theme.ThemeMode.LIGHT -> false
+    }
+    RecompTrackerTheme(accentTheme = accentTheme, darkMode = darkMode) {
         val navController = rememberNavController()
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
@@ -121,7 +129,7 @@ fun RecompApp(container: AppContainer) {
                             .layerBackdrop(contentBackdrop)
                             .fillMaxSize(),
                     ) {
-                        GlassOrbBackground()
+                        GlassOrbBackground(accentTheme = accentTheme, darkMode = darkMode)
                     }
 
                     // Previous gradient + aurora background (kept for reference):

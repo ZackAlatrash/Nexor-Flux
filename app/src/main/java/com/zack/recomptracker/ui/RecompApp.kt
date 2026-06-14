@@ -44,6 +44,7 @@ import com.zack.recomptracker.ui.navigation.Routes
 import com.zack.recomptracker.ui.navigation.TopLevelDestination
 import com.zack.recomptracker.ui.theme.AccentTheme
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.theme.RecompTrackerTheme
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastController
@@ -85,6 +86,7 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
     RecompTrackerTheme(accentTheme = accentTheme, darkMode = darkMode) {
+        val appColors = LocalAppColors.current
         val navController = rememberNavController()
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
@@ -189,10 +191,10 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 Icon(
                                     imageVector = Icons.Default.Home,
                                     contentDescription = "Home",
-                                    tint = Color.White,
+                                    tint = appColors.textPrimary,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                Text("Home", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Text("Home", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
 
                             // Body
@@ -208,10 +210,10 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = "Body",
-                                    tint = Color.White,
+                                    tint = appColors.textPrimary,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                Text("Body", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Text("Body", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
 
                             // Log
@@ -227,10 +229,10 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
                                     contentDescription = "Log food",
-                                    tint = Color.White,
+                                    tint = appColors.textPrimary,
                                     modifier = Modifier.size(26.dp),
                                 )
-                                Text("Log", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Text("Log", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
 
                             // Coach
@@ -246,10 +248,10 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 Icon(
                                     imageVector = Icons.Default.AutoAwesome,
                                     contentDescription = "Coach",
-                                    tint = Color.White,
+                                    tint = appColors.textPrimary,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                Text("Coach", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Text("Coach", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
 
                             // More
@@ -265,10 +267,10 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 Icon(
                                     imageVector = Icons.Default.MoreHoriz,
                                     contentDescription = "More",
-                                    tint = Color.White,
+                                    tint = appColors.textPrimary,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                Text("More", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Text("More", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
                         }
                     }

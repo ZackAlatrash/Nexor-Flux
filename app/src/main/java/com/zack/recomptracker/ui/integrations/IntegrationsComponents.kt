@@ -44,10 +44,8 @@ import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 internal val HealthConnectGreen = Color(0xFF34D399)
 
@@ -90,16 +88,17 @@ internal fun HealthConnectSection(
                 )
             }
             Column {
+                val appColors = LocalAppColors.current
                 Text(
                     "Health Connect",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                 )
                 Text(
                     "Auto-fill steps, weight & sleep",
                     fontSize = 11.sp,
-                    color = TextMuted,
+                    color = appColors.textMuted,
                 )
             }
         }
@@ -108,7 +107,7 @@ internal fun HealthConnectSection(
 
         when (availability) {
             HealthConnectAvailability.NotInstalled -> {
-                HcStatusRow(dotColor = TextMuted, text = "Health Connect isn't installed on this device.")
+                HcStatusRow(dotColor = LocalAppColors.current.textMuted, text = "Health Connect isn't installed on this device.")
                 LiquidGlassButton(
                     onClick = onInstall,
                     modifier = Modifier.fillMaxWidth(),
@@ -120,7 +119,7 @@ internal fun HealthConnectSection(
             }
 
             HealthConnectAvailability.NotSupported -> {
-                HcStatusRow(dotColor = TextMuted, text = "Health Connect isn't supported on this device.")
+                HcStatusRow(dotColor = LocalAppColors.current.textMuted, text = "Health Connect isn't supported on this device.")
             }
 
             HealthConnectAvailability.Available -> {
@@ -133,7 +132,7 @@ internal fun HealthConnectSection(
                 val (dotColor, statusText) = when {
                     enabled && hasPermissions  -> HealthConnectGreen to "Connected"
                     enabled && !hasPermissions -> Color(0xFFfb7185) to "Permission needed — tap toggle to reconnect"
-                    else                       -> TextMuted to "Not connected"
+                    else                       -> LocalAppColors.current.textMuted to "Not connected"
                 }
                 HcStatusRow(dotColor = dotColor, text = statusText)
 
@@ -185,7 +184,7 @@ internal fun HistoricalFoodReviewDialog(
                 Text(
                     "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100 g baseline.",
                     fontSize = 12.sp,
-                    color = TextMuted,
+                    color = LocalAppColors.current.textMuted,
                     lineHeight = 17.sp,
                 )
                 LazyColumn(
@@ -207,7 +206,7 @@ internal fun HistoricalFoodReviewDialog(
                                 Text(
                                     "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
                                     fontSize = 11.sp,
-                                    color = TextMuted,
+                                    color = LocalAppColors.current.textMuted,
                                 )
                             }
                         }
@@ -231,12 +230,13 @@ internal fun SettingsCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
@@ -265,6 +265,6 @@ internal fun HcStatusRow(dotColor: Color, text: String) {
                 .clip(CircleShape)
                 .background(dotColor),
         )
-        Text(text = text, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+        Text(text = text, fontSize = 12.sp, color = LocalAppColors.current.textPrimary.copy(alpha = 0.8f))
     }
 }

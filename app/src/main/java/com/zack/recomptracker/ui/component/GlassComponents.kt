@@ -50,14 +50,10 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
-import com.zack.recomptracker.ui.theme.FrostedBorder
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextFaint
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 // ── Neutral Card (workhorse — list rows, menus, form containers) ──────────────
 
@@ -66,12 +62,13 @@ fun NeutralCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
         content = content,
     )
@@ -117,7 +114,7 @@ fun FrostedCard(
                     )
                 }
             )
-            .border(1.dp, FrostedBorder, RoundedCornerShape(CornerCard))
+            .border(1.dp, LocalAppColors.current.frostedBorder, RoundedCornerShape(CornerCard))
             .padding(contentPadding),
         content = content,
     )
@@ -177,7 +174,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         text = text.uppercase(),
         fontSize = 9.sp,
         fontWeight = FontWeight.Bold,
-        color = TextFaint,
+        color = LocalAppColors.current.textFaint,
         letterSpacing = 0.14.sp,
         modifier = modifier,
     )
@@ -296,6 +293,7 @@ fun GlassInputField(
     keyboardType: KeyboardType = KeyboardType.Decimal,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     var focused by remember { mutableStateOf(false) }
     val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else Color(0x1AFFFFFF)
     val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
@@ -305,7 +303,7 @@ fun GlassInputField(
             text = label.uppercase(),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0x59FFFFFF),
+            color = appColors.textMuted,
             letterSpacing = 0.10.sp,
         )
         BasicTextField(
@@ -316,7 +314,7 @@ fun GlassInputField(
             textStyle = TextStyle(
                 fontSize = 17.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = appColors.textPrimary,
                 letterSpacing = (-0.5).sp,
             ),
             cursorBrush = SolidColor(accent.accentLighter),
@@ -458,6 +456,7 @@ fun GlassTextArea(
     val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else Color(0x1AFFFFFF)
     val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
 
+    val appColors = LocalAppColors.current
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -465,7 +464,7 @@ fun GlassTextArea(
         minLines = minLines,
         textStyle = TextStyle(
             fontSize = 13.sp,
-            color = Color.White,
+            color = appColors.textPrimary,
         ),
         cursorBrush = SolidColor(accent.accentLighter),
         modifier = modifier

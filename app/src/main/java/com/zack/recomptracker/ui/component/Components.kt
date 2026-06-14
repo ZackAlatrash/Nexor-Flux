@@ -50,12 +50,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.core.model.MealType
 import com.zack.recomptracker.ui.theme.AccentTheme
-import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.ThemeMode
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 private val SuccessGreen = Color(0xFF34d399)
 
@@ -249,16 +247,17 @@ fun ConfirmDialog(
 @Composable
 internal fun FontPicker(selected: String, onSelect: (String) -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         listOf("default" to "Default", "space" to "Space", "jakarta" to "Jakarta").forEach { (key, label) ->
             val isActive = selected == key
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(7.dp))
-                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else Color(0x0FFFFFFF))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else appColors.cardSurface)
                     .border(
                         1.dp,
-                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else appColors.cardBorder,
                         RoundedCornerShape(7.dp),
                     )
                     .clickable(
@@ -271,7 +270,7 @@ internal fun FontPicker(selected: String, onSelect: (String) -> Unit) {
                     text = label,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
+                    color = if (isActive) accent.accentLighter else appColors.textMuted,
                 )
             }
         }
@@ -282,16 +281,17 @@ internal fun FontPicker(selected: String, onSelect: (String) -> Unit) {
 @Composable
 internal fun ThemeModePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         ThemeMode.entries.forEach { mode ->
             val isActive = selected == mode
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(7.dp))
-                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else Color(0x0FFFFFFF))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else appColors.cardSurface)
                     .border(
                         1.dp,
-                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else appColors.cardBorder,
                         RoundedCornerShape(7.dp),
                     )
                     .clickable(
@@ -304,7 +304,7 @@ internal fun ThemeModePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit)
                     text = mode.label,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
+                    color = if (isActive) accent.accentLighter else appColors.textMuted,
                 )
             }
         }
@@ -319,12 +319,13 @@ internal fun AccentThemePicker(
     selected: AccentTheme,
     onSelect: (AccentTheme) -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
     ) {
         LazyRow(
@@ -389,8 +390,9 @@ internal fun SettingRow(
         ) {
             MenuIcon(icon)
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                Text(detail, fontSize = 11.sp, color = TextMuted)
+                val appColors = LocalAppColors.current
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
+                Text(detail, fontSize = 11.sp, color = appColors.textMuted)
             }
             control()
         }

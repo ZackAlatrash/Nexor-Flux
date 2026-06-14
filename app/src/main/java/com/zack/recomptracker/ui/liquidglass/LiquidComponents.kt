@@ -83,6 +83,7 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -781,7 +782,7 @@ fun LiquidSecondaryButton(
         enabled = enabled,
         surfaceColor = Color.White.copy(alpha = 0.14f),
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.90f))
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LocalAppColors.current.textPrimary.copy(alpha = 0.90f))
     }
 }
 
@@ -820,7 +821,7 @@ fun LiquidStepButton(
             .then(if (enabled) highlight.modifier.then(highlight.gestureModifier) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = symbol, fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
+        Text(text = symbol, fontSize = 18.sp, fontWeight = FontWeight.Light, color = LocalAppColors.current.textPrimary)
     }
 }
 
@@ -850,7 +851,7 @@ fun LiquidActionButton(
             text = text,
             fontSize = 13.sp,
             fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
-            color = if (isPrimary) accent.accentLighter else Color.White.copy(alpha = 0.85f),
+            color = if (isPrimary) accent.accentLighter else LocalAppColors.current.textPrimary.copy(alpha = 0.85f),
         )
     }
 }

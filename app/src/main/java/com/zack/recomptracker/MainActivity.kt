@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.LIGHT -> false
             }
+            // capture outside the lambda — same window backs the whole Activity lifetime
             val window = window
             SideEffect {
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
@@ -34,7 +35,7 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightStatusBars = !darkMode
                 controller.isAppearanceLightNavigationBars = !darkMode
             }
-            RecompApp(container = app.container)
+            RecompApp(container = app.container, darkMode = darkMode)
         }
     }
 }

@@ -81,17 +81,9 @@ private val tabRoutes = listOf(
 )
 
 @Composable
-fun RecompApp(container: AppContainer) {
+fun RecompApp(container: AppContainer, darkMode: Boolean) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
-    val themeMode by container.uiPreferences.themeMode
-        .collectAsStateWithLifecycle(initialValue = com.zack.recomptracker.ui.theme.ThemeMode.SYSTEM)
-    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val darkMode = when (themeMode) {
-        com.zack.recomptracker.ui.theme.ThemeMode.SYSTEM -> systemDark
-        com.zack.recomptracker.ui.theme.ThemeMode.DARK -> true
-        com.zack.recomptracker.ui.theme.ThemeMode.LIGHT -> false
-    }
     RecompTrackerTheme(accentTheme = accentTheme, darkMode = darkMode) {
         val navController = rememberNavController()
         val toastController = remember { ToastController() }

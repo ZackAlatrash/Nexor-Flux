@@ -26,6 +26,17 @@ def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+def parse_tag_list(raw):
+    """Split a comma list into clean tags, stripping surrounding [] and stray quotes."""
+    raw = raw.strip().strip("[]")
+    tags = []
+    for part in raw.split(","):
+        t = part.strip().strip('"').strip("'").strip()
+        if t:
+            tags.append(t)
+    return tags
+
+
 def parse_frontmatter(text):
     m = re.match(r"^---\n(.*?)\n---\n(.*)$", text, re.DOTALL)
     if not m:
@@ -38,8 +49,7 @@ def parse_frontmatter(text):
         key, _, value = line.partition(":")
         meta[key.strip()] = value.strip()
     source = meta.get("source", "").strip()
-    raw_tags = meta.get("tags", "").strip().strip("[]")
-    tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+    tags = parse_tag_list(meta.get("tags", ""))
     return source, tags, body
 
 
@@ -68,8 +78,7 @@ def extract_section_tags(section_text, default_tags):
     while idx < len(lines) and lines[idx].strip() == "":
         idx += 1
     if idx < len(lines) and lines[idx].strip().lower().startswith("tags:"):
-        raw = lines[idx].strip()[len("tags:"):].strip().strip("[]")
-        tags = [t.strip() for t in raw.split(",") if t.strip()]
+        tags = parse_tag_list(lines[idx].strip()[len("tags:"):])
         body = "\n".join(lines[:idx] + lines[idx + 1:]).strip()
         return (tags if tags else default_tags), body
     return default_tags, section_text

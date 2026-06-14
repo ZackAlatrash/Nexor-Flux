@@ -4,11 +4,11 @@ tags: [calories, calorie, kcal, energy, energy-balance, tdee, deficit, surplus, 
 ---
 
 ## Energy balance — the foundation of fat loss and muscle gain
-tags: calories, calorie, energy, energy-balance, tdee, deficit, surplus, fat, loss, lean, macros
+tags: calories, energy-balance, deficit, surplus, bulk, bulking, gain, fat, loss, lean, shredded
 All diet approaches — low-fat, low-carb, ketogenic, intermittent fasting — produce comparable fat loss and muscle gain results **when total calories and protein are equated**. The ISSN position stand is explicit: no diet style has been shown to produce superior body composition outcomes after controlling for energy intake and protein. The implication for coaching: calorie target and protein intake are the levers that matter; the macro split is a compliance tool.
 
 ## How fast to lose weight — recommended rate of fat loss
-tags: weight, rate, fat, loss, lose, cut, cutting, lean, muscle, sustainable, scale
+tags: weight, rate, fat, loss, lose, cut, cutting, lean, shredded, ripped, bulk, bulking, surplus
 A fat loss rate of **0.5–1.0% of body weight per week** preserves lean mass for most individuals. Faster loss (>1%/week) risks disproportionate muscle breakdown, especially in already-lean people. Larger caloric surpluses (up to 544–2,010 kcal/day above maintenance) are appropriate for untrained beginners building muscle fast; trained athletes should use much smaller surpluses to avoid excess fat gain.
 
 ## Ketogenic diet for fat loss — what the evidence actually shows

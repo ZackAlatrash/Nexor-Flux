@@ -150,16 +150,16 @@
       "title": "Energy balance — the foundation of fat loss and muscle gain",
       "tags": [
         "calories",
-        "calorie",
-        "energy",
         "energy-balance",
-        "tdee",
         "deficit",
         "surplus",
+        "bulk",
+        "bulking",
+        "gain",
         "fat",
         "loss",
         "lean",
-        "macros"
+        "shredded"
       ],
       "source": "\"Aragon AA et al. International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16. doi:10.1186/s12970-017-0174-y. PMC5470183.\"",
       "text": "All diet approaches — low-fat, low-carb, ketogenic, intermittent fasting — produce comparable fat loss and muscle gain results **when total calories and protein are equated**. The ISSN position stand is explicit: no diet style has been shown to produce superior body composition outcomes after controlling for energy intake and protein. The implication for coaching: calorie target and protein intake are the levers that matter; the macro split is a compliance tool."
@@ -176,9 +176,11 @@
         "cut",
         "cutting",
         "lean",
-        "muscle",
-        "sustainable",
-        "scale"
+        "shredded",
+        "ripped",
+        "bulk",
+        "bulking",
+        "surplus"
       ],
       "source": "\"Aragon AA et al. International society of sports nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16. doi:10.1186/s12970-017-0174-y. PMC5470183.\"",
       "text": "A fat loss rate of **0.5–1.0% of body weight per week** preserves lean mass for most individuals. Faster loss (>1%/week) risks disproportionate muscle breakdown, especially in already-lean people. Larger caloric surpluses (up to 544–2,010 kcal/day above maintenance) are appropriate for untrained beginners building muscle fast; trained athletes should use much smaller surpluses to avoid excess fat gain."
@@ -947,18 +949,16 @@
         "plant-based",
         "vegan",
         "vegetarian",
-        "protein",
         "protein-quality",
         "diaas",
-        "sources",
-        "how-much"
+        "sources"
       ],
       "source": "\"Adhikari S, Schop M, de Boer IJM, Huppertz T. Protein Quality in Perspective: A Review of Protein Quality Metrics and Their Applications. Nutrients. 2022;14(5):947. doi: 10.3390/nu14050947 | Ciuris C, Lynch HM, Wharton C, Johnston CS. A Comparison of Dietary Protein Digestibility, Based on DIAAS Scoring, in Vegetarian and Non-Vegetarian Athletes. Nutrients. 2019;11(12):3016. doi: 10.3390/nu11123016 | Antonio J, Evans C, Ferrando AA, et al. Common questions and misconceptions about protein supplementation: what does the scientific evidence really show? J Int Soc Sports Nutr. 2024;21(1):2341903. doi: 10.1080/15502783.2024.2341903\"",
       "text": "Evidence strength: STRONG (consistent finding across DIAAS literature and ISSN protein stand).\n\nBecause plant proteins score lower on DIAAS than animal proteins, vegetarian and vegan athletes must eat more total grams to deliver the same amino acid stimulus for muscle protein synthesis.\n\n**Practical guidance:**\n- Vegetarian/vegan athletes: target **1.8–2.4 g/kg/day** total protein (vs. ~1.6–2.0 g/kg/day for omnivores).\n- Need 20–40% more plant protein grams to match the EAA and leucine delivery of animal protein.\n- A 2019 study found vegetarian athletes had 43% less \"available protein\" (DIAAS-adjusted) than omnivores eating the same gram count — the digestibility gap, not just the quantity gap, matters.\n- Soy protein isolate is the exception (~98% DIAAS) — treat it nearly on par with whey.\n- Corn-based foods (tortillas, corn cereals) are particularly poor protein sources due to severe lysine limitation (~66% DIAAS).\n\n**For a plant-based athlete needing 160 g protein/day (animal equivalent):** target approximately 190–224 g/day from plant sources."
     },
     {
       "id": "sup-protein-quality-foods-3",
-      "title": "Best high-protein foods by protein density",
+      "title": "Best high-protein foods ranked by density",
       "tags": [
         "high-protein",
         "food",
@@ -966,7 +966,6 @@
         "sources",
         "chicken",
         "eggs",
-        "protein",
         "food-database"
       ],
       "source": "\"Adhikari S, Schop M, de Boer IJM, Huppertz T. Protein Quality in Perspective: A Review of Protein Quality Metrics and Their Applications. Nutrients. 2022;14(5):947. doi: 10.3390/nu14050947 | Ciuris C, Lynch HM, Wharton C, Johnston CS. A Comparison of Dietary Protein Digestibility, Based on DIAAS Scoring, in Vegetarian and Non-Vegetarian Athletes. Nutrients. 2019;11(12):3016. doi: 10.3390/nu11123016 | Antonio J, Evans C, Ferrando AA, et al. Common questions and misconceptions about protein supplementation: what does the scientific evidence really show? J Int Soc Sports Nutr. 2024;21(1):2341903. doi: 10.1080/15502783.2024.2341903\"",
@@ -1014,7 +1013,9 @@
         "hypertrophy",
         "muscle",
         "growth",
-        "selection"
+        "grow",
+        "bigger",
+        "arms"
       ],
       "source": "\"Androulakis Korakakis P, Wolf M, Coleman M, Burke R, Piñero A, Nippard J, Schoenfeld BJ. Optimizing Resistance Training Technique to Maximize Muscle Hypertrophy: A Narrative Review. J Funct Morphol Kinesiol. 2024;9(1):9. doi:10.3390/jfmk9010009. PMC10801605.\"",
       "text": "Training a muscle at its longest (most-stretched) position under load is one of the most important technique principles for hypertrophy. Multiple studies cited in this narrative review (co-authored by Schoenfeld) show that \"training at long muscle lengths elicits more distal hypertrophy than training at short muscle lengths,\" and that a partial range of motion performed at the **lengthened position** was \"potentially superior to full ROM for hypertrophy.\" In practice: prioritise exercises and rep ranges that place the muscle under load when it is fully stretched — deep squats (quad length), Romanian deadlifts (hamstring length), incline dumbbell curls (bicep length at the bottom), and deficit push-ups or deep dips (chest length). Partial reps at the shortened end of the range (top of a curl, top of a press) are counterproductive for hypertrophy."
@@ -1026,10 +1027,14 @@
         "volume",
         "sets",
         "sets-per-week",
-        "weekly-sets",
         "hypertrophy",
         "muscle",
         "growth",
+        "grow",
+        "bigger",
+        "build",
+        "arms",
+        "gains",
         "how-many"
       ],
       "source": "\"Baz-Valle E, Balsalobre-Fernández C, Alix-Fages C, Santos-Concejero J. A Systematic Review of The Effects of Different Resistance Training Volumes on Muscle Hypertrophy. J Hum Kinet. 2022;81:199–210. doi:10.2478/hukin-2022-0017. PMC8884877.\"",
@@ -1042,9 +1047,10 @@
         "frequency",
         "volume",
         "sets",
-        "sets-per-week",
         "hypertrophy",
         "muscle",
+        "grow",
+        "bigger",
         "sessions",
         "split",
         "how-often"

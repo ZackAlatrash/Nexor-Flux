@@ -34,8 +34,8 @@ When you are in a calorie deficit...
 ## NUTRITION & MACROS
 
 - **Protein:** protein, macros, leucine
-- **Fat loss / cutting:** fat, loss, lose, cut, cutting, deficit, lean, shred, calories, calorie
-- **Muscle gain / bulking:** muscle, gain, gains, build, bulk, bulking, surplus, mass, size
+- **Fat loss / cutting:** fat, loss, lose, cut, cutting, deficit, lean, shred, shredded, ripped, tone, calories, calorie
+- **Muscle gain / bulking:** muscle, gain, gains, build, bulk, bulking, surplus, mass, size, grow, bigger, growth
 - **Maintenance:** maintenance, maintain, recomp, recomposition
 - **Calories / energy balance:** calories, calorie, kcal, energy, intake, "energy-balance", tdee
 - **Dietary fat:** fat, fats, "dietary-fat", hormones
@@ -90,3 +90,7 @@ When you are in a calorie deficit...
 ## Cross-cutting (any domain may use)
 
 goal, beginner, advanced, women, female, safety, "how-much", "how-many", dose, timing
+
+## Body parts (for "bigger arms" style queries)
+
+arms, legs, chest, back, shoulders, abs, glutes, biceps

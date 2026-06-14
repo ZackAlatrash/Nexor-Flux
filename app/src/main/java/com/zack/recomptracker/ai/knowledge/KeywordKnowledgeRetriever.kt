@@ -11,7 +11,9 @@ package com.zack.recomptracker.ai.knowledge
  */
 class KeywordKnowledgeRetriever(
     chunks: List<KnowledgeChunk>,
-    private val minScore: Double = 1.0,
+    // Floor of 2.0 means a query term must hit a tag (2.0) or title (3.0), or two body words, to
+    // count — a single stray body-word match (1.0) no longer leaks an off-topic chunk in.
+    private val minScore: Double = 2.0,
 ) : KnowledgeRetriever {
 
     private data class Indexed(
@@ -58,6 +60,7 @@ class KeywordKnowledgeRetriever(
             "the", "a", "an", "is", "are", "of", "to", "and", "or", "in", "on", "for",
             "my", "i", "how", "what", "do", "does", "should", "can", "with", "at", "be",
             "it", "this", "that", "me", "you", "your", "much", "time",
+            "get", "make", "keep", "need",
         )
 
         fun tokenize(s: String): List<String> =

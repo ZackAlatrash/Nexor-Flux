@@ -24,7 +24,7 @@ DIAAS (Digestible Indispensable Amino Acid Score) measures how well each amino a
 **Key rule:** protein complementarity must happen at the meal level, not across the day. A lysine-deficient cereal breakfast cannot be corrected by a high-quality dinner. Pair plant proteins within the same meal (e.g., rice + beans, pea + rice protein blend).
 
 ## How much protein do plant-based and vegetarian athletes need
-tags: "plant-based", vegan, vegetarian, protein, "protein-quality", diaas, sources, "how-much"
+tags: plant-based, vegan, vegetarian, protein-quality, diaas, sources
 Evidence strength: STRONG (consistent finding across DIAAS literature and ISSN protein stand).
 
 Because plant proteins score lower on DIAAS than animal proteins, vegetarian and vegan athletes must eat more total grams to deliver the same amino acid stimulus for muscle protein synthesis.
@@ -38,8 +38,8 @@ Because plant proteins score lower on DIAAS than animal proteins, vegetarian and
 
 **For a plant-based athlete needing 160 g protein/day (animal equivalent):** target approximately 190–224 g/day from plant sources.
 
-## Best high-protein foods by protein density
-tags: "high-protein", food, foods, sources, chicken, eggs, protein, "food-database"
+## Best high-protein foods ranked by density
+tags: high-protein, food, foods, sources, chicken, eggs, food-database
 Evidence strength: STRONG; data sourced from USDA FoodData Central and ISSN 2024 protein review.
 
 **Top animal-source high-protein foods (per 100 g cooked/as-served):**

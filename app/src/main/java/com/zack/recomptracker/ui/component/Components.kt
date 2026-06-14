@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.core.model.MealType
 import com.zack.recomptracker.ui.theme.AccentTheme
 import com.zack.recomptracker.ui.theme.CardBorder
+import com.zack.recomptracker.ui.theme.ThemeMode
 import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -269,6 +270,39 @@ internal fun FontPicker(selected: String, onSelect: (String) -> Unit) {
                 Text(
                     text = label,
                     fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
+                )
+            }
+        }
+    }
+}
+
+// ── Theme mode picker (System / Light / Dark) ───────────────────────────────────
+@Composable
+internal fun ThemeModePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val accent = LocalAppAccent.current
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        ThemeMode.entries.forEach { mode ->
+            val isActive = selected == mode
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.22f) else Color(0x0FFFFFFF))
+                    .border(
+                        1.dp,
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
+                        RoundedCornerShape(7.dp),
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onSelect(mode) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = mode.label,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isActive) accent.accentLighter else Color(0x59FFFFFF),
                 )

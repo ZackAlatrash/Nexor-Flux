@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AccentThemePicker
 import com.zack.recomptracker.ui.component.FontPicker
+import com.zack.recomptracker.ui.component.ThemeModePicker
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.component.VioletBadge
@@ -52,6 +53,7 @@ fun AppearanceScreen(
 ) {
     val font by viewModel.font.collectAsStateWithLifecycle()
     val accent by viewModel.accent.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val theme = LocalAppAccent.current
 
     val ambientOrb1 = remember(theme.accent) {
@@ -144,6 +146,12 @@ fun AppearanceScreen(
                         onClick = {},
                     )
                 }
+            }
+
+            // ── Theme mode ────────────────────────────────────────────────────
+            item { SectionLabel("Theme") }
+            item {
+                ThemeModePicker(selected = themeMode, onSelect = viewModel::setThemeMode)
             }
 
             // ── Font ──────────────────────────────────────────────────────────

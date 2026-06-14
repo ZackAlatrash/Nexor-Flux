@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.ui.theme.AccentTheme
+import com.zack.recomptracker.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -32,11 +33,22 @@ class AppearanceViewModel(
             initialValue = AccentTheme.VIOLET,
         )
 
+    val themeMode: StateFlow<ThemeMode> =
+        uiPreferences.themeMode.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ThemeMode.SYSTEM,
+        )
+
     fun setFont(value: String) {
         viewModelScope.launch { uiPreferences.setFont(value) }
     }
 
     fun setAccent(theme: AccentTheme) {
         viewModelScope.launch { uiPreferences.setAccentTheme(theme) }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { uiPreferences.setThemeMode(mode) }
     }
 }

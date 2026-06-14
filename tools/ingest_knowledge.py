@@ -5,6 +5,11 @@ Each file in knowledge-sources/ has frontmatter (source, tags) between leading '
 one or more '## ' sections. Every non-empty section becomes one corpus chunk. Stdlib only;
 re-runnable and deterministic (chunks sorted by id).
 
+Per-section tags: if the first non-empty line of a section is `tags: a, b, c`, those become that
+chunk's tags (replacing the file-level tags) and the line is dropped from the chunk text. Sections
+without their own tags inherit the file-level tags. This lets each chunk carry precise, distinct
+tags so retrieval can rank sibling chunks in the same file.
+
 Usage: python3 tools/ingest_knowledge.py
 """
 import json
@@ -55,6 +60,21 @@ def split_sections(body):
     return sections
 
 
+def extract_section_tags(section_text, default_tags):
+    """If the first non-empty line is `tags: a, b, c`, return (those_tags, text_without_that_line).
+    Otherwise return (default_tags, section_text unchanged)."""
+    lines = section_text.split("\n")
+    idx = 0
+    while idx < len(lines) and lines[idx].strip() == "":
+        idx += 1
+    if idx < len(lines) and lines[idx].strip().lower().startswith("tags:"):
+        raw = lines[idx].strip()[len("tags:"):].strip().strip("[]")
+        tags = [t.strip() for t in raw.split(",") if t.strip()]
+        body = "\n".join(lines[:idx] + lines[idx + 1:]).strip()
+        return (tags if tags else default_tags), body
+    return default_tags, section_text
+
+
 def main():
     if not os.path.isdir(SRC_DIR):
         print("no source dir: %s" % SRC_DIR, file=sys.stderr)
@@ -67,13 +87,14 @@ def main():
             text = f.read()
         source, tags, body = parse_frontmatter(text)
         file_slug = slugify(fname[:-3])
-        for i, (title, section_text) in enumerate(split_sections(body), start=1):
+        for i, (title, raw_section) in enumerate(split_sections(body), start=1):
+            section_tags, section_text = extract_section_tags(raw_section, tags)
             if not section_text:
                 continue
             chunks.append({
                 "id": "%s-%d" % (file_slug, i),
                 "title": title,
-                "tags": tags,
+                "tags": section_tags,
                 "source": source,
                 "text": section_text,
             })

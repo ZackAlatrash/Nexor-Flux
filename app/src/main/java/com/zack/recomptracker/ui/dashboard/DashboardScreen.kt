@@ -21,11 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.rounded.HourglassEmpty
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingFlat
-import androidx.compose.material.icons.rounded.TrendingUp
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -778,22 +773,6 @@ private fun VerdictHero(result: AdjustmentResult) {
                 .padding(vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(accent.accent.copy(alpha = 0.18f))
-                    .border(1.dp, accent.accent.copy(alpha = 0.35f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = result.verdict.icon(),
-                    contentDescription = null,
-                    tint = accent.accentLighter,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-            Spacer(Modifier.height(12.dp))
             Text(
                 text = "TODAY'S VERDICT",
                 fontSize = 9.5.sp,
@@ -1057,14 +1036,6 @@ private fun AdjustmentVerdict.label(): String = when (this) {
     AdjustmentVerdict.HOLD             -> "Hold"
     AdjustmentVerdict.INCREASE_CALORIES -> "Increase"
     AdjustmentVerdict.REDUCE_CALORIES   -> "Reduce"
-}
-
-/** Direction icon for the verdict hero focal point. */
-private fun AdjustmentVerdict.icon(): ImageVector = when (this) {
-    AdjustmentVerdict.WAIT_FOR_DATA     -> Icons.Rounded.HourglassEmpty
-    AdjustmentVerdict.HOLD              -> Icons.Rounded.TrendingFlat
-    AdjustmentVerdict.INCREASE_CALORIES -> Icons.Rounded.TrendingUp
-    AdjustmentVerdict.REDUCE_CALORIES   -> Icons.Rounded.TrendingDown
 }
 
 /** Full-phrase verdict word for the hero card (e.g. "Hold steady"). */

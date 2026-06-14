@@ -15,4 +15,10 @@ class CoachPromptGuidelinesTest {
     fun `guidelines allow reference knowledge as a source`() {
         assertTrue(COACH_PROMPT_GUIDELINES.contains("REFERENCE KNOWLEDGE"))
     }
+
+    @Test
+    fun `guidelines tell the coach to search the web and cite when knowledge is missing`() {
+        assertTrue(COACH_PROMPT_GUIDELINES.contains("search_web"))
+        assertTrue(COACH_PROMPT_GUIDELINES.lowercase().contains("cite"))
+    }
 }

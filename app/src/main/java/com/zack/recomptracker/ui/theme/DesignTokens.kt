@@ -2,6 +2,7 @@ package com.zack.recomptracker.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.zack.recomptracker.R
 
 // ── Accent theme presets ───────────────────────────────────────────────────────
 enum class AccentTheme(
@@ -84,3 +85,32 @@ val FrostedSurface         = Color(0x9E120A20)
 val FrostedBorder          = Color(0x21FFFFFF)
 // rgba(22,14,38, 0.82) — used on API < 31 where blur is unavailable
 val FrostedSurfaceFallback = Color(0xD1160E26)
+
+/**
+ * Per-theme background drawable for the given mode. Resource names follow
+ * `bg_<lowercase-theme>_<dark|light>` (see scripts/convert_backgrounds.sh).
+ */
+fun AccentTheme.backgroundRes(darkMode: Boolean): Int = when (this to darkMode) {
+    AccentTheme.VIOLET  to true  -> R.drawable.bg_violet_dark
+    AccentTheme.VIOLET  to false -> R.drawable.bg_violet_light
+    AccentTheme.INDIGO  to true  -> R.drawable.bg_indigo_dark
+    AccentTheme.INDIGO  to false -> R.drawable.bg_indigo_light
+    AccentTheme.BLUE    to true  -> R.drawable.bg_blue_dark
+    AccentTheme.BLUE    to false -> R.drawable.bg_blue_light
+    AccentTheme.CYAN    to true  -> R.drawable.bg_cyan_dark
+    AccentTheme.CYAN    to false -> R.drawable.bg_cyan_light
+    AccentTheme.EMERALD to true  -> R.drawable.bg_emerald_dark
+    AccentTheme.EMERALD to false -> R.drawable.bg_emerald_light
+    AccentTheme.LIME    to true  -> R.drawable.bg_lime_dark
+    AccentTheme.LIME    to false -> R.drawable.bg_lime_light
+    AccentTheme.AMBER   to true  -> R.drawable.bg_amber_dark
+    AccentTheme.AMBER   to false -> R.drawable.bg_amber_light
+    AccentTheme.ORANGE  to true  -> R.drawable.bg_orange_dark
+    AccentTheme.ORANGE  to false -> R.drawable.bg_orange_light
+    AccentTheme.ROSE    to true  -> R.drawable.bg_rose_dark
+    AccentTheme.ROSE    to false -> R.drawable.bg_rose_light
+    AccentTheme.SLATE   to true  -> R.drawable.bg_slate_dark
+    AccentTheme.SLATE   to false -> R.drawable.bg_slate_light
+    AccentTheme.SILVER  to true  -> R.drawable.bg_silver_dark
+    else                         -> R.drawable.bg_silver_light
+}

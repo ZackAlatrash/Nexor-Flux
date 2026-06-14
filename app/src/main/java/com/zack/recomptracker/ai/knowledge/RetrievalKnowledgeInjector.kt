@@ -19,17 +19,22 @@ class RetrievalKnowledgeInjector(
         var used = 0
         for ((index, scored) in hits.withIndex()) {
             val c = scored.chunk
-            // The top chunk is always included (truncated if it alone exceeds the budget);
-            // later chunks are dropped once the running total would exceed the budget.
-            val body = if (index == 0 && c.text.length > maxChars) {
-                c.text.take(maxChars).trimEnd() + "…"
+            // Fixed decoration around the body: "[n] {title} — {body} (Source: {source})".
+            val prefix = "[${index + 1}] ${c.title} — "
+            val suffix = " (Source: ${c.source})"
+            val overhead = prefix.length + suffix.length
+            // The top chunk is always included (truncated to fit the budget, accounting for the
+            // decoration and the "…" char); later chunks are dropped once the running total —
+            // including the newline appendLine adds — would exceed the budget.
+            val body = if (index == 0 && overhead + c.text.length > maxChars) {
+                c.text.take((maxChars - overhead - 1).coerceAtLeast(0)).trimEnd() + "…"
             } else {
                 c.text
             }
-            val line = "[${index + 1}] ${c.title} — $body (Source: ${c.source})"
-            if (index > 0 && used + line.length > maxChars) break
+            val line = prefix + body + suffix
+            if (index > 0 && used + line.length + 1 > maxChars) break
             lines.add(line)
-            used += line.length
+            used += line.length + 1
         }
 
         return buildString {

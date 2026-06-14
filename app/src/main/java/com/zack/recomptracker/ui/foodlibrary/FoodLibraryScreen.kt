@@ -688,7 +688,7 @@ private fun GlassFoodRow(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
+            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = accent.onAccent)
         }
     }
 }
@@ -751,7 +751,7 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
+            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = accent.onAccent)
         }
     }
 }
@@ -828,7 +828,7 @@ private fun GlassRecipeRow(
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onLog),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = Color.White)
+            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = accent.onAccent)
         }
     }
 }

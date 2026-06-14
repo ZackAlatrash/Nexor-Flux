@@ -438,7 +438,7 @@ private fun AvatarPicker(
             Icon(
                 Icons.Rounded.PhotoCamera,
                 contentDescription = "Change photo",
-                tint = Color.White,
+                tint = accent.onAccent,
                 modifier = Modifier.size(16.dp),
             )
         }

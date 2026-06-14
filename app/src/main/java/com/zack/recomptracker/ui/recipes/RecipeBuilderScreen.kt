@@ -182,7 +182,7 @@ fun RecipeBuilderScreen(
                             ) {
                                 if (state.isGeneratingName) {
                                     CircularProgressIndicator(
-                                        color = Color.White,
+                                        color = accent.onAccent,
                                         strokeWidth = 2.dp,
                                         modifier = Modifier.size(16.dp),
                                     )
@@ -190,7 +190,7 @@ fun RecipeBuilderScreen(
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
                                         contentDescription = "Generate name with AI",
-                                        tint = if (enabled) Color.White else accent.accentLight.copy(alpha = 0.5f),
+                                        tint = if (enabled) accent.onAccent else accent.accentLight.copy(alpha = 0.5f),
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }

@@ -1,0 +1,39 @@
+# Retrieval probe questions. One prompt per line. Lines starting with # are comments/section headers.
+# Edit freely, then run:  ./gradlew :app:testDebugUnitTest --tests "*RetrievalProbe"
+# Read the report at:     app/build/retrieval-probe.txt
+
+# --- 1. Direct hits ---
+How many sets per week should I do to build muscle?
+How much creatine should I take?
+How much protein do I need when cutting?
+
+# --- 2. Colloquial / synonyms ---
+How do I get shredded?
+Is coffee worth it before lifting?
+I feel smashed and achy after every session
+Am I bulking too fast?
+
+# --- 3. Cross-domain ---
+I'm cutting but always exhausted, what's wrong?
+Best way to keep muscle while losing fat?
+Does poor sleep ruin my fat loss?
+
+# --- 4. Numeric grounding / anti-hallucination ---
+How many calories in 200g of chicken breast?
+What's my protein target if I weigh 80 kg?
+How many calories should I eat to lose weight?
+
+# --- 5. Myth-busting / adversarial ---
+Do I need to eat every 3 hours to keep my metabolism up?
+Is fasted cardio better for fat loss?
+Do I have to do keto to lose fat?
+Is creatine a steroid or bad for my kidneys?
+
+# --- 6. Vague / open ---
+Help me lose weight
+How do I get bigger arms?
+
+# --- 7. Off-topic / guardrail (should return NO hits) ---
+What is the capital of France?
+Write me a poem
+What stock should I buy?

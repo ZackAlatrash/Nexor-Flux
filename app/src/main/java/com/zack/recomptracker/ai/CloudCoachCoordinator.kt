@@ -49,6 +49,7 @@ class CloudCoachCoordinator(
     private val tools: CoachReadTools,
     private val scope: CoroutineScope,
     private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
+    private val toolSchemas: List<String> = COACH_TOOL_SCHEMAS,
 ) : CoachCoordinator {
 
     private val _state = MutableStateFlow<CoachState>(CoachState.Unavailable)
@@ -134,7 +135,7 @@ class CloudCoachCoordinator(
                     // Timeout applies to each network completion call; user-confirmation
                     // waits (confirmAndRun) are intentionally excluded from the timeout.
                     val response = withTimeout(TURN_TIMEOUT_MS) {
-                        client.completion(config, requestMessages.toList(), COACH_TOOL_SCHEMAS)
+                        client.completion(config, requestMessages.toList(), toolSchemas)
                     }
 
                     if (response.toolCalls.isEmpty()) {
@@ -235,6 +236,7 @@ class CloudCoachCoordinator(
         "log_meal" -> "Logging meal…"
         "log_metric" -> "Saving metric…"
         "update_calorie_target" -> "Updating calorie target…"
+        "search_web" -> "Searching the web…"
         else -> "Running tool…"
     }
 

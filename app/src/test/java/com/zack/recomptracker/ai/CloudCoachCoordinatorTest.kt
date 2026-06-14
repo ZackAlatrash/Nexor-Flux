@@ -187,4 +187,42 @@ class CloudCoachCoordinatorTest {
         assertEquals(1, refCount)
         scope.cancel()
     }
+
+    @Test
+    fun `cloud coach sends the web-search tool when given the cloud tool list`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val client = ScriptedClient(ArrayDeque(listOf(ParsedChatResponse("Answer.", emptyList()))))
+        val coach = CloudCoachCoordinator(
+            flowOf(true), config(), client, FakeExecutor(), scope,
+            toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
+        )
+        advanceUntilIdle()
+        coach.sendMessage("calories in a big mac?")
+        advanceUntilIdle()
+        assertTrue(client.lastToolSchemas.any { it.contains("\"search_web\"") })
+        scope.cancel()
+    }
+
+    @Test
+    fun `search_web runs without confirmation then answers`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val responses = ArrayDeque(
+            listOf(
+                ParsedChatResponse("", listOf(ParsedToolCall("c1", "search_web", mapOf("query" to "big mac calories")))),
+                ParsedChatResponse("A Big Mac is ~563 kcal (source).", emptyList()),
+            ),
+        )
+        val client = ScriptedClient(responses)
+        val executor = FakeExecutor()
+        val coach = CloudCoachCoordinator(
+            flowOf(true), config(), client, executor, scope,
+            toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
+        )
+        advanceUntilIdle()
+        coach.sendMessage("calories in a big mac?")
+        advanceUntilIdle()
+        assertEquals(listOf("search_web"), executor.calls.map { it.first })
+        assertTrue(coach.state.value is CoachState.Idle)
+        scope.cancel()
+    }
 }

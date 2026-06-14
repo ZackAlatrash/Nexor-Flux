@@ -34,6 +34,7 @@ data class AiCoachUiState(
     val cloudBaseUrl: String = "",
     val cloudModelId: String = "",
     val cloudHasKey: Boolean = false,
+    val cloudHasWebSearchKey: Boolean = false,
     val testConnectionResult: String? = null,
     val testingConnection: Boolean = false,
 )
@@ -83,6 +84,11 @@ class AiCoachViewModel(
                 _uiState.update { it.copy(cloudHasKey = hasKey) }
             }
         }
+        viewModelScope.launch {
+            secureKeyStore.hasWebSearchKey.collect { hasWebKey ->
+                _uiState.update { it.copy(cloudHasWebSearchKey = hasWebKey) }
+            }
+        }
     }
 
     fun setAiInsights(enabled: Boolean) {
@@ -109,6 +115,14 @@ class AiCoachViewModel(
 
     fun clearCloudApiKey() {
         viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.clearApiKey() } }
+    }
+
+    fun setWebSearchKey(key: String) {
+        viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.setWebSearchKey(key) } }
+    }
+
+    fun clearWebSearchKey() {
+        viewModelScope.launch { withContext(Dispatchers.IO) { secureKeyStore.clearWebSearchKey() } }
     }
 
     fun testCloudConnection() {

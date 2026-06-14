@@ -263,6 +263,45 @@ fun AiCoachScreen(
                                         ) { Text("Clear", fontSize = 13.sp) }
                                     }
                                 }
+                                Spacer(Modifier.height(14.dp))
+                                SectionLabel("Web search (optional)")
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = "Add a free Tavily API key (tavily.com) to let the coach look up facts it doesn't know, like calories for a restaurant meal.",
+                                    color = appColors.textMuted,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                var webKeyInput by remember { mutableStateOf("") }
+                                GlassInputField(
+                                    label = if (state.cloudHasWebSearchKey) "Tavily key (saved — type to replace)" else "Tavily API key",
+                                    value = webKeyInput,
+                                    onValueChange = { webKeyInput = it },
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            if (webKeyInput.isNotBlank()) {
+                                                viewModel.setWebSearchKey(webKeyInput)
+                                                webKeyInput = ""
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Save key", fontSize = 13.sp) }
+                                    if (state.cloudHasWebSearchKey) {
+                                        Button(
+                                            onClick = { viewModel.clearWebSearchKey() },
+                                            modifier = Modifier.weight(1f),
+                                        ) { Text("Clear", fontSize = 13.sp) }
+                                    }
+                                }
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = { viewModel.testCloudConnection() },

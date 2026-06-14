@@ -54,7 +54,7 @@ fun RecompTrackerTheme(
     darkMode: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val appAccent = remember(accentTheme) { AppAccent(accentTheme) }
+    val appAccent = remember(accentTheme, darkMode) { AppAccent(accentTheme, darkMode) }
     val appColors = remember(darkMode) { AppColors.of(darkMode) }
     val colorScheme = remember(accentTheme, darkMode) {
         if (darkMode) accentedDarkColorScheme(appAccent) else accentedLightColorScheme(appAccent)

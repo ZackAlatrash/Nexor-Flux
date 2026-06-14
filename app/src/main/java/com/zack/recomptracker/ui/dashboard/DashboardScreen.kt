@@ -573,6 +573,7 @@ private fun ChartStat(
 @Composable
 private fun MotivationalCard(message: String) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -591,7 +592,7 @@ private fun MotivationalCard(message: String) {
             text = message,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFEDE9FE),
+            color = if (appColors.isDark) Color(0xFFEDE9FE) else accent.inkBase,
             lineHeight = 24.sp,
             letterSpacing = (-0.3).sp,
         )

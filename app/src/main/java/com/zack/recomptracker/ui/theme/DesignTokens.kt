@@ -11,30 +11,44 @@ enum class AccentTheme(
     val accentLight: Color,
     val accentLighter: Color,
     val accentDark: Color,
+    // Readable accent "ink" for text/icons on a LIGHT background. The accent/accentLight/
+    // accentLighter shades are tuned to glow on dark surfaces and are too pale on light;
+    // this is a deepened accent (~Tailwind 700/800) that meets text contrast on near-white.
+    val accentInk: Color,
 ) {
-    VIOLET( "Violet",  Color(0xFF8B5CF6), Color(0xFFa78bfa), Color(0xFFc4b5fd), Color(0xFF7c3aed)),
-    INDIGO( "Indigo",  Color(0xFF6366F1), Color(0xFF818CF8), Color(0xFFA5B4FC), Color(0xFF4338CA)),
-    BLUE(   "Blue",    Color(0xFF3B82F6), Color(0xFF60A5FA), Color(0xFF93C5FD), Color(0xFF1D4ED8)),
-    CYAN(   "Cyan",    Color(0xFF06B6D4), Color(0xFF22D3EE), Color(0xFF67E8F9), Color(0xFF0891B2)),
-    EMERALD("Emerald", Color(0xFF10B981), Color(0xFF34D399), Color(0xFF6EE7B7), Color(0xFF059669)),
-    LIME(   "Lime",    Color(0xFF84CC16), Color(0xFFA3E635), Color(0xFFBEF264), Color(0xFF65A30D)),
-    AMBER(  "Amber",   Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFFCD34D), Color(0xFFB45309)),
-    ORANGE( "Orange",  Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFFDBA74), Color(0xFFEA580C)),
-    ROSE(   "Rose",    Color(0xFFF43F5E), Color(0xFFFB7185), Color(0xFFFDA4AF), Color(0xFFBE123C)),
-    SLATE(  "Slate",   Color(0xFF64748B), Color(0xFF94A3B8), Color(0xFFCBD5E1), Color(0xFF334155)),
-    SILVER( "Silver",  Color(0xFFCBD5E1), Color(0xFFE2E8F0), Color(0xFFF1F5F9), Color(0xFF94A3B8)),
+    VIOLET( "Violet",  Color(0xFF8B5CF6), Color(0xFFa78bfa), Color(0xFFc4b5fd), Color(0xFF7c3aed), Color(0xFF6D28D9)),
+    INDIGO( "Indigo",  Color(0xFF6366F1), Color(0xFF818CF8), Color(0xFFA5B4FC), Color(0xFF4338CA), Color(0xFF4338CA)),
+    BLUE(   "Blue",    Color(0xFF3B82F6), Color(0xFF60A5FA), Color(0xFF93C5FD), Color(0xFF1D4ED8), Color(0xFF1D4ED8)),
+    CYAN(   "Cyan",    Color(0xFF06B6D4), Color(0xFF22D3EE), Color(0xFF67E8F9), Color(0xFF0891B2), Color(0xFF0E7490)),
+    EMERALD("Emerald", Color(0xFF10B981), Color(0xFF34D399), Color(0xFF6EE7B7), Color(0xFF059669), Color(0xFF047857)),
+    LIME(   "Lime",    Color(0xFF84CC16), Color(0xFFA3E635), Color(0xFFBEF264), Color(0xFF65A30D), Color(0xFF4D7C0F)),
+    AMBER(  "Amber",   Color(0xFFF59E0B), Color(0xFFFBBF24), Color(0xFFFCD34D), Color(0xFFB45309), Color(0xFF92400E)),
+    ORANGE( "Orange",  Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFFDBA74), Color(0xFFEA580C), Color(0xFFC2410C)),
+    ROSE(   "Rose",    Color(0xFFF43F5E), Color(0xFFFB7185), Color(0xFFFDA4AF), Color(0xFFBE123C), Color(0xFFBE123C)),
+    SLATE(  "Slate",   Color(0xFF64748B), Color(0xFF94A3B8), Color(0xFFCBD5E1), Color(0xFF334155), Color(0xFF334155)),
+    SILVER( "Silver",  Color(0xFFCBD5E1), Color(0xFFE2E8F0), Color(0xFFF1F5F9), Color(0xFF94A3B8), Color(0xFF475569)),
 }
 
 /**
  * Runtime accent token bag. Provided via [LocalAppAccent] inside [RecompTrackerTheme].
  * All composables that paint accent-coloured pixels read from this instead of
  * the old static Violet500 / Violet400 / Violet300 constants.
+ *
+ * [darkMode] only affects the ink* properties (accent text/icon colour): in dark mode the
+ * bright shades are readable on the dark UI; in light mode they collapse to [AccentTheme.accentInk]
+ * so accent-coloured text stays legible on light surfaces. Brand fills (accent, tintedSurface,
+ * gradients, glows) are mode-invariant and unchanged.
  */
-data class AppAccent(val theme: AccentTheme = AccentTheme.VIOLET) {
+data class AppAccent(val theme: AccentTheme = AccentTheme.VIOLET, val darkMode: Boolean = true) {
     val accent: Color       = theme.accent
     val accentLight: Color  = theme.accentLight
     val accentLighter: Color = theme.accentLighter
     val accentDark: Color   = theme.accentDark
+    // Mode-aware accent ink for text/icons. Dark mode = the original bright shades (so dark
+    // mode is unchanged); light mode = the deepened, legible accentInk.
+    val inkBase: Color    = if (darkMode) theme.accent       else theme.accentInk
+    val inkLight: Color   = if (darkMode) theme.accentLight  else theme.accentInk
+    val inkLighter: Color = if (darkMode) theme.accentLighter else theme.accentInk
     // Derived opacities
     val tintedSurface: Color = accent.copy(alpha = 0.08f)
     val tintedBorder: Color  = accent.copy(alpha = 0.22f)

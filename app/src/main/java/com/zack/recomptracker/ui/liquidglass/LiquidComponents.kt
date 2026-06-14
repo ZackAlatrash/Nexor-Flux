@@ -8,7 +8,6 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -142,7 +141,7 @@ fun LiquidBottomTabs(
     content: @Composable RowScope.() -> Unit,
 ) {
     val effectiveAccentColor = if (accentColor == Color.Unspecified) LocalAppAccent.current.accentLighter else accentColor
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppColors.current.isDark
     val containerColor =
         if (!isDark) Color(0xFFFAFAFA).copy(0.4f)
         else Color(0xFF121212).copy(0.4f)
@@ -444,7 +443,7 @@ fun LiquidSlider(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppColors.current.isDark
     val accentColor = if (!isDark) Color(0xFF0088FF) else Color(0xFF0091FF)
     val trackColor = if (!isDark) Color(0xFF787878).copy(0.2f) else Color(0xFF787880).copy(0.36f)
 
@@ -578,7 +577,7 @@ fun LiquidToggle(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppColors.current.isDark
     val accentColor = if (!isDark) Color(0xFF34C759) else Color(0xFF30D158)
     val trackColor = if (!isDark) Color(0xFF787878).copy(0.2f) else Color(0xFF787880).copy(0.36f)
 
@@ -726,7 +725,7 @@ fun LiquidGlassButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     tint: Color = Color.Unspecified,
-    surfaceColor: Color = Color.White.copy(alpha = 0.14f),
+    surfaceColor: Color = if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
     buttonHeight: Dp = 48.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -780,7 +779,7 @@ fun LiquidSecondaryButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        surfaceColor = Color.White.copy(alpha = 0.14f),
+        surfaceColor = if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
     ) {
         Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LocalAppColors.current.textPrimary.copy(alpha = 0.90f))
     }
@@ -798,6 +797,8 @@ fun LiquidStepButton(
     val backdrop = LocalBackdrop.current
     val animationScope = rememberCoroutineScope()
     val highlight = remember(animationScope) { InteractiveHighlight(animationScope) }
+    val appColors = LocalAppColors.current
+    val stepSurface = if (appColors.isDark) Color.White.copy(alpha = 0.18f) else appColors.glassPillSurface
 
     Box(
         modifier
@@ -810,7 +811,7 @@ fun LiquidStepButton(
                     vibrancy()
                     blur(4.dp.toPx())
                 },
-                onDrawSurface = { drawRect(Color.White.copy(alpha = 0.18f)) }
+                onDrawSurface = { drawRect(stepSurface) }
             )
             .clickable(
                 interactionSource = null,
@@ -844,7 +845,8 @@ fun LiquidActionButton(
         modifier = modifier,
         enabled = enabled,
         tint = if (isPrimary) accent.accent else Color.Unspecified,
-        surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.14f),
+        surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f)
+            else if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
         buttonHeight = if (small) 32.dp else 48.dp,
     ) {
         Text(

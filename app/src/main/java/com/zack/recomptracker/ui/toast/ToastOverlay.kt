@@ -39,6 +39,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.theme.CornerPill
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
 
 @Composable
@@ -88,15 +89,16 @@ private fun ToastItem(
     onDismiss: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val bgColor = when (toast.type) {
         ToastType.Success -> accent.accent.copy(alpha = 0.22f)
         ToastType.Error   -> Color(0x2EFB7185)
-        ToastType.Info    -> Color(0x14FFFFFF)
+        ToastType.Info    -> appColors.cardSurface
     }
     val borderColor = when (toast.type) {
         ToastType.Success -> accent.accent.copy(alpha = 0.45f)
         ToastType.Error   -> Color(0x66FB7185)
-        ToastType.Info    -> Color(0x26FFFFFF)
+        ToastType.Info    -> appColors.textPrimary.copy(alpha = 0.149f)
     }
     val iconText = when (toast.type) {
         ToastType.Success -> "✓"
@@ -106,7 +108,7 @@ private fun ToastItem(
     val iconTint = when (toast.type) {
         ToastType.Success -> accent.accentLighter
         ToastType.Error   -> ErrorRed
-        ToastType.Info    -> Color(0x99FFFFFF)
+        ToastType.Info    -> appColors.textPrimary.copy(alpha = 0.60f)
     }
 
     Row(
@@ -126,7 +128,7 @@ private fun ToastItem(
         )
         Text(
             text = toast.text,
-            color = Color.White.copy(alpha = 0.92f),
+            color = appColors.textPrimary.copy(alpha = 0.92f),
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
         )

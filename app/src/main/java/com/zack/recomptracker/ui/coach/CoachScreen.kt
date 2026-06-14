@@ -70,10 +70,9 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.MarkdownText
-import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 private val suggestions = listOf(
     "How are my calories this week?",
@@ -91,6 +90,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
     val haptic = LocalHapticFeedback.current
 
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val history = when (val s = state) {
         is CoachState.Idle -> s.history
         is CoachState.Thinking -> s.history
@@ -130,7 +130,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
             Text(
                 text = "Coach",
                 modifier = Modifier.weight(1f),
-                color = Color.White,
+                color = appColors.textPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -151,7 +151,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 Icon(
                     imageVector = Icons.Default.RestartAlt,
                     contentDescription = null,
-                    tint = if (canClear) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f),
+                    tint = if (canClear) appColors.textPrimary.copy(alpha = 0.7f) else appColors.textPrimary.copy(alpha = 0.2f),
                 )
             }
         }
@@ -231,7 +231,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 placeholder = {
                     Text(
                         text = if (available) "Ask the coach…" else "Download model first",
-                        color = TextMuted,
+                        color = appColors.textMuted,
                     )
                 },
                 enabled = available && !busy,
@@ -242,16 +242,16 @@ fun CoachScreen(viewModel: CoachViewModel) {
                     onSend = { sendCurrent() },
                 ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    disabledTextColor = Color.White.copy(alpha = 0.3f),
-                    focusedBorderColor = CardBorder,
-                    unfocusedBorderColor = CardBorder,
-                    disabledBorderColor = CardBorder.copy(alpha = 0.4f),
+                    focusedTextColor = appColors.textPrimary,
+                    unfocusedTextColor = appColors.textPrimary,
+                    disabledTextColor = appColors.textPrimary.copy(alpha = 0.3f),
+                    focusedBorderColor = appColors.cardBorder,
+                    unfocusedBorderColor = appColors.cardBorder,
+                    disabledBorderColor = appColors.cardBorder.copy(alpha = 0.4f),
                     focusedContainerColor = accent.tintedSurface,
                     unfocusedContainerColor = accent.tintedSurface,
                     disabledContainerColor = accent.tintedSurface.copy(alpha = 0.5f),
-                    cursorColor = Color.White,
+                    cursorColor = appColors.textPrimary,
                 ),
             )
             IconButton(
@@ -266,7 +266,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = null,
-                    tint = if (canSend) Color.White else Color.White.copy(alpha = 0.25f),
+                    tint = if (canSend) appColors.textPrimary else appColors.textPrimary.copy(alpha = 0.25f),
                 )
             }
         }
@@ -275,6 +275,7 @@ fun CoachScreen(viewModel: CoachViewModel) {
 
 @Composable
 private fun UnavailableContent() {
+    val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -286,14 +287,14 @@ private fun UnavailableContent() {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "AI Coach",
-                color = Color.White,
+                color = appColors.textPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Download the AI model in More → AI Model to unlock the coach.",
-                color = TextMuted,
+                color = appColors.textMuted,
                 fontSize = 14.sp,
             )
         }
@@ -303,6 +304,7 @@ private fun UnavailableContent() {
 @Composable
 private fun ReadyContent(onSuggestion: (String) -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -312,7 +314,7 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
     ) {
         Text(
             text = "What would you like to know?",
-            color = TextMuted,
+            color = appColors.textMuted,
             fontSize = 15.sp,
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -323,7 +325,7 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
                 label = {
                     Text(
                         text = suggestion,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         fontSize = 14.sp,
                     )
                 },
@@ -339,7 +341,7 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = accent.tintedSurface,
                     selectedContainerColor = accent.tintedSurface,
-                    labelColor = Color.White,
+                    labelColor = appColors.textPrimary,
                 ),
                 border = BorderStroke(1.dp, accent.tintedBorder),
             )
@@ -389,26 +391,28 @@ private fun ChatContent(
         // Keyed by a stable id so updates don't recreate the card on every token.
         if (partialResponse != null) {
             item(key = "live-response") {
+                val liveCols = LocalAppColors.current
                 AiInsightCard(
                     borderMode = AiBorderMode.Generating,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     MarkdownText(
                         text = partialResponse,
-                        color = Color.White,
+                        color = liveCols.textPrimary,
                         fontSize = 14.sp,
                     )
                 }
             }
         } else if (thinkingStatus != null) {
             item(key = "live-thinking") {
+                val liveCols = LocalAppColors.current
                 AiInsightCard(
                     borderMode = AiBorderMode.Preparing,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = thinkingStatus,
-                        color = Color.White,
+                        color = liveCols.textPrimary,
                         fontSize = 14.sp,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -448,13 +452,14 @@ private fun ConfirmationBar(
             .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        val confirmCols = LocalAppColors.current
         AiInsightCard(
             borderMode = AiBorderMode.Preparing,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
                 text = action.displayText,
-                color = Color.White,
+                color = confirmCols.textPrimary,
                 fontSize = 14.sp,
             )
         }
@@ -542,6 +547,7 @@ private fun ThinkingDots() {
 @Composable
 private fun ChatBubble(message: ChatMessage) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val isUser = message.role == Role.User
 
     Box(
@@ -557,12 +563,12 @@ private fun ChatBubble(message: ChatMessage) {
                     bottomStart = 16.dp,
                 ),
                 color = accent.tintedSurface,
-                border = BorderStroke(1.dp, CardBorder),
+                border = BorderStroke(1.dp, appColors.cardBorder),
                 modifier = Modifier.widthIn(max = 300.dp),
             ) {
                 Text(
                     text = message.text,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 )
@@ -574,7 +580,7 @@ private fun ChatBubble(message: ChatMessage) {
             ) {
                 MarkdownText(
                     text = message.text,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     fontSize = 14.sp,
                 )
             }

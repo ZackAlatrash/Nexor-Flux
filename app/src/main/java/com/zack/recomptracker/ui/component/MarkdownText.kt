@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -46,12 +47,14 @@ fun MarkdownText(
     color: Color = Color.White,
     fontSize: TextUnit = 14.sp,
 ) {
+    val appColors = LocalAppColors.current
+    val codeBackground = appColors.cardSurface
     val blocks = remember(text) { parseMarkdownBlocks(text) }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         blocks.forEach { block ->
             when (block) {
                 is MdBlock.Heading -> Text(
-                    text = parseInline(block.text),
+                    text = parseInline(block.text, codeBackground),
                     color = color,
                     fontSize = when (block.level) {
                         1 -> 18.sp
@@ -63,7 +66,7 @@ fun MarkdownText(
                 )
 
                 is MdBlock.Paragraph -> Text(
-                    text = parseInline(block.text),
+                    text = parseInline(block.text, codeBackground),
                     color = color,
                     fontSize = fontSize,
                     lineHeight = fontSize.times(1.4f),
@@ -72,7 +75,7 @@ fun MarkdownText(
                 is MdBlock.Bullet -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("•", color = color, fontSize = fontSize, lineHeight = fontSize.times(1.4f))
                     Text(
-                        text = parseInline(block.text),
+                        text = parseInline(block.text, codeBackground),
                         color = color,
                         fontSize = fontSize,
                         lineHeight = fontSize.times(1.4f),
@@ -83,7 +86,7 @@ fun MarkdownText(
                 is MdBlock.Numbered -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("${block.number}.", color = color, fontSize = fontSize, fontWeight = FontWeight.SemiBold, lineHeight = fontSize.times(1.4f))
                     Text(
-                        text = parseInline(block.text),
+                        text = parseInline(block.text, codeBackground),
                         color = color,
                         fontSize = fontSize,
                         lineHeight = fontSize.times(1.4f),
@@ -91,17 +94,18 @@ fun MarkdownText(
                     )
                 }
 
-                is MdBlock.Table -> MarkdownTable(block, color, fontSize)
+                is MdBlock.Table -> MarkdownTable(block, color, fontSize, codeBackground)
             }
         }
     }
 }
 
 @Composable
-private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit) {
+private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit, codeBackground: Color) {
     // Size each column to its longest cell (estimated) so columns align and the table keeps
     // its natural width. When that exceeds the bubble, the table scrolls horizontally while
     // the rest of the message stays at normal reading width.
+    val appColors = LocalAppColors.current
     val colWidths: List<Dp> = remember(table) {
         val colCount = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
         val allRows = listOf(table.header) + table.rows
@@ -117,12 +121,12 @@ private fun MarkdownTable(table: MdBlock.Table, color: Color, fontSize: TextUnit
             modifier = Modifier
                 .width(tableWidth)
                 .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(8.dp)),
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(8.dp)),
         ) {
-            MarkdownTableRow(table.header, table.aligns, colWidths, color, fontSize, header = true)
+            MarkdownTableRow(table.header, table.aligns, colWidths, color, fontSize, header = true, codeBackground = codeBackground, headerFill = appColors.cardBorder, divider = appColors.cardBorder)
             table.rows.forEach { row ->
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
-                MarkdownTableRow(row, table.aligns, colWidths, color, fontSize, header = false)
+                Box(Modifier.fillMaxWidth().height(1.dp).background(appColors.cardBorder))
+                MarkdownTableRow(row, table.aligns, colWidths, color, fontSize, header = false, codeBackground = codeBackground, headerFill = appColors.cardBorder, divider = appColors.cardBorder)
             }
         }
     }
@@ -136,15 +140,18 @@ private fun MarkdownTableRow(
     color: Color,
     fontSize: TextUnit,
     header: Boolean,
+    codeBackground: Color,
+    headerFill: Color,
+    divider: Color,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (header) Color(0x14FFFFFF) else Color.Transparent),
+            .background(if (header) headerFill else Color.Transparent),
     ) {
         colWidths.forEachIndexed { c, w ->
             Text(
-                text = parseInline(cells.getOrNull(c) ?: ""),
+                text = parseInline(cells.getOrNull(c) ?: "", codeBackground),
                 color = color,
                 fontSize = fontSize,
                 fontWeight = if (header) FontWeight.Bold else FontWeight.Normal,
@@ -252,7 +259,7 @@ private fun parseAlignments(separator: String): List<TextAlign> =
     }
 
 /** Inline emphasis: **bold**, *italic*, `code`. Unclosed markers are emitted literally. */
-private fun parseInline(text: String): AnnotatedString = buildAnnotatedString {
+private fun parseInline(text: String, codeBackground: Color): AnnotatedString = buildAnnotatedString {
     var i = 0
     val n = text.length
     while (i < n) {
@@ -268,7 +275,7 @@ private fun parseInline(text: String): AnnotatedString = buildAnnotatedString {
             c == '`' -> {
                 val end = text.indexOf('`', i + 1)
                 if (end > i) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0x22FFFFFF))) {
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground)) {
                         append(text.substring(i + 1, end))
                     }
                     i = end + 1

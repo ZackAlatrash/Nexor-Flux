@@ -40,10 +40,9 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.aiIridescentRim
-import com.zack.recomptracker.ui.theme.CardBorder
+import androidx.compose.material3.MaterialTheme
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextFaint
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 private val ModalCorner = 24.dp
 
@@ -112,11 +111,13 @@ private fun BriefingGlassCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val surfaceBg = MaterialTheme.colorScheme.surface
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(ModalCorner))
-            .background(Color(0xF2140F22))
+            .background(surfaceBg)
             .drawBehind {
                 drawRect(accent.accent.copy(alpha = 0.05f))
                 drawRect(
@@ -126,7 +127,7 @@ private fun BriefingGlassCard(
                     ),
                 )
             }
-            .border(1.dp, CardBorder, RoundedCornerShape(ModalCorner))
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(ModalCorner))
             .aiIridescentRim(borderMode, ModalCorner)
             .heightIn(max = 640.dp)
             .verticalScroll(rememberScrollState())
@@ -138,6 +139,7 @@ private fun BriefingGlassCard(
 @Composable
 private fun BriefingHeader(showRefresh: Boolean, onRefresh: () -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -147,7 +149,7 @@ private fun BriefingHeader(showRefresh: Boolean, onRefresh: () -> Unit) {
             text = "WEEKLY REVIEW",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = TextFaint,
+            color = appColors.textFaint,
             letterSpacing = 0.14.sp,
         )
         Row(
@@ -171,18 +173,19 @@ private fun BriefingHeader(showRefresh: Boolean, onRefresh: () -> Unit) {
 
 @Composable
 private fun ColumnScope.UpsellBody(onOpenSettings: () -> Unit) {
+    val appColors = LocalAppColors.current
     Text(
         text = "Your weekly AI breakdown",
         fontSize = 17.sp,
         fontWeight = FontWeight.ExtraBold,
-        color = Color.White,
+        color = appColors.textPrimary,
         letterSpacing = (-0.3).sp,
     )
     Spacer(Modifier.height(6.dp))
     Text(
         text = "Weekly Review runs on cloud AI. Turn it on to get an AI read of your week — what's working, and what to change.",
         fontSize = 14.sp,
-        color = TextMuted,
+        color = appColors.textMuted,
         lineHeight = 20.sp,
     )
     Spacer(Modifier.height(16.dp))
@@ -191,11 +194,12 @@ private fun ColumnScope.UpsellBody(onOpenSettings: () -> Unit) {
 
 @Composable
 private fun ColumnScope.InsufficientBody(daysRemaining: Int) {
+    val appColors = LocalAppColors.current
     Text(
         text = "Building your first review",
         fontSize = 17.sp,
         fontWeight = FontWeight.ExtraBold,
-        color = Color.White,
+        color = appColors.textPrimary,
         letterSpacing = (-0.3).sp,
     )
     Spacer(Modifier.height(6.dp))
@@ -203,7 +207,7 @@ private fun ColumnScope.InsufficientBody(daysRemaining: Int) {
     Text(
         text = "Keep logging — about $daysRemaining more $dayWord of data and your first AI briefing unlocks.",
         fontSize = 14.sp,
-        color = TextMuted,
+        color = appColors.textMuted,
         lineHeight = 20.sp,
     )
 }
@@ -211,6 +215,7 @@ private fun ColumnScope.InsufficientBody(daysRemaining: Int) {
 @Composable
 private fun ColumnScope.GeneratingBody() {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(
             modifier = Modifier.size(18.dp),
@@ -218,13 +223,14 @@ private fun ColumnScope.GeneratingBody() {
             color = accent.accentLight,
         )
         Spacer(Modifier.width(12.dp))
-        Text("Reading your week…", fontSize = 14.sp, color = Color.White)
+        Text("Reading your week…", fontSize = 14.sp, color = appColors.textPrimary)
     }
 }
 
 @Composable
 private fun ColumnScope.ErrorBody(message: String, onRetry: () -> Unit) {
-    Text(message, fontSize = 14.sp, color = TextMuted, lineHeight = 20.sp)
+    val appColors = LocalAppColors.current
+    Text(message, fontSize = 14.sp, color = appColors.textMuted, lineHeight = 20.sp)
     Spacer(Modifier.height(16.dp))
     BriefingPrimaryButton(text = "Try again", onClick = onRetry, modifier = Modifier.fillMaxWidth())
 }
@@ -238,18 +244,19 @@ private fun ColumnScope.ReadyBody(
     onCancelApply: () -> Unit,
     onDiscussWithCoach: () -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     // Headline + narrative
     Text(
         text = briefing.headline,
         fontSize = 17.sp,
         fontWeight = FontWeight.ExtraBold,
-        color = Color.White,
+        color = appColors.textPrimary,
         lineHeight = 23.sp,
         letterSpacing = (-0.3).sp,
     )
     if (briefing.narrative.isNotBlank()) {
         Spacer(Modifier.height(8.dp))
-        Text(briefing.narrative, fontSize = 14.sp, color = Color.White.copy(alpha = 0.90f), lineHeight = 20.sp)
+        Text(briefing.narrative, fontSize = 14.sp, color = appColors.textPrimary.copy(alpha = 0.90f), lineHeight = 20.sp)
     }
 
     // Signals
@@ -272,12 +279,12 @@ private fun ColumnScope.ReadyBody(
         text = briefing.action.verdict,
         fontSize = 15.sp,
         fontWeight = FontWeight.ExtraBold,
-        color = Color.White,
+        color = appColors.textPrimary,
         letterSpacing = (-0.2).sp,
     )
     if (briefing.action.rationale.isNotBlank()) {
         Spacer(Modifier.height(4.dp))
-        Text(briefing.action.rationale, fontSize = 13.sp, color = TextMuted, lineHeight = 18.sp)
+        Text(briefing.action.rationale, fontSize = 13.sp, color = appColors.textMuted, lineHeight = 18.sp)
     }
 
     val applyTarget = briefing.action.applyTargetCalories
@@ -301,7 +308,7 @@ private fun ColumnScope.ReadyBody(
         Spacer(Modifier.height(14.dp))
         SectionLabel(text = "Watch next week")
         Spacer(Modifier.height(6.dp))
-        Text(briefing.watchNext, fontSize = 13.sp, color = TextMuted, lineHeight = 18.sp)
+        Text(briefing.watchNext, fontSize = 13.sp, color = appColors.textMuted, lineHeight = 18.sp)
     }
 
     // Discuss with coach
@@ -316,6 +323,7 @@ private fun ColumnScope.ReadyBody(
 @Composable
 private fun SignalRow(signal: SignalLine) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val arrow = when (signal.direction) {
         SignalDirection.UP -> "↑"
         SignalDirection.DOWN -> "↓"
@@ -327,7 +335,7 @@ private fun SignalRow(signal: SignalLine) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(signal.label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.92f))
+            Text(signal.label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary.copy(alpha = 0.92f))
             Text(
                 text = "${signal.value}  $arrow",
                 fontSize = 13.sp,
@@ -336,18 +344,19 @@ private fun SignalRow(signal: SignalLine) {
             )
         }
         if (signal.interpretation.isNotBlank()) {
-            Text(signal.interpretation, fontSize = 12.5.sp, color = TextMuted, lineHeight = 17.sp)
+            Text(signal.interpretation, fontSize = 12.5.sp, color = appColors.textMuted, lineHeight = 17.sp)
         }
     }
 }
 
 @Composable
 private fun ApplyConfirm(target: Int, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    val appColors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "Set your daily target to $target kcal?",
             fontSize = 14.sp,
-            color = Color.White,
+            color = appColors.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -372,6 +381,7 @@ private fun ApplyConfirm(target: Int, onConfirm: () -> Unit, onCancel: () -> Uni
 @Composable
 private fun BriefingPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(100))
@@ -381,19 +391,20 @@ private fun BriefingPrimaryButton(text: String, onClick: () -> Unit, modifier: M
             .padding(horizontal = 18.dp, vertical = 13.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
     }
 }
 
 @Composable
 private fun BriefingGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val appColors = LocalAppColors.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(100))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.65f))
+        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary.copy(alpha = 0.65f))
     }
 }
 
@@ -414,5 +425,6 @@ private fun ConfirmChip(text: String, color: Color, onClick: () -> Unit, modifie
 
 @Composable
 private fun BriefingDivider() {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(CardBorder))
+    val appColors = LocalAppColors.current
+    Box(Modifier.fillMaxWidth().height(1.dp).background(appColors.cardBorder))
 }

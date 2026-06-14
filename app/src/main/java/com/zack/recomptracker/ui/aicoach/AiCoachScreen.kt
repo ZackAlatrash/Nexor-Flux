@@ -46,7 +46,7 @@ import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 @Composable
 fun AiCoachScreen(
@@ -57,6 +57,7 @@ fun AiCoachScreen(
     val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
     val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
 
     val ambientOrb = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.15f), Color.Transparent))
@@ -98,14 +99,14 @@ fun AiCoachScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text(
                         text = "AI & Coach",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                 }
@@ -142,12 +143,12 @@ fun AiCoachScreen(
                                 text = "Enable AI",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = appColors.textPrimary,
                             )
                             Text(
                                 text = "Insights & coach chat",
                                 fontSize = 11.sp,
-                                color = TextMuted,
+                                color = appColors.textMuted,
                             )
                         }
                         VioletToggle(
@@ -208,7 +209,7 @@ fun AiCoachScreen(
                                 Spacer(Modifier.height(10.dp))
                                 Text(
                                     text = "Your logged data is sent to the API you configure. Switch to On-device to keep everything private.",
-                                    color = TextMuted,
+                                    color = appColors.textMuted,
                                     fontSize = 11.sp,
                                     lineHeight = 15.sp,
                                 )

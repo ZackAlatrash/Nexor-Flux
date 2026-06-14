@@ -18,8 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextFaint
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 /**
  * Generation-only renderer for the expanded per-kind insights (Progress / Recovery / Food).
@@ -37,26 +36,27 @@ fun GeneratedInsightCard(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val appColors = LocalAppColors.current
     when (state) {
         is AiInsightState.Generating -> {
             AiInsightCard(borderMode = AiBorderMode.Generating, modifier = modifier) {
                 InsightCardHeader(title = title, showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text(text = state.partialText, fontSize = 14.sp, color = Color.White, lineHeight = 20.sp)
+                Text(text = state.partialText, fontSize = 14.sp, color = appColors.textPrimary, lineHeight = 20.sp)
             }
         }
         is AiInsightState.Ready -> {
             AiInsightCard(borderMode = AiBorderMode.Ready, modifier = modifier) {
                 InsightCardHeader(title = title, showRefresh = true, onRefresh = onRetry)
                 Spacer(Modifier.height(8.dp))
-                Text(text = state.text, fontSize = 14.sp, color = Color.White, lineHeight = 20.sp)
+                Text(text = state.text, fontSize = 14.sp, color = appColors.textPrimary, lineHeight = 20.sp)
             }
         }
         is AiInsightState.Error -> {
             AiInsightCard(borderMode = AiBorderMode.Static, modifier = modifier) {
                 InsightCardHeader(title = title, showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text(text = state.message, fontSize = 13.sp, color = TextMuted)
+                Text(text = state.message, fontSize = 13.sp, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 TextButton(onClick = onRetry) { Text("Try again") }
             }
@@ -68,6 +68,7 @@ fun GeneratedInsightCard(
 @Composable
 private fun InsightCardHeader(title: String, showRefresh: Boolean, onRefresh: () -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -77,7 +78,7 @@ private fun InsightCardHeader(title: String, showRefresh: Boolean, onRefresh: ()
             text = title.uppercase(),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = TextFaint,
+            color = appColors.textFaint,
             letterSpacing = 0.14.sp,
         )
         Row(

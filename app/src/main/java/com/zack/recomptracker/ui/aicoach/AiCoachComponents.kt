@@ -38,8 +38,7 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextFaint
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 // ── AI Model Section ──────────────────────────────────────────────────────────
 
@@ -52,6 +51,7 @@ internal fun AiModelSection(
     onCancel: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     AiInsightCard(borderMode = AiBorderMode.Static) {
         AiModelHeader()
         Spacer(Modifier.height(10.dp))
@@ -72,13 +72,13 @@ internal fun AiModelSection(
                 Text(
                     "Download the on-device model to get AI explanations on the Stats screen.",
                     fontSize = 12.sp,
-                    color = TextMuted,
+                    color = appColors.textMuted,
                     lineHeight = 17.sp,
                 )
                 Text(
                     "~${selectedModel.displaySizeGb} · Wi-Fi recommended",
                     fontSize = 10.sp,
-                    color = TextFaint,
+                    color = appColors.textFaint,
                     modifier = Modifier.padding(top = 3.dp),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -94,7 +94,7 @@ internal fun AiModelSection(
                     Text(
                         "${"%.1f".format(progress * selectedModel.displaySizeGbFloat)} GB of ${selectedModel.displaySizeGb}",
                         fontSize = 11.sp,
-                        color = TextMuted,
+                        color = appColors.textMuted,
                     )
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(
@@ -102,7 +102,7 @@ internal fun AiModelSection(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    Text("Downloading…", fontSize = 11.sp, color = TextMuted)
+                    Text("Downloading…", fontSize = 11.sp, color = appColors.textMuted)
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -117,7 +117,7 @@ internal fun AiModelSection(
                 Text(
                     "Download failed — check your connection and try again.",
                     fontSize = 12.sp,
-                    color = TextMuted,
+                    color = appColors.textMuted,
                 )
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = onDownload) {
@@ -135,7 +135,7 @@ internal fun AiModelSection(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
                     )
-                    Text("Verifying download…", fontSize = 12.sp, color = TextMuted)
+                    Text("Verifying download…", fontSize = 12.sp, color = appColors.textMuted)
                 }
             }
 
@@ -163,7 +163,7 @@ internal fun AiModelSection(
                         Text(
                             "Model ready · ${selectedModel.displaySizeGb}",
                             fontSize = 12.sp,
-                            color = TextMuted,
+                            color = appColors.textMuted,
                         )
                     }
                     TextButton(onClick = onDelete) {
@@ -182,6 +182,7 @@ internal fun ModelVariantSelector(
     enabled: Boolean,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -192,10 +193,10 @@ internal fun ModelVariantSelector(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (isActive) accent.accent.copy(alpha = 0.16f) else Color(0x0FFFFFFF))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.16f) else appColors.cardSurface)
                     .border(
                         1.dp,
-                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else appColors.cardBorder,
                         RoundedCornerShape(10.dp),
                     )
                     .clickable(
@@ -212,12 +213,12 @@ internal fun ModelVariantSelector(
                         text = variant.displayName,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isActive) accent.accentLighter else Color.White.copy(alpha = if (enabled) 0.5f else 0.3f),
+                        color = if (isActive) accent.accentLighter else appColors.textPrimary.copy(alpha = if (enabled) 0.5f else 0.3f),
                     )
                     Text(
                         text = variant.displaySizeGb,
                         fontSize = 10.sp,
-                        color = if (isActive) accent.accentLight else TextFaint,
+                        color = if (isActive) accent.accentLight else appColors.textFaint,
                     )
                 }
             }
@@ -230,6 +231,7 @@ internal fun ModelVariantSelector(
 @Composable
 internal fun AiEngineSelector(backend: AiBackend, onSelect: (AiBackend) -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val options = listOf(
         Triple(AiBackend.LOCAL, "On-device", "Private · Gemma"),
         Triple(AiBackend.CLOUD, "Cloud", "API key · most capable"),
@@ -244,10 +246,10 @@ internal fun AiEngineSelector(backend: AiBackend, onSelect: (AiBackend) -> Unit)
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (isActive) accent.accent.copy(alpha = 0.16f) else Color(0x0FFFFFFF))
+                    .background(if (isActive) accent.accent.copy(alpha = 0.16f) else appColors.cardSurface)
                     .border(
                         1.dp,
-                        if (isActive) accent.accent.copy(alpha = 0.35f) else Color(0x14FFFFFF),
+                        if (isActive) accent.accent.copy(alpha = 0.35f) else appColors.cardBorder,
                         RoundedCornerShape(10.dp),
                     )
                     .clickable(
@@ -264,12 +266,12 @@ internal fun AiEngineSelector(backend: AiBackend, onSelect: (AiBackend) -> Unit)
                         text = title,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isActive) accent.accentLighter else Color.White.copy(alpha = 0.5f),
+                        color = if (isActive) accent.accentLighter else appColors.textPrimary.copy(alpha = 0.5f),
                     )
                     Text(
                         text = subtitle,
                         fontSize = 9.sp,
-                        color = if (isActive) accent.accentLight else TextFaint,
+                        color = if (isActive) accent.accentLight else appColors.textFaint,
                     )
                 }
             }
@@ -288,14 +290,15 @@ internal fun EngineRadioCard(
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) accent.tintedSurface else Color(0x0FFFFFFF))
+            .background(if (selected) accent.tintedSurface else appColors.cardSurface)
             .border(
                 1.dp,
-                if (selected) accent.tintedBorder else Color(0x14FFFFFF),
+                if (selected) accent.tintedBorder else appColors.cardBorder,
                 RoundedCornerShape(12.dp),
             )
             .clickable(
@@ -315,7 +318,7 @@ internal fun EngineRadioCard(
                 .clip(CircleShape)
                 .border(
                     1.5.dp,
-                    if (selected) accent.accentLight else Color(0x40FFFFFF),
+                    if (selected) accent.accentLight else appColors.textFaint,
                     CircleShape,
                 ),
             contentAlignment = Alignment.Center,
@@ -334,12 +337,12 @@ internal fun EngineRadioCard(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (selected) Color.White else Color.White.copy(alpha = 0.8f),
+                color = if (selected) appColors.textPrimary else appColors.textPrimary.copy(alpha = 0.8f),
             )
             Text(
                 text = subtitle,
                 fontSize = 11.sp,
-                color = TextMuted,
+                color = appColors.textMuted,
             )
         }
     }
@@ -356,6 +359,7 @@ private val CLOUD_PRESETS = listOf(
 
 @Composable
 internal fun ProviderPresetChips(onPick: (String) -> Unit) {
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -364,8 +368,8 @@ internal fun ProviderPresetChips(onPick: (String) -> Unit) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(7.dp))
-                    .background(Color(0x0FFFFFFF))
-                    .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(7.dp))
+                    .background(appColors.cardSurface)
+                    .border(1.dp, appColors.cardBorder, RoundedCornerShape(7.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -373,7 +377,7 @@ internal fun ProviderPresetChips(onPick: (String) -> Unit) {
                     )
                     .padding(horizontal = 10.dp, vertical = 5.dp),
             ) {
-                Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0x99FFFFFF))
+                Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary.copy(alpha = 0.60f))
             }
         }
     }
@@ -387,13 +391,14 @@ internal fun CloudStatusLine(
     testConnectionResult: String?,
     cloudHasKey: Boolean,
 ) {
+    val appColors = LocalAppColors.current
     val ok = testConnectionResult == "Connection OK"
     val (dot, label) = when {
         testingConnection -> Color(0xFFFBBF24) to "Testing…"
         ok -> Color(0xFF4ADE80) to "Connected"
         testConnectionResult != null -> Color(0xFFFC8181) to testConnectionResult
-        cloudHasKey -> Color(0x66FFFFFF) to "Configured · not tested"
-        else -> Color(0x66FFFFFF) to "Not configured"
+        cloudHasKey -> appColors.textDim to "Configured · not tested"
+        else -> appColors.textDim to "Not configured"
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -406,6 +411,7 @@ internal fun CloudStatusLine(
 
 @Composable
 internal fun AiModelHeader() {
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -415,7 +421,7 @@ internal fun AiModelHeader() {
             text = "AI MODEL",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = TextFaint,
+            color = appColors.textFaint,
             letterSpacing = 0.14.sp,
         )
         AiBadge()

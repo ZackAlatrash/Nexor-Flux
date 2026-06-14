@@ -744,4 +744,14 @@ class CoachToolExecutorTest {
         val result = executor.execute("search_web", mapOf("query" to "x"))
         assertEquals("""{"error":"web search unavailable"}""", result)
     }
+
+    @Test
+    fun `search_web with a blank query returns a requires-query error`() = runTest {
+        val provider = object : WebSearchProvider {
+            override suspend fun search(query: String): WebSearchResult? = null
+        }
+        val executor = CoachToolExecutor(mock(), mock(), fixedDateProvider, provider)
+        val result = executor.execute("search_web", mapOf("query" to "   "))
+        assertEquals("""{"error":"search_web requires 'query'"}""", result)
+    }
 }

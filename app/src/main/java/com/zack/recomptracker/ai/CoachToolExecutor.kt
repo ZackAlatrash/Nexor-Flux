@@ -277,8 +277,8 @@ class CoachToolExecutor(
     }
 
     private suspend fun searchWeb(args: Map<String, String>): String {
-        val query = args["query"]?.trim().orEmpty()
-        if (query.isEmpty()) return """{"error":"search_web requires 'query'"}"""
+        val query = args["query"]?.takeIf { it.isNotBlank() }?.trim()
+            ?: return """{"error":"search_web requires 'query'"}"""
         val provider = webSearchProvider ?: return """{"error":"web search unavailable"}"""
         val result = provider.search(query) ?: return """{"error":"web search unavailable"}"""
         return result.toToolJson()

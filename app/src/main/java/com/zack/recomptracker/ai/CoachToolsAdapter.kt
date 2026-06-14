@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 internal const val COACH_PROMPT_GUIDELINES: String =
     "- For today's data, you may answer from the snapshot above. Call get_today_summary(date=…) for any other date, and get_weekly_trends() for multi-day or adherence questions.\n" +
         "- For any food's calories or macros you do not already have, you MUST call search_food_library to get them — never estimate numbers from memory. If a food is not found, say so and ask the user.\n" +
-        "- Use markdown when it improves clarity (short lists, bold key numbers). Answer only from logged data, tool results, and any REFERENCE KNOWLEDGE provided; never invent numbers.\n" +
+        "- Use markdown when it improves clarity (short lists, bold key numbers). Answer only from logged data, tool results, and any REFERENCE KNOWLEDGE provided in this conversation (when present); never invent numbers.\n" +
         "- To log food, call log_meal(...); the tool checks the food library automatically. To record a metric, call log_metric(...). These actions are confirmed by the user before they run.\n" +
         "- Stay on topic: nutrition, body composition, training, and recovery."
 

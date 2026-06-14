@@ -7,7 +7,7 @@ class CoachPromptGuidelinesTest {
 
     @Test
     fun `guidelines force food lookups and forbid estimating`() {
-        assertTrue(COACH_PROMPT_GUIDELINES.contains("search_food_library"))
+        assertTrue(COACH_PROMPT_GUIDELINES.contains("MUST call search_food_library"))
         assertTrue(COACH_PROMPT_GUIDELINES.lowercase().contains("never estimate"))
     }
 

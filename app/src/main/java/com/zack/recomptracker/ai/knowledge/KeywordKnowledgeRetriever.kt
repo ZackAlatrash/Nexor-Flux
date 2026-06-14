@@ -64,5 +64,19 @@ class KeywordKnowledgeRetriever(
             s.lowercase()
                 .split(Regex("[^a-z0-9]+"))
                 .filter { it.length >= 2 && it !in STOPWORDS }
+                .map { stem(it) }
+
+        /**
+         * Light suffix stemmer so common word variants match (proteins→protein, training→train,
+         * meals→meal). Applied identically to query and corpus tokens, so the transform only needs
+         * to be self-consistent, not linguistically perfect. It handles inflectional endings only;
+         * irregular synonym pairs (lose/loss, sore/soreness) are still covered by tags.
+         */
+        fun stem(t: String): String = when {
+            t.length > 5 && t.endsWith("ing") -> t.dropLast(3)
+            t.length > 4 && t.endsWith("ed") -> t.dropLast(2)
+            t.length > 3 && t.endsWith("s") && !t.endsWith("ss") -> t.dropLast(1)
+            else -> t
+        }
     }
 }

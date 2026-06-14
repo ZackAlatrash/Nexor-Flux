@@ -45,4 +45,29 @@ class KeywordKnowledgeRetrieverTest {
         val hits = retriever.retrieve("protein sleep creatine recovery", 1)
         assertEquals(1, hits.size)
     }
+
+    @Test
+    fun `plural query term matches singular content via stemming`() {
+        // "proteins" should stem to "protein" and match the protein chunk.
+        val hits = retriever.retrieve("how many grams of proteins?", 3)
+        assertEquals("protein-1", hits.first().chunk.id)
+    }
+
+    @Test
+    fun `verb form in query matches root word via stemming`() {
+        val corpus = listOf(
+            KnowledgeChunk("train-1", "Train hard", listOf("train"), "S", "Train with enough volume."),
+        )
+        val hits = KeywordKnowledgeRetriever(corpus).retrieve("how should I be training?", 3)
+        assertEquals("train-1", hits.first().chunk.id)
+    }
+
+    @Test
+    fun `plural tag matches singular query via stemming`() {
+        val corpus = listOf(
+            KnowledgeChunk("meal-1", "Eating schedule", listOf("meals"), "S", "Plan your day."),
+        )
+        val hits = KeywordKnowledgeRetriever(corpus).retrieve("how many meal per day?", 3)
+        assertEquals("meal-1", hits.first().chunk.id)
+    }
 }

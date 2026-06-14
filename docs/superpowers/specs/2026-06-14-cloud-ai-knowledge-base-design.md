@@ -72,11 +72,26 @@ is openly-licensed / public-domain sources, where verbatim text is legally fine.
 3. **Synthesis from established consensus** — gap-filler only, for topics no clean source covers;
    drafted then user-verified.
 
-**v1 decision: build the starter corpus from Tier 1 now; layer in Tier-2 distilled notes from the
-user's own books afterward.** This delivers real content immediately without blocking on the user
-gathering material. The user remains the final accuracy/trust gate on all chunks.
+**v1 decision: build the starter corpus from Tier 1; layer in Tier-2 distilled notes from the
+user's own books afterward.** The user remains the final accuracy/trust gate on all chunks.
 
 This requires an offline **ingestion step** that converts sources into the shipped corpus.
+
+### Session scoping: code vs. content are separate sessions
+
+**This session ships the *code* only**, proven end-to-end against a **small seed corpus** — a
+handful of representative hand-written chunks (covering e.g. protein, a recovery topic, a food
+fact) that live in `knowledge-sources/` and double as test fixtures. The seed corpus is enough
+to verify retrieval ranking, injection, the token cap, the relevance floor, the grounding rule,
+and corpus-integrity validation all work correctly.
+
+**Real content authoring is a separate, later session** — gathering the Tier-1 open-access
+sources, distilling them (and the user's Tier-2 books) into cited notes, and re-running ingestion.
+Because the pipeline is file-in / re-run, that session adds content without touching code.
+
+**Definition of done for this session:** every component works perfectly against the seed corpus,
+all tests pass, and the build is green. Swapping the seed corpus for the real corpus later requires
+no code changes.
 
 ## Architecture
 
@@ -202,6 +217,8 @@ Raw PDF text extraction is only needed for the rare openly-licensed source we sh
 
 ## Out of scope
 
+- **Real knowledge content authoring** (gathering/distilling Tier-1 and Tier-2 sources) — a
+  separate later session. This session ships code + a small seed corpus only.
 - Any change to the local Gemma backend.
 - Semantic / vector retrieval (Option B) — deferred behind the `KnowledgeRetriever` interface.
 - Food-database expansion (USDA subset) — fast-follow only if enforcement proves insufficient.

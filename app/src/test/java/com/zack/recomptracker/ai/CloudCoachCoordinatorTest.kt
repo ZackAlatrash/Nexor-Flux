@@ -162,4 +162,29 @@ class CloudCoachCoordinatorTest {
         assertEquals(0, refCount)
         scope.cancel()
     }
+
+    @Test
+    fun `prior turn reference block is dropped on the next turn`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val client = ScriptedClient(
+            ArrayDeque(
+                listOf(
+                    ParsedChatResponse("First answer.", emptyList()),
+                    ParsedChatResponse("Second answer.", emptyList()),
+                ),
+            ),
+        )
+        val block = "=== REFERENCE KNOWLEDGE ===\n[1] Protein — eat protein (Source: ISSN)\n=== END REFERENCE ==="
+        val coach = CloudCoachCoordinator(flowOf(true), config(), client, FakeExecutor(), scope, FixedInjector(block))
+        advanceUntilIdle()
+        coach.sendMessage("first?")
+        advanceUntilIdle()
+        coach.sendMessage("second?")
+        advanceUntilIdle()
+        // After the 2nd turn, only ONE reference block should remain in the resent context — the
+        // prior turn's block was dropped rather than accumulated.
+        val refCount = client.lastMessages.count { it.content?.contains("REFERENCE KNOWLEDGE") == true }
+        assertEquals(1, refCount)
+        scope.cancel()
+    }
 }

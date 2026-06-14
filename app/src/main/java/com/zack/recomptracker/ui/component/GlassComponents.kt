@@ -295,7 +295,7 @@ fun GlassInputField(
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     var focused by remember { mutableStateOf(false) }
-    val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else Color(0x1AFFFFFF)
+    val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else appColors.frostedBorder
     val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -416,6 +416,7 @@ fun VioletToggle(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val appColors = LocalAppColors.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -425,7 +426,7 @@ fun VioletToggle(
             text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = LocalAppColors.current.textPrimary,
+            color = appColors.textPrimary,
         )
         Switch(
             checked = checked,
@@ -433,9 +434,9 @@ fun VioletToggle(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = LocalAppAccent.current.accent,
-                uncheckedThumbColor = Color(0x80FFFFFF),
-                uncheckedTrackColor = Color(0x1AFFFFFF),
-                uncheckedBorderColor = Color(0x26FFFFFF),
+                uncheckedThumbColor = appColors.textPrimary.copy(alpha = 0.50f),
+                uncheckedTrackColor = appColors.textPrimary.copy(alpha = 0.10f),
+                uncheckedBorderColor = appColors.textPrimary.copy(alpha = 0.15f),
             ),
         )
     }
@@ -452,11 +453,11 @@ fun GlassTextArea(
     minLines: Int = 2,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     var focused by remember { mutableStateOf(false) }
-    val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else Color(0x1AFFFFFF)
+    val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else appColors.frostedBorder
     val bgColor = if (focused) accent.tintedSurface else Color(0x40000000)
 
-    val appColors = LocalAppColors.current
     BasicTextField(
         value = value,
         onValueChange = onValueChange,

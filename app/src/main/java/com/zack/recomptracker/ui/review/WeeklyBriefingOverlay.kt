@@ -112,12 +112,11 @@ private fun BriefingGlassCard(
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    val surfaceBg = MaterialTheme.colorScheme.surface
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(ModalCorner))
-            .background(surfaceBg)
+            .background(appColors.frostedSurfaceFallback)
             .drawBehind {
                 drawRect(accent.accent.copy(alpha = 0.05f))
                 drawRect(

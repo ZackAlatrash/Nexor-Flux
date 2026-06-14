@@ -155,7 +155,7 @@ fun WeekCalorieStrip(
                         .take(2),
                     fontSize = if (sel) 9.sp else 8.sp,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                    color = if (sel) accent.accentLight else appColors.textMuted,
+                    color = if (sel) accent.accentLight else appColors.textDim,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )

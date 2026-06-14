@@ -57,8 +57,8 @@ import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.theme.CornerSmall
-import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -206,6 +206,7 @@ fun BodyRecoveryContent(
 
 @Composable
 private fun ScreenHeader(state: TodayUiState) {
+    val appColors = LocalAppColors.current
     val dateStr = remember(state.date) {
         state.date.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
@@ -220,10 +221,10 @@ private fun ScreenHeader(state: TodayUiState) {
             text = "Body",
             fontSize = 28.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
+            color = appColors.textPrimary,
             letterSpacing = (-0.8).sp,
         )
-        Text(text = dateStr, fontSize = 12.sp, color = TextMuted)
+        Text(text = dateStr, fontSize = 12.sp, color = appColors.textMuted)
     }
 }
 
@@ -257,7 +258,7 @@ private fun MetricsHeroCard(state: TodayUiState) {
                 showSparklineSlot = showSparklines,
                 modifier = Modifier.weight(1f).padding(end = 12.dp),
             )
-            Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(Color(0x0FFFFFFF)))
+            Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(LocalAppColors.current.cardBorder))
             MetricColumn(
                 value = state.lastLogWaistCm?.let { "%.1f".format(it) } ?: "—",
                 unit = "cm", label = "WAIST",
@@ -284,27 +285,28 @@ private fun MetricColumn(
     showSparklineSlot: Boolean = false,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 text = value,
                 fontSize = 36.sp, fontWeight = FontWeight.Black,
-                color = Color.White, letterSpacing = (-1.5).sp, lineHeight = 36.sp,
+                color = appColors.textPrimary, letterSpacing = (-1.5).sp, lineHeight = 36.sp,
             )
             if (value != "—") {
                 Text(
                     text = unit, fontSize = 13.sp,
-                    color = Color(0x66FFFFFF), modifier = Modifier.padding(bottom = 4.dp),
+                    color = appColors.textMuted, modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
         }
-        Text(text = label, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = TextMuted, letterSpacing = 0.10.sp)
+        Text(text = label, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = appColors.textMuted, letterSpacing = 0.10.sp)
         if (trend.isNotEmpty()) {
             Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = accent.accentLight)
         }
         if (showSparklineSlot) {
             Spacer(Modifier.height(10.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0x0FFFFFFF)))
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(appColors.cardBorder))
             Spacer(Modifier.height(8.dp))
             if (sparklineValues.isNotEmpty()) {
                 val minVal = remember(sparklineValues) { sparklineValues.min() }
@@ -312,9 +314,9 @@ private fun MetricColumn(
                 SparklineChart(values = sparklineValues, height = 64.dp, showGlowDot = true)
                 Spacer(Modifier.height(3.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("%.1f".format(minVal), fontSize = 8.sp, color = Color(0x28FFFFFF))
-                    Text("14 days", fontSize = 8.sp, color = Color(0x20FFFFFF))
-                    Text("%.1f".format(maxVal), fontSize = 8.sp, color = Color(0x28FFFFFF))
+                    Text("%.1f".format(minVal), fontSize = 8.sp, color = appColors.textFaint)
+                    Text("14 days", fontSize = 8.sp, color = appColors.textFaint)
+                    Text("%.1f".format(maxVal), fontSize = 8.sp, color = appColors.textFaint)
                 }
             } else {
                 Spacer(Modifier.height(77.dp))
@@ -356,15 +358,16 @@ private fun MetricTile(
     onClick: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val empty = value == null
     val valueAlpha by animateFloatAsState(if (empty) 0.28f else 1f, label = "tileAlpha_$label")
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(CornerSmall))
-            .background(if (empty) Color(0x08FFFFFF) else accent.accent.copy(alpha = 0.08f))
+            .background(if (empty) appColors.cardSurface else accent.accent.copy(alpha = 0.08f))
             .border(
                 1.dp,
-                if (empty) Color(0x0DFFFFFF) else accent.accent.copy(alpha = 0.18f),
+                if (empty) appColors.cardBorder else accent.accent.copy(alpha = 0.18f),
                 RoundedCornerShape(CornerSmall),
             )
             .clickable(
@@ -375,18 +378,18 @@ private fun MetricTile(
             .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(text = label, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = TextMuted, letterSpacing = 0.10.sp)
+        Text(text = label, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = appColors.textMuted, letterSpacing = 0.10.sp)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = value ?: "—",
                 fontSize = if (empty) 17.sp else 19.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White.copy(alpha = valueAlpha),
+                color = appColors.textPrimary.copy(alpha = valueAlpha),
                 letterSpacing = (-0.5).sp,
                 lineHeight = 20.sp,
             )
             if (unit.isNotEmpty() && !empty) {
-                Text(text = unit, fontSize = 8.sp, color = Color(0x4CFFFFFF), modifier = Modifier.padding(bottom = 2.dp))
+                Text(text = unit, fontSize = 8.sp, color = appColors.textMuted, modifier = Modifier.padding(bottom = 2.dp))
             }
         }
     }
@@ -409,7 +412,7 @@ private fun RecoveryBandCard(state: BodyCheckInFormState, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SectionLabel("Recovery")
-            Text(text = "tap to edit →", fontSize = 8.sp, color = Color(0x30FFFFFF))
+            Text(text = "tap to edit →", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
         }
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -423,6 +426,7 @@ private fun RecoveryBandCard(state: BodyCheckInFormState, onClick: () -> Unit) {
 @Composable
 private fun ScoreBar(label: String, score: Int) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val fraction by animateFloatAsState(targetValue = score / 10f, label = "bar_$label")
     val (barStart, barEnd, numColor) = when {
         score <= 4 -> Triple(Color(0xFFEF4444), Color(0xFFF97316), Color(0xFFEF4444))
@@ -436,14 +440,14 @@ private fun ScoreBar(label: String, score: Int) {
     ) {
         Text(
             text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-            color = Color(0xA6FFFFFF), modifier = Modifier.width(58.dp),
+            color = appColors.textDim, modifier = Modifier.width(58.dp),
         )
         Box(
             modifier = Modifier
                 .weight(1f)
                 .height(5.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(Color(0x12FFFFFF)),
+                .background(appColors.cardBorder),
         ) {
             Box(
                 modifier = Modifier
@@ -467,6 +471,7 @@ private fun ScoreBar(label: String, score: Int) {
 @Composable
 private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     NeutralCard(
         modifier = Modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
@@ -482,9 +487,9 @@ private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Check-in history",
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xBFFFFFFF),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = appColors.textDim,
                 )
-                Text(text = "$daysLogged days logged · tap to view all", fontSize = 10.sp, color = TextMuted)
+                Text(text = "$daysLogged days logged · tap to view all", fontSize = 10.sp, color = appColors.textMuted)
             }
             Text("→", fontSize = 16.sp, color = accent.accent.copy(alpha = 0.70f))
         }

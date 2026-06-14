@@ -60,12 +60,10 @@ import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
-import com.zack.recomptracker.ui.theme.CardBorder
-import com.zack.recomptracker.ui.theme.CardSurface
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
-import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import sh.calvin.reorderable.ReorderableItem
@@ -250,7 +248,7 @@ fun FoodContent(
                             text = "MEALS",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextMuted,
+                            color = LocalAppColors.current.textMuted,
                             letterSpacing = 0.12.sp,
                         )
                         LiquidActionButton(
@@ -342,6 +340,7 @@ private fun FoodScreenHeader(
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val dateStr = remember(date) {
         date.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
@@ -355,7 +354,7 @@ private fun FoodScreenHeader(
                 text = "Food Log",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = appColors.textPrimary,
                 letterSpacing = (-0.8).sp,
             )
             if (isFuture) {
@@ -385,7 +384,7 @@ private fun FoodScreenHeader(
             Text(
                 text = dateStr,
                 fontSize = 12.sp,
-                color = TextMuted,
+                color = appColors.textMuted,
                 modifier = Modifier.padding(horizontal = 2.dp),
             )
             DayNavButton(text = "›", onClick = onNextDay)
@@ -395,16 +394,17 @@ private fun FoodScreenHeader(
 
 @Composable
 private fun DayNavButton(text: String, onClick: () -> Unit) {
+    val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
             .size(26.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0x12FFFFFF))
-            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(8.dp))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 16.sp, color = Color(0xCCFFFFFF), fontWeight = FontWeight.Bold)
+        Text(text, fontSize = 16.sp, color = appColors.textDim, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -416,6 +416,7 @@ private fun ReconcilePlannedBanner(
     onConfirmAll: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -431,12 +432,12 @@ private fun ReconcilePlannedBanner(
                 text = "Planned meals not confirmed",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = appColors.textPrimary,
             )
             Text(
                 text = "You planned $plannedCalories kcal for this day. Did you eat it?",
                 fontSize = 10.sp,
-                color = TextMuted,
+                color = appColors.textMuted,
             )
         }
         LiquidActionButton(
@@ -472,12 +473,13 @@ private fun RestOfDayReveal(
 
 @Composable
 private fun StalePlannedHint(count: Int) {
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
-            .background(Color(0x14FFFFFF))
-            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(CornerCard))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -486,7 +488,7 @@ private fun StalePlannedHint(count: Int) {
         Text(
             text = "$count planned ${if (count == 1) "meal" else "meals"} on past days await confirmation — use ‹ to review.",
             fontSize = 10.sp,
-            color = TextMuted,
+            color = appColors.textMuted,
         )
     }
 }
@@ -514,6 +516,7 @@ private fun NutritionStrip(state: FoodLogUiState) {
         else     -> " kcal · ${zoneLow - cal} to zone"
     }
 
+    val appColors = LocalAppColors.current
     FrostedCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -525,13 +528,13 @@ private fun NutritionStrip(state: FoodLogUiState) {
                     text = String.format(Locale.US, "%,d", cal),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     letterSpacing = (-0.8).sp,
                 )
                 Text(
                     text = calSubText,
                     fontSize = 11.sp,
-                    color = Color(0x4DFFFFFF),
+                    color = appColors.textMuted,
                 )
             }
             VioletBadge(text = badgeText)
@@ -602,6 +605,7 @@ private fun MacroProgressItem(
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val animatedFrac by animateFloatAsState(
         targetValue = frac,
         animationSpec = tween(durationMillis = 900),
@@ -617,14 +621,14 @@ private fun MacroProgressItem(
                 text = label,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0x4DFFFFFF),
+                color = appColors.textMuted,
                 letterSpacing = 0.08.sp,
             )
             Text(
                 text = value,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = appColors.textPrimary,
                 letterSpacing = (-0.3).sp,
             )
         }
@@ -645,7 +649,7 @@ private fun MacroProgressItem(
                     ),
             )
         }
-        Text(text = remain, fontSize = 8.sp, color = Color(0x38FFFFFF))
+        Text(text = remain, fontSize = 8.sp, color = appColors.textVeryMuted)
     }
 }
 
@@ -670,9 +674,10 @@ private fun LockedSlotCard(
     onSaveSelection: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val hasEntries = slotWithEntries.entries.isNotEmpty()
-    val cardBg     = if (hasEntries) accent.accent.copy(alpha = 0.04f) else CardSurface
-    val cardBorder = if (hasEntries) accent.accent.copy(alpha = 0.18f) else CardBorder
+    val cardBg     = if (hasEntries) accent.accent.copy(alpha = 0.04f) else appColors.cardSurface
+    val cardBorder = if (hasEntries) accent.accent.copy(alpha = 0.18f) else appColors.cardBorder
 
     Column(
         modifier = Modifier
@@ -694,14 +699,14 @@ private fun LockedSlotCard(
                     text = slotWithEntries.slot.name,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     letterSpacing = 0.02.sp,
                 )
                 Text(
                     text = if (hasEntries) "${slotWithEntries.totals.calories} kcal" else "empty",
                     fontSize = 10.sp,
                     fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (hasEntries) accent.accentLight else TextMuted,
+                    color = if (hasEntries) accent.accentLight else appColors.textMuted,
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -712,12 +717,12 @@ private fun LockedSlotCard(
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0x0FFFFFFF))
-                                .border(1.dp, Color(0x17FFFFFF), RoundedCornerShape(8.dp))
+                                .background(appColors.cardSurface)
+                                .border(1.dp, appColors.cardBorder, RoundedCornerShape(8.dp))
                                 .clickable(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null) { menuOpen = true },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("⋯", fontSize = 15.sp, color = Color(0xBFFFFFFF))
+                            Text("⋯", fontSize = 15.sp, color = appColors.textDim)
                         }
                         androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             androidx.compose.material3.DropdownMenuItem(
@@ -760,7 +765,7 @@ private fun LockedSlotCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(1.dp)
-                                    .background(Color(0x0AFFFFFF)),
+                                    .background(appColors.cardBorder),
                             )
                         }
                         SlotEntryRow(
@@ -799,9 +804,9 @@ private fun LockedSlotCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0x0DFFFFFF)))
-                Text("nothing logged yet", fontSize = 10.sp, color = Color(0x26FFFFFF))
-                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0x0DFFFFFF)))
+                Box(modifier = Modifier.weight(1f).height(1.dp).background(appColors.cardBorder))
+                Text("nothing logged yet", fontSize = 10.sp, color = appColors.textFaint)
+                Box(modifier = Modifier.weight(1f).height(1.dp).background(appColors.cardBorder))
             }
         }
 
@@ -847,13 +852,14 @@ private fun SlotEntryRow(
     onToggleSelection: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     var showMacroEdit by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val amountEditable = entry.amountGrams != null && entry.basePer100Calories != null
     val planned = entry.planned
 
     // Planned entries read as "intentions": dimmer accent rail and text.
-    val nameColor = if (planned) Color(0x80FFFFFF) else Color(0xBFFFFFFF)
+    val nameColor = if (planned) appColors.textMuted else appColors.textDim
     val railColor = if (planned) accent.accent.copy(alpha = 0.55f) else accent.accent.copy(alpha = 0.30f)
 
     val macroStr = buildString {
@@ -885,10 +891,10 @@ private fun SlotEntryRow(
                 modifier = Modifier
                     .size(20.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isSelected) accentSel.accent else Color(0x14FFFFFF))
+                    .background(if (isSelected) accentSel.accent else appColors.cardSurface)
                     .border(
                         1.dp,
-                        if (isSelected) accentSel.accent else Color(0x33FFFFFF),
+                        if (isSelected) accentSel.accent else appColors.cardBorder,
                         RoundedCornerShape(6.dp),
                     ),
                 contentAlignment = Alignment.Center,
@@ -923,13 +929,13 @@ private fun SlotEntryRow(
                     }
                 }
             }
-            Text(text = macroStr, fontSize = 9.sp, color = Color(0x40FFFFFF))
+            Text(text = macroStr, fontSize = 9.sp, color = appColors.textFaint)
         }
         Text(
             text = "${entry.calories}",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0x66FFFFFF),
+            color = appColors.textMuted,
         )
         if (!isSelecting) {
             // Confirm button (planned → eaten) — replaces edit for confirmable plans
@@ -963,11 +969,11 @@ private fun SlotEntryRow(
                     modifier = Modifier
                         .size(26.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0x12FFFFFF))
+                        .background(appColors.cardSurface)
                         .clickable { onPostpone() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⤍", fontSize = 13.sp, color = Color(0x99FFFFFF))
+                    Text("⤍", fontSize = 13.sp, color = appColors.textDim)
                 }
             }
             // Delete button
@@ -1053,6 +1059,7 @@ private fun EditModeSlotCard(
     onDelete: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     var showRename        by remember { mutableStateOf(false) }
     var renameValue       by remember(slotWithEntries.slot.id) { mutableStateOf(slotWithEntries.slot.name) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -1068,8 +1075,8 @@ private fun EditModeSlotCard(
                 }
             }
             .clip(RoundedCornerShape(CornerCard))
-            .background(CardSurface)
-            .border(1.dp, CardBorder, RoundedCornerShape(CornerCard))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerCard))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1079,25 +1086,25 @@ private fun EditModeSlotCard(
             modifier = dragHandleModifier
                 .size(width = 32.dp, height = 44.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0x14FFFFFF))
-                .border(1.dp, Color(0x0FFFFFFF), RoundedCornerShape(8.dp)),
+                .background(appColors.cardSurface)
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector        = Icons.Default.DragHandle,
                 contentDescription = "Drag to reorder",
-                tint               = Color(0x47FFFFFF),
+                tint               = appColors.textMuted,
                 modifier           = Modifier.size(18.dp),
             )
         }
 
         // ── Slot info ─────────────────────────────────────────────────────────
         Column(modifier = Modifier.weight(1f)) {
-            Text(slotWithEntries.slot.name, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(slotWithEntries.slot.name, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
             Text(
                 "${slotWithEntries.entries.size} items · ${slotWithEntries.totals.calories} kcal",
                 fontSize = 11.sp,
-                color    = TextMuted,
+                color    = appColors.textMuted,
             )
         }
 

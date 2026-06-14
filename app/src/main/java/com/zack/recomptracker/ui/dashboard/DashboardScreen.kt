@@ -63,10 +63,8 @@ import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
-import com.zack.recomptracker.ui.theme.TextFaint
-import com.zack.recomptracker.ui.theme.TextMuted
-import com.zack.recomptracker.ui.theme.TextVeryMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import java.time.LocalDate
@@ -199,6 +197,7 @@ fun HomeDashboardContent(
 
 @Composable
 private fun ScreenHeader(modifier: Modifier = Modifier) {
+    val appColors = LocalAppColors.current
     val today = remember { LocalDate.now() }
     val dateStr = remember(today) {
         today.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
@@ -212,13 +211,13 @@ private fun ScreenHeader(modifier: Modifier = Modifier) {
             text = "Dashboard",
             fontSize = 28.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
+            color = appColors.textPrimary,
             letterSpacing = (-0.8).sp,
         )
         Text(
             text = dateStr,
             fontSize = 12.sp,
-            color = TextMuted,
+            color = appColors.textMuted,
         )
     }
 }
@@ -228,6 +227,7 @@ private fun ScreenHeader(modifier: Modifier = Modifier) {
 @Composable
 private fun TodayCard(state: DashboardUiState) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val prefs    = state.preferences
     val calories = state.todayTotals.calories
     val zoneLow  = prefs.calorieZoneLowerBound
@@ -263,7 +263,7 @@ private fun TodayCard(state: DashboardUiState) {
                 text = "TODAY",
                 fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextMuted,
+                color = appColors.textMuted,
                 letterSpacing = 0.10.sp,
             )
             VioletBadge(text = badgeText)
@@ -279,21 +279,21 @@ private fun TodayCard(state: DashboardUiState) {
                 text = String.format(Locale.US, "%,d", calories),
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White,
+                color = appColors.textPrimary,
                 letterSpacing = (-1.5).sp,
                 lineHeight = 36.sp,
             )
             Text(
                 text = "kcal",
                 fontSize = 13.sp,
-                color = Color(0x59FFFFFF),
+                color = appColors.textMuted,
                 fontWeight = FontWeight.Normal,
             )
             if (remainText.isNotEmpty()) {
                 Text(
                     text = remainText,
                     fontSize = 11.sp,
-                    color = TextMuted,
+                    color = appColors.textMuted,
                 )
             }
         }
@@ -315,13 +315,13 @@ private fun TodayCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("0", fontSize = 9.sp, color = TextVeryMuted)
+            Text("0", fontSize = 9.sp, color = appColors.textVeryMuted)
             Text(
                 "▌ $zoneLow–$zoneHigh",
                 fontSize = 9.sp,
                 color = accent.accent.copy(alpha = 0.65f),
             )
-            Text("$scaleMax", fontSize = 9.sp, color = TextVeryMuted)
+            Text("$scaleMax", fontSize = 9.sp, color = appColors.textVeryMuted)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -360,6 +360,7 @@ private fun MacroBarItem(
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val animatedFrac by animateFloatAsState(
         targetValue = fraction,
         animationSpec = ChartDefaults.AnimSpec.progressBar,
@@ -374,10 +375,10 @@ private fun MacroBarItem(
                 text = label,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextMuted,
+                color = appColors.textMuted,
                 letterSpacing = 0.07.sp,
             )
-            Text(text = value, fontSize = 9.sp, color = Color(0x80FFFFFF))
+            Text(text = value, fontSize = 9.sp, color = appColors.textDim)
         }
         Box(
             modifier = Modifier
@@ -404,6 +405,7 @@ private fun MacroBarItem(
 @Composable
 private fun SevenDayChartCard(state: DashboardUiState) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val inZone = state.inZoneDays7
 
     FrostedCard {
@@ -420,7 +422,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     text = String.format(java.util.Locale.US, "%,d kcal", scrubCalories!!.toInt()),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     letterSpacing = (-0.3).sp,
                 )
             } else {
@@ -480,7 +482,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                         text = day.label,
                         fontSize = 9.sp,
                         fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
-                        color = if (day.isToday) accent.accentLighter else TextVeryMuted,
+                        color = if (day.isToday) accent.accentLighter else appColors.textVeryMuted,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -493,7 +495,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(Color(0x0FFFFFFF)),
+                .background(appColors.cardBorder),
         )
         Spacer(Modifier.height(10.dp))
 
@@ -510,7 +512,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .width(1.dp)
                     .height(28.dp)
                     .align(Alignment.CenterVertically)
-                    .background(Color(0x12FFFFFF)),
+                    .background(appColors.cardBorder),
             )
             ChartStat(
                 value = state.adherencePercent.formatPercent(),
@@ -523,12 +525,12 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .width(1.dp)
                     .height(28.dp)
                     .align(Alignment.CenterVertically)
-                    .background(Color(0x12FFFFFF)),
+                    .background(appColors.cardBorder),
             )
             ChartStat(
                 value = "${state.loggedDaysInWindow} / 14",
                 label = "Days logged",
-                valueColor = Color.White,
+                valueColor = appColors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -543,6 +545,7 @@ private fun ChartStat(
     valueColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val appColors = LocalAppColors.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -559,7 +562,7 @@ private fun ChartStat(
             text = label,
             fontSize = 8.sp,
             fontWeight = FontWeight.Medium,
-            color = TextMuted,
+            color = appColors.textMuted,
             letterSpacing = 0.08.sp,
         )
     }
@@ -629,11 +632,12 @@ private fun StatTile(
     valueColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val appColors = LocalAppColors.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0x0AFFFFFF))
-            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -651,7 +655,7 @@ private fun StatTile(
                 text = label,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextMuted,
+                color = appColors.textMuted,
                 letterSpacing = 0.06.sp,
             )
         }
@@ -664,6 +668,7 @@ private fun StatTile(
 fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
+    val appColors = LocalAppColors.current
     // Key on result.key() so the effect only restarts when verdict/reasons/change differ —
     // not on every summary text update, which is not part of the dedup logic.
     LaunchedEffect(state.result.key()) {
@@ -691,7 +696,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White,
+                        tint = appColors.textPrimary,
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -699,13 +704,13 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
                         text = "Calorie Decision",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                     Text(
                         text = "Today's recommendation",
                         fontSize = 12.sp,
-                        color = TextMuted,
+                        color = appColors.textMuted,
                     )
                 }
             }
@@ -836,12 +841,13 @@ private fun AiInsightSection(
     onRetry: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
         if (aiState != AiInsightState.Disabled) {
             Text(
                 text = "AI explanations appear once a weekly verdict is ready.",
                 fontSize = 11.sp,
-                color = TextMuted,
+                color = appColors.textMuted,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
@@ -858,12 +864,12 @@ private fun AiInsightSection(
                 Text(
                     text = "Understand the reasoning behind this verdict.",
                     fontSize = 13.sp,
-                    color = TextMuted,
+                    color = appColors.textMuted,
                 )
                 Text(
                     text = "Requires a ~2.6 GB download · Wi-Fi recommended",
                     fontSize = 11.sp,
-                    color = TextMuted,
+                    color = appColors.textMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -882,7 +888,7 @@ private fun AiInsightSection(
                     Text(
                         text = "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
                         fontSize = 11.sp,
-                        color = TextMuted,
+                        color = appColors.textMuted,
                     )
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(
@@ -890,7 +896,7 @@ private fun AiInsightSection(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    Text("Downloading…", fontSize = 11.sp, color = TextMuted)
+                    Text("Downloading…", fontSize = 11.sp, color = appColors.textMuted)
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -905,7 +911,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text("Download failed — check your connection.", fontSize = 13.sp, color = TextMuted)
+                Text("Download failed — check your connection.", fontSize = 13.sp, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.Button(onClick = onDownload) { Text("Retry") }
             }
@@ -924,7 +930,7 @@ private fun AiInsightSection(
                         strokeWidth = 2.dp,
                         color = accent.accentLight,
                     )
-                    Text("Verifying download…", fontSize = 13.sp, color = TextMuted)
+                    Text("Verifying download…", fontSize = 13.sp, color = appColors.textMuted)
                 }
             }
         }
@@ -943,7 +949,7 @@ private fun AiInsightSection(
                         strokeWidth = 2.dp,
                         color = accent.accentLight,
                     )
-                    Text("Preparing model…", fontSize = 13.sp, color = TextMuted)
+                    Text("Preparing model…", fontSize = 13.sp, color = appColors.textMuted)
                 }
             }
         }
@@ -955,7 +961,7 @@ private fun AiInsightSection(
                 Text(
                     text = aiState.partialText,
                     fontSize = 14.sp,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     lineHeight = 20.sp,
                 )
             }
@@ -968,7 +974,7 @@ private fun AiInsightSection(
                 Text(
                     text = aiState.text,
                     fontSize = 14.sp,
-                    color = Color.White,
+                    color = appColors.textPrimary,
                     lineHeight = 20.sp,
                 )
             }
@@ -978,7 +984,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text(aiState.message, fontSize = 13.sp, color = TextMuted)
+                Text(aiState.message, fontSize = 13.sp, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
             }
@@ -993,6 +999,7 @@ private fun AiCardHeader(
     onRefresh: () -> Unit,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1002,7 +1009,7 @@ private fun AiCardHeader(
             text = title.uppercase(),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = TextFaint,
+            color = appColors.textFaint,
             letterSpacing = 0.14.sp,
         )
         Row(
@@ -1020,14 +1027,15 @@ private fun AiCardHeader(
 }
 
 @Composable
-private fun StatRow(label: String, value: String, valueColor: Color = Color.White) {
+private fun StatRow(label: String, value: String, valueColor: Color? = null) {
+    val appColors = LocalAppColors.current
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(label, fontSize = 13.sp, color = Color(0x99FFFFFF))
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
+        Text(label, fontSize = 13.sp, color = appColors.textDim)
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = valueColor ?: appColors.textPrimary)
     }
 }
 

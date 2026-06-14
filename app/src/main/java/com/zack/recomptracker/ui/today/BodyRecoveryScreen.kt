@@ -242,7 +242,7 @@ private fun MetricsHeroCard(state: TodayUiState) {
         Text(
             text = checkInLabel,
             fontSize = 9.sp, fontWeight = FontWeight.Bold,
-            color = accent.accentLight.copy(alpha = 0.80f), letterSpacing = 0.13.sp,
+            color = accent.inkLight.copy(alpha = 0.80f), letterSpacing = 0.13.sp,
         )
         Spacer(Modifier.height(14.dp))
 
@@ -302,7 +302,7 @@ private fun MetricColumn(
         }
         Text(text = label, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = appColors.textMuted, letterSpacing = 0.10.sp)
         if (trend.isNotEmpty()) {
-            Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = accent.accentLight)
+            Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = accent.inkLight)
         }
         if (showSparklineSlot) {
             Spacer(Modifier.height(10.dp))
@@ -491,7 +491,7 @@ private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
                 )
                 Text(text = "$daysLogged days logged · tap to view all", fontSize = 10.sp, color = appColors.textMuted)
             }
-            Text("→", fontSize = 16.sp, color = accent.accent.copy(alpha = 0.70f))
+            Text("→", fontSize = 16.sp, color = accent.inkBase.copy(alpha = 0.70f))
         }
     }
 }

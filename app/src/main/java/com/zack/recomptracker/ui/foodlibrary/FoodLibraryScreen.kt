@@ -253,7 +253,7 @@ fun FoodLibraryScreen(
                                 .padding(vertical = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(color = accent.accentLight)
+                            CircularProgressIndicator(color = accent.inkLight)
                         }
                     }
                 }
@@ -497,7 +497,7 @@ private fun FoodLibraryTopBar(
                 Text(
                     text = "$remainingCalories kcal remaining to zone",
                     fontSize = 11.sp,
-                    color = accent.accentLight.copy(alpha = 0.75f),
+                    color = accent.inkLight.copy(alpha = 0.75f),
                     fontWeight = FontWeight.SemiBold,
                 )
             }
@@ -580,7 +580,7 @@ private fun GlassSearchField(
                     Icon(
                         Icons.Default.CameraAlt,
                         contentDescription = "Scan barcode",
-                        tint = accent.accentLighter,
+                        tint = accent.inkLighter,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -643,7 +643,7 @@ private fun GlassFoodRow(
                             .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     ) {
-                        Text(item.sourceLabel, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.accent.copy(alpha = 0.70f))
+                        Text(item.sourceLabel, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.inkBase.copy(alpha = 0.70f))
                     }
                 }
             }
@@ -672,7 +672,7 @@ private fun GlassFoodRow(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 13.sp, color = accent.accentLight)
+                Text("✎", fontSize = 13.sp, color = accent.inkLight)
             }
         }
         // Add button
@@ -724,7 +724,7 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
                         .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Meal", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.accent.copy(alpha = 0.70f))
+                    Text("Meal", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.inkBase.copy(alpha = 0.70f))
                 }
             }
             Text(
@@ -792,7 +792,7 @@ private fun GlassRecipeRow(
                         .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Recipe", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.accent.copy(alpha = 0.70f))
+                    Text("Recipe", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.inkBase.copy(alpha = 0.70f))
                 }
             }
             Text(
@@ -817,7 +817,7 @@ private fun GlassRecipeRow(
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onEdit),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 13.sp, color = accent.accentLight)
+                Text("✎", fontSize = 13.sp, color = accent.inkLight)
             }
         }
         Box(

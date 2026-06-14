@@ -134,7 +134,7 @@ fun AiCoachScreen(
                             Icon(
                                 imageVector = Icons.Rounded.AutoAwesome,
                                 contentDescription = null,
-                                tint = accent.accent,
+                                tint = accent.inkBase,
                                 modifier = Modifier.size(20.dp),
                             )
                         }

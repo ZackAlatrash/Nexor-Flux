@@ -227,7 +227,7 @@ fun ProfileScreen(
                             text = "View ›",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = accent.accentLight,
+                            color = accent.inkLight,
                         )
                     }
                 }
@@ -486,7 +486,7 @@ private fun PickerRow(
             }
         }
         Spacer(Modifier.width(8.dp))
-        Text(text = "›", fontSize = 18.sp, color = accent.accentLight)
+        Text(text = "›", fontSize = 18.sp, color = accent.inkLight)
     }
 }
 

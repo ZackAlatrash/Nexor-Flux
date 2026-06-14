@@ -132,7 +132,7 @@ fun WeekCalorieStrip(
                 text = "$targetCalories",
                 fontSize = 7.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = accent.accent.copy(alpha = 0.50f),
+                color = accent.inkBase.copy(alpha = 0.50f),
                 textAlign = TextAlign.End,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -186,7 +186,7 @@ fun WeekCalorieStrip(
                     text = "Today",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = accent.accentLight,
+                    color = accent.inkLight,
                 )
             }
         }

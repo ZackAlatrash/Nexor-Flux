@@ -87,7 +87,7 @@ private fun InsightCardHeader(title: String, showRefresh: Boolean, onRefresh: ()
         ) {
             if (showRefresh) {
                 IconButton(onClick = onRefresh) {
-                    Text("↺", fontSize = 14.sp, color = accent.accentLight)
+                    Text("↺", fontSize = 14.sp, color = accent.inkLight)
                 }
             }
             AiBadge()

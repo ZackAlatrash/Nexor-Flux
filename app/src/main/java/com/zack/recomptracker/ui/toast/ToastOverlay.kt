@@ -136,7 +136,7 @@ private fun ToastItem(
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = toast.actionLabel,
-                color = accent.accentLighter,
+                color = accent.inkLighter,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable(

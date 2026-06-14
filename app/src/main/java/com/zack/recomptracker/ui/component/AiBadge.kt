@@ -31,7 +31,7 @@ fun AiBadge(modifier: Modifier = Modifier) {
             text = "✦ AI",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = accent.accentLight.copy(alpha = 0.75f),
+            color = accent.inkLight.copy(alpha = 0.75f),
         )
     }
 }

@@ -83,10 +83,11 @@ fun FrostedCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
+    val appColors = LocalAppColors.current
     var cardWidth by remember { mutableIntStateOf(0) }
-    val shimmerBrush = remember(cardWidth) {
+    val shimmerBrush = remember(cardWidth, appColors.glassShimmer) {
         Brush.horizontalGradient(
-            colors = listOf(Color.Transparent, Color(0x33FFFFFF), Color(0x33FFFFFF), Color.Transparent),
+            colors = listOf(Color.Transparent, appColors.glassShimmer, appColors.glassShimmer, Color.Transparent),
             startX = cardWidth * 0.12f,
             endX   = cardWidth * 0.88f,
         )
@@ -104,7 +105,7 @@ fun FrostedCard(
                     blur(12f.dp.toPx())
                 },
                 onDrawSurface = {
-                    drawRect(Color(0x33000000))
+                    drawRect(appColors.glassOverlay)
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
                         brush = shimmerBrush,
@@ -114,7 +115,7 @@ fun FrostedCard(
                     )
                 }
             )
-            .border(1.dp, LocalAppColors.current.frostedBorder, RoundedCornerShape(CornerCard))
+            .border(1.dp, appColors.frostedBorder, RoundedCornerShape(CornerCard))
             .padding(contentPadding),
         content = content,
     )
@@ -189,7 +190,7 @@ fun VioletBadge(text: String, modifier: Modifier = Modifier) {
         text = text,
         bg = accent.accent.copy(alpha = 0.12f),
         border = accent.accent.copy(alpha = 0.20f),
-        textColor = accent.accentLight,
+        textColor = accent.inkLight,
         modifier = modifier,
     )
 }
@@ -213,7 +214,7 @@ fun VioletBadge(
                 text = text,
                 bg = accent.accent.copy(alpha = 0.12f),
                 border = accent.accent.copy(alpha = 0.20f),
-                textColor = accent.accentLight,
+                textColor = accent.inkLight,
                 modifier = modifier,
                 compact = compact,
             )
@@ -379,7 +380,7 @@ fun VioletSlider(
                     text = value.toString(),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = accent.accentLight,
+                    color = accent.inkLight,
                 )
             }
         }
@@ -529,7 +530,7 @@ fun ScoreStepper(
                     text = value.toString(),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = accent.accentLight,
+                    color = accent.inkLight,
                 )
             }
             LiquidStepButton(

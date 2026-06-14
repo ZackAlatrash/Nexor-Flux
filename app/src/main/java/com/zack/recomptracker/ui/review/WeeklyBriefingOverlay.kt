@@ -159,7 +159,7 @@ private fun BriefingHeader(showRefresh: Boolean, onRefresh: () -> Unit) {
                 Text(
                     text = "↺",
                     fontSize = 15.sp,
-                    color = accent.accentLight,
+                    color = accent.inkLight,
                     modifier = Modifier.clickable(onClick = onRefresh).padding(2.dp),
                 )
             }
@@ -219,7 +219,7 @@ private fun ColumnScope.GeneratingBody() {
         CircularProgressIndicator(
             modifier = Modifier.size(18.dp),
             strokeWidth = 2.dp,
-            color = accent.accentLight,
+            color = accent.inkLight,
         )
         Spacer(Modifier.width(12.dp))
         Text("Reading your week…", fontSize = 14.sp, color = appColors.textPrimary)
@@ -339,7 +339,7 @@ private fun SignalRow(signal: SignalLine) {
                 text = "${signal.value}  $arrow",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = accent.accentLight,
+                color = accent.inkLight,
             )
         }
         if (signal.interpretation.isNotBlank()) {

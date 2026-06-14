@@ -421,7 +421,7 @@ internal fun MenuIcon(icon: ImageVector) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = accent.accent,
+            tint = accent.inkBase,
             modifier = Modifier.size(18.dp),
         )
     }

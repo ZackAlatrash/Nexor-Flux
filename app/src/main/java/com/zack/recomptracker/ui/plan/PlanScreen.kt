@@ -283,7 +283,7 @@ private fun GenerateHeroCard(onClick: () -> Unit) {
             Icon(
                 Icons.Default.AutoAwesome,
                 contentDescription = null,
-                tint = accent.accentLighter,
+                tint = accent.inkLighter,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -304,7 +304,7 @@ private fun GenerateHeroCard(onClick: () -> Unit) {
             "Run ›",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = accent.accentLight,
+            color = accent.inkLight,
         )
     }
 }

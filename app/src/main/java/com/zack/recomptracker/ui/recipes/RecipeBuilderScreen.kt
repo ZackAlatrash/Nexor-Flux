@@ -256,7 +256,7 @@ fun RecipeBuilderScreen(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ Add ingredient", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = accent.accentLighter)
+                    Text("+ Add ingredient", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = accent.inkLighter)
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -268,7 +268,7 @@ fun RecipeBuilderScreen(
             Spacer(Modifier.height(8.dp))
             if (state.isSaving) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = accent.accentLight)
+                    CircularProgressIndicator(color = accent.inkLight)
                 }
             } else {
                 LiquidPrimaryButton(

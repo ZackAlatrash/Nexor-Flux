@@ -369,7 +369,7 @@ private fun FoodScreenHeader(
                         text = "PLANNING",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = accent.accentLight,
+                        color = accent.inkLight,
                         letterSpacing = 0.10.sp,
                     )
                 }
@@ -549,7 +549,7 @@ private fun NutritionStrip(state: FoodLogUiState) {
                        else "$plannedCal kcal planned",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = LocalAppAccent.current.accentLight.copy(alpha = 0.85f),
+                color = LocalAppAccent.current.inkLight.copy(alpha = 0.85f),
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -825,7 +825,7 @@ private fun LockedSlotCard(
                     "${selectedIds.size} selected",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = accentBar.accentLight,
+                    color = accentBar.inkLight,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LiquidActionButton(text = "Cancel", onClick = onCancelSelection, isPrimary = false, small = true)
@@ -926,7 +926,7 @@ private fun SlotEntryRow(
                             .border(1.dp, accent.accent.copy(alpha = 0.34f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                     ) {
-                        Text("Planned", fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = accent.accentLight)
+                        Text("Planned", fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = accent.inkLight)
                     }
                 }
             }
@@ -961,7 +961,7 @@ private fun SlotEntryRow(
                         .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("✎", fontSize = 12.sp, color = accent.accentLight)
+                    Text("✎", fontSize = 12.sp, color = accent.inkLight)
                 }
             }
             // Postpone button (move to next day) — only when not viewing a past day
@@ -1119,7 +1119,7 @@ private fun EditModeSlotCard(
                     .clickable { showRename = true; renameValue = slotWithEntries.slot.name }
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Text("Rename", fontSize = 11.sp, color = accent.accentLight)
+                Text("Rename", fontSize = 11.sp, color = accent.inkLight)
             }
             Box(
                 modifier = Modifier

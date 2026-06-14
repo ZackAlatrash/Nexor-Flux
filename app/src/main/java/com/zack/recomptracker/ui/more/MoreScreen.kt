@@ -217,7 +217,7 @@ private fun CalorieDecisionCard(
                 text = "CALORIE DECISION",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = accent.accentLight,
+                color = accent.inkLight,
                 letterSpacing = 0.12.sp,
             )
             Text("›", fontSize = 16.sp, color = appColors.textDim)

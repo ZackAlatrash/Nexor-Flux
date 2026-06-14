@@ -319,7 +319,7 @@ private fun TodayCard(state: DashboardUiState) {
             Text(
                 "▌ $zoneLow–$zoneHigh",
                 fontSize = 9.sp,
-                color = accent.accent.copy(alpha = 0.65f),
+                color = accent.inkBase.copy(alpha = 0.65f),
             )
             Text("$scaleMax", fontSize = 9.sp, color = appColors.textVeryMuted)
         }
@@ -430,7 +430,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     text = "LAST 7 DAYS",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = accent.accentLight.copy(alpha = 0.85f),
+                    color = accent.inkLight.copy(alpha = 0.85f),
                     letterSpacing = 0.13.sp,
                 )
             }
@@ -453,7 +453,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     text = "$inZone of 7 in zone",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = accent.accentLighter,
+                    color = accent.inkLighter,
                 )
             }
         }
@@ -783,7 +783,7 @@ private fun VerdictHero(result: AdjustmentResult) {
                 text = "TODAY'S VERDICT",
                 fontSize = 9.5.sp,
                 fontWeight = FontWeight.Bold,
-                color = accent.accentLight,
+                color = accent.inkLight,
                 letterSpacing = 1.2.sp,
             )
             Spacer(Modifier.height(7.dp))
@@ -800,7 +800,7 @@ private fun VerdictHero(result: AdjustmentResult) {
                 text = deltaText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = accent.accentLighter,
+                color = accent.inkLighter,
             )
 
             val reasons = result.reasonCodes.filter { it.isNotBlank() }
@@ -930,7 +930,7 @@ private fun AiInsightSection(
                     androidx.compose.material3.CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = accent.accentLight,
+                        color = accent.inkLight,
                     )
                     Text("Verifying download…", fontSize = 13.sp, color = appColors.textMuted)
                 }
@@ -949,7 +949,7 @@ private fun AiInsightSection(
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = accent.accentLight,
+                        color = accent.inkLight,
                     )
                     Text("Preparing model…", fontSize = 13.sp, color = appColors.textMuted)
                 }
@@ -1020,7 +1020,7 @@ private fun AiCardHeader(
         ) {
             if (showRefresh) {
                 androidx.compose.material3.IconButton(onClick = onRefresh) {
-                    Text("↺", fontSize = 14.sp, color = accent.accentLight)
+                    Text("↺", fontSize = 14.sp, color = accent.inkLight)
                 }
             }
             AiBadge()

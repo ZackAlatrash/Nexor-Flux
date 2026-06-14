@@ -1,0 +1,72 @@
+{
+  "chunks": [
+    {
+      "id": "energy-balance-1",
+      "title": "Energy balance and body recomposition",
+      "tags": [
+        "calories",
+        "deficit",
+        "surplus",
+        "fat-loss"
+      ],
+      "source": "Dietary Guidelines / energy balance basics",
+      "text": "Fat loss requires eating fewer calories than you burn; muscle gain is supported by adequate protein and roughly maintenance-or-slightly-above calories. A moderate deficit of about 300 to 500 calories per day supports fat loss while preserving muscle when protein is high and training is hard."
+    },
+    {
+      "id": "energy-balance-2",
+      "title": "Rate of weight change",
+      "tags": [
+        "calories",
+        "deficit",
+        "surplus",
+        "fat-loss"
+      ],
+      "source": "Dietary Guidelines / energy balance basics",
+      "text": "A sustainable rate of fat loss is about 0.5 to 1 percent of bodyweight per week. Faster loss raises the risk of muscle loss and low energy. If weight is dropping much faster than this, a small calorie increase is usually warranted."
+    },
+    {
+      "id": "protein-intake-1",
+      "title": "Daily protein target for muscle gain",
+      "tags": [
+        "protein",
+        "muscle",
+        "recomposition"
+      ],
+      "source": "ISSN Position Stand — Protein and Exercise (2017)",
+      "text": "For building or retaining muscle during body recomposition, aim for roughly 1.6 to 2.2 grams of protein per kilogram of bodyweight per day. Intakes in this range maximize muscle protein synthesis for most trainees; going higher offers little additional benefit for muscle."
+    },
+    {
+      "id": "protein-intake-2",
+      "title": "Protein distribution across the day",
+      "tags": [
+        "protein",
+        "muscle",
+        "recomposition"
+      ],
+      "source": "ISSN Position Stand — Protein and Exercise (2017)",
+      "text": "Spreading protein across three to four meals of about 0.4 grams per kilogram each is a practical way to support muscle protein synthesis throughout the day. Total daily protein matters most, but even distribution is a reasonable default."
+    },
+    {
+      "id": "recovery-sleep-1",
+      "title": "Sleep duration for recovery",
+      "tags": [
+        "sleep",
+        "recovery",
+        "fatigue"
+      ],
+      "source": "NIH / Sleep Foundation guidance",
+      "text": "Most adults need seven to nine hours of sleep per night. Consistently getting less impairs recovery, raises perceived effort in training, and can blunt muscle gain and fat loss. Prioritize sleep when recovery scores are low."
+    },
+    {
+      "id": "recovery-sleep-2",
+      "title": "Managing high soreness and low energy",
+      "tags": [
+        "sleep",
+        "recovery",
+        "fatigue"
+      ],
+      "source": "NIH / Sleep Foundation guidance",
+      "text": "Persistent soreness, low energy, and poor sleep together signal under-recovery. Reducing training volume for a few days, ensuring adequate protein and calories, and improving sleep usually restores readiness faster than pushing through."
+    }
+  ]
+}

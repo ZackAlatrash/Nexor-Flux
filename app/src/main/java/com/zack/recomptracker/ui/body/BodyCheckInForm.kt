@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.component.GlassInputField
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.component.GlassTextArea
 import com.zack.recomptracker.ui.component.MessageText
@@ -52,11 +52,12 @@ data class BodyCheckInFormActions(
 )
 
 private val Divider: @Composable () -> Unit = {
+    val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(Color(0x0DFFFFFF)),
+            .background(appColors.cardBorder),
     )
 }
 

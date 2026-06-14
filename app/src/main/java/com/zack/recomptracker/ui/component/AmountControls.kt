@@ -19,14 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.ui.theme.CornerSmall
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 /** Whether an amount is entered as servings or grams. */
 enum class AmountMode { SERVINGS, GRAMS }
@@ -40,6 +39,7 @@ fun AmountStepper(
     caption: String,
     suffix: String,
 ) {
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -49,8 +49,8 @@ fun AmountStepper(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(CornerSmall))
-                .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerSmall))
+                .background(appColors.cardSurface)
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerSmall))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -58,7 +58,7 @@ fun AmountStepper(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text("−", fontSize = 20.sp, color = Color.White)
+            Text("−", fontSize = 20.sp, color = appColors.textPrimary)
         }
         Column(modifier = Modifier.weight(1f)) {
             OutlinedTextField(
@@ -70,15 +70,15 @@ fun AmountStepper(
                 modifier = Modifier.fillMaxWidth(),
             )
             if (caption.isNotBlank()) {
-                Text(caption, color = TextMuted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(caption, color = appColors.textMuted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(CornerSmall))
-                .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(CornerSmall))
+                .background(appColors.cardSurface)
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerSmall))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -86,15 +86,16 @@ fun AmountStepper(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 20.sp, color = Color.White)
+            Text("+", fontSize = 20.sp, color = appColors.textPrimary)
         }
     }
 }
 
 @Composable
 fun AmountPreviewStat(label: String, value: String) {
+    val appColors = LocalAppColors.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-        Text(label, color = TextMuted, fontSize = 10.sp)
+        Text(label, color = appColors.textMuted, fontSize = 10.sp)
     }
 }

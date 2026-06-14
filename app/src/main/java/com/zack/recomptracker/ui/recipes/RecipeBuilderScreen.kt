@@ -55,11 +55,10 @@ import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
-import com.zack.recomptracker.ui.theme.CardBorder
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
-import com.zack.recomptracker.ui.theme.TextMuted
 import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 @Composable
 fun RecipeBuilderScreen(
@@ -72,6 +71,7 @@ fun RecipeBuilderScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val navigateBack by viewModel.navigateBack.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
 
     // New ingredient picked from FoodLibraryScreen picker mode
     LaunchedEffect(pickedIngredientJson) {
@@ -107,15 +107,15 @@ fun RecipeBuilderScreen(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x0FFFFFFF))
-                    .border(1.dp, Color(0x17FFFFFF), RoundedCornerShape(10.dp))
+                    .background(appColors.cardSurface)
+                    .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
                     .clickable(remember { MutableInteractionSource() }, null, onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color(0xBFFFFFFF),
+                    tint = appColors.textPrimary.copy(alpha = 0xBF / 255f),
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -123,7 +123,7 @@ fun RecipeBuilderScreen(
                 if (state.recipeId == null) "New Recipe" else "Edit Recipe",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = appColors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
             if (state.recipeId != null) {
@@ -131,8 +131,8 @@ fun RecipeBuilderScreen(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0x0FFFFFFF))
-                        .border(1.dp, Color(0x17FFFFFF), RoundedCornerShape(10.dp))
+                        .background(appColors.cardSurface)
+                        .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
                         .clickable(remember { MutableInteractionSource() }, null, onClick = viewModel::delete),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -210,7 +210,7 @@ fun RecipeBuilderScreen(
                             .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("No ingredients yet. Tap below to add some.", color = TextMuted, fontSize = 13.sp)
+                        Text("No ingredients yet. Tap below to add some.", color = appColors.textMuted, fontSize = 13.sp)
                     }
                 }
             } else {
@@ -230,10 +230,10 @@ fun RecipeBuilderScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(shape)
-                            .background(Color(0x0FFFFFFF)),
+                            .background(appColors.cardSurface),
                     ) {
                         if (!isFirst) {
-                            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x0AFFFFFF)))
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(appColors.cardBorder))
                         }
                         IngredientRow(
                             ingredient = ingredient,
@@ -250,8 +250,8 @@ fun RecipeBuilderScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(CornerSmall))
-                        .background(Color(0x0DFFFFFF))
-                        .border(1.dp, CardBorder, RoundedCornerShape(CornerSmall))
+                        .background(appColors.cardSurface)
+                        .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerSmall))
                         .clickable(remember { MutableInteractionSource() }, null, onClick = onNavigateToFoodPicker)
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center,
@@ -290,6 +290,7 @@ private fun IngredientRow(
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val appColors = LocalAppColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,7 +308,7 @@ private fun IngredientRow(
                 ingredient.name,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
-                color = Color.White,
+                color = appColors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -315,15 +316,15 @@ private fun IngredientRow(
             Text(
                 "$amountText · ${ingredient.calories} kcal  P${ingredient.proteinG.toInt()}g  C${ingredient.carbsG.toInt()}g  F${ingredient.fatG.toInt()}g",
                 fontSize = 11.sp,
-                color = TextMuted,
+                color = appColors.textMuted,
             )
         }
         Box(
             modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(7.dp))
-                .background(Color(0x0DFFFFFF))
-                .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(7.dp))
+                .background(appColors.cardSurface)
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(7.dp))
                 .clickable(remember { MutableInteractionSource() }, null, onClick = onRemove),
             contentAlignment = Alignment.Center,
         ) {
@@ -338,6 +339,7 @@ private fun IngredientAmountSheet(
     editor: IngredientEditorState,
     viewModel: RecipeBuilderViewModel,
 ) {
+    val appColors = LocalAppColors.current
     val sheetState = rememberModalBottomSheetState()
     ModalBottomSheet(
         onDismissRequest = viewModel::cancelIngredientEdit,
@@ -350,7 +352,7 @@ private fun IngredientAmountSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(editor.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            Text(editor.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = appColors.textPrimary)
 
             if (editor.scalable) {
                 if (editor.hasServings) {

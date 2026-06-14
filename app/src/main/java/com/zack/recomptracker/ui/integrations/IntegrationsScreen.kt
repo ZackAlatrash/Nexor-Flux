@@ -51,6 +51,7 @@ import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.settings.SettingsViewModel
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -132,6 +133,7 @@ fun IntegrationsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    val appColors = LocalAppColors.current
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -142,14 +144,14 @@ fun IntegrationsScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text(
                         text = "Integrations",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                 }

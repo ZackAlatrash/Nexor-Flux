@@ -56,7 +56,7 @@ import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
-import com.zack.recomptracker.ui.theme.TextMuted
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
 
 @Composable
@@ -127,6 +127,7 @@ fun DataBackupScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    val appColors = LocalAppColors.current
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -137,14 +138,14 @@ fun DataBackupScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White,
+                            tint = appColors.textPrimary,
                         )
                     }
                     Text(
                         text = "Data & Backup",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = appColors.textPrimary,
                         letterSpacing = (-0.8).sp,
                     )
                 }
@@ -321,10 +322,11 @@ private fun DataRow(
     danger: Boolean = false,
 ) {
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     val iconTint = if (danger) ErrorRed else accent.accent
-    val titleColor = if (danger) ErrorRed else Color.White
-    val chevronColor = if (danger) ErrorRed else Color(0x33FFFFFF)
-    val dividerColor = if (danger) ErrorRed.copy(alpha = 0.12f) else Color(0x0DFFFFFF)
+    val titleColor = if (danger) ErrorRed else appColors.textPrimary
+    val chevronColor = if (danger) ErrorRed else appColors.textPrimary.copy(alpha = 0.2f)
+    val dividerColor = if (danger) ErrorRed.copy(alpha = 0.12f) else appColors.cardBorder
 
     Column {
         Row(
@@ -352,7 +354,7 @@ private fun DataRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = titleColor)
-                Text(detail, fontSize = 11.sp, color = TextMuted)
+                Text(detail, fontSize = 11.sp, color = appColors.textMuted)
             }
             Text(text = "›", fontSize = 18.sp, color = chevronColor)
         }

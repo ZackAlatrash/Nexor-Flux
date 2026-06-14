@@ -37,6 +37,11 @@ import com.zack.recomptracker.ai.RecipeNamer
 import com.zack.recomptracker.ai.RoutingCoachCoordinator
 import com.zack.recomptracker.ai.RoutingInsightCoordinator
 import com.zack.recomptracker.ai.RoutingRecipeNamer
+import com.zack.recomptracker.ai.knowledge.KeywordKnowledgeRetriever
+import com.zack.recomptracker.ai.knowledge.KnowledgeCorpus
+import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.RetrievalKnowledgeInjector
 import com.zack.recomptracker.data.preferences.SecureKeyStore
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
@@ -254,6 +259,16 @@ class AppContainer(context: Context) {
         uiPreferences.aiInsightsEnabled,
         cloudConfigComplete,
     ) { enabled, complete -> enabled && complete }
+    // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
+    // invalid, so a bad ingestion run can never crash the app.
+    private val knowledgeInjector: KnowledgeInjector = runCatching {
+        val raw = context.applicationContext.assets
+            .open("knowledge/corpus.json")
+            .bufferedReader()
+            .use { it.readText() }
+        RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
+    }.getOrElse { NoOpKnowledgeInjector }
+
     private val cloudCoachCoordinator: CoachCoordinator = CloudCoachCoordinator(
         cloudReadyFlow = cloudReadyFlow,
         configFlow = cloudConfigFlow,
@@ -266,6 +281,7 @@ class AppContainer(context: Context) {
             handoffStore = coachHandoffStore,
         ),
         scope = appScope,
+        knowledgeInjector = knowledgeInjector,
     )
 
     // ── Routers (handed out to ViewModels) ──────────────────────────────────────────

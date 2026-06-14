@@ -124,6 +124,11 @@ class UiPreferences(private val context: Context) {
                 ?: com.zack.recomptracker.ui.theme.AccentTheme.VIOLET
         }
 
+    val themeMode: kotlinx.coroutines.flow.Flow<com.zack.recomptracker.ui.theme.ThemeMode> =
+        context.uiDataStore.data.map {
+            com.zack.recomptracker.ui.theme.ThemeMode.fromStored(it[Keys.ThemeMode])
+        }
+
     suspend fun setFont(font: String) {
         context.uiDataStore.edit { it[Keys.SelectedFont] = font }
     }
@@ -134,6 +139,10 @@ class UiPreferences(private val context: Context) {
 
     suspend fun setAccentTheme(theme: com.zack.recomptracker.ui.theme.AccentTheme) {
         context.uiDataStore.edit { it[Keys.AccentTheme] = theme.name }
+    }
+
+    suspend fun setThemeMode(mode: com.zack.recomptracker.ui.theme.ThemeMode) {
+        context.uiDataStore.edit { it[Keys.ThemeMode] = mode.storageValue }
     }
 
     /**
@@ -172,6 +181,7 @@ class UiPreferences(private val context: Context) {
         val PendingDownloadId = longPreferencesKey("pending_download_id")
         val SelectedModelVariant = stringPreferencesKey("selected_model_variant")
         val AccentTheme = stringPreferencesKey("accent_theme")
+        val ThemeMode = stringPreferencesKey("theme_mode")
         val AiBackend = stringPreferencesKey("ai_backend")
         val CloudBaseUrl = stringPreferencesKey("cloud_base_url")
         val CloudModelId = stringPreferencesKey("cloud_model_id")

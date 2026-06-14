@@ -104,7 +104,7 @@ fun SparklineChart(
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     // Hoist chrome colors out of DrawScope
-    val gridLineColor = appColors.textFaint
+    val gridLineColor = appColors.textPrimary.copy(alpha = ChartDefaults.gridAlpha)
     val progress = drawInProgress.value
 
     // Memoize range values — avoids two full-list scans every animation frame

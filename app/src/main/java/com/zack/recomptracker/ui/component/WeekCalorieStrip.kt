@@ -73,7 +73,7 @@ fun WeekCalorieStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(appColors.scrim, RoundedCornerShape(14.dp))
+            .background(Color(0x0D000000), RoundedCornerShape(14.dp))
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -210,7 +210,7 @@ private fun WeekBarItem(
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
     val barColor = when {
-        empty -> if (isSelected) appColors.textVeryMuted else appColors.textFaint
+        empty -> if (isSelected) appColors.textPrimary.copy(alpha = 0.18f) else appColors.textPrimary.copy(alpha = 0.10f)
         summary.calories in targetLow..targetHigh -> accent.accentLight
         summary.calories > targetHigh -> Color(0xFFF97316)
         else -> accent.accentLighter.copy(alpha = 0.75f)

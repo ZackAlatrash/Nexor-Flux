@@ -42,6 +42,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.drawBackdrop
@@ -292,6 +294,7 @@ fun GlassInputField(
     modifier: Modifier = Modifier,
     unit: String? = null,
     keyboardType: KeyboardType = KeyboardType.Decimal,
+    isPassword: Boolean = false,
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
@@ -312,6 +315,7 @@ fun GlassInputField(
             onValueChange = onValueChange,
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
             textStyle = TextStyle(
                 fontSize = 17.sp,
                 fontWeight = FontWeight.ExtraBold,

@@ -240,6 +240,7 @@ fun AiCoachScreen(
                                     value = apiKeyInput,
                                     onValueChange = { apiKeyInput = it },
                                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                                    isPassword = true,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Spacer(Modifier.height(10.dp))
@@ -279,6 +280,7 @@ fun AiCoachScreen(
                                     value = webKeyInput,
                                     onValueChange = { webKeyInput = it },
                                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                                    isPassword = true,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Spacer(Modifier.height(10.dp))

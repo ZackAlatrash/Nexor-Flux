@@ -1,6 +1,7 @@
 package com.zack.recomptracker.core
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.zack.recomptracker.core.time.DateProvider
@@ -260,14 +261,18 @@ class AppContainer(context: Context) {
         cloudConfigComplete,
     ) { enabled, complete -> enabled && complete }
     // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
-    // invalid, so a bad ingestion run can never crash the app.
+    // invalid, so a bad ingestion run can never crash the app. Loaded synchronously here — fine for
+    // the small seed corpus; TODO: move to async init if the corpus grows beyond ~50 chunks.
     private val knowledgeInjector: KnowledgeInjector = runCatching {
         val raw = context.applicationContext.assets
             .open("knowledge/corpus.json")
             .bufferedReader()
             .use { it.readText() }
         RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
-    }.getOrElse { NoOpKnowledgeInjector }
+    }.getOrElse {
+        Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
+        NoOpKnowledgeInjector
+    }
 
     private val cloudCoachCoordinator: CoachCoordinator = CloudCoachCoordinator(
         cloudReadyFlow = cloudReadyFlow,

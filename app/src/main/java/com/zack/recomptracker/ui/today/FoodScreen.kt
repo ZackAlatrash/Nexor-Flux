@@ -743,6 +743,7 @@ private fun LockedSlotCard(
             }
         }
 
+        val hairlineColor = appColors.cardBorder
         if (hasEntries) {
             // Entry area: dark inset background
             Column(
@@ -751,7 +752,7 @@ private fun LockedSlotCard(
                     .background(Color(0x33000000))
                     .drawBehind {
                         drawLine(
-                            color = Color(0x0DFFFFFF),
+                            color = hairlineColor,
                             start = Offset(0f, 0f),
                             end   = Offset(size.width, 0f),
                             strokeWidth = 1.dp.toPx(),
@@ -794,7 +795,7 @@ private fun LockedSlotCard(
                     .background(Color(0x26000000))
                     .drawBehind {
                         drawLine(
-                            color = Color(0x0AFFFFFF),
+                            color = hairlineColor,
                             start = Offset(0f, 0f),
                             end   = Offset(size.width, 0f),
                             strokeWidth = 1.dp.toPx(),

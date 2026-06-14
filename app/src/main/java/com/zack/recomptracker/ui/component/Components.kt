@@ -401,7 +401,7 @@ internal fun SettingRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color(0x0DFFFFFF)),
+                    .background(LocalAppColors.current.cardBorder),
             )
         }
     }

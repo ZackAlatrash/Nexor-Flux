@@ -335,7 +335,7 @@ fun GlassInputField(
                         Text(
                             text = unit,
                             fontSize = 11.sp,
-                            color = Color(0x4CFFFFFF),
+                            color = LocalAppColors.current.textVeryMuted,
                         )
                     }
                 }
@@ -365,7 +365,7 @@ fun VioletSlider(
                 text = label,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xA6FFFFFF),
+                color = LocalAppColors.current.textDim,
             )
             val accent = LocalAppAccent.current
             Box(
@@ -400,9 +400,9 @@ fun VioletSlider(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("${range.first}", fontSize = 8.sp, color = Color(0x2EFFFFFF))
-            Text("5", fontSize = 8.sp, color = Color(0x2EFFFFFF))
-            Text("${range.last}", fontSize = 8.sp, color = Color(0x2EFFFFFF))
+            Text("${range.first}", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
+            Text("5", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
+            Text("${range.last}", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
         }
     }
 }
@@ -425,7 +425,7 @@ fun VioletToggle(
             text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xBFFFFFFF),
+            color = LocalAppColors.current.textPrimary,
         )
         Switch(
             checked = checked,
@@ -477,7 +477,7 @@ fun GlassTextArea(
         decorationBox = { innerField ->
             Box {
                 if (value.isEmpty()) {
-                    Text(placeholder, fontSize = 13.sp, color = Color(0x40FFFFFF))
+                    Text(placeholder, fontSize = 13.sp, color = LocalAppColors.current.textFaint)
                 }
                 innerField()
             }
@@ -504,7 +504,7 @@ fun ScoreStepper(
             text = label,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xA6FFFFFF),
+            color = LocalAppColors.current.textDim,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,

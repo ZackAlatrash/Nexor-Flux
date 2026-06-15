@@ -15,6 +15,10 @@ import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ai.InsightContext
+import com.zack.recomptracker.ai.InsightKind
+import com.zack.recomptracker.ai.InsightRequest
+import com.zack.recomptracker.ai.PatternInsightContext
+import com.zack.recomptracker.domain.insight.DayNutrition
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -70,6 +74,7 @@ data class DashboardUiState(
     ),
     val motivationalMessage: String = "",   // display-only, at end
     val adjustmentInput: AdjustmentInput? = null,
+    val patternInsightContext: PatternInsightContext? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -86,6 +91,19 @@ class DashboardViewModel(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
+
+    val patternInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.WEEKLY_PATTERN)
+
+    fun onPatternInsightVisible() {
+        val ctx = _uiState.value.patternInsightContext ?: return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.WeeklyPattern(ctx))
+    }
+
+    fun retryPatternInsight() {
+        val ctx = _uiState.value.patternInsightContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.WeeklyPattern(ctx))
+    }
 
     fun onAiCardVisible(result: AdjustmentResult) {
         val state = _uiState.value
@@ -225,6 +243,20 @@ class DashboardViewModel(
             }
         } else 0
 
+        val patternDays = (0..13).map { offset ->
+            val date = last14Start.plusDays(offset.toLong())
+            val totals = mealsByDate[date].orEmpty().macroTotals()
+            DayNutrition(
+                date = date,
+                calories = totals.calories,
+                proteinG = totals.proteinG,
+                carbsG = totals.carbsG,
+                fatG = totals.fatG,
+                logged = totals.calories > 0,
+            )
+        }
+        val patternInsightContext = buildPatternInsightContext(patternDays, preferences)
+
         return DashboardUiState(
             preferences = preferences,
             todayTotals = todayTotals,
@@ -242,6 +274,7 @@ class DashboardViewModel(
             motivationalMessage = todayMessage,
             result = result,
             adjustmentInput = adjustmentInput,
+            patternInsightContext = patternInsightContext,
         )
     }
 

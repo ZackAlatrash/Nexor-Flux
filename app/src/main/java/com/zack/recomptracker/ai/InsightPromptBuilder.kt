@@ -3,6 +3,7 @@ package com.zack.recomptracker.ai
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
+import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlin.math.pow
 import java.util.Locale
@@ -173,7 +174,9 @@ class InsightPromptBuilder {
          */
         internal fun signed(value: Double, decimals: Int): String {
             val factor = 10.0.pow(decimals)
-            val rounded = (value * factor).roundToInt() / factor
+            val rounded = round(value * factor) / factor
+            // -0.0 == 0.0 is true in IEEE 754; assigning the 0.0 literal canonicalizes the
+            // sign bit so a value that rounds to zero never prints as "-0.00".
             val norm = if (rounded == 0.0) 0.0 else rounded
             val body = String.format(Locale.US, "%.${decimals}f", norm)
             return if (norm > 0.0) "+$body" else body

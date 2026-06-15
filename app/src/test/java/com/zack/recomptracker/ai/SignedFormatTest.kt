@@ -29,4 +29,10 @@ class SignedFormatTest {
     fun `negative-near-zero is normalized to plain zero (no minus)`() {
         assertEquals("0.00", InsightPromptBuilder.signed(-0.001, 2))
     }
+
+    @Test
+    fun `zero decimals and a large value format correctly`() {
+        assertEquals("+3", InsightPromptBuilder.signed(2.6, 0))
+        assertEquals("+250000", InsightPromptBuilder.signed(250000.0, 0))
+    }
 }

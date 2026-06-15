@@ -1,6 +1,14 @@
 package com.zack.recomptracker.ai
 
-enum class InsightKind { PROGRESS_TREND, RECOVERY_READINESS, REST_OF_DAY, WEEKLY_PATTERN }
+enum class InsightKind {
+    PROGRESS_TREND,
+    RECOVERY_READINESS,
+    REST_OF_DAY,
+    WEEKLY_PATTERN,
+    TARGET_CHANGE,
+    NOISE_DEFUSER,
+    CROSS_METRIC,
+}
 
 sealed interface InsightRequest {
     val kind: InsightKind
@@ -27,6 +35,24 @@ sealed interface InsightRequest {
 
     data class WeeklyPattern(val context: PatternInsightContext) : InsightRequest {
         override val kind = InsightKind.WEEKLY_PATTERN
+        override val hasSufficientData get() = context.hasSufficientData
+        override fun dedupKey() = context.key()
+    }
+
+    data class TargetChange(val context: TargetChangeContext) : InsightRequest {
+        override val kind = InsightKind.TARGET_CHANGE
+        override val hasSufficientData get() = context.hasSufficientData
+        override fun dedupKey() = context.key()
+    }
+
+    data class NoiseDefuser(val context: NoiseDefuserContext) : InsightRequest {
+        override val kind = InsightKind.NOISE_DEFUSER
+        override val hasSufficientData get() = context.hasSufficientData
+        override fun dedupKey() = context.key()
+    }
+
+    data class CrossMetric(val context: CrossMetricContext) : InsightRequest {
+        override val kind = InsightKind.CROSS_METRIC
         override val hasSufficientData get() = context.hasSufficientData
         override fun dedupKey() = context.key()
     }

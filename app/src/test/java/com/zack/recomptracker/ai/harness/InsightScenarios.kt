@@ -1,11 +1,14 @@
 package com.zack.recomptracker.ai.harness
 
+import com.zack.recomptracker.ai.CrossMetricContext
 import com.zack.recomptracker.ai.InsightContext
 import com.zack.recomptracker.ai.InsightPromptBuilder
+import com.zack.recomptracker.ai.NoiseDefuserContext
 import com.zack.recomptracker.ai.PatternInsightContext
 import com.zack.recomptracker.ai.ProgressInsightContext
 import com.zack.recomptracker.ai.RecoveryInsightContext
 import com.zack.recomptracker.ai.RestOfDayInsightContext
+import com.zack.recomptracker.ai.TargetChangeContext
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
@@ -22,6 +25,9 @@ data class InsightScenario(
     val recovery: RecoveryInsightContext? = null,
     val restOfDay: RestOfDayInsightContext? = null,
     val pattern: PatternInsightContext? = null,
+    val targetChange: TargetChangeContext? = null,
+    val noiseDefuser: NoiseDefuserContext? = null,
+    val crossMetric: CrossMetricContext? = null,
 ) {
     /** (cardLabel, renderedPrompt) for each present card. */
     fun cards(): List<Pair<String, String>> {
@@ -32,6 +38,9 @@ data class InsightScenario(
         recovery?.let { out += "Recovery Readiness" to b.buildRecoveryReadinessPrompt(it) }
         restOfDay?.let { out += "Rest of Day" to b.buildRestOfDayPrompt(it) }
         pattern?.let { out += "Weekly Pattern" to b.buildPatternInsightPrompt(it) }
+        targetChange?.let { out += "Target Change" to b.buildTargetChangePrompt(it) }
+        noiseDefuser?.let { out += "Noise Defuser" to b.buildNoiseDefuserPrompt(it) }
+        crossMetric?.let { out += "Cross Metric" to b.buildCrossMetricPrompt(it) }
         return out
     }
 }
@@ -153,6 +162,46 @@ object InsightScenarios {
                     type = InsightFactType.WEEKDAY_WEEKEND,
                     priority = 2,
                     statement = "You average 2,150 kcal on weekdays but 3,050 kcal on weekends.",
+                ),
+            ),
+        ),
+        InsightScenario(
+            name = "Target change — expenditure rose (raise)",
+            targetChange = TargetChangeContext(
+                oldTarget = 2300,
+                newTarget = 2450,
+                weightTrendKgPerWeek = -0.85,
+                adherencePercent = 95.0,
+                reasonCodes = listOf("LOSING_WITH_POOR_RECOVERY"),
+                desiredWeeklyRateKg = -0.40,
+            ),
+        ),
+        InsightScenario(
+            name = "Target change — stall (trim)",
+            targetChange = TargetChangeContext(
+                oldTarget = 2500,
+                newTarget = 2300,
+                weightTrendKgPerWeek = -0.02,
+                adherencePercent = 90.0,
+                reasonCodes = listOf("NO_CLEAR_CHANGE_SIGNAL"),
+                desiredWeeklyRateKg = -0.40,
+            ),
+        ),
+        InsightScenario(
+            name = "Noise — scary morning spike vs flat trend",
+            noiseDefuser = NoiseDefuserContext(
+                todayWeightKg = 79.7,
+                priorWeightKg = 78.95,
+                smoothedTrendKgPerWeek = -0.05,
+            ),
+        ),
+        InsightScenario(
+            name = "Cross-metric — protein vs hunger",
+            crossMetric = CrossMetricContext(
+                InsightFact(
+                    type = InsightFactType.WEAKEST_MACRO,
+                    priority = 20,
+                    statement = "On days you hit your protein target, your hunger score averages 3/10 versus 6/10 on days you miss it.",
                 ),
             ),
         ),

@@ -32,4 +32,33 @@ class InsightGateTest {
     fun `fires on a hold when adherence is low (worth addressing)`() {
         assertTrue(InsightGate.shouldFireWeekly(weekly(AdjustmentVerdict.HOLD, -0.1, 0.0, 60.0)))
     }
+
+    // --- Noise-defuser gate ---
+
+    private fun noise(today: Double, prior: Double, trend: Double) =
+        NoiseDefuserContext(todayWeightKg = today, priorWeightKg = prior, smoothedTrendKgPerWeek = trend)
+
+    @Test
+    fun `noise-defuser fires on a big jump against a flat trend`() {
+        // +0.9 kg today, trend essentially flat -> water/food, defuse.
+        assertTrue(InsightGate.shouldFireNoiseDefuser(noise(81.0, 80.1, -0.02)))
+    }
+
+    @Test
+    fun `noise-defuser fires when today contradicts the trend direction`() {
+        // Up 0.7 kg today but the smoothed trend is downward -> contradicts, defuse.
+        assertTrue(InsightGate.shouldFireNoiseDefuser(noise(80.7, 80.0, -0.30)))
+    }
+
+    @Test
+    fun `noise-defuser stays quiet when the jump agrees with the trend`() {
+        // Up 0.7 kg today and the trend is also up -> real signal, not noise.
+        assertFalse(InsightGate.shouldFireNoiseDefuser(noise(80.7, 80.0, 0.30)))
+    }
+
+    @Test
+    fun `noise-defuser stays quiet for a small daily wobble`() {
+        // Only +0.2 kg -> below the jump threshold, nothing to defuse.
+        assertFalse(InsightGate.shouldFireNoiseDefuser(noise(80.2, 80.0, -0.30)))
+    }
 }

@@ -163,6 +163,57 @@ class InsightPromptBuilder {
         appendLine("Now reply with ONLY the coaching sentence(s). Do not print any label or echo this prompt.")
     }
 
+    fun buildTargetChangePrompt(context: TargetChangeContext): String = buildString {
+        val direction = if (context.newTarget > context.oldTarget) "raise" else "trim"
+        appendLine("You are a body-recomposition coach explaining why the athlete's calorie target is changing this week.")
+        appendLine("Write 1–2 short sentences. Structure: what the data showed → why that means the target should move → the new number.")
+        appendLine("Pin the change on the data and metabolism, never on the athlete's effort or willpower.")
+        appendLine("Lead with the most decisive number; use the verb \"$direction\" to match the direction. Calm, supportive tone, no shame.")
+        appendLine("Use only the figures given; do not do any math of your own.")
+        appendLine()
+        appendLine("Example when raising (losing too fast — style only, do not reuse these numbers):")
+        appendLine("\"You've been losing 0.60 kg/wk, faster than your 0.40 goal, so your burn looks higher than planned — raise calories from 2300 to 2450.\"")
+        appendLine("Example when trimming (loss stalled — style only):")
+        appendLine("\"Weight has stalled at -0.02 kg/wk despite good adherence, so the deficit has shrunk — trim calories from 2500 to 2300 to get loss moving again.\"")
+        appendLine("When trimming because loss stalled, say the deficit has shrunk or loss has stalled; do NOT claim the burn is higher (that would contradict a cut).")
+        appendLine()
+        appendLine("Why the target is changing:")
+        appendLine("- Current target: ${context.oldTarget} kcal")
+        appendLine("- New target: ${context.newTarget} kcal")
+        appendLine("- Weight trend: ${signed(context.weightTrendKgPerWeek, 2)} kg/wk")
+        context.desiredWeeklyRateKg?.let { appendLine("- Goal rate: ${signed(it, 2)} kg/wk (compare the weight trend against this)") }
+        appendLine("- Adherence: ${context.adherencePercent.roundToInt()}%")
+        appendLine("Reasons:")
+        context.reasonCodes.forEach { appendLine("- ${reasonDescription(it)}") }
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
+    }
+
+    fun buildNoiseDefuserPrompt(context: NoiseDefuserContext): String = buildString {
+        appendLine("You are a body-recomposition coach reassuring an athlete about a single day's scale reading that looks alarming but conflicts with the real trend.")
+        appendLine("Write 1–2 short sentences: acknowledge today's jump, contrast it with the smoothed trend, and explain it is normal day-to-day fluctuation (water, food, glycogen) — so there is nothing to act on today.")
+        appendLine("Lead with the numbers. Calm, reassuring tone; never alarm. Use only the figures given; do not do any math of your own.")
+        appendLine()
+        appendLine("Example output (style only — do not reuse these numbers):")
+        appendLine("\"You're up 0.9 kg this morning, but your trend is still flat at -0.02 kg/wk — that's water and food weight, not fat, so nothing to change.\"")
+        appendLine()
+        appendLine("Today's reading:")
+        appendLine("- Today vs last weigh-in: ${signed(context.todayDeltaKg, 1)} kg")
+        appendLine("- Smoothed trend: ${signed(context.smoothedTrendKgPerWeek, 2)} kg/wk")
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
+    }
+
+    fun buildCrossMetricPrompt(context: CrossMetricContext): String = buildString {
+        appendLine("You are a body-recomposition coach surfacing a link you noticed between two of the athlete's habits.")
+        appendLine("Write exactly 1–2 short sentences: state the link and lead with the number, hedge it as a tendency (\"you tend to…\") rather than a proven cause, then add ONE small suggestion to use it.")
+        appendLine("Use only the finding below; do not invent or calculate any new numbers. Supportive, non-judgmental tone.")
+        appendLine()
+        appendLine("Finding: ${context.fact.statement}")
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any label or echo this prompt.")
+    }
+
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {
         AdjustmentVerdict.HOLD -> "Hold — no change to calories"
         AdjustmentVerdict.INCREASE_CALORIES -> "Increase calories"

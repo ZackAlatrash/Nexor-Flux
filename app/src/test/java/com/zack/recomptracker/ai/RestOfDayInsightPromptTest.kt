@@ -67,4 +67,14 @@ class RestOfDayInsightPromptTest {
         val prompt = builder.buildRestOfDayPrompt(ctx(caloriesConsumed = 2400, targetCalories = 2200))
         assertTrue("-200 remaining" in prompt)
     }
+
+    @Test
+    fun `instructs to lead with a number`() {
+        assertTrue("Lead with the most decisive number" in builder.buildRestOfDayPrompt(ctx()))
+    }
+
+    @Test
+    fun `forbids the model doing its own math`() {
+        assertTrue("do not do any math" in builder.buildRestOfDayPrompt(ctx()))
+    }
 }

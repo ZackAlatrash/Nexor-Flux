@@ -96,6 +96,8 @@ class InsightPromptBuilder {
         }
         appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")
         appendLine("Base everything only on the numbers below.")
+        appendLine("Lead with the most decisive number from the numbers below.")
+        appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
         appendLine("Example output:")
         appendLine("\"You're at 1,420 of 2,200 kcal with 38 g protein left — make dinner protein-heavy to close the gap.\"")

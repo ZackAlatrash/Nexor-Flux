@@ -149,8 +149,10 @@ expansion, prominence, and which slots render.
 | 5 | **Carousel** | expanded | Several co-equal ranked facts | swipe (HorizontalPager) |
 
 ### 5.1 Hero
-Largest verdict type (~21 sp), a **key metric** + mini sparkline pulled from the
-`InsightFact`, full action row. One per screen, top of the dashboard `LazyColumn`.
+Largest verdict type (~20 sp) + the computed **evidence line** (`InsightFact.statement`) +
+confidence badge + action row. One per screen, top of the dashboard `LazyColumn`.
+(A numeric **key metric + mini sparkline** is deferred — `InsightFact` carries a `statement`
+sentence, not structured numbers; see §12.)
 
 ### 5.2 Standard
 Verdict (~16 sp) + one **evidence line** + confidence badge + actions. The workhorse for
@@ -165,9 +167,10 @@ Glass card with **brighter/faster edge glow** + **shimmer skeleton lines** (anim
 `Brush.linearGradient` sweep, ~1.8 s) that resolve into streaming text as tokens land. Colored
 shimmer, never a gray spinner. Maps to `AiInsightState.Generating`.
 
-### 5.5 Carousel
-`HorizontalPager` of Standard cards with a peeking next-card edge + dot pagination. Used only
-when the top-fact engine surfaces multiple genuinely co-equal facts.
+### 5.5 Carousel (deferred)
+`HorizontalPager` of Standard cards with a peeking next-card edge + dot pagination, for when
+several co-equal facts exist. **Deferred** in the first implementation: `InsightEngine.detectTopFact`
+currently returns a single fact, so there is no multi-fact source to drive it yet (see §12).
 
 ---
 
@@ -175,16 +178,18 @@ when the top-fact engine surfaces multiple genuinely co-equal facts.
 
 Rendered per variant in the expanded action row:
 
-| Action | Icon | Behaviour |
-|---|---|---|
-| **Tell me more** | `✦` chip | Opens coach chat seeded with the insight context |
-| **Feedback** | ♡ / thumbs | Helpful / not — tunes the top-fact ranking |
-| **Expand / collapse** | chevron | Toggles the collapsed pill ↔ full card |
-| **Snooze** | ⏾ | Hides until later; tiered (high-priority ~1 h, else ~24 h) |
-| **Dismiss** | ✕ | Permanent; paired with an **undo** snackbar |
+| Action | Icon | Behaviour | Status |
+|---|---|---|---|
+| **Expand / collapse** | chevron | Toggles the collapsed pill ↔ full card | **Shipped** |
+| **Refresh** | chip | Re-runs generation (`onRetry`) | **Shipped** |
+| **Dismiss** | ✕ | Hides the card for the session; replaced by an inline "Insight dismissed · Undo" row (`rememberSaveable`, survives scroll) | **Shipped** (session-level) |
+| **Tell me more** | `✦` chip | Opens coach chat seeded with the insight context | Deferred — hook present (`onTellMeMore`), unwired; needs coach seeding |
+| **Feedback** | ♡ | Helpful / not — tunes the top-fact ranking | Deferred — hook present (`onFeedback`), unwired; needs ranking integration |
+| **Snooze** | ⏾ | Hides until later; tiered resurface | Deferred — needs durable store |
 
-Write-style actions (e.g. "Log yogurt" on a Pill) route through the existing coach
-confirmation flow so logging stays consistent with the rest of the app.
+The component renders an action only when its hook is provided; deferred actions are simply
+not passed by the call sites yet. Durable cross-session dismiss persistence and write-style
+actions (e.g. "Log yogurt" on a Pill, via the coach confirmation flow) are follow-ups.
 
 ---
 
@@ -192,7 +197,7 @@ confirmation flow so logging stays consistent with the rest of the app.
 
 | Insight kind | Variant | Default state | Notes |
 |---|---|---|---|
-| `WEEKLY_PATTERN` | Hero (or Carousel if >1 co-equal fact) | expanded | Dashboard headline; pulls metric from `InsightFact` |
+| `WEEKLY_PATTERN` | Hero | expanded | Dashboard headline; evidence + confidence from `InsightFact` (Carousel deferred, §12) |
 | `PROGRESS_TREND` | Standard | expanded | Progress screen |
 | `RECOVERY_READINESS` | Standard | expanded | Body / Recovery screen |
 | `REST_OF_DAY` | Pill | collapsed | Food log; tap to expand — replaces the "✨ Rest of day?" reveal |
@@ -245,19 +250,30 @@ Reuse mandate: build only from the existing glass component library and `LocalAp
   (`drawWithCache`), never read animation state in composition.
 - Semantics: `mergeDescendants`, `contentDescription = "AI insight: …"`, decorative glow /
   sparkle marked `null`. Maintain WCAG AA contrast over the translucent surface (text sits on
-  the ~0.66-alpha neutral wash, not on the gradient).
+  the ~0.40-alpha neutral wash — the nav-bar value from §3.1 — not on the gradient).
+- Interactive affordances carry `Role.Button`, action labels (`onClickLabel`), and a 48 dp
+  minimum touch target (`minimumInteractiveComponentSize`).
 - Honour the system reduced-motion setting (existing guard).
 
 ## 11. Resolved decisions
 
-- **Confidence badge** → derive a `High` / `Medium` label from `InsightFact.priority`. No new
-  scoring model in this redesign.
-- **Snooze / dismiss persistence** → the on-card affordances (snooze, dismiss + undo) are in
-  scope visually, but durable cross-session persistence (a DataStore store keyed by insight kind
-  with expiry) is a **follow-up**. For this redesign, snooze/dismiss hides the card for the
-  current session; the undo snackbar still applies.
+- **Confidence badge** → derived from `InsightFact.priority` via `confidenceFrom`: `>= 30 → High`,
+  `1..29 → Medium`, `<= 0 → null` (no badge). Thresholds match the real detector priority scale
+  (~10–45). No new scoring model.
+- **Dismiss** → shipped as **session-level** with an inline "Insight dismissed · Undo" affordance
+  (`DismissibleInsight`, `rememberSaveable` so it survives list scroll; resets on navigation).
+  Durable cross-session persistence is a follow-up (§12).
+- **Snooze** → not implemented in this redesign; deferred (§12).
 
-## 12. Out of scope
+## 12. Out of scope / deferred follow-ups
 
-Insight generation pipeline, coach chat UI, model download/lifecycle, and 2B prompt/microcopy
-tuning. Presentation layer only.
+Out of scope entirely: insight generation pipeline, coach chat UI, model download/lifecycle,
+2B prompt/microcopy tuning. Presentation layer only.
+
+Deferred follow-ups (the component supports them via optional hooks where noted):
+- **Carousel variant + Hero numeric metric/sparkline** — need `InsightEngine` to expose multiple
+  ranked facts and structured numbers (today `detectTopFact` returns one `statement` sentence).
+- **"Tell me more" → coach** — `onTellMeMore` hook present, unwired; needs coach-chat seeding.
+- **Feedback (♡)** — `onFeedback` hook present, unwired; needs top-fact ranking integration.
+- **Snooze** + **durable cross-session dismiss persistence** — need a DataStore store keyed by
+  insight kind (with expiry for snooze).

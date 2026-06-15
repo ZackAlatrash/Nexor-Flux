@@ -53,6 +53,7 @@ import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
@@ -82,11 +83,17 @@ fun HomeDashboardScreen(
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
+    val patternInsightState by viewModel.patternInsightState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.patternInsightContext?.key()) {
+        viewModel.onPatternInsightVisible()
+    }
 
     HomeDashboardContent(
         state = state,
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+        patternInsightState = patternInsightState,
+        onRetryPatternInsight = viewModel::retryPatternInsight,
     )
 
     WeeklyBriefingOverlay(
@@ -115,6 +122,8 @@ fun HomeDashboardContent(
     modifier: Modifier = Modifier,
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
+    patternInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryPatternInsight: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -151,6 +160,19 @@ fun HomeDashboardContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (state.patternInsightContext != null &&
+                    (patternInsightState is AiInsightState.Generating ||
+                        patternInsightState is AiInsightState.Ready ||
+                        patternInsightState is AiInsightState.Error)
+                ) {
+                    item {
+                        GeneratedInsightCard(
+                            title = "Coach spotted",
+                            state = patternInsightState,
+                            onRetry = onRetryPatternInsight,
+                        )
+                    }
+                }
                 item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state) }
                 item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }

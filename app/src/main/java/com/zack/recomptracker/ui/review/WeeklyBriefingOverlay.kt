@@ -39,7 +39,7 @@ import com.zack.recomptracker.domain.review.SignalDirection
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.aiIridescentRim
+import com.zack.recomptracker.ui.component.aiEdgeGlow
 import androidx.compose.material3.MaterialTheme
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -103,7 +103,7 @@ fun WeeklyBriefingOverlay(
 }
 
 /** Backdrop-free AI glass card — a dark translucent surface with a top sheen, hairline edge, and
- *  the shared iridescent rim. Renders correctly inside a Dialog window (no backdrop layer). */
+ *  the shared edge glow. Renders correctly inside a Dialog window (no backdrop layer). */
 @Composable
 private fun BriefingGlassCard(
     borderMode: AiBorderMode,
@@ -112,27 +112,30 @@ private fun BriefingGlassCard(
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(ModalCorner))
-            .background(appColors.frostedSurfaceFallback)
-            .drawBehind {
-                drawRect(accent.accent.copy(alpha = 0.05f))
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = 0.10f),
-                        0.10f to Color.Transparent,
-                    ),
-                )
-            }
-            .border(1.dp, appColors.cardBorder, RoundedCornerShape(ModalCorner))
-            .aiIridescentRim(borderMode, ModalCorner)
-            .heightIn(max = 640.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        content = content,
-    )
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Edge glow on a dedicated behind-layer so it doesn't blur the modal content.
+        Box(Modifier.matchParentSize().aiEdgeGlow(borderMode, ModalCorner))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(ModalCorner))
+                .background(appColors.frostedSurfaceFallback)
+                .drawBehind {
+                    drawRect(accent.accent.copy(alpha = 0.05f))
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.10f),
+                            0.10f to Color.Transparent,
+                        ),
+                    )
+                }
+                .border(1.dp, appColors.cardBorder, RoundedCornerShape(ModalCorner))
+                .heightIn(max = 640.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            content = content,
+        )
+    }
 }
 
 @Composable

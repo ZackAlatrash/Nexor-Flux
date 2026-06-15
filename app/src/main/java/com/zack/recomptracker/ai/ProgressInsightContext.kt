@@ -10,6 +10,8 @@ data class ProgressInsightContext(
     val adherencePercent: Double?,
     val weightPointCount: Int,
     val waistPointCount: Int,
+    /** Same trend over the PRIOR window of equal length — lets the card say "accelerating". */
+    val priorWeightTrendKgPerWeek: Double? = null,
 ) {
     val hasSufficientData: Boolean
         get() = weightPointCount >= 2 || waistPointCount >= 2

@@ -113,6 +113,9 @@ class StubInsightCoordinator(
         is InsightRequest.RecoveryReadiness -> "Your recovery looks on track today."
         is InsightRequest.RestOfDay -> "You're tracking well for the day."
         is InsightRequest.WeeklyPattern -> request.context.fact.statement
+        is InsightRequest.TargetChange -> "Your target moved from ${request.context.oldTarget} to ${request.context.newTarget} kcal."
+        is InsightRequest.NoiseDefuser -> "Today's reading is just noise; your trend is unchanged."
+        is InsightRequest.CrossMetric -> request.context.fact.statement
     }
 
     private suspend fun generate(context: InsightContext) {

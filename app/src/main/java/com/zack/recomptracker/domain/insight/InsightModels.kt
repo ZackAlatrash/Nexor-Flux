@@ -22,7 +22,7 @@ data class NutritionTargets(
     val calorieZoneUpper: Int,
 )
 
-enum class InsightFactType { DERAILMENT_DAY, WEAKEST_MACRO, WEEKDAY_WEEKEND, STREAK }
+enum class InsightFactType { DERAILMENT_DAY, WEAKEST_MACRO, WEEKDAY_WEEKEND, STREAK, CROSS_METRIC }
 
 /** A computed, non-obvious fact. [statement] carries the numbers and is the LLM input + dedup key. */
 data class InsightFact(

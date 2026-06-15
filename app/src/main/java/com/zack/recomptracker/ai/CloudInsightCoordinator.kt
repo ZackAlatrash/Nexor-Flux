@@ -108,6 +108,9 @@ class CloudInsightCoordinator(
             is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
             is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context)
             is InsightRequest.WeeklyPattern -> promptBuilder.buildPatternInsightPrompt(request.context)
+            is InsightRequest.TargetChange -> promptBuilder.buildTargetChangePrompt(request.context)
+            is InsightRequest.NoiseDefuser -> promptBuilder.buildNoiseDefuserPrompt(request.context)
+            is InsightRequest.CrossMetric -> promptBuilder.buildCrossMetricPrompt(request.context)
         }
         scope.launch { streamInto(flow, prompt) }
     }

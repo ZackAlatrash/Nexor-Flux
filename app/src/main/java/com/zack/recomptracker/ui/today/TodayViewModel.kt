@@ -12,6 +12,7 @@ import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.util.toNullableDouble
 import com.zack.recomptracker.core.util.toNullableInt
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
@@ -178,19 +179,15 @@ class TodayViewModel(
                     .filter { (_, date) -> date <= priorCutoff }
                     .firstNotNullOfOrNull { (log, _) -> log.waistCm }
 
-                // MetricsHero: last logged entry (may be yesterday or earlier)
-                val lastEntry = allLogs
-                    .map { it to LocalDate.parse(it.date) }
-                    .sortedByDescending { (_, d) -> d }
-                    .firstOrNull { (log, d) ->
-                        d < today && (log.bodyWeightKg != null || log.waistCm != null)
-                    }
+                // MetricsHero: most recent check-in with weight or waist (includes today once logged)
+                val lastEntry = latestCheckIn(allLogs, today)
 
-                // 14-day sparklines (ordered oldest → newest, gaps kept as 0)
+                // 14-day sparklines, calendar-accurate: each slot is one day, internal gaps are
+                // interpolated so a 3-day gap spans 3× the width of a 1-day gap.
                 val dates14 = (13 downTo 0).map { today.minusDays(it.toLong()) }
                 val byDate = allLogs.associateBy { LocalDate.parse(it.date) }
-                val weightSpark = dates14.mapNotNull { byDate[it]?.bodyWeightKg?.toFloat() }
-                val waistSpark = dates14.mapNotNull { byDate[it]?.waistCm?.toFloat() }
+                val weightSpark = calendarSparkline(dates14.map { byDate[it]?.bodyWeightKg?.toFloat() })
+                val waistSpark = calendarSparkline(dates14.map { byDate[it]?.waistCm?.toFloat() })
 
                 _uiState.update {
                     it.copy(
@@ -291,4 +288,47 @@ class TodayViewModel(
 
     private fun editMetrics(block: TodayUiState.() -> TodayUiState) =
         _uiState.update { it.block().copy(metricsDirty = true, message = null) }
+}
+
+/**
+ * The most recent daily log that carries a weight or waist measurement, on or before [today].
+ * Drives the Metrics hero card — includes today's entry so the hero updates the moment it's logged.
+ */
+internal fun latestCheckIn(
+    logs: List<DailyLogEntity>,
+    today: LocalDate,
+): Pair<DailyLogEntity, LocalDate>? =
+    logs.map { it to LocalDate.parse(it.date) }
+        .sortedByDescending { (_, d) -> d }
+        .firstOrNull { (log, d) ->
+            d <= today && (log.bodyWeightKg != null || log.waistCm != null)
+        }
+
+/**
+ * Turns a fixed window of daily slots (oldest→newest; null = no log that day) into a
+ * calendar-accurate sparkline series. Leading and trailing empty days are trimmed; internal gaps
+ * are linearly interpolated so each index is exactly one day — a 3-day gap occupies 3× the
+ * horizontal space of a 1-day gap. Interpolated points lie on the connecting line, so the curve's
+ * shape is unchanged; only the spacing becomes proportional to elapsed days.
+ */
+internal fun calendarSparkline(slots: List<Float?>): List<Float> {
+    val first = slots.indexOfFirst { it != null }
+    val last = slots.indexOfLast { it != null }
+    if (first < 0) return emptyList()
+
+    val out = ArrayList<Float>(last - first + 1)
+    var prevIndex = first
+    var prevValue = slots[first]!!
+    out += prevValue
+    for (i in (first + 1)..last) {
+        val value = slots[i] ?: continue
+        val gap = i - prevIndex
+        for (k in 1 until gap) {
+            out += prevValue + (value - prevValue) * (k.toFloat() / gap)
+        }
+        out += value
+        prevIndex = i
+        prevValue = value
+    }
+    return out
 }

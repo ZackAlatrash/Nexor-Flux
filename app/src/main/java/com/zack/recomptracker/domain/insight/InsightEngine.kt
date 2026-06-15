@@ -19,5 +19,6 @@ object InsightEngine {
         InsightFactType.WEAKEST_MACRO -> 2
         InsightFactType.WEEKDAY_WEEKEND -> 1
         InsightFactType.STREAK -> 0
+        InsightFactType.CROSS_METRIC -> -1
     }
 }

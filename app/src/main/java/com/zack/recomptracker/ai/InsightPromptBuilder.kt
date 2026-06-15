@@ -14,9 +14,11 @@ class InsightPromptBuilder {
         appendLine("You are a concise nutrition coach explaining a weekly calorie verdict to an athlete.")
         appendLine("Write exactly 1–2 short sentences. Lead with the decisive signal, then state the verdict — do not change it. No preamble or filler.")
         appendLine("Be specific about which signals drove the decision. Keep the tone calm and direct.")
+        appendLine("Lead with the most decisive number from the signals below.")
+        appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
         appendLine("Example output for a Hold verdict:")
-        appendLine("\"Weight held steady and waist trended down — recomposition is working, hold calories.\"")
+        appendLine("\"Weight is down 0.30 kg/wk with waist flat and adherence at 88% — fat loss is on track, hold calories.\"")
         appendLine()
         appendLine("Verdict: ${verdictLabel(context.result.verdict)}")
         appendLine("Context: ${context.result.summary}")
@@ -27,11 +29,11 @@ class InsightPromptBuilder {
         }
         appendLine()
         appendLine("Signals this week:")
-        appendLine("- Weight: ${weightLabel(context.input.weightTrendKgPerWeek)}")
-        appendLine("- Waist: ${waistLabel(context.input.waistTrendCmPerWeek)}")
+        appendLine("- Weight: ${signed(context.input.weightTrendKgPerWeek, 2)} kg/wk (${weightLabel(context.input.weightTrendKgPerWeek)})")
+        appendLine("- Waist: ${signed(context.input.waistTrendCmPerWeek, 1)} cm/wk (${waistLabel(context.input.waistTrendCmPerWeek)})")
         appendLine("- Performance: ${performanceLabel(context.input.performanceTrend)}")
         appendLine("- Recovery: ${recoveryLabel(context.input.recoveryTrend)}")
-        appendLine("- Adherence: ${adherenceLabel(context.input.adherencePercent)}")
+        appendLine("- Adherence: ${context.input.adherencePercent.roundToInt()}% (${adherenceLabel(context.input.adherencePercent)})")
         if (context.input.weeksSincePhaseStart != DEFAULT_WEEKS_FALLBACK) {
             appendLine("- Weeks in current phase: ${context.input.weeksSincePhaseStart}")
         }

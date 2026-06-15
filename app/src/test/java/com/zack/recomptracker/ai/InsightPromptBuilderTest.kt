@@ -112,46 +112,41 @@ class InsightPromptBuilderTest {
         assertTrue("Fallback text should appear", "Some future code" in prompt)
     }
 
-    // --- Qualitative weight signal ---
+    // --- Numeric weight signal ---
 
     @Test
-    fun `weight trending down is qualitative`() {
+    fun `weight trend shows the signed number and label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(weightTrend = -0.35))
-        assertTrue("Expected 'trending down'", "Weight: trending down" in prompt)
-        assertFalse("Raw number must not appear", "-0.35" in prompt)
+        assertTrue("Expected numeric weight line", "Weight: -0.35 kg/wk (trending down)" in prompt)
     }
 
     @Test
-    fun `weight stable is qualitative`() {
+    fun `weight near zero shows signed number and stable label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(weightTrend = 0.05))
-        assertTrue("Expected stable label", "Weight: stable" in prompt)
-        assertFalse("Raw number must not appear", "0.05" in prompt)
+        assertTrue("Expected numeric stable weight line", "Weight: +0.05 kg/wk (stable)" in prompt)
     }
 
     @Test
-    fun `weight trending up is qualitative`() {
+    fun `weight trending up shows positive number`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(weightTrend = 0.35))
-        assertTrue("Expected 'trending up'", "Weight: trending up" in prompt)
-        assertFalse("Raw number must not appear", "0.35" in prompt)
+        assertTrue("Expected numeric up weight line", "Weight: +0.35 kg/wk (trending up)" in prompt)
     }
 
-    // --- Qualitative waist signal ---
+    // --- Numeric waist signal ---
 
     @Test
-    fun `waist stable is qualitative`() {
+    fun `waist near zero shows zero and stable label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(waistTrend = 0.02))
-        assertTrue("Expected stable label", "Waist: stable" in prompt)
-        assertFalse("Raw number must not appear", "0.02" in prompt)
+        assertTrue("Expected numeric stable waist line", "Waist: 0.0 cm/wk (stable)" in prompt)
     }
 
     @Test
-    fun `waist trending up is qualitative`() {
+    fun `waist trending up shows positive number`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(waistTrend = 0.30))
-        assertTrue("Expected 'trending up'", "Waist: trending up" in prompt)
-        assertFalse("Raw number must not appear", "0.30" in prompt)
+        assertTrue("Expected numeric up waist line", "Waist: +0.3 cm/wk (trending up)" in prompt)
     }
 
-    // --- Qualitative performance signal ---
+    // --- Qualitative performance signal (unchanged: enum, no number) ---
 
     @Test
     fun `performance DOWN maps to declining`() {
@@ -173,7 +168,7 @@ class InsightPromptBuilderTest {
         assertTrue("Expected 'no data'", "Performance: no data" in prompt)
     }
 
-    // --- Qualitative recovery signal ---
+    // --- Qualitative recovery signal (unchanged: enum, no number) ---
 
     @Test
     fun `recovery POOR maps to poor`() {
@@ -189,27 +184,38 @@ class InsightPromptBuilderTest {
         assertFalse("Raw enum label must not appear", "Recovery: GOOD" in prompt)
     }
 
-    // --- Qualitative adherence signal ---
+    // --- Numeric adherence signal ---
 
     @Test
-    fun `adherence high is qualitative`() {
+    fun `adherence shows integer percent and high label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(adherence = 91.0))
-        assertTrue("Expected 'high'", "Adherence: high" in prompt)
-        assertFalse("Raw percentage must not appear", "91" in prompt)
+        assertTrue("Expected numeric adherence line", "Adherence: 91% (high)" in prompt)
     }
 
     @Test
-    fun `adherence moderate is qualitative`() {
+    fun `adherence moderate shows percent and label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(adherence = 78.0))
-        assertTrue("Expected 'moderate'", "Adherence: moderate" in prompt)
-        assertFalse("Raw percentage must not appear", "78" in prompt)
+        assertTrue("Expected numeric moderate adherence", "Adherence: 78% (moderate)" in prompt)
     }
 
     @Test
-    fun `adherence low is qualitative`() {
+    fun `adherence low shows percent and below-target label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(adherence = 60.0))
-        assertTrue("Expected 'low'", "Adherence: low" in prompt)
-        assertFalse("Raw percentage must not appear", "60" in prompt)
+        assertTrue("Expected numeric low adherence", "Adherence: 60% (low (below target))" in prompt)
+    }
+
+    // --- New instruction guards ---
+
+    @Test
+    fun `prompt instructs to lead with a number`() {
+        val prompt = builder.buildWeeklySummaryPrompt(context())
+        assertTrue("Expected lead-with-number instruction", "Lead with the most decisive number" in prompt)
+    }
+
+    @Test
+    fun `prompt forbids the model doing its own math`() {
+        val prompt = builder.buildWeeklySummaryPrompt(context())
+        assertTrue("Expected no-math guard", "do not do any math" in prompt)
     }
 
     // --- weeksSincePhaseStart ---

@@ -58,4 +58,34 @@ class PatternDetectorsTest {
         )
         assertNull(fact)
     }
+
+    @Test
+    fun `derailment fires when one day drives most of the surplus`() {
+        // 7 logged days: six at target (no surplus), one at +1500.
+        val end = LocalDate.of(2026, 6, 14)
+        val spike = end // most recent day
+        val list = (0..13).map { offset ->
+            val d = end.minusDays((13 - offset).toLong())
+            val cals = if (d == spike) 3700 else 2200
+            DayNutrition(d, cals, 165.0, 320.0, 68.0, logged = offset >= 7) // only last 7 logged
+        }
+        val fact = detectDerailmentDay(list, targets)
+        assertEquals(InsightFactType.DERAILMENT_DAY, fact?.type)
+        assertTrue(fact!!.statement.contains("%"))
+        assertTrue(fact.statement.contains("surplus"))
+    }
+
+    @Test
+    fun `derailment does not fire when surplus is spread evenly`() {
+        // Seven logged days each slightly over target → no single dominant day.
+        val list = days(calsFor = { 2350 }).mapIndexed { i, d -> d.copy(logged = i >= 7) }
+        val fact = detectDerailmentDay(list, targets)
+        assertNull(fact)
+    }
+
+    @Test
+    fun `derailment does not fire below minimum weekly surplus`() {
+        val list = days(calsFor = { 2200 }).mapIndexed { i, d -> d.copy(logged = i >= 7) }
+        assertNull(detectDerailmentDay(list, targets))
+    }
 }

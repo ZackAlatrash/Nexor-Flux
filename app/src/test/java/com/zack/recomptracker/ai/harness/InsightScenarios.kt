@@ -49,11 +49,16 @@ object InsightScenarios {
         weeks: Int,
         targetCals: Int,
         summary: String,
+        desiredRate: Double? = null,
+        priorTarget: Int? = null,
+        change: Int = 0,
     ) = InsightContext(
-        result = AdjustmentResult(verdict, 0, codes, summary),
+        result = AdjustmentResult(verdict, change, codes, summary),
         input = AdjustmentInput(14, adherence, weeks, weight, waist, perf, recov),
         targetCalories = targetCals,
         targetProteinG = 165,
+        desiredWeeklyRateKg = desiredRate,
+        priorTargetCalories = priorTarget,
     )
 
     val ALL: List<InsightScenario> = listOf(
@@ -64,8 +69,9 @@ object InsightScenarios {
                 weight = -0.38, waist = -0.10, perf = PerformanceTrend.STABLE,
                 recov = RecoveryTrend.GOOD, adherence = 92.0, weeks = 3,
                 targetCals = 2550, summary = "On plan, no change.",
+                desiredRate = -0.40,
             ),
-            progress = ProgressInsightContext(28, -0.38, -0.20, 0.4, 92.0, 6, 6),
+            progress = ProgressInsightContext(28, -0.38, -0.20, 0.4, 92.0, 6, 6, priorWeightTrendKgPerWeek = -0.36),
         ),
         InsightScenario(
             name = "Plateau (flat 3 weeks, high adherence)",
@@ -73,7 +79,8 @@ object InsightScenarios {
                 AdjustmentVerdict.REDUCE_CALORIES, listOf("NO_CLEAR_CHANGE_SIGNAL"),
                 weight = -0.02, waist = 0.0, perf = PerformanceTrend.STABLE,
                 recov = RecoveryTrend.OK, adherence = 90.0, weeks = 4,
-                targetCals = 2400, summary = "Loss has stalled at high adherence.",
+                targetCals = 2300, summary = "Loss has stalled at high adherence.",
+                desiredRate = -0.40, priorTarget = 2500, change = -200,
             ),
         ),
         InsightScenario(
@@ -82,7 +89,8 @@ object InsightScenarios {
                 AdjustmentVerdict.INCREASE_CALORIES, listOf("LOSING_WITH_POOR_RECOVERY"),
                 weight = -0.85, waist = -0.4, perf = PerformanceTrend.DOWN,
                 recov = RecoveryTrend.POOR, adherence = 95.0, weeks = 2,
-                targetCals = 2300, summary = "Losing faster than target with recovery dropping.",
+                targetCals = 2450, summary = "Losing faster than target with recovery dropping.",
+                desiredRate = -0.40, priorTarget = 2300, change = 150,
             ),
         ),
         InsightScenario(
@@ -91,7 +99,8 @@ object InsightScenarios {
                 AdjustmentVerdict.REDUCE_CALORIES, listOf("GAINING_WITH_WAIST_INCREASE"),
                 weight = 0.35, waist = 0.4, perf = PerformanceTrend.STABLE,
                 recov = RecoveryTrend.OK, adherence = 80.0, weeks = 5,
-                targetCals = 2800, summary = "Weight and waist both rising.",
+                targetCals = 2600, summary = "Weight and waist both rising.",
+                desiredRate = -0.30, priorTarget = 2800, change = -200,
             ),
         ),
         InsightScenario(
@@ -101,19 +110,22 @@ object InsightScenarios {
                 weight = 0.25, waist = 0.0, perf = PerformanceTrend.UP,
                 recov = RecoveryTrend.GOOD, adherence = 88.0, weeks = 6,
                 targetCals = 2900, summary = "Likely lean mass.",
+                desiredRate = 0.20,
             ),
-            progress = ProgressInsightContext(28, 0.25, 0.0, 0.6, 88.0, 6, 6),
+            progress = ProgressInsightContext(28, 0.25, 0.0, 0.6, 88.0, 6, 6, priorWeightTrendKgPerWeek = 0.22),
         ),
         InsightScenario(
             name = "Poor recovery + trained today",
             recovery = RecoveryInsightContext(
                 sleepHours = 5.0, energyScore = 3, hungerScore = 7, sorenessScore = 8, trained = true,
+                avgSleepHours = 7.4, avgEnergyScore = 6,
             ),
         ),
         InsightScenario(
             name = "Good recovery, rest day",
             recovery = RecoveryInsightContext(
                 sleepHours = 8.2, energyScore = 8, hungerScore = 4, sorenessScore = 2, trained = false,
+                avgSleepHours = 7.5, avgEnergyScore = 6,
             ),
         ),
         InsightScenario(
@@ -122,6 +134,7 @@ object InsightScenarios {
                 caloriesConsumed = 1420, targetCalories = 2200,
                 calorieZoneLowerBound = 2050, calorieZoneUpperBound = 2350,
                 proteinConsumedG = 72.0, proteinTargetG = 165, mealsLoggedCount = 2,
+                fractionOfDayElapsed = 0.6,
             ),
         ),
         InsightScenario(
@@ -130,6 +143,7 @@ object InsightScenarios {
                 caloriesConsumed = 2380, targetCalories = 2200,
                 calorieZoneLowerBound = 2050, calorieZoneUpperBound = 2350,
                 proteinConsumedG = 150.0, proteinTargetG = 165, mealsLoggedCount = 4,
+                fractionOfDayElapsed = 0.85,
             ),
         ),
         InsightScenario(

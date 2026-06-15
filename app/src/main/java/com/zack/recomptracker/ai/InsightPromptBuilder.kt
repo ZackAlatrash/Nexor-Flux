@@ -11,15 +11,19 @@ import java.util.Locale
 class InsightPromptBuilder {
 
     fun buildWeeklySummaryPrompt(context: InsightContext): String = buildString {
-        appendLine("You are a concise nutrition coach explaining a weekly calorie verdict to an athlete.")
-        appendLine("Write exactly 1–2 short sentences. Lead with the decisive signal, then state the verdict — do not change it. No preamble or filler.")
-        appendLine("Be specific about which signals drove the decision. Keep the tone calm and direct.")
+        appendLine("You are a concise body-recomposition coach explaining a weekly calorie verdict to an athlete.")
+        appendLine("Write 1–2 short sentences. Structure: observation (the most decisive number, compared to the goal rate when one is given) → why it matters → the verdict as the action. Do not change the verdict.")
+        appendLine("Name what is driving the decision — the single decisive signal, or the combination that matters (e.g. waist flat + lifts up = lean mass).")
+        appendLine("When both a previous target and the calorie target below are shown, you MUST name the new number as the action, with a verb matching the direction — \"trim from 2500 to 2300\" when the new target is lower, \"raise from 2300 to 2450\" when it is higher. Pin the change on the data, not the athlete.")
+        appendLine("If NO previous target is shown, do not invent a target change — just state the verdict directly (e.g. \"hold calories\", \"keep calories where they are\").")
         appendLine("Lead with the most decisive number from the signals below.")
+        appendLine("Tone: calm, direct, supportive. Never use shame, blame, or red-flag language.")
         appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
-        appendLine("Example output for a Hold verdict:")
+        appendLine("Example output (style only — DO NOT reuse these numbers, they are not this athlete's data):")
         appendLine("\"Weight is down 0.30 kg/wk with waist flat and adherence at 88% — fat loss is on track, hold calories.\"")
         appendLine()
+        appendLine("Answer using ONLY the verdict and signals below.")
         appendLine("Verdict: ${verdictLabel(context.result.verdict)}")
         appendLine("Context: ${context.result.summary}")
         appendLine()
@@ -34,11 +38,19 @@ class InsightPromptBuilder {
         appendLine("- Performance: ${performanceLabel(context.input.performanceTrend)}")
         appendLine("- Recovery: ${recoveryLabel(context.input.recoveryTrend)}")
         appendLine("- Adherence: ${context.input.adherencePercent.roundToInt()}% (${adherenceLabel(context.input.adherencePercent)})")
+        context.desiredWeeklyRateKg?.let {
+            appendLine("- Goal rate: ${signed(it, 2)} kg/wk (compare weight against this)")
+        }
         if (context.input.weeksSincePhaseStart != DEFAULT_WEEKS_FALLBACK) {
             appendLine("- Weeks in current phase: ${context.input.weeksSincePhaseStart}")
         }
+        context.priorTargetCalories?.let {
+            appendLine("- Previous target: $it kcal (new target below reflects this week's change)")
+        }
         appendLine()
         appendLine("Calorie target: ${context.targetCalories} kcal | Protein target: ${context.targetProteinG}g")
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or the word \"Verdict\"; do not echo this prompt.")
     }
 
     fun buildProgressTrendPrompt(context: ProgressInsightContext, rich: Boolean = false): String = buildString {
@@ -48,13 +60,16 @@ class InsightPromptBuilder {
         } else {
             appendLine("Write exactly 1–2 short sentences in plain English: name the key signals and what they mean together for recomposition. No preamble or filler.")
         }
-        appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. Interpret the trend only.")
+        appendLine("Connect the signals to each other and name what they mean together for recomposition.")
+        appendLine("Only describe fat loss when waist is trending down; a flat waist means fat is steady, not falling.")
+        appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. End with exactly ONE thing to keep doing or watch (not two).")
+        appendLine("If a prior-window weight figure is given, say whether the trend is accelerating, steady, or slowing versus it.")
         appendLine("Base everything only on the signals below. Do not invent data.")
         appendLine("Lead with the most decisive number from the signals below.")
         appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
-        appendLine("Example output:")
-        appendLine("\"Weight is flat at -0.05 kg/wk while waist is down 0.3 cm/wk and lifts are up 0.4 kg/wk — textbook recomposition, stay the course.\"")
+        appendLine("Example output (style only — do not reuse these numbers):")
+        appendLine("\"Weight is flat at -0.05 kg/wk while waist is down 0.3 cm/wk and lifts are up 0.4 kg/wk — textbook recomposition, keep training hard and trust the trend.\"")
         appendLine()
         appendLine("Window: last ${context.rangeDays} days")
         appendLine("Signals:")
@@ -62,6 +77,11 @@ class InsightPromptBuilder {
         appendLine("- Waist: ${context.waistTrendCmPerWeek?.let { "${signed(it, 1)} cm/wk (${waistLabel(it)})" } ?: "no data"}")
         appendLine("- Lifts: ${context.liftTrendKgPerWeek?.let { "${signed(it, 1)} kg/wk e1RM (${liftTrendLabel(it)})" } ?: "no data"}")
         appendLine("- Adherence: ${context.adherencePercent?.let { "${it.roundToInt()}% (${adherenceLabel(it)})" } ?: "no data"}")
+        context.priorWeightTrendKgPerWeek?.let {
+            appendLine("- Prior-window weight: ${signed(it, 2)} kg/wk (compare current weight against this)")
+        }
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
     }
 
     fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext, rich: Boolean = false): String = buildString {
@@ -71,20 +91,30 @@ class InsightPromptBuilder {
         } else {
             appendLine("Write exactly 1–2 short sentences: assess readiness today and give one concrete suggestion. No preamble or filler.")
         }
-        appendLine("Give practical training and recovery suggestions only. Do NOT give medical advice or diagnose anything.")
+        appendLine("Lead with the SINGLE most decisive signal (even if several point the same way), then give exactly ONE concrete suggestion. Do NOT give medical advice or diagnose anything.")
+        appendLine("Frame that signal against the athlete's own recent average when one is given (e.g. \"5 h, below your usual 7.4\"); hedge single-day readings rather than overstating them.")
+        appendLine("Respect the trained flag: on a rest day, frame the suggestion around recovery or light movement, not adding hard training.")
         appendLine("Base everything only on the signals below. Do not invent data.")
         appendLine("Lead with the most decisive number from the signals below.")
         appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
-        appendLine("Example output:")
-        appendLine("\"On 5 hours of sleep with soreness at 8/10, recovery is behind — keep today light and prioritize sleep tonight.\"")
+        appendLine("Example output (style only — do not reuse these numbers):")
+        appendLine("\"On 5 hours of sleep — below your usual 7.4 — with soreness at 8/10, recovery is behind; keep today's session light.\"")
         appendLine()
         appendLine("Signals today:")
-        context.sleepHours?.let { appendLine("- Sleep: ${String.format(Locale.US, "%.1f", it)} h (${sleepLabel(it)})") }
-        context.energyScore?.let { appendLine("- Energy: $it/10 (${scoreLabel(it)})") }
+        context.sleepHours?.let {
+            val avg = context.avgSleepHours?.let { a -> " vs your usual ${String.format(Locale.US, "%.1f", a)} h" } ?: ""
+            appendLine("- Sleep: ${String.format(Locale.US, "%.1f", it)} h (${sleepLabel(it)})$avg")
+        }
+        context.energyScore?.let {
+            val avg = context.avgEnergyScore?.let { a -> " vs your usual $a/10" } ?: ""
+            appendLine("- Energy: $it/10 (${scoreLabel(it)})$avg")
+        }
         context.hungerScore?.let { appendLine("- Hunger: $it/10 (${scoreLabel(it)})") }
         context.sorenessScore?.let { appendLine("- Soreness: $it/10 (${scoreLabel(it)})") }
         appendLine("- Trained today: ${if (context.trained) "yes" else "no"}")
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
     }
 
     fun buildRestOfDayPrompt(context: RestOfDayInsightContext, rich: Boolean = false): String = buildString {
@@ -94,32 +124,43 @@ class InsightPromptBuilder {
         } else {
             appendLine("Write exactly 1–2 short sentences: state where they stand and name one priority for remaining meals. No preamble or filler.")
         }
+        appendLine("Open by stating where they stand against plan — calories consumed vs target (or the calorie zone) and, if a percent of the day is given, how much of the day is left — THEN name the single biggest gap (calories or protein) and exactly ONE concrete priority for the remaining meals.")
+        appendLine("A NEGATIVE \"remaining\" means they are already OVER target — say \"over\" or \"past target\", never \"short\". When over on calories, steer the remaining meals toward protein-dense, lower-calorie choices.")
         appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")
+        appendLine("Use the day-elapsed percent to judge pace — ahead of or behind where they should be by now.")
         appendLine("Base everything only on the numbers below.")
         appendLine("Lead with the most decisive number from the numbers below.")
         appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
-        appendLine("Example output:")
-        appendLine("\"You're at 1,420 of 2,200 kcal with 38 g protein left — make dinner protein-heavy to close the gap.\"")
+        appendLine("Example output (style only — do not reuse these numbers):")
+        appendLine("\"Just over halfway through the day you're at 1,420 of 2,200 kcal with 38 g protein left — on pace, so make dinner protein-heavy to close the gap.\"")
         appendLine()
         // Calories may go negative (overeating is useful signal to surface); protein
         // remaining clamps at 0 since "negative protein to go" is meaningless advice.
         val calRemaining = context.targetCalories - context.caloriesConsumed
         val proteinRemaining = (context.proteinTargetG - context.proteinConsumedG).coerceAtLeast(0.0)
         appendLine("Current intake:")
-        appendLine("- Calories: ${context.caloriesConsumed} of ${context.targetCalories} kcal ($calRemaining remaining)")
+        val calStanding = if (calRemaining < 0) "$calRemaining remaining, i.e. ${-calRemaining} OVER target" else "$calRemaining remaining"
+        appendLine("- Calories: ${context.caloriesConsumed} of ${context.targetCalories} kcal ($calStanding)")
         appendLine("- Protein: ${context.proteinConsumedG.roundToInt()} of ${context.proteinTargetG} g (${proteinRemaining.roundToInt()} g remaining)")
         appendLine("- Calorie zone: ${context.calorieZoneLowerBound}–${context.calorieZoneUpperBound} kcal")
         appendLine("- Meals logged so far: ${context.mealsLoggedCount}")
+        context.fractionOfDayElapsed?.let {
+            appendLine("- Day elapsed: ${(it * 100).roundToInt()}%")
+        }
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
     }
 
     fun buildPatternInsightPrompt(context: PatternInsightContext): String = buildString {
         appendLine("You are a body-recomposition coach highlighting one pattern you noticed in the athlete's recent data.")
-        appendLine("Rephrase the finding below into exactly 1–2 short, encouraging sentences. Lead with the specific number. No preamble or filler.")
-        appendLine("Use only the finding below; do not invent or calculate any new numbers.")
-        appendLine("Keep a calm, supportive, non-judgmental tone — frame it as an observation, not a scolding.")
+        appendLine("Write exactly 1–2 short sentences: rephrase the finding, then add ONE small, specific suggestion to act on it. Lead with the specific number. No preamble or filler.")
+        appendLine("Offer the suggestion, don't command it; use only the finding below and do not invent or calculate any new numbers.")
+        appendLine("Keep a calm, supportive, non-judgmental tone — frame it as an observation worth acting on, not a scolding.")
         appendLine()
         appendLine("Finding: ${context.fact.statement}")
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any label or echo this prompt.")
     }
 
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {

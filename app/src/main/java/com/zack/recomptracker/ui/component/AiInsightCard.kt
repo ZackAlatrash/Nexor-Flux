@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,10 +40,12 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
+import com.kyant.shapes.Capsule
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.LocalAppAccent
+import com.zack.recomptracker.ui.theme.CornerPill
+import com.zack.recomptracker.ui.theme.LocalAppColors
 
 enum class AiBorderMode {
     Preparing,
@@ -52,51 +55,51 @@ enum class AiBorderMode {
 }
 
 /**
- * Liquid-glass AI card: a translucent frosted body (vibrancy + blur + chromatic lens + specular
- * highlight) with a thin full-spectrum iridescent rim whose hue flows in place — the rim geometry
- * never rotates. Rim intensity/motion is driven by [borderMode]. When system animations are off,
- * it falls back to a static iridescent rim.
+ * Liquid-glass AI card: exact nav-bar glass recipe (vibrancy + blur + lens) with an [aiEdgeGlow]
+ * halo layer sitting BEHIND the glass. Supports a [collapsed] pill shape (Capsule) in addition to
+ * the default rounded-card shape.
  */
 @Composable
 fun AiInsightCard(
     borderMode: AiBorderMode,
     modifier: Modifier = Modifier,
+    collapsed: Boolean = false,
+    contentPadding: Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val accent = LocalAppAccent.current
     val backdrop = LocalBackdrop.current
-    val cornerDp = CornerCard
+    val cornerDp = if (collapsed) CornerPill else CornerCard
+    val isDark = LocalAppColors.current.isDark
+    val containerColor =
+        if (isDark) Color(0xFF121212).copy(alpha = 0.40f) else Color(0xFFFAFAFA).copy(alpha = 0.40f)
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(cornerDp))
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { RoundedRectangle(cornerDp) },
-                effects = {
-                    vibrancy()
-                    blur(22f.dp.toPx())
-                    lens(12f.dp.toPx(), 18f.dp.toPx(), chromaticAberration = true)
-                },
-                highlight = { Highlight.Default },
-                shadow = { Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.35f)) },
-                onDrawSurface = {
-                    // Lighter, more transparent frost so more of the backdrop shows through.
-                    drawRect(Color.White.copy(alpha = 0.03f))
-                    drawRect(accent.accent.copy(alpha = 0.03f))
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.White.copy(alpha = 0.22f),
-                            0.12f to Color.Transparent,
-                        ),
-                    )
-                },
-            )
-            .aiIridescentRim(borderMode, cornerDp)
-            .padding(16.dp),
-        content = content,
-    )
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Halo layer (blurred) sits behind the glass; this Box draws ONLY the glow.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aiEdgeGlow(borderMode, cornerDp),
+        )
+        // Glass layer — exact nav-bar recipe.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(if (collapsed) Capsule() else RoundedCornerShape(cornerDp))
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { if (collapsed) Capsule() else RoundedRectangle(cornerDp) },
+                    effects = {
+                        vibrancy()
+                        blur(8f.dp.toPx())
+                        lens(24f.dp.toPx(), 24f.dp.toPx())
+                    },
+                    highlight = { Highlight.Default },
+                    onDrawSurface = { drawRect(containerColor) },
+                )
+                .padding(contentPadding),
+            content = content,
+        )
+    }
 }
 
 /**
@@ -189,6 +192,14 @@ private fun DrawScope.drawIridescentBorder(
         style = Stroke(width = 1.3.dp.toPx()),
         alpha = baseAlpha,
     )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0D0818)
+@Composable
+private fun PreviewCollapsedPill() {
+    AiInsightCard(borderMode = AiBorderMode.Static, collapsed = true, contentPadding = 12.dp) {
+        androidx.compose.material3.Text("You're 24g under protein today", color = Color.White)
+    }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0D0818)

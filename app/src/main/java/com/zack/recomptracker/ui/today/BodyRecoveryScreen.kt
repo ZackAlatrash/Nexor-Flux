@@ -160,6 +160,7 @@ fun BodyRecoveryContent(
                     title = "Recovery readiness",
                     state = recoveryInsightState,
                     onRetry = onRetryRecoveryInsight,
+                    variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
                 )
             }
             item {

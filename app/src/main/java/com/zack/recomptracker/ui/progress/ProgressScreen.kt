@@ -86,6 +86,7 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
                     title = "Trend analysis",
                     state = insightState,
                     onRetry = viewModel::retryProgressInsight,
+                    variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
                 )
             }
 

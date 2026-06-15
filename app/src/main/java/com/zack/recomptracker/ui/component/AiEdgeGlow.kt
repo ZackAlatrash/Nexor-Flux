@@ -9,7 +9,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -45,11 +44,12 @@ fun Modifier.aiEdgeGlow(mode: AiBorderMode, cornerRadius: Dp): Modifier {
     val effectiveMode = if (animationsEnabled) mode else AiBorderMode.Static
 
     val transition = rememberInfiniteTransition(label = "aiEdgeGlow")
-    val cycleMs = if (effectiveMode == AiBorderMode.Generating) 7000 else 16000
-    val huePhase by transition.animateFloat(
+    // One fixed-rate hue cycle. infiniteRepeatable specs are snapshotted and do not re-pace on a
+    // mode change, so Generating speeds up via a shift multiplier (see below), not a shorter tween.
+    val hueState = transition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(cycleMs, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing)),
         label = "huePhase",
     )
 
@@ -59,25 +59,29 @@ fun Modifier.aiEdgeGlow(mode: AiBorderMode, cornerRadius: Dp): Modifier {
         AiBorderMode.Ready -> 0.50f
         AiBorderMode.Static -> 0.45f
     }
-    val glowAlpha by animateFloatAsState(targetAlpha, tween(600), label = "glowAlpha")
+    val glowAlphaState = animateFloatAsState(targetAlpha, tween(600), label = "glowAlpha")
 
-    val shift = if (animationsEnabled) huePhase else 0f
-    val colors = IridescentStops.map { it.hueShifted(shift) }
+    val generating = effectiveMode == AiBorderMode.Generating
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-    val haloStroke = 3.dp
     return this
         .drawBehind {
-            val inset = haloStroke.toPx() / 2f
-            val corner = CornerRadius(cornerRadius.toPx() + inset)
+            // Read animated state in the draw phase: frames invalidate draw only, not composition.
+            val shift =
+                if (animationsEnabled) hueState.value * (if (generating) 1.6f else 1f) else 0f
+            val colors = if (shift == 0f) IridescentStops else IridescentStops.map { it.hueShifted(shift) }
+            val inset = HaloStroke.toPx() / 2f
             drawRoundRect(
                 brush = Brush.sweepGradient(colors, center = Offset(size.width / 2f, size.height / 2f)),
                 topLeft = Offset(-inset, -inset),
                 size = Size(size.width + inset * 2f, size.height + inset * 2f),
-                cornerRadius = corner,
-                style = Stroke(width = haloStroke.toPx() * 2f),
-                alpha = glowAlpha,
+                cornerRadius = CornerRadius(cornerRadius.toPx() + inset),
+                style = Stroke(width = HaloStroke.toPx() * 2f),
+                alpha = glowAlphaState.value,
             )
         }
-        .then(if (supportsBlur) Modifier.blur(11.dp) else Modifier)
+        .then(if (supportsBlur) Modifier.blur(GlowBlurRadius) else Modifier)
 }
+
+private val HaloStroke = 3.dp
+private val GlowBlurRadius = 11.dp

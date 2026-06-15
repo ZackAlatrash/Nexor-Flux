@@ -156,12 +156,15 @@ fun BodyRecoveryContent(
             item { ScreenHeader(state) }
             item { MetricsHeroCard(state) }
             item {
-                GeneratedInsightCard(
-                    title = "Recovery readiness",
-                    state = recoveryInsightState,
-                    onRetry = onRetryRecoveryInsight,
-                    variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                )
+                com.zack.recomptracker.ui.component.DismissibleInsight { onDismiss ->
+                    GeneratedInsightCard(
+                        title = "Recovery readiness",
+                        state = recoveryInsightState,
+                        onRetry = onRetryRecoveryInsight,
+                        variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
+                        onDismiss = onDismiss,
+                    )
+                }
             }
             item {
                 MetricTilesCard(formState) { section ->

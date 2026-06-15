@@ -461,12 +461,15 @@ private fun RestOfDayReveal(
     if (!available) return
     // Start generation as soon as the pill is on screen.
     androidx.compose.runtime.LaunchedEffect(Unit) { onReveal() }
-    GeneratedInsightCard(
-        title = "Rest of day",
-        state = state,
-        onRetry = onRetry,
-        variant = com.zack.recomptracker.ui.component.InsightCardVariant.PILL,
-    )
+    com.zack.recomptracker.ui.component.DismissibleInsight { onDismiss ->
+        GeneratedInsightCard(
+            title = "Rest of day",
+            state = state,
+            onRetry = onRetry,
+            variant = com.zack.recomptracker.ui.component.InsightCardVariant.PILL,
+            onDismiss = onDismiss,
+        )
+    }
 }
 
 @Composable

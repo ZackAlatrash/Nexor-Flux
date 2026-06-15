@@ -82,12 +82,15 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                GeneratedInsightCard(
-                    title = "Trend analysis",
-                    state = insightState,
-                    onRetry = viewModel::retryProgressInsight,
-                    variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                )
+                com.zack.recomptracker.ui.component.DismissibleInsight { onDismiss ->
+                    GeneratedInsightCard(
+                        title = "Trend analysis",
+                        state = insightState,
+                        onRetry = viewModel::retryProgressInsight,
+                        variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
+                        onDismiss = onDismiss,
+                    )
+                }
             }
 
             item {

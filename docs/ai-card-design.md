@@ -49,27 +49,46 @@ tracked separately.
 
 ## 3. Aesthetic foundation
 
-### 3.1 Liquid glass (same as the nav bar)
+### 3.1 Liquid glass — the exact nav-bar material (non-negotiable)
 
-Cards are built on the **same `drawBackdrop` stack as `LiquidBottomTabs`**
-([LiquidComponents.kt:237](../app/src/main/java/com/zack/recomptracker/ui/liquidglass/LiquidComponents.kt)) —
-not the lighter `FrostedCard`. The reference recipe:
+Cards use the **real Kyant liquid-glass material**, identical to the nav bar — **not** the
+lighter `FrostedCard`, and **not** a CSS-style approximation. The browser mockups only *simulate*
+glass; the implementation must use the library.
 
-```
-drawBackdrop(
-    backdrop = LocalBackdrop.current,
-    shape = { RoundedCornerShape(corner) },   // Capsule() when collapsed
+Library (already a dependency — inspiration: <https://github.com/Kyant0/AndroidLiquidGlass>):
+
+- `io.github.kyant0:backdrop:2.0.0`
+- `io.github.kyant0:shapes:1.2.0`
+
+The canonical recipe to **copy from `LiquidBottomTabs`**
+([LiquidComponents.kt:237–262](../app/src/main/java/com/zack/recomptracker/ui/liquidglass/LiquidComponents.kt)):
+
+```kotlin
+Modifier.drawBackdrop(
+    backdrop = backdrop,                       // the shared app Backdrop (LocalBackdrop), NOT EmptyBackdrop
+    shape = { if (collapsed) Capsule() else RoundedCornerShape(corner) },
     effects = {
         vibrancy()
-        blur(8f.dp.toPx())
-        lens(24f.dp.toPx(), 24f.dp.toPx())
+        blur(8f.dp.toPx())                     // same 8dp as the nav bar (not the old 22dp)
+        lens(24f.dp.toPx(), 24f.dp.toPx())     // same refraction/lens as the nav bar
     },
-    onDrawSurface = { drawRect(containerColor) }   // ~0.4 alpha neutral wash
+    onDrawSurface = { drawRect(containerColor) }   // ~0.4-alpha neutral wash, same as nav bar
 )
+// + InteractiveHighlight on press, matching the nav bar
 ```
 
-So the card face is **neutral translucent glass** that refracts the live `GlassOrbBackground`
-behind it — identical material to the nav bar.
+Rules:
+
+- **Reuse the same `Backdrop`** the nav bar reads (`LocalBackdrop.current`) so cards refract the
+  live `GlassOrbBackground`. The collapsed pill uses `Capsule()` — literally the nav-bar shape.
+- Match the nav bar's effect parameters exactly (blur `8dp`, lens `24/24`, the neutral container
+  wash). Do not reuse `AiInsightCard`'s heavier `blur(22dp)` stack — retune it to the nav-bar values.
+- The `lens()` refraction uses `RuntimeShader` (API 33+) and the library falls back gracefully on
+  older devices via `isRuntimeShaderSupported` — this already ships at `minSdk 26` through the nav
+  bar, so no new gating is required for the glass material itself.
+
+Net: the card face is **neutral translucent glass that refracts the background** — the same
+material the user already sees in the bottom nav.
 
 ### 3.2 Apple-Intelligence edge glow (replaces the full iridescent rim)
 
@@ -215,8 +234,12 @@ Reuse mandate: build only from the existing glass component library and `LocalAp
 
 ## 10. Accessibility & performance
 
-- `minSdk 26`: real `Modifier.blur` is API 31+. Glass already branches on this; the edge glow
-  must too (static soft glow fallback < API 31). No per-frame bitmap blur.
+- The **glass material** itself is handled by the Kyant library (lens/refraction via
+  `RuntimeShader`, API 33+, with built-in fallback) and already runs at `minSdk 26` through the
+  nav bar — no new gating needed there.
+- The **edge glow** is the only new API-sensitive piece: its blur uses `Modifier.blur` /
+  `RenderEffect` (API 31+), so it must branch — a static soft multi-stop glow below API 31. No
+  per-frame bitmap blur.
 - Limit infinite animations: only the **visible** card animates its glow; collapsed pills and
   off-screen cards hold a static glow. Keep glow/shimmer in the **draw phase**
   (`drawWithCache`), never read animation state in composition.
@@ -225,12 +248,14 @@ Reuse mandate: build only from the existing glass component library and `LocalAp
   the ~0.66-alpha neutral wash, not on the gradient).
 - Honour the system reduced-motion setting (existing guard).
 
-## 11. Open questions
+## 11. Resolved decisions
 
-- Persisted snooze/dismiss needs a tiny store (DataStore key per insight kind + expiry). Confirm
-  scope for this redesign vs. a follow-up.
-- Confidence signal source: derive a label (High/Medium) from `InsightFact.priority`, or compute
-  a real confidence score? Draft uses a derived label.
+- **Confidence badge** → derive a `High` / `Medium` label from `InsightFact.priority`. No new
+  scoring model in this redesign.
+- **Snooze / dismiss persistence** → the on-card affordances (snooze, dismiss + undo) are in
+  scope visually, but durable cross-session persistence (a DataStore store keyed by insight kind
+  with expiry) is a **follow-up**. For this redesign, snooze/dismiss hides the card for the
+  current session; the undo snackbar still applies.
 
 ## 12. Out of scope
 

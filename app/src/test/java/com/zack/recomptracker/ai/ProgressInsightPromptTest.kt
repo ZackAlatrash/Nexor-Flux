@@ -25,23 +25,21 @@ class ProgressInsightPromptTest {
     }
 
     @Test
-    fun `weight trend is qualitative not numeric`() {
+    fun `weight trend shows the signed number and label`() {
         val prompt = builder.buildProgressTrendPrompt(ctx(weightTrendKgPerWeek = 0.05))
-        assertTrue("Weight: stable" in prompt)
-        assertFalse("0.05" in prompt)
+        assertTrue("Weight: +0.05 kg/wk (stable)" in prompt)
     }
 
     @Test
-    fun `waist trending down is qualitative`() {
+    fun `waist trending down shows the signed number`() {
         val prompt = builder.buildProgressTrendPrompt(ctx(waistTrendCmPerWeek = -0.30))
-        assertTrue("Waist: trending down" in prompt)
-        assertFalse("-0.30" in prompt)
+        assertTrue("Waist: -0.3 cm/wk (trending down)" in prompt)
     }
 
     @Test
-    fun `lifts improving is qualitative`() {
+    fun `lifts improving shows the signed e1RM number`() {
         val prompt = builder.buildProgressTrendPrompt(ctx(liftTrendKgPerWeek = 0.5))
-        assertTrue("Lifts: improving" in prompt)
+        assertTrue("Lifts: +0.5 kg/wk e1RM (improving)" in prompt)
     }
 
     @Test
@@ -51,10 +49,9 @@ class ProgressInsightPromptTest {
     }
 
     @Test
-    fun `adherence is qualitative`() {
+    fun `adherence shows integer percent and label`() {
         val prompt = builder.buildProgressTrendPrompt(ctx(adherencePercent = 91.0))
-        assertTrue("Adherence: high" in prompt)
-        assertFalse("91" in prompt)
+        assertTrue("Adherence: 91% (high)" in prompt)
     }
 
     @Test
@@ -80,9 +77,9 @@ class ProgressInsightPromptTest {
     }
 
     @Test
-    fun `lifts declining is qualitative`() {
+    fun `lifts declining shows the negative number`() {
         val prompt = builder.buildProgressTrendPrompt(ctx(liftTrendKgPerWeek = -0.5))
-        assertTrue("Lifts: declining" in prompt)
+        assertTrue("Lifts: -0.5 kg/wk e1RM (declining)" in prompt)
     }
 
     @Test
@@ -95,5 +92,15 @@ class ProgressInsightPromptTest {
     fun `null adherence renders no data`() {
         val prompt = builder.buildProgressTrendPrompt(ctx(adherencePercent = null))
         assertTrue("Adherence: no data" in prompt)
+    }
+
+    @Test
+    fun `instructs to lead with a number`() {
+        assertTrue("Lead with the most decisive number" in builder.buildProgressTrendPrompt(ctx()))
+    }
+
+    @Test
+    fun `forbids the model doing its own math`() {
+        assertTrue("do not do any math" in builder.buildProgressTrendPrompt(ctx()))
     }
 }

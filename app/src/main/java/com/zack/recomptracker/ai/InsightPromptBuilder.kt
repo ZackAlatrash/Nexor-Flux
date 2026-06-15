@@ -50,16 +50,18 @@ class InsightPromptBuilder {
         }
         appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. Interpret the trend only.")
         appendLine("Base everything only on the signals below. Do not invent data.")
+        appendLine("Lead with the most decisive number from the signals below.")
+        appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
         appendLine("Example output:")
-        appendLine("\"Weight stable, waist trending down, lifts improving — classic recomposition signal, stay the course.\"")
+        appendLine("\"Weight is flat at -0.05 kg/wk while waist is down 0.3 cm/wk and lifts are up 0.4 kg/wk — textbook recomposition, stay the course.\"")
         appendLine()
         appendLine("Window: last ${context.rangeDays} days")
         appendLine("Signals:")
-        appendLine("- Weight: ${context.weightTrendKgPerWeek?.let { weightLabel(it) } ?: "no data"}")
-        appendLine("- Waist: ${context.waistTrendCmPerWeek?.let { waistLabel(it) } ?: "no data"}")
-        appendLine("- Lifts: ${liftTrendLabel(context.liftTrendKgPerWeek)}")
-        appendLine("- Adherence: ${context.adherencePercent?.let { adherenceLabel(it) } ?: "no data"}")
+        appendLine("- Weight: ${context.weightTrendKgPerWeek?.let { "${signed(it, 2)} kg/wk (${weightLabel(it)})" } ?: "no data"}")
+        appendLine("- Waist: ${context.waistTrendCmPerWeek?.let { "${signed(it, 1)} cm/wk (${waistLabel(it)})" } ?: "no data"}")
+        appendLine("- Lifts: ${context.liftTrendKgPerWeek?.let { "${signed(it, 1)} kg/wk e1RM (${liftTrendLabel(it)})" } ?: "no data"}")
+        appendLine("- Adherence: ${context.adherencePercent?.let { "${it.roundToInt()}% (${adherenceLabel(it)})" } ?: "no data"}")
     }
 
     fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext, rich: Boolean = false): String = buildString {

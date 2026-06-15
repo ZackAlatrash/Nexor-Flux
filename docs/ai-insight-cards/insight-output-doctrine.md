@@ -185,7 +185,10 @@ target shape. Card mechanics live in `docs/ai-coach.md`; this is the **output** 
 
 ## 7. The LLM-judge rubric
 
-Each generated card is scored 1–5 on five axes plus a gate. (Same model, separate call.)
+Each generated card is scored 1–5 on five axes plus a gate. Two judge modes (harness
+`-DinsightJudge`): **manual/Claude** (default — the harness prints clean outputs and a human or
+Claude scores them; used because a weak free model judging itself is too noisy) and **model** (the
+automated LLM-judge below — best pointed at a strong judge model).
 
 - **Accuracy (1–5):** uses only numbers present in the prompt; no invented metrics.
 - **Actionability (1–5):** exactly one concrete, small next step.

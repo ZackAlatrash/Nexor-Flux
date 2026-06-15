@@ -1,6 +1,7 @@
 package com.zack.recomptracker.domain.insight
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,6 +61,17 @@ class PatternDetectorsTest {
     }
 
     @Test
+    fun `weekday-weekend fires at a 200-plus gap (real-world calibration)`() {
+        // Weekends ~2080 vs weekdays ~2300 → ~220 gap, just over the 200 threshold.
+        // Mirrors real user data where a ~215 gap was previously dropped at the old 250 threshold.
+        val fact = detectWeekdayWeekend(
+            days(calsFor = { if (isWeekend(it)) 2080 else 2300 }),
+            targets,
+        )
+        assertEquals(InsightFactType.WEEKDAY_WEEKEND, fact?.type)
+    }
+
+    @Test
     fun `derailment fires when one day drives most of the surplus`() {
         // 7 logged days: six at target (no surplus), one at +1500.
         val end = LocalDate.of(2026, 6, 14)
@@ -90,7 +102,7 @@ class PatternDetectorsTest {
     }
 
     @Test
-    fun `weakest macro flags protein when calories are in zone`() {
+    fun `weakest macro flags protein with on-point wording when calories are in zone`() {
         // Calories ~2200 (in 2100-2300 zone); protein ~60% of target, carbs & fat on target.
         val fact = detectWeakestMacro(
             days(calsFor = { 2200 }, proteinFor = { 100.0 }),
@@ -99,16 +111,21 @@ class PatternDetectorsTest {
         assertEquals(InsightFactType.WEAKEST_MACRO, fact?.type)
         assertTrue(fact!!.statement.contains("protein"))
         assertTrue(fact.statement.contains("%"))
+        assertTrue("in-zone calories should use the 'on point' wording", fact.statement.contains("on point"))
     }
 
     @Test
-    fun `weakest macro does not fire when calories are out of zone`() {
-        // Calories 2800 (above zone) → not a "calories on point" situation.
+    fun `weakest macro fires out of zone with neutral wording`() {
+        // Calories 2800 (above zone) but protein only ~61% — still the weakest lever worth surfacing.
+        // Previously the zone guard suppressed this; now it fires without claiming "calories on point".
         val fact = detectWeakestMacro(
             days(calsFor = { 2800 }, proteinFor = { 100.0 }),
             targets,
         )
-        assertNull(fact)
+        assertEquals(InsightFactType.WEAKEST_MACRO, fact?.type)
+        assertTrue(fact!!.statement.contains("protein", ignoreCase = true))
+        assertTrue(fact.statement.contains("%"))
+        assertFalse("must not falsely claim calories are on point", fact.statement.contains("on point"))
     }
 
     @Test

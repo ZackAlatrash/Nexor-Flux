@@ -6,7 +6,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private const val WEEKDAY_WEEKEND_MIN_GAP = 250.0
+private const val WEEKDAY_WEEKEND_MIN_GAP = 200.0
 
 internal fun detectWeekdayWeekend(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
     val logged = days.filter { it.logged }
@@ -56,8 +56,6 @@ private const val WEAKEST_MACRO_MAX_PCT = 85
 internal fun detectWeakestMacro(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
     val logged = days.filter { it.logged }
     if (logged.size < 4) return null
-    val meanCalories = logged.map { it.calories }.average()
-    if (meanCalories < targets.calorieZoneLower || meanCalories > targets.calorieZoneUpper) return null
 
     // rank 0 = protein wins ties (most actionable lever).
     data class Macro(val name: String, val pct: Int, val rank: Int)
@@ -68,7 +66,17 @@ internal fun detectWeakestMacro(days: List<DayNutrition>, targets: NutritionTarg
     )
     val weakest = macros.minWithOrNull(compareBy({ it.pct }, { it.rank })) ?: return null
     if (weakest.pct >= WEAKEST_MACRO_MAX_PCT) return null
-    val statement = "Calories are on point, but ${weakest.name} is averaging ${weakest.pct}% of target — your main gap."
+
+    // A lagging macro is worth surfacing regardless of calorie level. Only claim "calories are on
+    // point" when the average genuinely sits in the zone; otherwise use neutral wording so we never
+    // tell someone eating well under/over target that their calories are fine.
+    val meanCalories = logged.map { it.calories }.average()
+    val caloriesOnPoint = meanCalories >= targets.calorieZoneLower && meanCalories <= targets.calorieZoneUpper
+    val statement = if (caloriesOnPoint) {
+        "Calories are on point, but ${weakest.name} is averaging ${weakest.pct}% of target — your main gap."
+    } else {
+        "${weakest.name.replaceFirstChar { it.uppercase() }} is averaging ${weakest.pct}% of target — your weakest macro this stretch."
+    }
     val priority = 30 + ((WEAKEST_MACRO_MAX_PCT - weakest.pct) / 5).coerceIn(0, 15)
     return InsightFact(InsightFactType.WEAKEST_MACRO, priority, statement)
 }

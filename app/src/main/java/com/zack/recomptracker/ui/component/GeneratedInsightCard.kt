@@ -8,14 +8,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,8 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -143,7 +150,17 @@ private fun InsightCardHeader(
 ) {
     val appColors = LocalAppColors.current
     Row(
-        modifier = Modifier.fillMaxWidth().let { if (collapsible) it.clickable(onClick = onToggle) else it },
+        modifier = Modifier.fillMaxWidth().let {
+            if (collapsible) {
+                it.clickable(
+                    onClickLabel = if (collapsed) "Expand insight" else "Collapse insight",
+                    role = Role.Button,
+                    onClick = onToggle,
+                )
+            } else {
+                it
+            }
+        },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -197,12 +214,10 @@ private fun InsightActions(
         ActionChip("Refresh", appColors.textMuted, onRetry)
         Spacer(Modifier.weight(1f))
         if (onFeedback != null) {
-            Text("♡", fontSize = 15.sp, color = appColors.textFaint,
-                modifier = Modifier.clickable { onFeedback(true) }.padding(horizontal = 2.dp))
+            IconAction(glyph = "♡", description = "Mark insight helpful", color = appColors.textFaint) { onFeedback(true) }
         }
         if (onDismiss != null) {
-            Text("✕", fontSize = 14.sp, color = appColors.textFaint,
-                modifier = Modifier.clickable(onClick = onDismiss).padding(horizontal = 2.dp))
+            IconAction(glyph = "✕", description = "Dismiss insight", color = appColors.textFaint, onClick = onDismiss)
         }
     }
 }
@@ -212,9 +227,23 @@ private fun ActionChip(text: String, color: Color, onClick: () -> Unit) {
     Row(
         Modifier
             .border(0.5.dp, color.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick, role = Role.Button)
             .padding(horizontal = 12.dp, vertical = 5.dp),
     ) { Text(text, fontSize = 12.sp, color = color) }
+}
+
+@Composable
+private fun IconAction(glyph: String, description: String, color: Color, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .minimumInteractiveComponentSize()
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, fontSize = 15.sp, color = color)
+    }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0D0818)

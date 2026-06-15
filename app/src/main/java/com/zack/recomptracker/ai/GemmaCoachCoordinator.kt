@@ -162,14 +162,15 @@ class GemmaCoachCoordinator(
             conversationDate = today
 
             mutableHistory.add(ChatMessage(Role.User, userText))
-            _state.value = CoachState.Thinking(mutableHistory.toList(), toolStatus = "Thinking…")
+            thinkingSteps.clear()
+            pushThinking("Thinking…")
             try {
                 val modelPath = serviceHolder.modelFileFor(insightCoordinator.selectedModel.value).absolutePath
                 val service = serviceHolder.getOrCreateService(modelPath)
                 if (!service.isInitialized) {
-                    _state.value = CoachState.Thinking(mutableHistory.toList(), toolStatus = "Loading AI engine…")
+                    pushThinking("Loading AI engine…")
                     service.ensureInitialized()
-                    _state.value = CoachState.Thinking(mutableHistory.toList(), toolStatus = "Thinking…")
+                    pushThinking("Thinking…")
                 } else {
                     service.ensureInitialized()
                 }
@@ -208,10 +209,7 @@ class GemmaCoachCoordinator(
                     val toolResponses = mutableListOf<Content.ToolResponse>()
                     for (toolCall in toolCalls) {
                         Log.d("RecompCoach", "tool_call: name=${toolCall.name} args=${toolCall.arguments}")
-                        _state.value = CoachState.Thinking(
-                            mutableHistory.toList(),
-                            toolStatus = toolStatusText(toolCall.name),
-                        )
+                        pushThinking(toolStatusText(toolCall.name))
                         val argsMap =
                             toolCall.arguments.mapValues { (_, value) -> value.toString() }
                         if (toolCall.name in COACH_WRITE_TOOLS) {
@@ -236,10 +234,7 @@ class GemmaCoachCoordinator(
                                 )
                                 continue
                             }
-                            _state.value = CoachState.Thinking(
-                                mutableHistory.toList(),
-                                toolStatus = toolStatusText(toolCall.name),
-                            )
+                            pushThinking(toolStatusText(toolCall.name))
                         }
                         val result = withContext(Dispatchers.IO) {
                             toolExecutor.execute(toolCall.name, argsMap)
@@ -454,6 +449,16 @@ class GemmaCoachCoordinator(
                 "Use search_food_library only when the user asks to browse or search available foods.",
         )
         append("6. Stay on topic: nutrition, body composition, training, recovery only.")
+    }
+
+    // Running process log for the current turn (thinking + tool steps). Safe as a single field
+    // because turnLock serialises turns; cleared at the start of each turn.
+    private val thinkingSteps = mutableListOf<String>()
+
+    /** Appends a process step (dedupes consecutive duplicates) and emits the updated Thinking state. */
+    private fun pushThinking(label: String) {
+        if (thinkingSteps.lastOrNull() != label) thinkingSteps.add(label)
+        _state.value = CoachState.Thinking(mutableHistory.toList(), thinkingSteps.toList())
     }
 
     private fun toolStatusText(name: String): String = when (name) {

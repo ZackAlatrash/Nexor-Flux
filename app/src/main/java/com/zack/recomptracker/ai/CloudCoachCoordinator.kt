@@ -106,7 +106,8 @@ class CloudCoachCoordinator(
                 return@withLock
             }
             history.add(ChatMessage(Role.User, userText))
-            _state.value = CoachState.Thinking(history.toList(), toolStatus = "Thinking…")
+            thinkingSteps.clear()
+            pushThinking("Thinking…")
             try {
                 if (!systemSeeded) {
                     requestMessages.add(ChatRequestMessage(role = "system", content = tools.systemPromptSnapshot()))
@@ -158,7 +159,7 @@ class CloudCoachCoordinator(
 
                     // Execute each tool call, collecting results for the next completion.
                     for (call in response.toolCalls) {
-                        _state.value = CoachState.Thinking(history.toList(), toolStatus = toolStatusText(call.name))
+                        pushThinking(toolStatusText(call.name))
                         val result = if (call.name in COACH_WRITE_TOOLS) {
                             confirmAndRun(call)
                         } else {
@@ -202,7 +203,7 @@ class CloudCoachCoordinator(
         val confirmed = deferred.await()
         pendingConfirmation = null
         if (!confirmed) return """{"cancelled":true}"""
-        _state.value = CoachState.Thinking(history.toList(), toolStatus = toolStatusText(call.name))
+        pushThinking(toolStatusText(call.name))
         return tools.execute(call.name, call.arguments)
     }
 
@@ -229,6 +230,16 @@ class CloudCoachCoordinator(
 
     private fun encodeArgs(args: Map<String, String>): String =
         JsonObject(args.mapValues { (_, v) -> JsonPrimitive(v) }).toString()
+
+    // Running process log for the current turn (thinking + tool steps). Safe as a single field
+    // because turnLock serialises turns; cleared at the start of each turn.
+    private val thinkingSteps = mutableListOf<String>()
+
+    /** Appends a process step (dedupes consecutive duplicates) and emits the updated Thinking state. */
+    private fun pushThinking(label: String) {
+        if (thinkingSteps.lastOrNull() != label) thinkingSteps.add(label)
+        _state.value = CoachState.Thinking(history.toList(), thinkingSteps.toList())
+    }
 
     private fun toolStatusText(name: String): String = when (name) {
         "get_today_summary" -> "Reading your food log…"

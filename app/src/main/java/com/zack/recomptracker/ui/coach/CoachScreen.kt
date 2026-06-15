@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -169,31 +170,31 @@ fun CoachScreen(viewModel: CoachViewModel) {
                 })
                 is CoachState.Idle -> ChatContent(
                     history = s.history,
-                    thinkingStatus = null,
+                    thinkingSteps = emptyList(),
                     partialResponse = null,
                     errorMessage = null,
                 )
                 is CoachState.Thinking -> ChatContent(
                     history = s.history,
-                    thinkingStatus = s.toolStatus,
+                    thinkingSteps = s.steps,
                     partialResponse = null,
                     errorMessage = null,
                 )
                 is CoachState.Responding -> ChatContent(
                     history = s.history,
-                    thinkingStatus = null,
+                    thinkingSteps = emptyList(),
                     partialResponse = s.partial,
                     errorMessage = null,
                 )
                 is CoachState.Error -> ChatContent(
                     history = s.history,
-                    thinkingStatus = null,
+                    thinkingSteps = emptyList(),
                     partialResponse = null,
                     errorMessage = s.message,
                 )
                 is CoachState.AwaitingConfirmation -> ChatContent(
                     history = s.history,
-                    thinkingStatus = null,
+                    thinkingSteps = emptyList(),
                     partialResponse = null,
                     errorMessage = null,
                 )
@@ -352,7 +353,7 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
 @Composable
 private fun ChatContent(
     history: List<ChatMessage>,
-    thinkingStatus: String?,
+    thinkingSteps: List<String>,
     partialResponse: String?,
     errorMessage: String?,
 ) {
@@ -360,7 +361,7 @@ private fun ChatContent(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val totalItems = history.size +
-        (if (thinkingStatus != null || partialResponse != null) 1 else 0) +
+        (if (thinkingSteps.isNotEmpty() || partialResponse != null) 1 else 0) +
         (if (errorMessage != null) 1 else 0)
 
     // Key on totalItems so the scroll also fires when the thinking/error item appears,
@@ -403,20 +404,14 @@ private fun ChatContent(
                     )
                 }
             }
-        } else if (thinkingStatus != null) {
+        } else if (thinkingSteps.isNotEmpty()) {
             item(key = "live-thinking") {
-                val liveCols = LocalAppColors.current
+                // Expanded loading card showing the coach's live process (thinking + tool steps).
                 AiInsightCard(
-                    borderMode = AiBorderMode.Preparing,
+                    borderMode = AiBorderMode.Generating,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = thinkingStatus,
-                        color = liveCols.textPrimary,
-                        fontSize = 14.sp,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    ThinkingDots()
+                    ThinkingProcess(steps = thinkingSteps)
                 }
             }
         }
@@ -540,6 +535,37 @@ private fun ThinkingDots() {
                     .size(5.dp)
                     .background(accent.accentLighter.copy(alpha = alpha), CircleShape),
             )
+        }
+    }
+}
+
+/** The coach's live process log: each thinking/tool step in order, the last one active. */
+@Composable
+private fun ThinkingProcess(steps: List<String>) {
+    val cols = LocalAppColors.current
+    val accent = LocalAppAccent.current
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        steps.forEachIndexed { i, step ->
+            val active = i == steps.lastIndex
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (active) "›" else "✓",
+                    color = if (active) accent.inkLight else accent.inkLight.copy(alpha = 0.6f),
+                    fontSize = 13.sp,
+                    modifier = Modifier.width(20.dp),
+                )
+                Text(
+                    text = step,
+                    color = if (active) cols.textPrimary else cols.textMuted,
+                    fontSize = 14.sp,
+                    fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
+                )
+                if (active) {
+                    Spacer(Modifier.width(8.dp))
+                    ThinkingDots()
+                }
+            }
         }
     }
 }

@@ -30,11 +30,11 @@ class CoachCoordinatorTypesTest {
     }
 
     @Test
-    fun `CoachState Thinking holds optional toolStatus`() {
+    fun `CoachState Thinking holds process steps`() {
         val state1 = CoachState.Thinking(emptyList())
-        val state2 = CoachState.Thinking(emptyList(), toolStatus = "Reading food log…")
-        assertEquals(null, state1.toolStatus)
-        assertEquals("Reading food log…", state2.toolStatus)
+        val state2 = CoachState.Thinking(emptyList(), steps = listOf("Thinking…", "Reading food log…"))
+        assertEquals(emptyList<String>(), state1.steps)
+        assertEquals(listOf("Thinking…", "Reading food log…"), state2.steps)
     }
 
     @Test

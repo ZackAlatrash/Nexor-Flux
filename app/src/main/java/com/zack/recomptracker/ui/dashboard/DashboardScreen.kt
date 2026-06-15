@@ -170,6 +170,11 @@ fun HomeDashboardContent(
                             title = "Coach spotted",
                             state = patternInsightState,
                             onRetry = onRetryPatternInsight,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.HERO,
+                            evidence = state.patternInsightContext?.fact?.statement,
+                            confidence = com.zack.recomptracker.ui.component.confidenceFrom(
+                                state.patternInsightContext?.fact?.priority ?: 0,
+                            ),
                         )
                     }
                 }

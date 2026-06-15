@@ -14,7 +14,11 @@ sealed class CoachState {
     object Unavailable : CoachState()
     object Ready : CoachState()
     data class Idle(val history: List<ChatMessage>) : CoachState()
-    data class Thinking(val history: List<ChatMessage>, val toolStatus: String? = null) : CoachState()
+    /**
+     * In-progress turn. [steps] is the running process log (thinking + tool calls, in order); the
+     * last entry is the active step. Empty until the first step is pushed.
+     */
+    data class Thinking(val history: List<ChatMessage>, val steps: List<String> = emptyList()) : CoachState()
     data class Responding(val history: List<ChatMessage>, val partial: String) : CoachState()
     data class Error(val history: List<ChatMessage>, val message: String) : CoachState()
     data class AwaitingConfirmation(

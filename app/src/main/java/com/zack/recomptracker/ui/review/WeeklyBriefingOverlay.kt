@@ -39,7 +39,7 @@ import com.zack.recomptracker.domain.review.SignalDirection
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.aiIridescentRim
+import com.zack.recomptracker.ui.component.aiEdgeGlow
 import androidx.compose.material3.MaterialTheme
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -103,31 +103,34 @@ fun WeeklyBriefingOverlay(
 }
 
 /** Backdrop-free AI glass card — a dark translucent surface with a top sheen, hairline edge, and
- *  the shared iridescent rim. Renders correctly inside a Dialog window (no backdrop layer). */
+ *  the shared edge glow. Renders correctly inside a Dialog window (no backdrop layer). */
 @Composable
 private fun BriefingGlassCard(
     borderMode: AiBorderMode,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val shape = RoundedCornerShape(ModalCorner)
+    // Neutral dark frosted surface (no accent/purple tint). Backdrop-free, so this is a translucent
+    // fill rather than a live-glass refraction; a top sheen + hairline + inner glow give it depth.
+    val surface = if (appColors.isDark) Color(0xFF101014).copy(alpha = 0.92f) else Color(0xFFF6F6F8).copy(alpha = 0.95f)
+    val hairline = Color.White.copy(alpha = if (appColors.isDark) 0.16f else 0.24f)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(ModalCorner))
-            .background(appColors.frostedSurfaceFallback)
+            .clip(shape)
+            .background(surface)
             .drawBehind {
-                drawRect(accent.accent.copy(alpha = 0.05f))
                 drawRect(
                     brush = Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = 0.10f),
-                        0.10f to Color.Transparent,
+                        0f to Color.White.copy(alpha = 0.12f),
+                        0.14f to Color.Transparent,
                     ),
                 )
             }
-            .border(1.dp, appColors.cardBorder, RoundedCornerShape(ModalCorner))
-            .aiIridescentRim(borderMode, ModalCorner)
+            .border(0.5.dp, hairline, shape)
+            .aiEdgeGlow(borderMode, ModalCorner)
             .heightIn(max = 640.dp)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),

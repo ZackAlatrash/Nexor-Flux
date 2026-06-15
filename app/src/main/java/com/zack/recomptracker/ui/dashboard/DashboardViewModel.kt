@@ -14,10 +14,15 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.ai.CrossMetricContext
 import com.zack.recomptracker.ai.InsightContext
+import com.zack.recomptracker.ai.InsightGate
 import com.zack.recomptracker.ai.InsightKind
 import com.zack.recomptracker.ai.InsightRequest
+import com.zack.recomptracker.ai.NoiseDefuserContext
 import com.zack.recomptracker.ai.PatternInsightContext
+import com.zack.recomptracker.ai.TargetChangeContext
+import com.zack.recomptracker.domain.insight.CrossMetricDetector
 import com.zack.recomptracker.domain.insight.DayNutrition
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
@@ -75,6 +80,9 @@ data class DashboardUiState(
     val motivationalMessage: String = "",   // display-only, at end
     val adjustmentInput: AdjustmentInput? = null,
     val patternInsightContext: PatternInsightContext? = null,
+    val targetChangeContext: TargetChangeContext? = null,
+    val noiseDefuserContext: NoiseDefuserContext? = null,
+    val crossMetricContext: CrossMetricContext? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -95,6 +103,13 @@ class DashboardViewModel(
     val patternInsightState: StateFlow<AiInsightState> =
         aiInsightCoordinator.generationState(InsightKind.WEEKLY_PATTERN)
 
+    val targetChangeInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.TARGET_CHANGE)
+    val noiseDefuserInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.NOISE_DEFUSER)
+    val crossMetricInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.CROSS_METRIC)
+
     fun onPatternInsightVisible() {
         val ctx = _uiState.value.patternInsightContext ?: return
         aiInsightCoordinator.onInsightVisible(InsightRequest.WeeklyPattern(ctx))
@@ -103,6 +118,31 @@ class DashboardViewModel(
     fun retryPatternInsight() {
         val ctx = _uiState.value.patternInsightContext ?: return
         aiInsightCoordinator.retryInsight(InsightRequest.WeeklyPattern(ctx))
+    }
+
+    fun onTargetChangeVisible() {
+        val ctx = _uiState.value.targetChangeContext ?: return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.TargetChange(ctx))
+    }
+    fun retryTargetChange() {
+        val ctx = _uiState.value.targetChangeContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.TargetChange(ctx))
+    }
+    fun onNoiseDefuserVisible() {
+        val ctx = _uiState.value.noiseDefuserContext ?: return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.NoiseDefuser(ctx))
+    }
+    fun retryNoiseDefuser() {
+        val ctx = _uiState.value.noiseDefuserContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.NoiseDefuser(ctx))
+    }
+    fun onCrossMetricVisible() {
+        val ctx = _uiState.value.crossMetricContext ?: return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.CrossMetric(ctx))
+    }
+    fun retryCrossMetric() {
+        val ctx = _uiState.value.crossMetricContext ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.CrossMetric(ctx))
     }
 
     fun onAiCardVisible(result: AdjustmentResult) {
@@ -257,6 +297,43 @@ class DashboardViewModel(
         }
         val patternInsightContext = buildPatternInsightContext(patternDays, preferences)
 
+        // Target-change explainer: fires only when the verdict actually moves the target.
+        val targetChangeContext = run {
+            val change = result.recommendedCalorieChange
+            if (change == 0 || result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
+                null
+            } else {
+                TargetChangeContext(
+                    oldTarget = preferences.targetCalories,
+                    newTarget = preferences.targetCalories + change,
+                    weightTrendKgPerWeek = weightTrend,
+                    adherencePercent = adherence,
+                    reasonCodes = result.reasonCodes,
+                )
+            }
+        }
+
+        // Noise-defuser: today's logged weight vs the most recent prior logged weight, gated by the trend.
+        val noiseDefuserContext = run {
+            val loggedWeights = logsLast28.filter { it.bodyWeightKg != null }.sortedBy { it.localDate() }
+            val todayWeight = loggedWeights.lastOrNull { it.localDate() == today }?.bodyWeightKg
+            val priorWeight = loggedWeights.lastOrNull { it.localDate() < today }?.bodyWeightKg
+            if (todayWeight != null && priorWeight != null) {
+                NoiseDefuserContext(todayWeight, priorWeight, weightTrend)
+                    .takeIf { InsightGate.shouldFireNoiseDefuser(it) }
+            } else {
+                null
+            }
+        }
+
+        // Cross-metric: protein adherence vs hunger over the 14-day window.
+        val hungerByDate = logsLast28
+            .filter { it.localDate() in last14Start..today && it.hungerScore != null }
+            .associate { it.localDate() to it.hungerScore!! }
+        val crossMetricContext = CrossMetricDetector
+            .detectProteinHungerLink(patternDays, hungerByDate, preferences.targetProteinG)
+            ?.let { CrossMetricContext(it) }
+
         return DashboardUiState(
             preferences = preferences,
             todayTotals = todayTotals,
@@ -275,6 +352,9 @@ class DashboardViewModel(
             result = result,
             adjustmentInput = adjustmentInput,
             patternInsightContext = patternInsightContext,
+            targetChangeContext = targetChangeContext,
+            noiseDefuserContext = noiseDefuserContext,
+            crossMetricContext = crossMetricContext,
         )
     }
 

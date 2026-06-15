@@ -84,8 +84,20 @@ fun HomeDashboardScreen(
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
     val patternInsightState by viewModel.patternInsightState.collectAsStateWithLifecycle()
+    val targetChangeInsightState by viewModel.targetChangeInsightState.collectAsStateWithLifecycle()
+    val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
+    val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
     LaunchedEffect(state.patternInsightContext?.key()) {
         viewModel.onPatternInsightVisible()
+    }
+    LaunchedEffect(state.targetChangeContext?.key()) {
+        viewModel.onTargetChangeVisible()
+    }
+    LaunchedEffect(state.noiseDefuserContext?.key()) {
+        viewModel.onNoiseDefuserVisible()
+    }
+    LaunchedEffect(state.crossMetricContext?.key()) {
+        viewModel.onCrossMetricVisible()
     }
 
     HomeDashboardContent(
@@ -94,6 +106,12 @@ fun HomeDashboardScreen(
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
         patternInsightState = patternInsightState,
         onRetryPatternInsight = viewModel::retryPatternInsight,
+        targetChangeInsightState = targetChangeInsightState,
+        onRetryTargetChange = viewModel::retryTargetChange,
+        noiseDefuserInsightState = noiseDefuserInsightState,
+        onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
+        crossMetricInsightState = crossMetricInsightState,
+        onRetryCrossMetric = viewModel::retryCrossMetric,
     )
 
     WeeklyBriefingOverlay(
@@ -124,6 +142,12 @@ fun HomeDashboardContent(
     onOpenWeeklyReview: (() -> Unit)? = null,
     patternInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryPatternInsight: () -> Unit = {},
+    targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryTargetChange: () -> Unit = {},
+    noiseDefuserInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryNoiseDefuser: () -> Unit = {},
+    crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryCrossMetric: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -175,6 +199,36 @@ fun HomeDashboardContent(
                             confidence = com.zack.recomptracker.ui.component.confidenceFrom(
                                 state.patternInsightContext?.fact?.priority ?: 0,
                             ),
+                        )
+                    }
+                }
+                state.crossMetricContext?.let {
+                    item {
+                        GeneratedInsightCard(
+                            title = "Coach noticed a link",
+                            state = crossMetricInsightState,
+                            onRetry = onRetryCrossMetric,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
+                        )
+                    }
+                }
+                state.targetChangeContext?.let {
+                    item {
+                        GeneratedInsightCard(
+                            title = "Why your target changed",
+                            state = targetChangeInsightState,
+                            onRetry = onRetryTargetChange,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
+                        )
+                    }
+                }
+                state.noiseDefuserContext?.let {
+                    item {
+                        GeneratedInsightCard(
+                            title = "Scale check",
+                            state = noiseDefuserInsightState,
+                            onRetry = onRetryNoiseDefuser,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
                         )
                     }
                 }

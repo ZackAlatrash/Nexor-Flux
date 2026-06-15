@@ -119,4 +119,44 @@ class PatternDetectorsTest {
         )
         assertNull(fact)
     }
+
+    @Test
+    fun `streak fires for consecutive protein-target days`() {
+        val end = LocalDate.of(2026, 6, 14)
+        // Last 5 days at/above target, earlier day below.
+        val list = (0..13).map { offset ->
+            val d = end.minusDays((13 - offset).toLong())
+            val protein = if (offset >= 9) 180.0 else 120.0
+            DayNutrition(d, 2200, protein, 320.0, 68.0, logged = true)
+        }
+        val fact = detectStreak(list, targets)
+        assertEquals(InsightFactType.STREAK, fact?.type)
+        assertTrue(fact!!.statement.contains("5 days"))
+    }
+
+    @Test
+    fun `streak ignores a not-yet-logged most-recent day`() {
+        val end = LocalDate.of(2026, 6, 14)
+        // Today (most recent) unlogged; previous 4 at target.
+        val list = (0..13).map { offset ->
+            val d = end.minusDays((13 - offset).toLong())
+            val logged = offset != 13
+            val protein = if (offset in 9..12) 180.0 else 120.0
+            DayNutrition(d, if (logged) 2200 else 0, if (logged) protein else 0.0, 320.0, 68.0, logged)
+        }
+        val fact = detectStreak(list, targets)
+        assertEquals(InsightFactType.STREAK, fact?.type)
+        assertTrue(fact!!.statement.contains("4 days"))
+    }
+
+    @Test
+    fun `streak does not fire below minimum`() {
+        val end = LocalDate.of(2026, 6, 14)
+        val list = (0..13).map { offset ->
+            val d = end.minusDays((13 - offset).toLong())
+            val protein = if (offset >= 12) 180.0 else 120.0 // only last 2 hit
+            DayNutrition(d, 2200, protein, 320.0, 68.0, logged = true)
+        }
+        assertNull(detectStreak(list, targets))
+    }
 }

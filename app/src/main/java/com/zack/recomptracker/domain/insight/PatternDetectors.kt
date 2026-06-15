@@ -77,3 +77,21 @@ private fun attainPct(values: List<Double>, target: Int): Int {
     if (target <= 0) return 100
     return (values.average() / target * 100).roundToInt()
 }
+
+private const val STREAK_MIN_DAYS = 3
+
+internal fun detectStreak(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
+    if (targets.proteinG <= 0) return null
+    val ordered = days.sortedByDescending { it.date } // most recent first
+    // Allow a not-yet-logged most-recent day (e.g. today) to not break the streak.
+    val startIndex = if (ordered.isNotEmpty() && !ordered[0].logged) 1 else 0
+    var streak = 0
+    for (i in startIndex until ordered.size) {
+        val d = ordered[i]
+        if (d.logged && d.proteinG >= targets.proteinG) streak++ else break
+    }
+    if (streak < STREAK_MIN_DAYS) return null
+    val statement = "$streak days running at your protein target — keep it going."
+    val priority = 10 + ((streak - STREAK_MIN_DAYS) * 4).coerceAtMost(25)
+    return InsightFact(InsightFactType.STREAK, priority, statement)
+}

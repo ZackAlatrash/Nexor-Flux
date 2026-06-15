@@ -4,6 +4,8 @@ import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
 import kotlin.math.roundToInt
+import kotlin.math.pow
+import java.util.Locale
 
 class InsightPromptBuilder {
 
@@ -164,6 +166,19 @@ class InsightPromptBuilder {
     }
 
     companion object {
+        /**
+         * Formats [value] to [decimals] places with an explicit leading sign:
+         * positives get "+", negatives keep "-", and anything that rounds to zero
+         * renders unsigned (no "+0.00" or "-0.00"). US locale so the decimal is always a dot.
+         */
+        internal fun signed(value: Double, decimals: Int): String {
+            val factor = 10.0.pow(decimals)
+            val rounded = (value * factor).roundToInt() / factor
+            val norm = if (rounded == 0.0) 0.0 else rounded
+            val body = String.format(Locale.US, "%.${decimals}f", norm)
+            return if (norm > 0.0) "+$body" else body
+        }
+
         /**
          * Trims [text] to at most [max] sentences. Splits only on sentence-ending
          * punctuation followed by whitespace + a capital letter, so decimals like

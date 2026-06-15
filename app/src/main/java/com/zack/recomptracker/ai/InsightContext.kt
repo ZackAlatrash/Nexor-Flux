@@ -8,4 +8,8 @@ data class InsightContext(
     val input: AdjustmentInput,
     val targetCalories: Int,
     val targetProteinG: Int,
+    /** Goal pace, signed kg/week (negative = loss). For the target-change rationale. */
+    val desiredWeeklyRateKg: Double? = null,
+    /** The calorie target before this week's verdict, if it changed. */
+    val priorTargetCalories: Int? = null,
 )

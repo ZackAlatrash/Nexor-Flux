@@ -8,6 +8,9 @@ data class RecoveryInsightContext(
     val hungerScore: Int?,
     val sorenessScore: Int?,
     val trained: Boolean,
+    /** The user's recent personal averages, so today reads as a deviation, not an absolute. */
+    val avgSleepHours: Double? = null,
+    val avgEnergyScore: Int? = null,
 ) {
     val hasSufficientData: Boolean
         get() = sleepHours != null || energyScore != null ||

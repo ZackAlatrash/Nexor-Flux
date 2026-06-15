@@ -10,6 +10,8 @@ data class RestOfDayInsightContext(
     val proteinConsumedG: Double,
     val proteinTargetG: Int,
     val mealsLoggedCount: Int,
+    /** 0.0-1.0 of the eating day elapsed, so the card can judge pace. */
+    val fractionOfDayElapsed: Double? = null,
 ) {
     val hasSufficientData: Boolean
         get() = mealsLoggedCount >= 1

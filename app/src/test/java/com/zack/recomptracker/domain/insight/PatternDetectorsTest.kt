@@ -88,4 +88,35 @@ class PatternDetectorsTest {
         val list = days(calsFor = { 2200 }).mapIndexed { i, d -> d.copy(logged = i >= 7) }
         assertNull(detectDerailmentDay(list, targets))
     }
+
+    @Test
+    fun `weakest macro flags protein when calories are in zone`() {
+        // Calories ~2200 (in 2100-2300 zone); protein ~60% of target, carbs & fat on target.
+        val fact = detectWeakestMacro(
+            days(calsFor = { 2200 }, proteinFor = { 100.0 }),
+            targets,
+        )
+        assertEquals(InsightFactType.WEAKEST_MACRO, fact?.type)
+        assertTrue(fact!!.statement.contains("protein"))
+        assertTrue(fact.statement.contains("%"))
+    }
+
+    @Test
+    fun `weakest macro does not fire when calories are out of zone`() {
+        // Calories 2800 (above zone) → not a "calories on point" situation.
+        val fact = detectWeakestMacro(
+            days(calsFor = { 2800 }, proteinFor = { 100.0 }),
+            targets,
+        )
+        assertNull(fact)
+    }
+
+    @Test
+    fun `weakest macro does not fire when all macros near target`() {
+        val fact = detectWeakestMacro(
+            days(calsFor = { 2200 }, proteinFor = { 165.0 }),
+            targets,
+        )
+        assertNull(fact)
+    }
 }

@@ -50,3 +50,30 @@ internal fun detectDerailmentDay(days: List<DayNutrition>, targets: NutritionTar
     }
     return null
 }
+
+private const val WEAKEST_MACRO_MAX_PCT = 85
+
+internal fun detectWeakestMacro(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
+    val logged = days.filter { it.logged }
+    if (logged.size < 4) return null
+    val meanCalories = logged.map { it.calories }.average()
+    if (meanCalories < targets.calorieZoneLower || meanCalories > targets.calorieZoneUpper) return null
+
+    // rank 0 = protein wins ties (most actionable lever).
+    data class Macro(val name: String, val pct: Int, val rank: Int)
+    val macros = listOf(
+        Macro("protein", attainPct(logged.map { it.proteinG }, targets.proteinG), 0),
+        Macro("carbs", attainPct(logged.map { it.carbsG }, targets.carbsG), 1),
+        Macro("fat", attainPct(logged.map { it.fatG }, targets.fatG), 2),
+    )
+    val weakest = macros.minWithOrNull(compareBy({ it.pct }, { it.rank })) ?: return null
+    if (weakest.pct >= WEAKEST_MACRO_MAX_PCT) return null
+    val statement = "Calories are on point, but ${weakest.name} is averaging ${weakest.pct}% of target — your main gap."
+    val priority = 30 + ((WEAKEST_MACRO_MAX_PCT - weakest.pct) / 5).coerceIn(0, 15)
+    return InsightFact(InsightFactType.WEAKEST_MACRO, priority, statement)
+}
+
+private fun attainPct(values: List<Double>, target: Int): Int {
+    if (target <= 0) return 100
+    return (values.average() / target * 100).roundToInt()
+}

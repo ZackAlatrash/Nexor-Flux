@@ -9,3 +9,5 @@ app/schemas/
 *.iml
 .idea/
 .superpowers/
+# Local-only cloud creds for the insight harness
+.env.test

@@ -12,6 +12,7 @@ import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.util.toNullableDouble
 import com.zack.recomptracker.core.util.toNullableInt
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
@@ -178,13 +179,8 @@ class TodayViewModel(
                     .filter { (_, date) -> date <= priorCutoff }
                     .firstNotNullOfOrNull { (log, _) -> log.waistCm }
 
-                // MetricsHero: last logged entry (may be yesterday or earlier)
-                val lastEntry = allLogs
-                    .map { it to LocalDate.parse(it.date) }
-                    .sortedByDescending { (_, d) -> d }
-                    .firstOrNull { (log, d) ->
-                        d < today && (log.bodyWeightKg != null || log.waistCm != null)
-                    }
+                // MetricsHero: most recent check-in with weight or waist (includes today once logged)
+                val lastEntry = latestCheckIn(allLogs, today)
 
                 // 14-day sparklines (ordered oldest → newest, gaps kept as 0)
                 val dates14 = (13 downTo 0).map { today.minusDays(it.toLong()) }
@@ -292,3 +288,17 @@ class TodayViewModel(
     private fun editMetrics(block: TodayUiState.() -> TodayUiState) =
         _uiState.update { it.block().copy(metricsDirty = true, message = null) }
 }
+
+/**
+ * The most recent daily log that carries a weight or waist measurement, on or before [today].
+ * Drives the Metrics hero card — includes today's entry so the hero updates the moment it's logged.
+ */
+internal fun latestCheckIn(
+    logs: List<DailyLogEntity>,
+    today: LocalDate,
+): Pair<DailyLogEntity, LocalDate>? =
+    logs.map { it to LocalDate.parse(it.date) }
+        .sortedByDescending { (_, d) -> d }
+        .firstOrNull { (log, d) ->
+            d <= today && (log.bodyWeightKg != null || log.waistCm != null)
+        }

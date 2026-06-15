@@ -9,7 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +29,7 @@ fun DismissibleInsight(
     modifier: Modifier = Modifier,
     content: @Composable (onDismiss: () -> Unit) -> Unit,
 ) {
-    var dismissed by remember { mutableStateOf(false) }
+    var dismissed by rememberSaveable { mutableStateOf(false) }
     if (dismissed) {
         val appColors = LocalAppColors.current
         val accent = LocalAppAccent.current

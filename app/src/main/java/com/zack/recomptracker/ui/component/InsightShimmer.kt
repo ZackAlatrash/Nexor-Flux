@@ -40,6 +40,37 @@ fun InsightShimmerLines(modifier: Modifier = Modifier) {
     }
 }
 
+/** A single self-contained shimmer bar (own animation), for compact/collapsed loading states.
+ *  Width is controlled by the caller via [modifier] (e.g. `Modifier.weight(1f)`). */
+@Composable
+fun InsightShimmerBar(modifier: Modifier = Modifier) {
+    val shine = LocalAppAccent.current.accentLighter
+    val transition = rememberInfiniteTransition(label = "shimmerBar")
+    val phase = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing)),
+        label = "shimmerBarPhase",
+    )
+    Box(
+        modifier
+            .height(13.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .drawBehind {
+                val w = size.width
+                val start = -w + phase.value * (w * 2f)
+                val brush = Brush.linearGradient(
+                    0f to Color.White.copy(alpha = 0.05f),
+                    0.5f to shine.copy(alpha = 0.30f),
+                    1f to Color.White.copy(alpha = 0.05f),
+                    start = Offset(start, 0f),
+                    end = Offset(start + w, 0f),
+                )
+                drawRect(brush)
+            },
+    )
+}
+
 @Composable
 private fun ShimmerBar(
     widthFraction: Float,

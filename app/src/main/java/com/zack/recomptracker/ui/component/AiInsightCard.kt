@@ -1,6 +1,6 @@
 package com.zack.recomptracker.ui.component
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -50,34 +52,39 @@ fun AiInsightCard(
     val isDark = LocalAppColors.current.isDark
     val containerColor =
         if (isDark) Color(0xFF121212).copy(alpha = 0.40f) else Color(0xFFFAFAFA).copy(alpha = 0.40f)
+    val shape: Shape = if (collapsed) Capsule() else RoundedCornerShape(cornerDp)
+    val hairline = Color.White.copy(alpha = if (isDark) 0.16f else 0.24f)
 
-    Box(modifier = modifier.fillMaxWidth()) {
-        // Halo layer (blurred) sits behind the glass; this Box draws ONLY the glow.
-        Box(
-            Modifier
-                .matchParentSize()
-                .aiEdgeGlow(borderMode, cornerDp),
-        )
-        // Glass layer — exact nav-bar recipe.
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(if (collapsed) Capsule() else RoundedCornerShape(cornerDp))
-                .drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { if (collapsed) Capsule() else RoundedRectangle(cornerDp) },
-                    effects = {
-                        vibrancy()
-                        blur(8f.dp.toPx())
-                        lens(24f.dp.toPx(), 24f.dp.toPx())
-                    },
-                    highlight = { Highlight.Default },
-                    onDrawSurface = { drawRect(containerColor) },
-                )
-                .padding(contentPadding),
-            content = content,
-        )
-    }
+    // Glass layer — exact nav-bar recipe, with a top sheen + hairline for glass character and the
+    // inner edge glow drawn on top (clipped inside the shape so it reads as light inside the glass).
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { if (collapsed) Capsule() else RoundedRectangle(cornerDp) },
+                effects = {
+                    vibrancy()
+                    blur(8f.dp.toPx())
+                    lens(24f.dp.toPx(), 24f.dp.toPx())
+                },
+                highlight = { Highlight.Default },
+                onDrawSurface = {
+                    drawRect(containerColor)
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.14f),
+                            0.16f to Color.Transparent,
+                        ),
+                    )
+                },
+            )
+            .border(0.5.dp, hairline, shape)
+            .aiEdgeGlow(borderMode, cornerDp)
+            .padding(contentPadding),
+        content = content,
+    )
 }
 
 

@@ -110,32 +110,32 @@ private fun BriefingGlassCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    Box(modifier = modifier.fillMaxWidth()) {
-        // Edge glow on a dedicated behind-layer so it doesn't blur the modal content.
-        Box(Modifier.matchParentSize().aiEdgeGlow(borderMode, ModalCorner))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(ModalCorner))
-                .background(appColors.frostedSurfaceFallback)
-                .drawBehind {
-                    drawRect(accent.accent.copy(alpha = 0.05f))
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.White.copy(alpha = 0.10f),
-                            0.10f to Color.Transparent,
-                        ),
-                    )
-                }
-                .border(1.dp, appColors.cardBorder, RoundedCornerShape(ModalCorner))
-                .heightIn(max = 640.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            content = content,
-        )
-    }
+    val shape = RoundedCornerShape(ModalCorner)
+    // Neutral dark frosted surface (no accent/purple tint). Backdrop-free, so this is a translucent
+    // fill rather than a live-glass refraction; a top sheen + hairline + inner glow give it depth.
+    val surface = if (appColors.isDark) Color(0xFF101014).copy(alpha = 0.92f) else Color(0xFFF6F6F8).copy(alpha = 0.95f)
+    val hairline = Color.White.copy(alpha = if (appColors.isDark) 0.16f else 0.24f)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(surface)
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        0f to Color.White.copy(alpha = 0.12f),
+                        0.14f to Color.Transparent,
+                    ),
+                )
+            }
+            .border(0.5.dp, hairline, shape)
+            .aiEdgeGlow(borderMode, ModalCorner)
+            .heightIn(max = 640.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        content = content,
+    )
 }
 
 @Composable

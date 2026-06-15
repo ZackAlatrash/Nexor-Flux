@@ -275,5 +275,28 @@ Deferred follow-ups (the component supports them via optional hooks where noted)
   ranked facts and structured numbers (today `detectTopFact` returns one `statement` sentence).
 - **"Tell me more" → coach** — `onTellMeMore` hook present, unwired; needs coach-chat seeding.
 - **Feedback (♡)** — `onFeedback` hook present, unwired; needs top-fact ranking integration.
-- **Snooze** + **durable cross-session dismiss persistence** — need a DataStore store keyed by
-  insight kind (with expiry for snooze).
+
+## 13. Refinements (post-implementation review)
+
+After on-device review the design was tuned:
+
+- **Edge glow → inner glow.** The perimeter glow now reads as light *inside* the glass edge, not a
+  rim around the outside: a thin core line + a soft `BlurMaskFilter` bloom, clipped to the card
+  shape, plus a faint wide "light-spill" pass that washes the glow's colour onto the glass face
+  (like glass catching light). Drawn on the glass node itself via `aiEdgeGlow` (not a behind-layer).
+- **Glass character.** Every AI card gains a top sheen + hairline border so it reads as glass even
+  over a near-static background (the nav bar gets its glassiness from scrolling content behind it).
+- **Collapsed by default — all variants.** Hero/Standard/Pill all start as a collapsed glass pill
+  (`rememberSaveable`); the **loading** state matches (a collapsed pill with a compact shimmer). The
+  full uncollapsed loading card is retained as the public `InsightGeneratingExpanded` for reuse.
+- **Controls are liquid glass.** Expand/collapse and refresh are now small liquid-glass pills
+  (`GlassIconButton`, nav-bar material) with centred Material vector icons (`KeyboardArrowDown`,
+  `Refresh`) — replacing the chevron glyph and the bordered "Refresh" chip.
+- **Dismiss removed.** The ✕ dismiss action and its `DismissibleInsight` wrapper were removed per
+  review (snooze/dismiss persistence remains a deferred follow-up if reintroduced).
+
+### Coach live process (new)
+The coach chat's thinking state now shows the **live process** instead of a single status line:
+`CoachState.Thinking` carries a running `steps: List<String>` log; both coordinators (Gemma + Cloud)
+push each step (thinking + tool calls). The chat renders it as an expanded generating-glow glass
+card — completed steps with `✓`, the active step highlighted with the thinking dots.

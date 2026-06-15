@@ -166,19 +166,16 @@ fun HomeDashboardContent(
                         patternInsightState is AiInsightState.Error)
                 ) {
                     item {
-                        com.zack.recomptracker.ui.component.DismissibleInsight { onDismiss ->
-                            GeneratedInsightCard(
-                                title = "Coach spotted",
-                                state = patternInsightState,
-                                onRetry = onRetryPatternInsight,
-                                variant = com.zack.recomptracker.ui.component.InsightCardVariant.HERO,
-                                evidence = state.patternInsightContext?.fact?.statement,
-                                confidence = com.zack.recomptracker.ui.component.confidenceFrom(
-                                    state.patternInsightContext?.fact?.priority ?: 0,
-                                ),
-                                onDismiss = onDismiss,
-                            )
-                        }
+                        GeneratedInsightCard(
+                            title = "Coach spotted",
+                            state = patternInsightState,
+                            onRetry = onRetryPatternInsight,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.HERO,
+                            evidence = state.patternInsightContext?.fact?.statement,
+                            confidence = com.zack.recomptracker.ui.component.confidenceFrom(
+                                state.patternInsightContext?.fact?.priority ?: 0,
+                            ),
+                        )
                     }
                 }
                 item { MotivationalCard(state.motivationalMessage) }

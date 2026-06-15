@@ -107,6 +107,7 @@ class CloudInsightCoordinator(
             is InsightRequest.ProgressTrend -> promptBuilder.buildProgressTrendPrompt(request.context)
             is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
             is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context)
+            is InsightRequest.WeeklyPattern -> promptBuilder.buildPatternInsightPrompt(request.context)
         }
         scope.launch { streamInto(flow, prompt) }
     }

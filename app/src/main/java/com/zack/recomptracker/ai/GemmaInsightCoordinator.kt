@@ -222,6 +222,11 @@ class GemmaInsightCoordinator(
         insightStates.getValue(kind).asStateFlow()
 
     override fun onInsightVisible(request: InsightRequest) {
+        if (request.kind == InsightKind.WEEKLY_PATTERN) {
+            // WEEKLY_PATTERN is cloud-only; keep it hidden on the local backend.
+            insightStates.getValue(request.kind).value = AiInsightState.Disabled
+            return
+        }
         if (!request.hasSufficientData) return
         val flow = insightStates.getValue(request.kind)
         if (!isModelUsable()) {
@@ -266,6 +271,7 @@ class GemmaInsightCoordinator(
                 is InsightRequest.ProgressTrend -> promptBuilder.buildProgressTrendPrompt(request.context)
                 is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
                 is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context)
+                is InsightRequest.WeeklyPattern -> error("WEEKLY_PATTERN is cloud-only; handled in onInsightVisible")
             }
 
             val sb = StringBuilder()

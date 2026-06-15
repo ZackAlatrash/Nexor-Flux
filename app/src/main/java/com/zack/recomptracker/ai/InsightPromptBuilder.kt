@@ -113,6 +113,15 @@ class InsightPromptBuilder {
         appendLine("- Meals logged so far: ${context.mealsLoggedCount}")
     }
 
+    fun buildPatternInsightPrompt(context: PatternInsightContext): String = buildString {
+        appendLine("You are a body-recomposition coach highlighting one pattern you noticed in the athlete's recent data.")
+        appendLine("Rephrase the finding below into exactly 1–2 short, encouraging sentences. Lead with the specific number. No preamble or filler.")
+        appendLine("Use only the finding below; do not invent or calculate any new numbers.")
+        appendLine("Keep a calm, supportive, non-judgmental tone — frame it as an observation, not a scolding.")
+        appendLine()
+        appendLine("Finding: ${context.fact.statement}")
+    }
+
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {
         AdjustmentVerdict.HOLD -> "Hold — no change to calories"
         AdjustmentVerdict.INCREASE_CALORIES -> "Increase calories"

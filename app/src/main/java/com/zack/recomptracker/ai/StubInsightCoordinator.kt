@@ -112,6 +112,7 @@ class StubInsightCoordinator(
         is InsightRequest.ProgressTrend -> "Your trends look stable this period."
         is InsightRequest.RecoveryReadiness -> "Your recovery looks on track today."
         is InsightRequest.RestOfDay -> "You're tracking well for the day."
+        is InsightRequest.WeeklyPattern -> request.context.fact.statement
     }
 
     private suspend fun generate(context: InsightContext) {

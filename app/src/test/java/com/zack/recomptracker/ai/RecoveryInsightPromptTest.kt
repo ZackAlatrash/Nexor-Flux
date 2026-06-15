@@ -17,27 +17,25 @@ class RecoveryInsightPromptTest {
     ) = RecoveryInsightContext(sleepHours, energyScore, hungerScore, sorenessScore, trained)
 
     @Test
-    fun `sleep below six is poor and not numeric`() {
+    fun `sleep shows hours and poor label`() {
         val prompt = builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 5.5))
-        assertTrue("Sleep: poor" in prompt)
-        assertFalse("5.5" in prompt)
+        assertTrue("Sleep: 5.5 h (poor)" in prompt)
     }
 
     @Test
-    fun `energy three is low`() {
-        assertTrue("Energy: low" in builder.buildRecoveryReadinessPrompt(ctx(energyScore = 3)))
+    fun `energy shows score out of ten and low label`() {
+        assertTrue("Energy: 3/10 (low)" in builder.buildRecoveryReadinessPrompt(ctx(energyScore = 3)))
     }
 
     @Test
-    fun `soreness eight is high and not numeric`() {
+    fun `soreness shows score out of ten and high label`() {
         val prompt = builder.buildRecoveryReadinessPrompt(ctx(sorenessScore = 8))
-        assertTrue("Soreness: high" in prompt)
-        assertFalse("Soreness: 8" in prompt)
+        assertTrue("Soreness: 8/10 (high)" in prompt)
     }
 
     @Test
-    fun `hunger five is moderate`() {
-        assertTrue("Hunger: moderate" in builder.buildRecoveryReadinessPrompt(ctx(hungerScore = 5)))
+    fun `hunger shows score out of ten and moderate label`() {
+        assertTrue("Hunger: 5/10 (moderate)" in builder.buildRecoveryReadinessPrompt(ctx(hungerScore = 5)))
     }
 
     @Test
@@ -65,21 +63,31 @@ class RecoveryInsightPromptTest {
 
     @Test
     fun `sleep between six and seven point five is acceptable`() {
-        assertTrue("Sleep: acceptable" in builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 7.0)))
+        assertTrue("Sleep: 7.0 h (acceptable)" in builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 7.0)))
     }
 
     @Test
     fun `sleep at or above seven point five is good`() {
-        assertTrue("Sleep: good" in builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 8.0)))
+        assertTrue("Sleep: 8.0 h (good)" in builder.buildRecoveryReadinessPrompt(ctx(sleepHours = 8.0)))
     }
 
     @Test
-    fun `score seven is high`() {
-        assertTrue("Energy: high" in builder.buildRecoveryReadinessPrompt(ctx(energyScore = 7)))
+    fun `energy seven is high`() {
+        assertTrue("Energy: 7/10 (high)" in builder.buildRecoveryReadinessPrompt(ctx(energyScore = 7)))
     }
 
     @Test
     fun `shows not trained status`() {
         assertTrue("Trained today: no" in builder.buildRecoveryReadinessPrompt(ctx(trained = false)))
+    }
+
+    @Test
+    fun `instructs to lead with a number`() {
+        assertTrue("Lead with the most decisive number" in builder.buildRecoveryReadinessPrompt(ctx()))
+    }
+
+    @Test
+    fun `forbids the model doing its own math`() {
+        assertTrue("do not do any math" in builder.buildRecoveryReadinessPrompt(ctx()))
     }
 }

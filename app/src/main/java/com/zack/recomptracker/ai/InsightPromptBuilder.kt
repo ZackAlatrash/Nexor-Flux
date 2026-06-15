@@ -73,15 +73,17 @@ class InsightPromptBuilder {
         }
         appendLine("Give practical training and recovery suggestions only. Do NOT give medical advice or diagnose anything.")
         appendLine("Base everything only on the signals below. Do not invent data.")
+        appendLine("Lead with the most decisive number from the signals below.")
+        appendLine("Use only the figures given; do not do any math of your own.")
         appendLine()
         appendLine("Example output:")
-        appendLine("\"Low sleep and high soreness say recovery is behind — keep today light and prioritize sleep tonight.\"")
+        appendLine("\"On 5 hours of sleep with soreness at 8/10, recovery is behind — keep today light and prioritize sleep tonight.\"")
         appendLine()
         appendLine("Signals today:")
-        context.sleepHours?.let { appendLine("- Sleep: ${sleepLabel(it)}") }
-        context.energyScore?.let { appendLine("- Energy: ${scoreLabel(it)}") }
-        context.hungerScore?.let { appendLine("- Hunger: ${scoreLabel(it)}") }
-        context.sorenessScore?.let { appendLine("- Soreness: ${scoreLabel(it)}") }
+        context.sleepHours?.let { appendLine("- Sleep: ${String.format(Locale.US, "%.1f", it)} h (${sleepLabel(it)})") }
+        context.energyScore?.let { appendLine("- Energy: $it/10 (${scoreLabel(it)})") }
+        context.hungerScore?.let { appendLine("- Hunger: $it/10 (${scoreLabel(it)})") }
+        context.sorenessScore?.let { appendLine("- Soreness: $it/10 (${scoreLabel(it)})") }
         appendLine("- Trained today: ${if (context.trained) "yes" else "no"}")
     }
 

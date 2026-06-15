@@ -77,7 +77,7 @@ fun AiInsightCard(
         // Halo layer (blurred) sits behind the glass; this Box draws ONLY the glow.
         Box(
             Modifier
-                .fillMaxWidth()
+                .matchParentSize()
                 .aiEdgeGlow(borderMode, cornerDp),
         )
         // Glass layer — exact nav-bar recipe.

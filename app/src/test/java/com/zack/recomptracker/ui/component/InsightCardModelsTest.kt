@@ -6,13 +6,13 @@ import org.junit.Test
 
 class InsightCardModelsTest {
     @Test fun highPriorityMapsToHigh() {
-        assertEquals(ConfidenceLevel.HIGH, confidenceFrom(3))
-        assertEquals(ConfidenceLevel.HIGH, confidenceFrom(10))
+        assertEquals(ConfidenceLevel.HIGH, confidenceFrom(30))
+        assertEquals(ConfidenceLevel.HIGH, confidenceFrom(45))
     }
 
     @Test fun midPriorityMapsToMedium() {
-        assertEquals(ConfidenceLevel.MEDIUM, confidenceFrom(1))
-        assertEquals(ConfidenceLevel.MEDIUM, confidenceFrom(2))
+        assertEquals(ConfidenceLevel.MEDIUM, confidenceFrom(10))
+        assertEquals(ConfidenceLevel.MEDIUM, confidenceFrom(29))
     }
 
     @Test fun nonPositivePriorityIsNull() {

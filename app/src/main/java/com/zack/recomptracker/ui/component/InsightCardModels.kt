@@ -7,11 +7,12 @@ enum class InsightCardVariant { HERO, STANDARD, PILL }
 enum class ConfidenceLevel { MEDIUM, HIGH }
 
 /**
- * Derives a confidence label from InsightFact.priority. Higher priority = stronger signal.
- * Returns null for non-positive priorities (no badge shown).
+ * Derives a confidence label from [InsightFact.priority]. Real fired-fact priorities run ~10–45
+ * (see PatternDetectors): >= 30 is a strong signal, below that is moderate. Returns null only when
+ * there is no fact (priority <= 0), so a fired insight always carries a badge.
  */
 fun confidenceFrom(priority: Int): ConfidenceLevel? = when {
     priority <= 0 -> null
-    priority >= 3 -> ConfidenceLevel.HIGH
+    priority >= 30 -> ConfidenceLevel.HIGH
     else -> ConfidenceLevel.MEDIUM
 }

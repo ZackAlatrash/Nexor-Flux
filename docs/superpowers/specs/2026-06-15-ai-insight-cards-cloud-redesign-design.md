@@ -44,7 +44,8 @@ genuinely useful**, and we want a **fast iteration loop** to get there.
   3. Call the model (reusing `OpenAiCompatClient.streamCompletion`, collected to a string, then the
      same post-processing the coordinator applies — strip markdown, `limitToSentences(…, 2)`).
   4. Call the judge (a second `completion` call with the rubric) → parse 1–5 scores + should-fire.
-  5. Print a readable report: scenario, card, prompt (optional), output, scores.
+  5. Print a **compact** report per scenario × card: card output + judge scores + should-fire.
+     The full prompt is hidden by default and shown only when a `-DinsightVerbose=true` flag is set.
 
 ### Component 2 — `.env.test` (git-ignored)
 ```
@@ -124,3 +125,5 @@ scenario fixture ──> InsightPromptBuilder.build*Prompt() ──> OpenAiCompa
 - **Judge:** same model, separate call (decided).
 - **Scope:** richer data + new cards allowed (decided).
 - **Branch:** dedicated `feat/ai-insight-cards-cloud-redesign` (decided).
+- **Harness entry:** JUnit test via `--tests` filter, auto-skipping without a key (decided).
+- **Report:** compact (output + scores); prompt behind `-DinsightVerbose=true` (decided).

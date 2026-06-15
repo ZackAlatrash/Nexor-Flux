@@ -17,6 +17,8 @@ object InsightGate {
      * adherence and a stable waist is "on track" — stay quiet.
      */
     fun shouldFireWeekly(context: InsightContext): Boolean {
+        // Not enough data to say anything — the card stays hidden until a window builds.
+        if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return false
         if (context.result.verdict != AdjustmentVerdict.HOLD) return true
         if (context.input.adherencePercent < LOW_ADHERENCE) return true
         if (abs(context.input.waistTrendCmPerWeek) >= 0.25) return true

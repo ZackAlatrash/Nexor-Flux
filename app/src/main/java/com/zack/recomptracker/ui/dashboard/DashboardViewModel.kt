@@ -79,6 +79,7 @@ data class DashboardUiState(
     ),
     val motivationalMessage: String = "",   // display-only, at end
     val adjustmentInput: AdjustmentInput? = null,
+    val showWeeklyVerdictCard: Boolean = false,   // doctrine "stay quiet": hidden on clean on-track weeks
     val patternInsightContext: PatternInsightContext? = null,
     val targetChangeContext: TargetChangeContext? = null,
     val noiseDefuserContext: NoiseDefuserContext? = null,
@@ -148,14 +149,15 @@ class DashboardViewModel(
     fun onAiCardVisible(result: AdjustmentResult) {
         val state = _uiState.value
         val input = state.adjustmentInput ?: return
-        aiInsightCoordinator.onAiCardVisible(
-            InsightContext(
-                result = result,
-                input = input,
-                targetCalories = state.preferences.targetCalories,
-                targetProteinG = state.preferences.targetProteinG,
-            )
+        val context = InsightContext(
+            result = result,
+            input = input,
+            targetCalories = state.preferences.targetCalories,
+            targetProteinG = state.preferences.targetProteinG,
         )
+        // Doctrine "stay quiet": on a clean, on-track HOLD week the verdict card has nothing to add.
+        if (!InsightGate.shouldFireWeekly(context)) return
+        aiInsightCoordinator.onAiCardVisible(context)
     }
 
     fun requestModelDownload() = aiInsightCoordinator.requestDownload()
@@ -334,6 +336,19 @@ class DashboardViewModel(
             .detectProteinHungerLink(patternDays, hungerByDate, preferences.targetProteinG)
             ?.let { CrossMetricContext(it) }
 
+        // Hide the verdict card ONLY on a clean on-track HOLD week (doctrine "stay quiet").
+        // Non-HOLD verdicts — including WAIT_FOR_DATA, which still shows the new-user placeholder
+        // and model-download UI — keep the card.
+        val showWeeklyVerdictCard = result.verdict != AdjustmentVerdict.HOLD ||
+            InsightGate.shouldFireWeekly(
+                InsightContext(
+                    result = result,
+                    input = adjustmentInput,
+                    targetCalories = preferences.targetCalories,
+                    targetProteinG = preferences.targetProteinG,
+                ),
+            )
+
         return DashboardUiState(
             preferences = preferences,
             todayTotals = todayTotals,
@@ -355,6 +370,7 @@ class DashboardViewModel(
             targetChangeContext = targetChangeContext,
             noiseDefuserContext = noiseDefuserContext,
             crossMetricContext = crossMetricContext,
+            showWeeklyVerdictCard = showWeeklyVerdictCard,
         )
     }
 

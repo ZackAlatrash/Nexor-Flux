@@ -33,6 +33,11 @@ class InsightGateTest {
         assertTrue(InsightGate.shouldFireWeekly(weekly(AdjustmentVerdict.HOLD, -0.1, 0.0, 60.0)))
     }
 
+    @Test
+    fun `stays quiet when waiting for data`() {
+        assertFalse(InsightGate.shouldFireWeekly(weekly(AdjustmentVerdict.WAIT_FOR_DATA, 0.0, 0.0, 0.0)))
+    }
+
     // --- Noise-defuser gate ---
 
     private fun noise(today: Double, prior: Double, trend: Double) =

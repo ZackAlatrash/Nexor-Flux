@@ -800,14 +800,17 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
         item {
             VerdictHero(result = state.result)
         }
-        item {
-            AiInsightSection(
-                result = state.result,
-                aiState = aiState,
-                onDownload = viewModel::requestModelDownload,
-                onCancel = viewModel::cancelDownload,
-                onRetry = viewModel::retryGeneration,
-            )
+        // Doctrine "stay quiet": hide the AI verdict explanation on a clean on-track HOLD week.
+        if (state.showWeeklyVerdictCard) {
+            item {
+                AiInsightSection(
+                    result = state.result,
+                    aiState = aiState,
+                    onDownload = viewModel::requestModelDownload,
+                    onCancel = viewModel::cancelDownload,
+                    onRetry = viewModel::retryGeneration,
+                )
+            }
         }
         item {
             FrostedCard {

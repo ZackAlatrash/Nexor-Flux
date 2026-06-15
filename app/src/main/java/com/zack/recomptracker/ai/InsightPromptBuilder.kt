@@ -146,7 +146,7 @@ class InsightPromptBuilder {
     private fun adherenceLabel(percent: Double): String = when {
         percent >= 90.0 -> "high"
         percent >= 75.0 -> "moderate"
-        else -> "low (below target)"
+        else -> "low, below target"
     }
 
     private fun liftTrendLabel(kgPerWeek: Double?): String = when {

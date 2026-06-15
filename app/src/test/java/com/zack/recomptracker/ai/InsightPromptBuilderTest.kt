@@ -201,7 +201,7 @@ class InsightPromptBuilderTest {
     @Test
     fun `adherence low shows percent and below-target label`() {
         val prompt = builder.buildWeeklySummaryPrompt(context(adherence = 60.0))
-        assertTrue("Expected numeric low adherence", "Adherence: 60% (low (below target))" in prompt)
+        assertTrue("Expected numeric low adherence", "Adherence: 60% (low, below target)" in prompt)
     }
 
     // --- New instruction guards ---

@@ -1255,9 +1255,18 @@ generation starts for the on-track scenario.
   hedge ("you tend to…"), never claim causation.
 
 Each: failing prompt test (asserts template structure + hedging language) → implement → harness-tune
-→ commit. UI wiring reuses `GeneratedInsightCard`; add the new `InsightKind`s to any `when` over
-kinds (the compiler will flag exhaustive `when`s to update — search for `InsightKind.` and
-`when (request)`).
+→ commit. Add the new `InsightKind`s to any `when` over kinds (the compiler will flag exhaustive
+`when`s to update — search for `InsightKind.` and `when (request)`).
+
+**UI wiring — follow [ai-glass-cards.md](../../ai-glass-cards.md):** render every new card through the
+existing `GeneratedInsightCard(title, state, onRetry, …)` engine — do NOT write new composables
+(reuse-existing-components rule). Pick the variant by importance: `HERO` for a single headline
+insight (the target-change explainer on the dashboard, with `evidence` + `confidence`), `STANDARD`
+for per-screen cards, `PILL` for lightweight number-tied nudges (noise-defuser). Drive it from an
+`AiInsightState` (`Generating` → loading pill, `Ready` → collapsible card, model-lifecycle states →
+hidden). Opt into actions only via the existing hooks (`onTellMeMore` to seed the coach, `onFeedback`)
+— don't add controls outside `InsightActions`. The cross-metric card is a natural `onTellMeMore`
+candidate (open the coach seeded with the correlation).
 
 ---
 

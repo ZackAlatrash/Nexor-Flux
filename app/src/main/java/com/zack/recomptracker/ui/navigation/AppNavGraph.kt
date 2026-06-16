@@ -26,6 +26,8 @@ import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.progress.ProgressScreen
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
+import com.zack.recomptracker.ui.onboarding.OnboardingScreen
+import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
 import com.zack.recomptracker.ui.profile.ProfileScreen
 import com.zack.recomptracker.ui.profile.ProfileViewModel
 import com.zack.recomptracker.ui.aicoach.AiCoachScreen
@@ -65,6 +67,7 @@ enum class TopLevelDestination(
 
 object Routes {
     const val Food      = "food"
+    const val Onboarding = "onboarding"
     const val CalorieDecision = "calorie_decision"
     const val Trends    = "trends"
     const val Plan      = "plan"
@@ -95,6 +98,7 @@ object Routes {
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
+    startDestination: String = TopLevelDestination.Home.route,
     modifier: Modifier = Modifier,
 ) {
     val factory = LocalAppContainer.current.viewModelFactory
@@ -104,9 +108,19 @@ fun AppNavGraph(
     val screenExit  = slideOutVertically(tween(220)) { it / 16 } + fadeOut(tween(220))
     NavHost(
         navController = navController,
-        startDestination = TopLevelDestination.Home.route,
+        startDestination = startDestination,
         modifier = modifier,
     ) {
+        composable(route = Routes.Onboarding) {
+            OnboardingScreen(
+                viewModel = viewModel<OnboardingViewModel>(factory = factory),
+                onComplete = {
+                    navController.navigate(TopLevelDestination.Home.route) {
+                        popUpTo(Routes.Onboarding) { inclusive = true }
+                    }
+                },
+            )
+        }
         composable(
             route = TopLevelDestination.Home.route,
             enterTransition = { tabEnter },

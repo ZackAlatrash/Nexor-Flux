@@ -65,6 +65,7 @@ import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
+import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.profile.ProfileViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
@@ -385,6 +386,13 @@ private class AppViewModelFactory(
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+            )
+            OnboardingViewModel::class.java -> OnboardingViewModel(
+                userProfileStore = container.userProfilePreferencesStore,
+                planRepository = container.planRepository,
+                logRepository = container.logRepository,
+                uiPreferences = container.uiPreferences,
+                dateProvider = container.dateProvider,
             )
             AppearanceViewModel::class.java -> AppearanceViewModel(
                 uiPreferences = container.uiPreferences,

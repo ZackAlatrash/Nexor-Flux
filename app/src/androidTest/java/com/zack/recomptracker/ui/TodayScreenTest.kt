@@ -3,14 +3,15 @@ package com.zack.recomptracker.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.ui.body.BodyCheckInFormActions
 import com.zack.recomptracker.ui.dashboard.DashboardUiState
 import com.zack.recomptracker.ui.dashboard.HomeDashboardContent
-import com.zack.recomptracker.ui.more.MoreScreen
 import com.zack.recomptracker.ui.theme.RecompTrackerTheme
-import com.zack.recomptracker.ui.today.BodyRecoveryActions
-import com.zack.recomptracker.ui.today.BodyRecoveryContent
 import com.zack.recomptracker.ui.today.FoodActions
 import com.zack.recomptracker.ui.today.FoodContent
+import com.zack.recomptracker.ui.today.FoodLogUiState
+import com.zack.recomptracker.ui.today.BodyRecoveryContent
 import com.zack.recomptracker.ui.today.TodayUiState
 import java.time.LocalDate
 import org.junit.Rule
@@ -21,77 +22,57 @@ class TodayScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun foodScreenShowsNutritionTargetMealsAndLibraryAction() {
+    fun foodScreenShowsMealsHeaderAndFoodLogTitle() {
+        val today = LocalDate.of(2026, 5, 30)
         composeRule.setContent {
             RecompTrackerTheme {
                 FoodContent(
-                    state = TodayUiState(date = LocalDate.of(2026, 5, 30)),
+                    state = FoodLogUiState(
+                        selectedDate = today,
+                        today = today,
+                        target = PlanPreferences(),
+                    ),
                     actions = noOpFoodActions(),
                     onAddToSlot = { _, _ -> },
                     onBrowseLibrary = {},
+                    onEditEntryAmount = { _, _, _ -> },
+                    onSelectDate = {},
                 )
             }
         }
 
-        composeRule.onNodeWithText("Food").assertIsDisplayed()
-        composeRule.onNodeWithText("Nutrition target").assertIsDisplayed()
+        composeRule.onNodeWithText("Food Log").assertIsDisplayed()
         composeRule.onNodeWithText("MEALS").assertIsDisplayed()
-        composeRule.onNodeWithText("Browse saved foods & meals").assertIsDisplayed()
     }
 
     @Test
-    fun bodyScreenShowsRecoveryInputsAndSaveAction() {
+    fun bodyScreenShowsBodyTitleWeightAndSleepTiles() {
         composeRule.setContent {
             RecompTrackerTheme {
                 BodyRecoveryContent(
                     state = TodayUiState(date = LocalDate.of(2026, 5, 30)),
                     actions = noOpBodyActions(),
+                    onViewHistory = {},
                 )
             }
         }
 
-        composeRule.onNodeWithText("Body & recovery").assertIsDisplayed()
+        composeRule.onNodeWithText("Body").assertIsDisplayed()
         composeRule.onNodeWithText("Weight").assertIsDisplayed()
         composeRule.onNodeWithText("Sleep").assertIsDisplayed()
-        composeRule.onNodeWithText("Save daily check-in").assertIsDisplayed()
     }
 
     @Test
-    fun homeScreenShowsDashboardSnapshotAndQuickActions() {
+    fun homeScreenShowsDashboardTitle() {
         composeRule.setContent {
             RecompTrackerTheme {
                 HomeDashboardContent(
                     state = DashboardUiState(),
-                    onLogFood = {},
-                    onUpdateBody = {},
                 )
             }
         }
 
         composeRule.onNodeWithText("Dashboard").assertIsDisplayed()
-        composeRule.onNodeWithText("Weekly direction").assertIsDisplayed()
-        composeRule.onNodeWithText("Log food").assertIsDisplayed()
-        composeRule.onNodeWithText("Update body check-in").assertIsDisplayed()
-    }
-
-    @Test
-    fun moreScreenShowsSecondaryDestinations() {
-        composeRule.setContent {
-            RecompTrackerTheme {
-                MoreScreen(
-                    onStatsClick = {},
-                    onChartsClick = {},
-                    onPlanClick = {},
-                    onSettingsClick = {},
-                )
-            }
-        }
-
-        composeRule.onNodeWithText("More").assertIsDisplayed()
-        composeRule.onNodeWithText("Stats").assertIsDisplayed()
-        composeRule.onNodeWithText("Charts").assertIsDisplayed()
-        composeRule.onNodeWithText("Plan").assertIsDisplayed()
-        composeRule.onNodeWithText("Settings").assertIsDisplayed()
     }
 
     private fun noOpFoodActions() = FoodActions(
@@ -101,11 +82,13 @@ class TodayScreenTest {
         onDeleteSlot = {},
         onReorderSlots = {},
         onDeleteMeal = {},
+        onEditMacros = { _, _, _, _, _ -> },
     )
 
-    private fun noOpBodyActions() = BodyRecoveryActions(
+    private fun noOpBodyActions() = BodyCheckInFormActions(
         onBodyWeightChanged = {},
         onWaistChanged = {},
+        onWaistSkinfoldChanged = {},
         onStepsChanged = {},
         onSleepChanged = {},
         onEnergyChanged = {},
@@ -113,6 +96,6 @@ class TodayScreenTest {
         onSorenessChanged = {},
         onTrainedChanged = {},
         onNotesChanged = {},
-        onSaveMetrics = {},
+        onSave = {},
     )
 }

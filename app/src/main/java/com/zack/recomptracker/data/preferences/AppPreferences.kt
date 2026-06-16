@@ -82,6 +82,10 @@ class UiPreferences(private val context: Context) {
     val selectedFont: kotlinx.coroutines.flow.Flow<String> = context.uiDataStore.data.map { it[Keys.SelectedFont] ?: "default" }
     val aiInsightsEnabled: kotlinx.coroutines.flow.Flow<Boolean> = context.uiDataStore.data.map { it[Keys.AiInsightsEnabled] ?: false }
 
+    /** True once the user has completed first-run onboarding. Gates the nav start destination. */
+    val onboardingComplete: kotlinx.coroutines.flow.Flow<Boolean> =
+        context.uiDataStore.data.map { it[Keys.OnboardingComplete] ?: false }
+
     /**
      * The DownloadManager ID of an in-progress model download. Persisted so that if
      * the app process is killed mid-download, the coordinator can resume progress
@@ -137,6 +141,10 @@ class UiPreferences(private val context: Context) {
         context.uiDataStore.edit { it[Keys.AiInsightsEnabled] = enabled }
     }
 
+    suspend fun setOnboardingComplete(complete: Boolean) {
+        context.uiDataStore.edit { it[Keys.OnboardingComplete] = complete }
+    }
+
     suspend fun setAccentTheme(theme: com.zack.recomptracker.ui.theme.AccentTheme) {
         context.uiDataStore.edit { it[Keys.AccentTheme] = theme.name }
     }
@@ -178,6 +186,7 @@ class UiPreferences(private val context: Context) {
     private object Keys {
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
+        val OnboardingComplete = booleanPreferencesKey("onboarding_complete")
         val PendingDownloadId = longPreferencesKey("pending_download_id")
         val SelectedModelVariant = stringPreferencesKey("selected_model_variant")
         val AccentTheme = stringPreferencesKey("accent_theme")

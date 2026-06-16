@@ -491,6 +491,21 @@ private fun StalePlannedHint(count: Int) {
     }
 }
 
+internal enum class CalorieDayStatus { BelowZone, GoalHit, Over, Missed }
+
+internal fun calorieStatus(
+    cal: Int,
+    zoneLow: Int,
+    zoneHigh: Int,
+    isToday: Boolean,
+    isPast: Boolean,
+): CalorieDayStatus = when {
+    cal in zoneLow..zoneHigh -> CalorieDayStatus.GoalHit
+    cal > zoneHigh           -> CalorieDayStatus.Over
+    isPast && cal > 0        -> CalorieDayStatus.Missed
+    else                     -> CalorieDayStatus.BelowZone
+}
+
 // ── Nutrition Strip ────────────────────────────────────────────────────────────
 
 @Composable

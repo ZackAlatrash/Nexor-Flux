@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
@@ -91,6 +92,12 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
+        // Null until the flag is read, so the NavHost is not composed with the wrong start
+        // destination (which would flash Home before redirecting to onboarding, or vice versa).
+        val onboardingComplete by produceState<Boolean?>(initialValue = null) {
+            container.uiPreferences.onboardingComplete.collect { value = it }
+        }
+
         // Two separate backdrops to avoid a circular GraphicsLayer read:
         //   contentBackdrop — records the gradient only; provided via LocalBackdrop so
         //     glass buttons inside screens sample the gradient without reading a layer
@@ -148,10 +155,19 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                         modifier = Modifier.fillMaxSize(),
                         containerColor = Color.Transparent,
                     ) { innerPadding ->
-                        AppNavGraph(
-                            navController = navController,
-                            modifier = Modifier.padding(innerPadding),
-                        )
+                        when (onboardingComplete) {
+                            // Brief load gate: nothing but the gradient behind it.
+                            null -> Box(modifier = Modifier.fillMaxSize())
+                            else -> AppNavGraph(
+                                navController = navController,
+                                startDestination = if (onboardingComplete == true) {
+                                    TopLevelDestination.Home.route
+                                } else {
+                                    Routes.Onboarding
+                                },
+                                modifier = Modifier.padding(innerPadding),
+                            )
+                        }
                     }
                 }
 

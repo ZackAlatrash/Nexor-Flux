@@ -29,15 +29,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import com.zack.recomptracker.ui.component.PillStatus
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -510,102 +519,180 @@ internal fun calorieStatus(
 
 @Composable
 private fun NutritionStrip(state: FoodLogUiState) {
-    val cal     = state.totals.calories
-    val target  = state.target
-    val zoneLow = target.calorieZoneLowerBound
-    val zoneHigh = target.calorieZoneUpperBound
-    val scaleMax = ((zoneHigh * 1.2).toInt()).coerceAtLeast(1)
-    val calFrac  = (cal.toFloat() / scaleMax).coerceIn(0f, 1f)
-    val plannedCalForBar = state.plannedTotals.calories
-    val projectedFrac = if (plannedCalForBar > 0)
-        ((cal + plannedCalForBar).toFloat() / scaleMax).coerceIn(0f, 1f) else 0f
-
-    val isInZone = cal in zoneLow..zoneHigh
-    val isOver   = cal > zoneHigh
-    val badgeText = if (isInZone) "In zone" else if (isOver) "Over" else "Below"
-    val calSubText = when {
-        isInZone -> " kcal · in zone"
-        isOver   -> " kcal · ${cal - zoneHigh} over"
-        else     -> " kcal · ${zoneLow - cal} to zone"
-    }
+    val cal         = state.totals.calories
+    val target      = state.target
+    val zoneLow     = target.calorieZoneLowerBound
+    val zoneHigh    = target.calorieZoneUpperBound
+    val scaleMax    = ((zoneHigh * 1.2).toInt()).coerceAtLeast(1)
+    val calFrac     = (cal.toFloat() / scaleMax).coerceIn(0f, 1f)
+    val plannedCal  = state.plannedTotals.calories
+    val projectedFrac = if (plannedCal > 0)
+        ((cal + plannedCal).toFloat() / scaleMax).coerceIn(0f, 1f) else 0f
 
     val appColors = LocalAppColors.current
-    FrostedCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            Row(verticalAlignment = Alignment.Bottom) {
+    val accent    = LocalAppAccent.current
+
+    val status = calorieStatus(cal, zoneLow, zoneHigh, state.isToday, state.isPast)
+
+    val calSubText = when (status) {
+        CalorieDayStatus.GoalHit   -> " kcal"
+        CalorieDayStatus.Over      -> " kcal · ${cal - zoneHigh} over"
+        CalorieDayStatus.Missed    -> " kcal · ${zoneLow - cal} below zone"
+        CalorieDayStatus.BelowZone -> " kcal · ${zoneLow - cal} to zone"
+    }
+
+    // ── One-shot celebration (today: BelowZone → GoalHit transition) ──────────
+    val prevInZone = remember { mutableStateOf(status == CalorieDayStatus.GoalHit) }
+    var celebrateTriggered by remember { mutableStateOf(false) }
+    val scaleAnim = remember { Animatable(1f) }
+
+    LaunchedEffect(status) {
+        val nowGoalHit = status == CalorieDayStatus.GoalHit
+        if (nowGoalHit && !prevInZone.value && state.isToday) {
+            celebrateTriggered = true
+            scaleAnim.snapTo(1f)
+            scaleAnim.animateTo(1.026f, tween(200))
+            scaleAnim.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 300f))
+        }
+        prevInZone.value = nowGoalHit
+    }
+
+    // ── Animated tint overlay colours ─────────────────────────────────────────
+    val overlayColor by animateColorAsState(
+        targetValue = when (status) {
+            CalorieDayStatus.GoalHit -> if (appColors.isDark) Color(0x400A1A10) else Color(0x2016A34A)
+            CalorieDayStatus.Missed  -> if (appColors.isDark) Color(0x401A0E0E) else Color(0x20DC2626)
+            else                     -> Color.Transparent
+        },
+        animationSpec = tween(600),
+        label = "overlayBg",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when (status) {
+            CalorieDayStatus.GoalHit -> if (appColors.isDark) Color(0xFF166534) else Color(0x8016A34A)
+            CalorieDayStatus.Missed  -> if (appColors.isDark) Color(0xFF4A1515) else Color(0x80DC2626)
+            else                     -> Color.Transparent
+        },
+        animationSpec = tween(600),
+        label = "overlayBorder",
+    )
+    val barStart by animateColorAsState(
+        targetValue = when (status) {
+            CalorieDayStatus.GoalHit -> Color(0xFF16A34A)
+            CalorieDayStatus.Missed  -> Color(0xFF991B1B)
+            else                     -> accent.accent
+        },
+        animationSpec = tween(600),
+        label = "barStart",
+    )
+    val barEnd by animateColorAsState(
+        targetValue = when (status) {
+            CalorieDayStatus.GoalHit -> Color(0xFF4ADE80)
+            CalorieDayStatus.Missed  -> Color(0xFFDC2626)
+            else                     -> accent.accentLight
+        },
+        animationSpec = tween(600),
+        label = "barEnd",
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { scaleX = scaleAnim.value; scaleY = scaleAnim.value },
+    ) {
+        FrostedCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = String.format(Locale.US, "%,d", cal),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = appColors.textPrimary,
+                        letterSpacing = (-0.8).sp,
+                    )
+                    Text(
+                        text = calSubText,
+                        fontSize = 11.sp,
+                        color = appColors.textMuted,
+                    )
+                }
+                AnimatedContent(
+                    targetState = status,
+                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                    label = "badge",
+                ) { s ->
+                    when (s) {
+                        CalorieDayStatus.GoalHit   -> VioletBadge(PillStatus.GOOD,      "Goal hit!")
+                        CalorieDayStatus.Missed    -> VioletBadge(PillStatus.OFF_TRACK, "Missed")
+                        CalorieDayStatus.Over      -> VioletBadge(text = "Over")
+                        CalorieDayStatus.BelowZone -> VioletBadge(text = "Below")
+                    }
+                }
+            }
+
+            if (plannedCal > 0) {
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = String.format(Locale.US, "%,d", cal),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Black,
-                    color = appColors.textPrimary,
-                    letterSpacing = (-0.8).sp,
-                )
-                Text(
-                    text = calSubText,
-                    fontSize = 11.sp,
-                    color = appColors.textMuted,
+                    text = if (cal > 0) "+$plannedCal kcal planned · ${cal + plannedCal} projected"
+                           else "$plannedCal kcal planned",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = accent.inkLight.copy(alpha = 0.85f),
                 )
             }
-            VioletBadge(text = badgeText)
-        }
+            Spacer(Modifier.height(8.dp))
 
-        // Planned projection — shown when the day has any planned (not-yet-eaten) entries
-        val plannedCal = state.plannedTotals.calories
-        if (plannedCal > 0) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = if (cal > 0) "+$plannedCal kcal planned · ${cal + plannedCal} projected"
-                       else "$plannedCal kcal planned",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = LocalAppAccent.current.inkLight.copy(alpha = 0.85f),
+            CalorieProgressBar(
+                progress        = calFrac,
+                zoneLowFrac     = (zoneLow.toFloat()  / scaleMax).coerceIn(0f, 1f),
+                zoneHighFrac    = (zoneHigh.toFloat() / scaleMax).coerceIn(0f, 1f),
+                plannedProgress = projectedFrac,
+                fillColorStart  = barStart,
+                fillColorEnd    = barEnd,
+                modifier        = Modifier.fillMaxWidth().height(8.dp),
             )
-        }
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-        // Calorie bar
-        CalorieProgressBar(
-            progress = calFrac,
-            zoneLowFrac = (zoneLow.toFloat() / scaleMax).coerceIn(0f, 1f),
-            zoneHighFrac = (zoneHigh.toFloat() / scaleMax).coerceIn(0f, 1f),
-            plannedProgress = projectedFrac,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MacroProgressItem(
+                    label  = "Protein",
+                    value  = "${state.totals.proteinG.toInt()}g",
+                    remain = "${(target.targetProteinG - state.totals.proteinG).toInt().coerceAtLeast(0)}g to go",
+                    frac   = safeMacroFrac(state.totals.proteinG, target.targetProteinG),
+                    modifier = Modifier.weight(1f),
+                )
+                MacroProgressItem(
+                    label  = "Carbs",
+                    value  = "${state.totals.carbsG.toInt()}g",
+                    remain = "${(target.targetCarbsG - state.totals.carbsG).toInt().coerceAtLeast(0)}g to go",
+                    frac   = safeMacroFrac(state.totals.carbsG, target.targetCarbsG),
+                    modifier = Modifier.weight(1f),
+                )
+                MacroProgressItem(
+                    label  = "Fat",
+                    value  = "${state.totals.fatG.toInt()}g",
+                    remain = "${(target.targetFatG - state.totals.fatG).toInt().coerceAtLeast(0)}g to go",
+                    frac   = safeMacroFrac(state.totals.fatG, target.targetFatG),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        // Animated tint overlay — drawn on top of the frosted card surface
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp),
+                .matchParentSize()
+                .clip(RoundedCornerShape(CornerCard))
+                .background(overlayColor)
+                .border(1.dp, borderColor, RoundedCornerShape(CornerCard)),
         )
-        Spacer(Modifier.height(12.dp))
-
-        // Macros with bars
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            MacroProgressItem(
-                label  = "Protein",
-                value  = "${state.totals.proteinG.toInt()}g",
-                remain = "${(target.targetProteinG - state.totals.proteinG).toInt().coerceAtLeast(0)}g to go",
-                frac   = safeMacroFrac(state.totals.proteinG, target.targetProteinG),
-                modifier = Modifier.weight(1f),
-            )
-            MacroProgressItem(
-                label  = "Carbs",
-                value  = "${state.totals.carbsG.toInt()}g",
-                remain = "${(target.targetCarbsG - state.totals.carbsG).toInt().coerceAtLeast(0)}g to go",
-                frac   = safeMacroFrac(state.totals.carbsG, target.targetCarbsG),
-                modifier = Modifier.weight(1f),
-            )
-            MacroProgressItem(
-                label  = "Fat",
-                value  = "${state.totals.fatG.toInt()}g",
-                remain = "${(target.targetFatG - state.totals.fatG).toInt().coerceAtLeast(0)}g to go",
-                frac   = safeMacroFrac(state.totals.fatG, target.targetFatG),
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }
 

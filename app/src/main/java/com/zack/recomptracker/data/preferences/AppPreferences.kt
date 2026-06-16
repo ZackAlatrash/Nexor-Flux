@@ -30,6 +30,8 @@ class AppPreferences(
             adherenceMinimumPercent = prefs[Keys.AdherenceMinimumPercent] ?: 80.0,
             reviewCadenceDays = prefs[Keys.ReviewCadenceDays] ?: 7,
             useMetricUnits = prefs[Keys.UseMetricUnits] ?: true,
+            calorieZoneLowerBound = prefs[Keys.CalorieZoneLowerBound] ?: 2400,
+            calorieZoneUpperBound = prefs[Keys.CalorieZoneUpperBound] ?: 2600,
             healthConnectEnabled = prefs[Keys.HealthConnectEnabled] ?: false,
         )
     }
@@ -50,6 +52,8 @@ class AppPreferences(
             prefs[Keys.AdherenceMinimumPercent] = preferences.adherenceMinimumPercent
             prefs[Keys.ReviewCadenceDays] = preferences.reviewCadenceDays
             prefs[Keys.UseMetricUnits] = preferences.useMetricUnits
+            prefs[Keys.CalorieZoneLowerBound] = preferences.calorieZoneLowerBound
+            prefs[Keys.CalorieZoneUpperBound] = preferences.calorieZoneUpperBound
             prefs[Keys.HealthConnectEnabled] = preferences.healthConnectEnabled
         }
     }
@@ -69,6 +73,8 @@ class AppPreferences(
         val AdherenceMinimumPercent = doublePreferencesKey("adherence_minimum_percent")
         val ReviewCadenceDays = intPreferencesKey("review_cadence_days")
         val UseMetricUnits = booleanPreferencesKey("use_metric_units")
+        val CalorieZoneLowerBound = intPreferencesKey("calorie_zone_lower_bound")
+        val CalorieZoneUpperBound = intPreferencesKey("calorie_zone_upper_bound")
         val HealthConnectEnabled = booleanPreferencesKey("health_connect_enabled")
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")

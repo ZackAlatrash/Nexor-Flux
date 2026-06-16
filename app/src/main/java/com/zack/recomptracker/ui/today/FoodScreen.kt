@@ -543,13 +543,11 @@ private fun NutritionStrip(state: FoodLogUiState) {
 
     // ── One-shot celebration (today: BelowZone → GoalHit transition) ──────────
     val prevInZone = remember { mutableStateOf(status == CalorieDayStatus.GoalHit) }
-    var celebrateTriggered by remember { mutableStateOf(false) }
     val scaleAnim = remember { Animatable(1f) }
 
     LaunchedEffect(status) {
         val nowGoalHit = status == CalorieDayStatus.GoalHit
         if (nowGoalHit && !prevInZone.value && state.isToday) {
-            celebrateTriggered = true
             scaleAnim.snapTo(1f)
             scaleAnim.animateTo(1.026f, tween(200))
             scaleAnim.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 300f))

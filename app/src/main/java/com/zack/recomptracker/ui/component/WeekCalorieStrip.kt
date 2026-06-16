@@ -121,6 +121,7 @@ fun WeekCalorieStrip(
                         scaleMax   = scaleMax,
                         targetLow  = targetLow,
                         targetHigh = targetHigh,
+                        today      = today,
                         onSelected = { onDaySelected(summary.date) },
                         modifier   = Modifier.weight(1f),
                     )
@@ -200,6 +201,7 @@ private fun WeekBarItem(
     scaleMax: Int,
     targetLow: Int,
     targetHigh: Int,
+    today: LocalDate,
     onSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -209,11 +211,16 @@ private fun WeekBarItem(
     val targetFrac = if (empty) 0.04f else (summary.calories.toFloat() / scaleMax).coerceIn(0f, 1f)
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
+    val isPastMissed = !empty && summary.date < today && summary.calories < targetLow
+
     val barColor = when {
-        empty -> if (isSelected) appColors.textPrimary.copy(alpha = 0.18f) else appColors.textPrimary.copy(alpha = 0.10f)
+        empty           -> if (isSelected) appColors.textPrimary.copy(alpha = 0.18f)
+                          else appColors.textPrimary.copy(alpha = 0.10f)
         summary.calories in targetLow..targetHigh -> accent.accentLight
-        summary.calories > targetHigh -> Color(0xFFF97316)
-        else -> accent.accentLighter.copy(alpha = 0.75f)
+        summary.calories > targetHigh             -> Color(0xFFF97316)
+        isPastMissed    -> if (appColors.isDark) Color(0xFF7F1D1D)
+                          else Color(0xFF9CA3AF).copy(alpha = 0.55f)
+        else            -> accent.accentLighter.copy(alpha = 0.75f)
     }
 
     Box(

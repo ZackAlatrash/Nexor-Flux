@@ -79,6 +79,7 @@ import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.ui.train.ActiveSessionViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
+import com.zack.recomptracker.ui.train.SessionDetailViewModel
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainViewModel
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
@@ -511,6 +512,10 @@ private class AppViewModelFactory(
                 exerciseLibraryRepository = container.exerciseLibraryRepository,
             )
             SessionSummaryViewModel::class.java -> SessionSummaryViewModel(
+                sessionRepository = container.workoutSessionRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
+            )
+            SessionDetailViewModel::class.java -> SessionDetailViewModel(
                 sessionRepository = container.workoutSessionRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
             )

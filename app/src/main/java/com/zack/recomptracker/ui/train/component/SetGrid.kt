@@ -133,7 +133,11 @@ fun SetGrid(
             onRemoveSet = onSessionRemoveSet,
             modifier = modifier,
         )
-        else -> PlanSetGrid(
+        SetGridMode.READONLY -> ReadonlySetGrid(
+            sets = sessionSets,
+            modifier = modifier,
+        )
+        SetGridMode.PLAN -> PlanSetGrid(
             mode = mode,
             sets = sets,
             onAddSet = onAddSet,
@@ -439,7 +443,93 @@ private fun SessionSetGrid(
     }
 }
 
-// ── PLAN / READONLY grid (original implementation, unchanged) ─────────────────
+// ── READONLY grid ────────────────────────────────────────────────────────────
+
+@Composable
+private fun ReadonlySetGrid(
+    sets: List<SessionSetRow>,
+    modifier: Modifier = Modifier,
+) {
+    val appColors = LocalAppColors.current
+
+    Column(modifier = modifier) {
+        // ── Header ────────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "SET",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = appColors.textMuted,
+                letterSpacing = 0.4.sp,
+                modifier = Modifier.width(34.dp),
+            )
+            Text(
+                text = "KG",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = appColors.textMuted,
+                letterSpacing = 0.4.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "REPS",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = appColors.textMuted,
+                letterSpacing = 0.4.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(32.dp))
+        }
+
+        // ── Rows ──────────────────────────────────────────────────────────────
+        sets.forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .clip(RoundedCornerShape(CornerSmall))
+                        .background(appColors.cardSurface)
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "${index + 1}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = appColors.textMuted,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                ReadonlySetCell(
+                    text = row.weightKg?.let { formatWeight(it) } ?: "–",
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(6.dp))
+                ReadonlySetCell(
+                    text = row.reps?.takeIf { it > 0 }?.toString() ?: "–",
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(32.dp))
+            }
+        }
+    }
+}
+
+// ── PLAN / READONLY grid (original plan implementation, kept for PLAN mode) ───
 
 @Composable
 private fun PlanSetGrid(

@@ -56,6 +56,8 @@ import com.zack.recomptracker.ui.train.ExercisePickerScreen
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.RoutineBuilderScreen
 import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
+import com.zack.recomptracker.ui.train.SessionDetailScreen
+import com.zack.recomptracker.ui.train.SessionDetailViewModel
 import com.zack.recomptracker.ui.train.SessionSummaryScreen
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
@@ -95,6 +97,8 @@ object Routes {
     fun routineBuilder(workoutId: Long? = null) = "routine_builder?workoutId=${workoutId ?: -1L}"
     const val SessionSummary = "session_summary/{sessionId}"
     fun sessionSummary(id: Long) = "session_summary/$id"
+    const val SessionDetail = "session_detail/{sessionId}"
+    fun sessionDetail(id: Long) = "session_detail/$id"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -218,6 +222,7 @@ fun AppNavGraph(
                 onEditRoutine = { id -> navController.navigate(Routes.routineBuilder(id)) },
                 onStart = { _ -> navController.navigate(Routes.ActiveSession) },
                 onResume = { _ -> navController.navigate(Routes.ActiveSession) },
+                onOpenSession = { id -> navController.navigate(Routes.sessionDetail(id)) },
                 modifier = Modifier,
             )
         }
@@ -264,6 +269,23 @@ fun AppNavGraph(
                         popUpTo(Routes.Train) { inclusive = true }
                     }
                 },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.SessionDetail,
+            arguments = listOf(
+                androidx.navigation.navArgument("sessionId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            SessionDetailScreen(
+                viewModel = viewModel<SessionDetailViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
                 modifier = Modifier,
             )
         }

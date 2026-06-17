@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
@@ -63,6 +64,7 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 @Composable
 fun TrainHomeScreen(
@@ -71,6 +73,7 @@ fun TrainHomeScreen(
     onEditRoutine: (Long) -> Unit,
     onStart: (sessionId: Long) -> Unit,
     onResume: (sessionId: Long) -> Unit,
+    onOpenSession: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -256,13 +259,39 @@ fun TrainHomeScreen(
                     }
                 }
             } else {
-                items(state.history, key = { it.id }) { session ->
-                    HistoryCard(
-                        session = session,
-                        modifier = Modifier
-                            .padding(horizontal = 14.dp)
-                            .padding(bottom = 12.dp),
-                    )
+                // Group by month (newest first)
+                val monthFormatter = DateTimeFormatter.ofPattern("MMMM").withLocale(java.util.Locale.ENGLISH)
+                val grouped = state.history
+                    .sortedByDescending { it.date }
+                    .groupBy { session ->
+                        runCatching { LocalDate.parse(session.date).format(monthFormatter).uppercase() }
+                            .getOrElse { "UNKNOWN" }
+                    }
+                    .entries
+                    .toList()
+
+                grouped.forEach { (monthLabel, sessions) ->
+                    item(key = "header_$monthLabel") {
+                        Text(
+                            text = monthLabel,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = appColors.textPrimary.copy(alpha = 0.55f),
+                            letterSpacing = 0.4.sp,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 8.dp, bottom = 6.dp),
+                        )
+                    }
+                    items(sessions, key = { it.id }) { session ->
+                        HistoryCard(
+                            session = session,
+                            onClick = { onOpenSession(session.id) },
+                            modifier = Modifier
+                                .padding(horizontal = 14.dp)
+                                .padding(bottom = 12.dp),
+                        )
+                    }
                 }
             }
         }
@@ -537,46 +566,68 @@ private fun EmptyRoutinesCard(
     }
 }
 
-// ── History card (minimal, full styling is a later task) ─────────────────────
+// ── History card (mockup 6) ───────────────────────────────────────────────────
 
 @Composable
 private fun HistoryCard(
     session: WorkoutSession,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    val totalSets = session.exercises.sumOf { it.sets.size }
+
+    val completedSets = session.exercises.sumOf { ex -> ex.sets.count { it.completed } }
+    val allSets = session.exercises.flatMap { it.sets }
+    val volume = WorkoutProgressAnalyzer.sessionVolume(allSets)
+    val durationMin = session.durationSeconds?.let { it / 60 }
+
     val dateFormatted = runCatching {
-        LocalDate.parse(session.date).format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+        LocalDate.parse(session.date).format(DateTimeFormatter.ofPattern("MMM d"))
     }.getOrElse { session.date }
 
     FrostedCard(
-        modifier = modifier,
+        modifier = modifier.clickable { onClick() },
         contentPadding = 13.dp,
     ) {
-        Text(
-            text = session.workoutName,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
-            color = appColors.textPrimary,
-        )
-        Spacer(Modifier.height(3.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Name + date row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = session.workoutName,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = appColors.textPrimary,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 text = dateFormatted,
                 fontSize = 12.sp,
                 color = appColors.textMuted,
             )
-            Text(
-                text = "·",
-                fontSize = 12.sp,
-                color = appColors.textMuted,
-            )
-            Text(
-                text = "$totalSets sets",
-                fontSize = 12.sp,
-                color = appColors.textMuted,
-            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Stats row
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (durationMin != null && durationMin > 0) {
+                Text(text = "⏱ $durationMin min", fontSize = 12.sp, color = appColors.textMuted)
+                Text(text = "·", fontSize = 12.sp, color = appColors.textMuted)
+            }
+            Text(text = "▦ $completedSets sets", fontSize = 12.sp, color = appColors.textMuted)
+            if (volume > 0) {
+                Text(text = "·", fontSize = 12.sp, color = appColors.textMuted)
+                Text(text = "◆ ${volume.roundToInt()} kg", fontSize = 12.sp, color = appColors.textMuted)
+            }
         }
     }
 }

@@ -85,6 +85,32 @@ open class WorkoutSessionRepository(
 
     open suspend fun removeSet(setId: Long) = sessionDao.deleteSetById(setId)
 
+    open suspend fun addExerciseToSession(sessionId: Long, exerciseId: Long, exerciseName: String): Long =
+        sessionDao.insertSessionExercise(
+            SessionExerciseEntity(
+                sessionId = sessionId,
+                exerciseId = exerciseId,
+                exerciseName = exerciseName,
+                sortOrder = sessionDao.nextExerciseSortOrder(sessionId),
+                note = null,
+            ),
+        )
+
+    open suspend fun removeSessionExercise(sessionExerciseId: Long) =
+        sessionDao.deleteSessionExerciseById(sessionExerciseId)
+
+    open suspend fun reorderSessionExercises(orderedSessionExerciseIds: List<Long>) {
+        orderedSessionExerciseIds.forEachIndexed { i, id ->
+            sessionDao.updateSessionExerciseSortOrder(id, i)
+        }
+    }
+
+    open suspend fun setSessionExerciseNote(sessionExerciseId: Long, note: String?) =
+        sessionDao.updateSessionExerciseNote(sessionExerciseId, note)
+
+    open suspend fun setSessionNote(sessionId: Long, note: String?) =
+        sessionDao.updateSessionNote(sessionId, note)
+
     open suspend fun completeSession(sessionId: Long) = setStatus(sessionId, SessionStatus.COMPLETED)
 
     open suspend fun abandonSession(sessionId: Long) = setStatus(sessionId, SessionStatus.ABANDONED)

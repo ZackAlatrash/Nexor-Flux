@@ -69,6 +69,21 @@ abstract class WorkoutSessionDao {
     @Query("SELECT * FROM workout_sessions WHERE status = 'COMPLETED' ORDER BY date DESC, completedAt DESC")
     abstract fun observeCompletedSessions(): Flow<List<WorkoutSessionWithDetailsDb>>
 
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM session_exercises WHERE sessionId = :sessionId")
+    abstract suspend fun nextExerciseSortOrder(sessionId: Long): Int
+
+    @Query("DELETE FROM session_exercises WHERE id = :id")
+    abstract suspend fun deleteSessionExerciseById(id: Long)
+
+    @Query("UPDATE session_exercises SET sortOrder = :sortOrder WHERE id = :id")
+    abstract suspend fun updateSessionExerciseSortOrder(id: Long, sortOrder: Int)
+
+    @Query("UPDATE session_exercises SET note = :note WHERE id = :id")
+    abstract suspend fun updateSessionExerciseNote(id: Long, note: String?)
+
+    @Query("UPDATE workout_sessions SET note = :note WHERE id = :id")
+    abstract suspend fun updateSessionNote(id: Long, note: String?)
+
     @Query(
         "SELECT s.date AS date, st.reps AS reps, st.weightKg AS weightKg, st.rir AS rir " +
             "FROM session_sets st " +

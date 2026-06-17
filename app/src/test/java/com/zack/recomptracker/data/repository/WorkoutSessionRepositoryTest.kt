@@ -63,6 +63,23 @@ class WorkoutSessionRepositoryTest {
                         .map { ExerciseHistoryRow(session.date, it.reps, it.weightKg, it.rir) }
                 }.sortedBy { it.date }
 
+        override suspend fun nextExerciseSortOrder(sessionId: Long): Int =
+            (exercises.values.filter { it.sessionId == sessionId }.maxOfOrNull { it.sortOrder } ?: -1) + 1
+
+        override suspend fun deleteSessionExerciseById(id: Long) { exercises.remove(id) }
+
+        override suspend fun updateSessionExerciseSortOrder(id: Long, sortOrder: Int) {
+            exercises[id] = exercises.getValue(id).copy(sortOrder = sortOrder)
+        }
+
+        override suspend fun updateSessionExerciseNote(id: Long, note: String?) {
+            exercises[id] = exercises.getValue(id).copy(note = note)
+        }
+
+        override suspend fun updateSessionNote(id: Long, note: String?) {
+            sessions[id] = sessions.getValue(id).copy(note = note)
+        }
+
         private fun build(s: WorkoutSessionEntity) = WorkoutSessionWithDetailsDb(
             session = s,
             exercises = exercises.values.filter { it.sessionId == s.id }.map { se ->
@@ -210,5 +227,46 @@ class WorkoutSessionRepositoryTest {
         assertEquals(1, history.size)
         assertEquals("2026-06-17", history.first().date)
         assertEquals(100.0, history.first().weightKg!!, 0.0001)
+    }
+
+    @Test
+    fun `addExerciseToSession appends at next sortOrder`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        val sid = repo.startSession(template())
+        repo.addExerciseToSession(sid, exerciseId = 99, exerciseName = "Dip")
+        val added = dao.exercises.values.single { it.exerciseName == "Dip" }
+        assertEquals(sid, added.sessionId)
+        assertEquals(1, added.sortOrder) // template() has 1 exercise at sortOrder 0
+    }
+
+    @Test
+    fun `removeSessionExercise deletes it`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        repo.startSession(template())
+        val seId = dao.exercises.values.first().id
+        repo.removeSessionExercise(seId)
+        assertTrue(dao.exercises.values.none { it.id == seId })
+    }
+
+    @Test
+    fun `reorderSessionExercises rewrites sortOrder`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        val sid = repo.startSession(template())
+        val first = dao.exercises.values.first().id
+        val second = repo.addExerciseToSession(sid, exerciseId = 99, exerciseName = "Dip")
+        repo.reorderSessionExercises(listOf(second, first))
+        assertEquals(0, dao.exercises.getValue(second).sortOrder)
+        assertEquals(1, dao.exercises.getValue(first).sortOrder)
+    }
+
+    @Test
+    fun `setSessionExerciseNote and setSessionNote persist`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        val sid = repo.startSession(template())
+        val seId = dao.exercises.values.first().id
+        repo.setSessionExerciseNote(seId, "tempo 3-1-1")
+        repo.setSessionNote(sid, "felt strong")
+        assertEquals("tempo 3-1-1", dao.exercises.getValue(seId).note)
+        assertEquals("felt strong", dao.sessions.getValue(sid).note)
     }
 }

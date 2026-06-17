@@ -21,7 +21,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.animateFloatAsState
@@ -104,6 +106,7 @@ fun HomeDashboardScreen(
         state = state,
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+        onOpenSettings = onOpenSettings,
         patternInsightState = patternInsightState,
         onRetryPatternInsight = viewModel::retryPatternInsight,
         targetChangeInsightState = targetChangeInsightState,
@@ -140,6 +143,7 @@ fun HomeDashboardContent(
     modifier: Modifier = Modifier,
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     patternInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryPatternInsight: () -> Unit = {},
     targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
@@ -173,7 +177,10 @@ fun HomeDashboardContent(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp))
+            ScreenHeader(
+                onOpenSettings = onOpenSettings,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            )
 
             LazyColumn(
                 contentPadding = PaddingValues(
@@ -277,7 +284,10 @@ fun HomeDashboardContent(
 }
 
 @Composable
-private fun ScreenHeader(modifier: Modifier = Modifier) {
+private fun ScreenHeader(
+    onOpenSettings: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
     val appColors = LocalAppColors.current
     val today = remember { LocalDate.now() }
     val dateStr = remember(today) {
@@ -286,7 +296,7 @@ private fun ScreenHeader(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "Dashboard",
@@ -295,11 +305,23 @@ private fun ScreenHeader(modifier: Modifier = Modifier) {
             color = appColors.textPrimary,
             letterSpacing = (-0.8).sp,
         )
-        Text(
-            text = dateStr,
-            fontSize = 12.sp,
-            color = appColors.textMuted,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = dateStr,
+                fontSize = 12.sp,
+                color = appColors.textMuted,
+            )
+            if (onOpenSettings != null) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "More",
+                        tint = appColors.textMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

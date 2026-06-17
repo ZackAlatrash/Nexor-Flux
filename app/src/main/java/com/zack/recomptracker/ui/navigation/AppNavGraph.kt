@@ -50,6 +50,7 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ui.train.TrainHomeScreen
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import java.time.LocalDate
 import kotlinx.serialization.encodeToString
@@ -78,6 +79,7 @@ object Routes {
     const val AiCoach      = "ai_coach"
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
+    const val Train     = "train"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -189,6 +191,13 @@ fun AppNavGraph(
             com.zack.recomptracker.ui.coach.CoachScreen(
                 viewModel = viewModel<com.zack.recomptracker.ui.coach.CoachViewModel>(factory = factory),
             )
+        }
+        composable(
+            route = Routes.Train,
+            enterTransition = { tabEnter },
+            exitTransition  = { tabExit },
+        ) {
+            TrainHomeScreen(modifier = Modifier)
         }
         composable(
             route = Routes.BodyHistory,

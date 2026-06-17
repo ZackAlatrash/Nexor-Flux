@@ -50,6 +50,8 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ui.train.ExercisePickerScreen
+import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
 import com.zack.recomptracker.ui.train.TrainViewModel
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
@@ -80,7 +82,8 @@ object Routes {
     const val AiCoach      = "ai_coach"
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
-    const val Train     = "train"
+    const val Train          = "train"
+    const val ExercisePicker = "exercise_picker"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -204,6 +207,23 @@ fun AppNavGraph(
                 onEditRoutine = { /* TODO: Routine Builder — next task */ },
                 onStart = { /* TODO: Active Session — later task */ },
                 onResume = { /* TODO: Active Session — later task */ },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.ExercisePicker,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            ExercisePickerScreen(
+                viewModel = viewModel<ExercisePickerViewModel>(factory = factory),
+                onClose = { navController.popBackStack() },
+                onConfirm = { ids ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("picked_exercise_ids", ids.toLongArray())
+                    navController.popBackStack()
+                },
                 modifier = Modifier,
             )
         }

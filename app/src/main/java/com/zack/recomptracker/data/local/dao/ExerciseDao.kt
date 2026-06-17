@@ -27,6 +27,9 @@ interface ExerciseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(exercises: List<ExerciseEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReturningId(exercise: ExerciseEntity): Long
+
     @Query("DELETE FROM exercises WHERE source = :source")
     suspend fun deleteBySource(source: String)
 }

@@ -76,6 +76,7 @@ import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.today.FoodLogViewModel
 import com.zack.recomptracker.ui.today.TodayViewModel
+import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.TrainViewModel
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
@@ -494,6 +495,9 @@ private class AppViewModelFactory(
             TrainViewModel::class.java -> TrainViewModel(
                 workoutRepository = container.workoutRepository,
                 sessionRepository = container.workoutSessionRepository,
+            )
+            ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
+                repository = container.exerciseLibraryRepository,
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

@@ -1,6 +1,7 @@
 package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.data.local.dao.ExerciseDao
+import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.domain.workout.ExerciseLibraryJson
 import com.zack.recomptracker.domain.workout.toEntity
@@ -17,6 +18,26 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
         exerciseDao.search(query.trim()).map { it.toDomain() }
 
     open suspend fun getById(id: Long): Exercise? = exerciseDao.getById(id)?.toDomain()
+
+    open suspend fun addCustomExercise(name: String): Long {
+        val entity = ExerciseEntity(
+            source = "user",
+            sourceVersion = "1",
+            externalId = "user_" + name.trim().lowercase().replace(Regex("[^a-z0-9]+"), "_"),
+            name = name.trim(),
+            category = null,
+            force = null,
+            level = null,
+            mechanic = null,
+            equipment = null,
+            primaryMuscles = "[]",
+            secondaryMuscles = "[]",
+            instructions = "[]",
+            images = "[]",
+            userCreated = true,
+        )
+        return exerciseDao.insertReturningId(entity)
+    }
 
     /**
      * Seeds the library from a free-exercise-db JSON stream the first time, or when [version]

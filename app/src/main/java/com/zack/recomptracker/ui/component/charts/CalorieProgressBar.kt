@@ -28,9 +28,13 @@ fun CalorieProgressBar(
      * segment extends the solid eaten fill out to here. Defaults to 0 (no projection).
      */
     plannedProgress: Float = 0f,
+    fillColorStart: Color = Color.Unspecified,
+    fillColorEnd: Color = Color.Unspecified,
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val resolvedStart = if (fillColorStart != Color.Unspecified) fillColorStart else accent.accent
+    val resolvedEnd   = if (fillColorEnd   != Color.Unspecified) fillColorEnd   else accent.accentLight
     val animatedProgress by animateFloatAsState(
         targetValue   = progress.coerceIn(0f, 1f),
         animationSpec = ChartDefaults.AnimSpec.progressBar,
@@ -105,7 +109,7 @@ fun CalorieProgressBar(
         if (fillX > 0.5f) {
             drawRoundRect(
                 brush        = Brush.horizontalGradient(
-                    colors = listOf(accent.accent, accent.accentLight),
+                    colors = listOf(resolvedStart, resolvedEnd),
                     startX = 0f,
                     endX   = fillX.coerceAtLeast(r * 2),
                 ),

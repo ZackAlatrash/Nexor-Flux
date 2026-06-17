@@ -82,10 +82,19 @@ fun NeutralCard(
 fun FrostedCard(
     modifier: Modifier = Modifier,
     contentPadding: androidx.compose.ui.unit.Dp = 16.dp,
+    /**
+     * Optional colour painted onto the card surface (above the frosted blur, below the
+     * content). Use it to tint the card body for status states without washing over the
+     * text/charts that sit on top. Defaults to no tint.
+     */
+    surfaceTint: Color = Color.Unspecified,
+    /** Optional border colour override. Defaults to the standard frosted border. */
+    borderColor: Color = Color.Unspecified,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
     val appColors = LocalAppColors.current
+    val resolvedBorder = if (borderColor != Color.Unspecified) borderColor else appColors.frostedBorder
     var cardWidth by remember { mutableIntStateOf(0) }
     val shimmerBrush = remember(cardWidth, appColors.glassShimmer) {
         Brush.horizontalGradient(
@@ -108,6 +117,7 @@ fun FrostedCard(
                 },
                 onDrawSurface = {
                     drawRect(appColors.glassOverlay)
+                    if (surfaceTint != Color.Unspecified) drawRect(surfaceTint)
                     val shimmerY = 1.dp.toPx() / 2f
                     drawLine(
                         brush = shimmerBrush,
@@ -117,7 +127,7 @@ fun FrostedCard(
                     )
                 }
             )
-            .border(1.dp, appColors.frostedBorder, RoundedCornerShape(CornerCard))
+            .border(1.dp, resolvedBorder, RoundedCornerShape(CornerCard))
             .padding(contentPadding),
         content = content,
     )

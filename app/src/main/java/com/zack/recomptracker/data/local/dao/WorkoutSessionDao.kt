@@ -84,6 +84,9 @@ abstract class WorkoutSessionDao {
     @Query("UPDATE workout_sessions SET note = :note WHERE id = :id")
     abstract suspend fun updateSessionNote(id: Long, note: String?)
 
+    @Query("UPDATE workout_sessions SET durationSeconds = :durationSeconds WHERE id = :id")
+    abstract suspend fun updateDuration(id: Long, durationSeconds: Int?)
+
     @Query(
         "SELECT s.date AS date, st.reps AS reps, st.weightKg AS weightKg, st.rir AS rir " +
             "FROM session_sets st " +

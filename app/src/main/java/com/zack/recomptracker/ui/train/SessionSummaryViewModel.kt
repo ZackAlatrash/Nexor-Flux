@@ -158,7 +158,7 @@ class SessionSummaryViewModel(
 
     suspend fun save() {
         val s = _state.value
-        sessionRepository.completeSession(sessionId, s.durationSeconds)
+        sessionRepository.updateSessionDuration(sessionId, s.durationSeconds)
         sessionRepository.setSessionNote(sessionId, s.note.takeIf { it.isNotBlank() })
     }
 

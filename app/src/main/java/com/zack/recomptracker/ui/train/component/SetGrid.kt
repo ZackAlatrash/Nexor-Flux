@@ -608,15 +608,23 @@ private fun PlanSetGrid(
                 Spacer(Modifier.width(6.dp))
 
                 if (mode == SetGridMode.PLAN) {
+                    var kgRaw by remember(setRow.targetWeightKg) {
+                        mutableStateOf(setRow.targetWeightKg?.let { formatWeight(it) } ?: "")
+                    }
                     SetInputCell(
-                        value = setRow.targetWeightKg?.let { formatWeight(it) } ?: "",
+                        value = kgRaw,
                         placeholder = "–",
                         keyboardType = KeyboardType.Decimal,
                         completed = false,
                         modifier = Modifier.weight(1f),
                         onChanged = { raw ->
-                            val kg = raw.toDoubleOrNull()
-                            onSetChanged(index, setRow.targetReps, if (raw.isBlank()) null else kg)
+                            kgRaw = raw
+                            if (raw.isBlank()) {
+                                onSetChanged(index, setRow.targetReps, null)
+                            } else {
+                                val kg = raw.toDoubleOrNull()
+                                if (kg != null) onSetChanged(index, setRow.targetReps, kg)
+                            }
                         },
                     )
                 } else {
@@ -629,15 +637,23 @@ private fun PlanSetGrid(
                 Spacer(Modifier.width(6.dp))
 
                 if (mode == SetGridMode.PLAN) {
+                    var repsRaw by remember(setRow.targetReps) {
+                        mutableStateOf(setRow.targetReps?.toString() ?: "")
+                    }
                     SetInputCell(
-                        value = setRow.targetReps?.toString() ?: "",
+                        value = repsRaw,
                         placeholder = "–",
                         keyboardType = KeyboardType.Number,
                         completed = false,
                         modifier = Modifier.weight(1f),
                         onChanged = { raw ->
-                            val reps = raw.toIntOrNull()
-                            onSetChanged(index, if (raw.isBlank()) null else reps, setRow.targetWeightKg)
+                            repsRaw = raw
+                            if (raw.isBlank()) {
+                                onSetChanged(index, null, setRow.targetWeightKg)
+                            } else {
+                                val reps = raw.toIntOrNull()
+                                if (reps != null) onSetChanged(index, reps, setRow.targetWeightKg)
+                            }
                         },
                     )
                 } else {

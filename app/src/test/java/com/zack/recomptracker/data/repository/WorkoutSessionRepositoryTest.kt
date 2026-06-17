@@ -80,6 +80,10 @@ class WorkoutSessionRepositoryTest {
             sessions[id] = sessions.getValue(id).copy(note = note)
         }
 
+        override suspend fun updateDuration(id: Long, durationSeconds: Int?) {
+            sessions[id] = sessions.getValue(id).copy(durationSeconds = durationSeconds)
+        }
+
         private fun build(s: WorkoutSessionEntity) = WorkoutSessionWithDetailsDb(
             session = s,
             exercises = exercises.values.filter { it.sessionId == s.id }.map { se ->
@@ -151,10 +155,10 @@ class WorkoutSessionRepositoryTest {
         repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 2)
         repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 1)
 
-        val completedSets = dao.sets.values.filter { it.sessionExerciseId == seId && it.completed }
-        val setNumbers = completedSets.map { it.setNumber }.sorted()
-        // Template pre-fills 3 uncompleted sets (setNumbers 1,2,3); new completed sets are 4 and 5
-        assertEquals(listOf(4, 5), setNumbers)
+        // Template pre-fills 3 uncompleted sets (setNumbers 1,2,3); new sets are 4 and 5 (also uncompleted)
+        val allSets = dao.sets.values.filter { it.sessionExerciseId == seId }
+        val setNumbers = allSets.map { it.setNumber }.sorted()
+        assertEquals(listOf(1, 2, 3, 4, 5), setNumbers)
     }
 
     @Test
@@ -202,13 +206,16 @@ class WorkoutSessionRepositoryTest {
         val repo = repo(dao)
         val sessionId = repo.startSession(template())
         val seId = dao.exercises.values.first().id
-        repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 2)
+        val setId = repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 2)
+        // Mark the newly added set as completed so history/last-session queries include it
+        val addedSet = dao.sets.getValue(setId)
+        dao.updateSet(addedSet.copy(completed = true))
         repo.completeSession(sessionId)
 
         val last = repo.getLastCompletedSession(workoutId = 7)!!
 
         assertEquals(SessionStatus.COMPLETED, last.status)
-        // The first completed set
+        // The first completed set with our weight
         val completedSet = last.exercises.first().sets.first { it.completed && it.weightKg == 100.0 }
         assertEquals(100.0, completedSet.weightKg!!, 0.0001)
     }
@@ -219,7 +226,10 @@ class WorkoutSessionRepositoryTest {
         val repo = repo(dao)
         val sessionId = repo.startSession(template())
         val seId = dao.exercises.values.first().id
-        repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 2)
+        val setId = repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 2)
+        // Mark the newly added set as completed so history query includes it
+        val addedSet = dao.sets.getValue(setId)
+        dao.updateSet(addedSet.copy(completed = true))
         repo.completeSession(sessionId)
 
         val history = repo.getExerciseHistory(exerciseId = 10)

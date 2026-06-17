@@ -65,9 +65,8 @@ import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
+import com.zack.recomptracker.ui.train.component.exerciseImageUrl
 import kotlinx.coroutines.launch
-
-private val BASE_IMAGE_URL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/"
 
 @Composable
 fun ExercisePickerScreen(
@@ -397,9 +396,7 @@ private fun ExercisePickerRow(
         ) {
             // Thumbnail — tapping opens detail
             val imageUrl = exercise.images.firstOrNull()
-            val resolvedUrl = imageUrl?.let {
-                if (it.startsWith("http")) it else "$BASE_IMAGE_URL$it"
-            }
+            val resolvedUrl = imageUrl?.let { exerciseImageUrl(it) }
             Box(
                 modifier = Modifier
                     .size(52.dp)

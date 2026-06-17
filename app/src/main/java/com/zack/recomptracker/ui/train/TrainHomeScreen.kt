@@ -130,7 +130,7 @@ fun TrainHomeScreen(
                     .background(Color.White.copy(alpha = 0.05f))
                     .padding(4.dp),
             ) {
-                TrainTab.values().forEach { tab ->
+                TrainTab.entries.forEach { tab ->
                     val isActive = state.tab == tab
                     Box(
                         modifier = Modifier
@@ -260,7 +260,7 @@ fun TrainHomeScreen(
                 }
             } else {
                 // Group by month (newest first)
-                val monthFormatter = DateTimeFormatter.ofPattern("MMMM").withLocale(java.util.Locale.ENGLISH)
+                val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
                 val grouped = state.history
                     .sortedByDescending { it.date }
                     .groupBy { session ->

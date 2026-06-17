@@ -28,6 +28,12 @@ class ExerciseLibraryRepositoryTest {
         override suspend fun deleteBySource(source: String) {
             rows.removeAll { it.source == source }
         }
+        override suspend fun insertReturningId(exercise: ExerciseEntity): Long {
+            val nextId = (rows.maxOfOrNull { it.id } ?: 0L) + 1
+            val entity = exercise.copy(id = nextId)
+            rows.add(entity)
+            return nextId
+        }
     }
 
     private val sampleJson = """

@@ -9,6 +9,7 @@ import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class ExerciseDetail(
@@ -37,7 +38,7 @@ class SessionDetailViewModel(
     private val sessionId: Long = savedStateHandle.get<Long>("sessionId") ?: -1L
 
     private val _state = MutableStateFlow(SessionDetailUiState())
-    val state: StateFlow<SessionDetailUiState> = _state
+    val state: StateFlow<SessionDetailUiState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch { load() }

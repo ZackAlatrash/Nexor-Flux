@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,8 +96,11 @@ fun ActiveSessionScreen(
     // Format elapsed seconds into mm:ss or h:mm:ss
     val elapsedText = remember(elapsed) { formatElapsed(elapsed) }
 
-    // Session note local state (mirrors DB via note field)
-    var noteText by remember(session?.note) { mutableStateOf(session?.note ?: "") }
+    // Session note local state — initialized once per session id to avoid wiping mid-typed text
+    var noteText by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(session?.id) {
+        if (session != null) noteText = session!!.note ?: ""
+    }
 
     // Show loading placeholder if no session yet
     if (session == null) {

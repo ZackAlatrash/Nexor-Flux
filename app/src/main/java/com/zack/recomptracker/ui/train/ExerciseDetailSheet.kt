@@ -43,6 +43,7 @@ import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
+import com.zack.recomptracker.ui.train.component.exerciseImageUrl
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -91,8 +92,7 @@ fun ExerciseDetailSheet(
             // ── Hero image ──────────────────────────────────────────────────────
             item {
                 val imageUrl = exercise.images.firstOrNull()
-                val baseUrl = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/"
-                val resolvedUrl = imageUrl?.let { if (it.startsWith("http")) it else "$baseUrl$it" }
+                val resolvedUrl = imageUrl?.let { exerciseImageUrl(it) }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

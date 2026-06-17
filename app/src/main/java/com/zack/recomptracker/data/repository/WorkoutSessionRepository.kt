@@ -73,7 +73,7 @@ open class WorkoutSessionRepository(
                 reps = reps,
                 weightKg = weightKg,
                 rir = rir,
-                completed = true,
+                completed = false,
             ),
         )
     }
@@ -120,6 +120,9 @@ open class WorkoutSessionRepository(
             durationSeconds = durationSeconds,
         ))
     }
+
+    open suspend fun updateSessionDuration(sessionId: Long, durationSeconds: Int?) =
+        sessionDao.updateDuration(sessionId, durationSeconds)
 
     open suspend fun abandonSession(sessionId: Long) = setStatus(sessionId, SessionStatus.ABANDONED)
 

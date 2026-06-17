@@ -558,8 +558,8 @@ private fun NutritionStrip(state: FoodLogUiState) {
     // ── Animated tint overlay colours ─────────────────────────────────────────
     val overlayColor by animateColorAsState(
         targetValue = when (status) {
-            CalorieDayStatus.GoalHit -> if (appColors.isDark) Color(0x400A1A10) else Color(0x2016A34A)
-            CalorieDayStatus.Missed  -> if (appColors.isDark) Color(0x401A0E0E) else Color(0x20DC2626)
+            CalorieDayStatus.GoalHit -> if (appColors.isDark) Color(0x5522C55E) else Color(0x3322C55E)
+            CalorieDayStatus.Missed  -> if (appColors.isDark) Color(0x55EF4444) else Color(0x33EF4444)
             else                     -> Color.Transparent
         },
         animationSpec = tween(600),
@@ -567,8 +567,8 @@ private fun NutritionStrip(state: FoodLogUiState) {
     )
     val borderColor by animateColorAsState(
         targetValue = when (status) {
-            CalorieDayStatus.GoalHit -> if (appColors.isDark) Color(0xFF166534) else Color(0x8016A34A)
-            CalorieDayStatus.Missed  -> if (appColors.isDark) Color(0xFF4A1515) else Color(0x80DC2626)
+            CalorieDayStatus.GoalHit -> if (appColors.isDark) Color(0xFF4ADE80) else Color(0xFF16A34A)
+            CalorieDayStatus.Missed  -> if (appColors.isDark) Color(0xFFEF4444) else Color(0xFFDC2626)
             else                     -> Color.Transparent
         },
         animationSpec = tween(600),
@@ -593,12 +593,37 @@ private fun NutritionStrip(state: FoodLogUiState) {
         label = "barEnd",
     )
 
+    // ── Text colours — force white on the coloured (GoalHit / Missed) states so
+    //    content stays legible over the tint regardless of light/dark theme ──────
+    val colored = status == CalorieDayStatus.GoalHit || status == CalorieDayStatus.Missed
+    val primaryText by animateColorAsState(
+        if (colored) Color.White else appColors.textPrimary,
+        animationSpec = tween(600), label = "primaryText",
+    )
+    val mutedText by animateColorAsState(
+        if (colored) Color.White.copy(alpha = 0.80f) else appColors.textMuted,
+        animationSpec = tween(600), label = "mutedText",
+    )
+    val veryMutedText by animateColorAsState(
+        if (colored) Color.White.copy(alpha = 0.65f) else appColors.textVeryMuted,
+        animationSpec = tween(600), label = "veryMutedText",
+    )
+    val plannedText by animateColorAsState(
+        if (colored) Color.White.copy(alpha = 0.90f) else accent.inkLight.copy(alpha = 0.85f),
+        animationSpec = tween(600), label = "plannedText",
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = scaleAnim.value; scaleY = scaleAnim.value },
     ) {
-        FrostedCard {
+        // surfaceTint paints the colour onto the card surface BELOW the content, so the
+        // text and progress bar stay crisp on top — no overlay washing over them.
+        FrostedCard(
+            surfaceTint = overlayColor,
+            borderColor = borderColor,
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -609,13 +634,13 @@ private fun NutritionStrip(state: FoodLogUiState) {
                         text = String.format(Locale.US, "%,d", cal),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
-                        color = appColors.textPrimary,
+                        color = primaryText,
                         letterSpacing = (-0.8).sp,
                     )
                     Text(
                         text = calSubText,
                         fontSize = 11.sp,
-                        color = appColors.textMuted,
+                        color = mutedText,
                     )
                 }
                 AnimatedContent(
@@ -639,7 +664,7 @@ private fun NutritionStrip(state: FoodLogUiState) {
                            else "$plannedCal kcal planned",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = accent.inkLight.copy(alpha = 0.85f),
+                    color = plannedText,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -664,6 +689,9 @@ private fun NutritionStrip(state: FoodLogUiState) {
                     value  = "${state.totals.proteinG.toInt()}g",
                     remain = "${(target.targetProteinG - state.totals.proteinG).toInt().coerceAtLeast(0)}g to go",
                     frac   = safeMacroFrac(state.totals.proteinG, target.targetProteinG),
+                    labelColor = mutedText,
+                    valueColor = primaryText,
+                    remainColor = veryMutedText,
                     modifier = Modifier.weight(1f),
                 )
                 MacroProgressItem(
@@ -671,6 +699,9 @@ private fun NutritionStrip(state: FoodLogUiState) {
                     value  = "${state.totals.carbsG.toInt()}g",
                     remain = "${(target.targetCarbsG - state.totals.carbsG).toInt().coerceAtLeast(0)}g to go",
                     frac   = safeMacroFrac(state.totals.carbsG, target.targetCarbsG),
+                    labelColor = mutedText,
+                    valueColor = primaryText,
+                    remainColor = veryMutedText,
                     modifier = Modifier.weight(1f),
                 )
                 MacroProgressItem(
@@ -678,19 +709,13 @@ private fun NutritionStrip(state: FoodLogUiState) {
                     value  = "${state.totals.fatG.toInt()}g",
                     remain = "${(target.targetFatG - state.totals.fatG).toInt().coerceAtLeast(0)}g to go",
                     frac   = safeMacroFrac(state.totals.fatG, target.targetFatG),
+                    labelColor = mutedText,
+                    valueColor = primaryText,
+                    remainColor = veryMutedText,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
-
-        // Animated tint overlay — drawn on top of the frosted card surface
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(CornerCard))
-                .background(overlayColor)
-                .border(1.dp, borderColor, RoundedCornerShape(CornerCard)),
-        )
     }
 }
 
@@ -701,9 +726,15 @@ private fun MacroProgressItem(
     remain: String,
     frac: Float,
     modifier: Modifier = Modifier,
+    labelColor: Color = Color.Unspecified,
+    valueColor: Color = Color.Unspecified,
+    remainColor: Color = Color.Unspecified,
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val resolvedLabel  = if (labelColor  != Color.Unspecified) labelColor  else appColors.textMuted
+    val resolvedValue  = if (valueColor  != Color.Unspecified) valueColor  else appColors.textPrimary
+    val resolvedRemain = if (remainColor != Color.Unspecified) remainColor else appColors.textVeryMuted
     val animatedFrac by animateFloatAsState(
         targetValue = frac,
         animationSpec = tween(durationMillis = 900),
@@ -719,14 +750,14 @@ private fun MacroProgressItem(
                 text = label,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = appColors.textMuted,
+                color = resolvedLabel,
                 letterSpacing = 0.08.sp,
             )
             Text(
                 text = value,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = appColors.textPrimary,
+                color = resolvedValue,
                 letterSpacing = (-0.3).sp,
             )
         }
@@ -747,7 +778,7 @@ private fun MacroProgressItem(
                     ),
             )
         }
-        Text(text = remain, fontSize = 8.sp, color = appColors.textVeryMuted)
+        Text(text = remain, fontSize = 8.sp, color = resolvedRemain)
     }
 }
 

@@ -52,11 +52,10 @@ open class WorkoutSessionRepository(
         val result = WorkoutValidation.validateSet(reps, weightKg, rir)
         if (result is ValidationResult.Invalid) throw IllegalArgumentException(result.reasons.joinToString(" "))
 
-        val existing = sessionDao.getSessionExerciseSetCount(sessionExerciseId)
-        return sessionDao.insertSet(
+        return sessionDao.insertNextSet(
             SessionSetEntity(
                 sessionExerciseId = sessionExerciseId,
-                setNumber = existing + 1,
+                setNumber = 0, // assigned atomically by insertNextSet
                 reps = reps,
                 weightKg = weightKg,
                 rir = rir,

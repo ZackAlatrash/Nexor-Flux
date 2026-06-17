@@ -39,6 +39,17 @@ abstract class WorkoutSessionDao {
     @Query("SELECT COUNT(*) FROM session_sets WHERE sessionExerciseId = :sessionExerciseId")
     abstract suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int
 
+    /**
+     * Inserts a set, assigning the next sequential setNumber within a single transaction so
+     * concurrent calls can't produce duplicate set numbers. The [set]'s own setNumber is ignored.
+     * Returns the new row id.
+     */
+    @Transaction
+    open suspend fun insertNextSet(set: SessionSetEntity): Long {
+        val nextNumber = getSessionExerciseSetCount(set.sessionExerciseId) + 1
+        return insertSet(set.copy(setNumber = nextNumber))
+    }
+
     @Transaction
     @Query("SELECT * FROM workout_sessions WHERE id = :id")
     abstract suspend fun getSessionWithDetails(id: Long): WorkoutSessionWithDetailsDb?
@@ -64,7 +75,7 @@ abstract class WorkoutSessionDao {
             "JOIN session_exercises se ON st.sessionExerciseId = se.id " +
             "JOIN workout_sessions s ON se.sessionId = s.id " +
             "WHERE se.exerciseId = :exerciseId AND s.status = 'COMPLETED' AND st.completed = 1 " +
-            "ORDER BY s.date",
+            "ORDER BY s.date, s.startedAt",
     )
     abstract suspend fun getExerciseHistory(exerciseId: Long): List<ExerciseHistoryRow>
 }

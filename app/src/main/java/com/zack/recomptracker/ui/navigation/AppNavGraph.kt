@@ -220,8 +220,8 @@ fun AppNavGraph(
                 viewModel = viewModel<TrainViewModel>(factory = factory),
                 onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
                 onEditRoutine = { id -> navController.navigate(Routes.routineBuilder(id)) },
-                onStart = { _ -> navController.navigate(Routes.ActiveSession) },
-                onResume = { _ -> navController.navigate(Routes.ActiveSession) },
+                onStart = { navController.navigate(Routes.ActiveSession) },
+                onResume = { navController.navigate(Routes.ActiveSession) },
                 onOpenSession = { id -> navController.navigate(Routes.sessionDetail(id)) },
                 modifier = Modifier,
             )

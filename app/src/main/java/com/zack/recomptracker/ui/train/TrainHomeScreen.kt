@@ -71,8 +71,10 @@ fun TrainHomeScreen(
     viewModel: TrainViewModel,
     onCreateRoutine: () -> Unit,
     onEditRoutine: (Long) -> Unit,
-    onStart: (sessionId: Long) -> Unit,
-    onResume: (sessionId: Long) -> Unit,
+    // No sessionId: there is only ever one ACTIVE session at a time, which the Active
+    // Session screen observes directly via observeActiveSession(). These just navigate.
+    onStart: () -> Unit,
+    onResume: () -> Unit,
     onOpenSession: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -163,7 +165,7 @@ fun TrainHomeScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp)
                         .padding(bottom = 14.dp)
-                        .clickable { onResume(session.id) },
+                        .clickable { onResume() },
                     contentPadding = 11.dp,
                     surfaceTint = accent.tintedSurface,
                     borderColor = accent.tintedBorder,
@@ -226,8 +228,8 @@ fun TrainHomeScreen(
                         onCardClick = { onEditRoutine(template.id) },
                         onStart = {
                             scope.launch {
-                                val sid = viewModel.startSession(template)
-                                onStart(sid)
+                                viewModel.startSession(template)
+                                onStart()
                             }
                         },
                         onEditClick = { onEditRoutine(template.id) },

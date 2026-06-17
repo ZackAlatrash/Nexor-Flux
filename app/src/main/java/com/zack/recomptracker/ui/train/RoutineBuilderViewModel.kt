@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 // ── Draft models ──────────────────────────────────────────────────────────────
 
@@ -50,6 +52,9 @@ class RoutineBuilderViewModel(
 
     private val _state = MutableStateFlow(RoutineBuilderUiState())
     val state: StateFlow<RoutineBuilderUiState> = _state.asStateFlow()
+
+    // Serialises save() so a rapid double-tap can't fire two concurrent inserts.
+    private val saveMutex = Mutex()
 
     // ── Load existing workout (edit mode) ─────────────────────────────────────
 
@@ -150,11 +155,11 @@ class RoutineBuilderViewModel(
 
     // ── Save ─────────────────────────────────────────────────────────────────
 
-    /** Persist the routine and return the saved workout ID. */
-    suspend fun save(): Long {
+    /** Persist the routine and return the saved workout ID. Serialised via [saveMutex]. */
+    suspend fun save(): Long = saveMutex.withLock {
         val s = _state.value
         _state.update { it.copy(isSaving = true) }
-        return try {
+        try {
             val lines = s.exercises.map { ex ->
                 NewWorkoutLine(
                     exerciseId = ex.exercise.id,

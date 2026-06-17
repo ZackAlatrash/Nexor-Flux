@@ -138,7 +138,6 @@ fun SetGrid(
             modifier = modifier,
         )
         SetGridMode.PLAN -> PlanSetGrid(
-            mode = mode,
             sets = sets,
             onAddSet = onAddSet,
             onRemoveSet = onRemoveSet,
@@ -533,7 +532,6 @@ private fun ReadonlySetGrid(
 
 @Composable
 private fun PlanSetGrid(
-    mode: SetGridMode,
     sets: List<SetRowData>,
     onAddSet: () -> Unit,
     onRemoveSet: (Int) -> Unit,
@@ -607,108 +605,88 @@ private fun PlanSetGrid(
 
                 Spacer(Modifier.width(6.dp))
 
-                if (mode == SetGridMode.PLAN) {
-                    var kgRaw by remember(setRow.targetWeightKg) {
-                        mutableStateOf(setRow.targetWeightKg?.let { formatWeight(it) } ?: "")
-                    }
-                    SetInputCell(
-                        value = kgRaw,
-                        placeholder = "–",
-                        keyboardType = KeyboardType.Decimal,
-                        completed = false,
-                        modifier = Modifier.weight(1f),
-                        onChanged = { raw ->
-                            kgRaw = raw
-                            if (raw.isBlank()) {
-                                onSetChanged(index, setRow.targetReps, null)
-                            } else {
-                                val kg = raw.toDoubleOrNull()
-                                if (kg != null) onSetChanged(index, setRow.targetReps, kg)
-                            }
-                        },
-                    )
-                } else {
-                    ReadonlySetCell(
-                        text = setRow.targetWeightKg?.let { formatWeight(it) } ?: "–",
-                        modifier = Modifier.weight(1f),
-                    )
+                var kgRaw by remember(setRow.targetWeightKg) {
+                    mutableStateOf(setRow.targetWeightKg?.let { formatWeight(it) } ?: "")
                 }
+                SetInputCell(
+                    value = kgRaw,
+                    placeholder = "–",
+                    keyboardType = KeyboardType.Decimal,
+                    completed = false,
+                    modifier = Modifier.weight(1f),
+                    onChanged = { raw ->
+                        kgRaw = raw
+                        if (raw.isBlank()) {
+                            onSetChanged(index, setRow.targetReps, null)
+                        } else {
+                            val kg = raw.toDoubleOrNull()
+                            if (kg != null) onSetChanged(index, setRow.targetReps, kg)
+                        }
+                    },
+                )
 
                 Spacer(Modifier.width(6.dp))
 
-                if (mode == SetGridMode.PLAN) {
-                    var repsRaw by remember(setRow.targetReps) {
-                        mutableStateOf(setRow.targetReps?.toString() ?: "")
-                    }
-                    SetInputCell(
-                        value = repsRaw,
-                        placeholder = "–",
-                        keyboardType = KeyboardType.Number,
-                        completed = false,
-                        modifier = Modifier.weight(1f),
-                        onChanged = { raw ->
-                            repsRaw = raw
-                            if (raw.isBlank()) {
-                                onSetChanged(index, null, setRow.targetWeightKg)
-                            } else {
-                                val reps = raw.toIntOrNull()
-                                if (reps != null) onSetChanged(index, reps, setRow.targetWeightKg)
-                            }
-                        },
-                    )
-                } else {
-                    ReadonlySetCell(
-                        text = setRow.targetReps?.toString() ?: "–",
-                        modifier = Modifier.weight(1f),
-                    )
+                var repsRaw by remember(setRow.targetReps) {
+                    mutableStateOf(setRow.targetReps?.toString() ?: "")
                 }
+                SetInputCell(
+                    value = repsRaw,
+                    placeholder = "–",
+                    keyboardType = KeyboardType.Number,
+                    completed = false,
+                    modifier = Modifier.weight(1f),
+                    onChanged = { raw ->
+                        repsRaw = raw
+                        if (raw.isBlank()) {
+                            onSetChanged(index, null, setRow.targetWeightKg)
+                        } else {
+                            val reps = raw.toIntOrNull()
+                            if (reps != null) onSetChanged(index, reps, setRow.targetWeightKg)
+                        }
+                    },
+                )
 
-                if (mode != SetGridMode.READONLY) {
-                    IconButton(
-                        onClick = { onRemoveSet(index) },
-                        modifier = Modifier.width(32.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove set ${index + 1}",
-                            tint = if (sets.size > 1) appColors.textMuted
-                                   else appColors.textMuted.copy(alpha = 0.3f),
-                            modifier = Modifier
-                                .width(14.dp)
-                                .height(14.dp),
-                        )
-                    }
-                } else {
-                    Spacer(Modifier.width(32.dp))
+                IconButton(
+                    onClick = { onRemoveSet(index) },
+                    modifier = Modifier.width(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove set ${index + 1}",
+                        tint = if (sets.size > 1) appColors.textMuted
+                               else appColors.textMuted.copy(alpha = 0.3f),
+                        modifier = Modifier
+                            .width(14.dp)
+                            .height(14.dp),
+                    )
                 }
             }
         }
 
         // ── Add set ───────────────────────────────────────────────────────────
-        if (mode == SetGridMode.PLAN || mode == SetGridMode.SESSION) {
-            Row(
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(CornerSmall))
+                .clickable { onAddSet() }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = accent.inkLight,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(CornerSmall))
-                    .clickable { onAddSet() }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    tint = accent.inkLight,
-                    modifier = Modifier
-                        .width(14.dp)
-                        .height(14.dp),
-                )
-                Text(
-                    text = "Add set",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = accent.inkLight,
-                )
-            }
+                    .width(14.dp)
+                    .height(14.dp),
+            )
+            Text(
+                text = "Add set",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = accent.inkLight,
+            )
         }
     }
 }

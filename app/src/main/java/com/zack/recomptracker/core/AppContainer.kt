@@ -10,10 +10,13 @@ import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.AppPreferences
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.BackupRepository
+import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.WorkoutRepository
+import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
@@ -59,6 +62,7 @@ import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
@@ -129,6 +133,22 @@ class AppContainer(context: Context) {
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
+    val workoutRepository = WorkoutRepository(database.workoutDao())
+    val workoutSessionRepository = WorkoutSessionRepository(database.workoutSessionDao())
+
+    init {
+        appScope.launch {
+            runCatching {
+                exerciseLibraryRepository.seedIfEmpty(ExerciseLibraryRepository.VERSION) {
+                    context.applicationContext.assets.open("exercises/exercises.json")
+                }
+            }.onFailure {
+                Log.w("RecompWorkout", "Exercise library seed failed — library will be empty", it)
+            }
+        }
+    }
+
     val gemmaServiceHolder = GemmaServiceHolder(context)
     val secureKeyStore = SecureKeyStore(context)
     val openAiCompatClient = OpenAiCompatClient()

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.domain.workout.SessionExercise
+import com.zack.recomptracker.domain.workout.moveByKey
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.CornerSmall
@@ -57,7 +60,10 @@ import com.zack.recomptracker.ui.train.component.ExerciseCard
 import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
 import com.zack.recomptracker.ui.train.component.SessionSetRow
+import com.zack.recomptracker.ui.train.component.rememberDragHaptics
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
  * Active Session screen — the live workout tracker.
@@ -119,9 +125,22 @@ fun ActiveSessionScreen(
     }
 
     val s = session!!
-    val sortedExercises = s.exercises.sortedBy { it.sortOrder }
+    val lazyListState = rememberLazyListState()
+    val dragHaptics = rememberDragHaptics()
+    // Local mirror of the DB exercise order: reordered instantly during a drag (and by the
+    // Move up/down arrows), persisted on drop. remember(s.exercises) rebuilds it only when the
+    // DB emits a new order — the per-second elapsed timer is a separate flow and won't disturb it.
+    val displayExercises = remember(s.exercises) {
+        s.exercises.sortedBy { it.sortOrder }.toMutableStateList()
+    }
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        if (displayExercises.moveByKey(from.key, to.key) { it.id }) {
+            dragHaptics.move()
+        }
+    }
 
     LazyColumn(
+        state = lazyListState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 40.dp),
     ) {
@@ -229,63 +248,85 @@ fun ActiveSessionScreen(
         }
 
         // ── Exercise cards ────────────────────────────────────────────────────
-        items(sortedExercises, key = { it.id }) { se ->
-            ExerciseCard(
-                exerciseName = se.exerciseName,
-                imageUrl = null, // images resolved by library; session snapshot has no path
-                subtitle = "",
-                onMoveUp = if (sortedExercises.first().id != se.id) {
-                    { viewModel.moveExerciseUp(se) }
-                } else null,
-                onMoveDown = if (sortedExercises.last().id != se.id) {
-                    { viewModel.moveExerciseDown(se) }
-                } else null,
-                onRemove = { viewModel.removeExercise(se) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .padding(bottom = 14.dp),
-            ) {
-                // Build session set rows for this exercise
-                val prevList = prevMap[se.exerciseId] ?: emptyList()
-                val sessionRows = se.sets.mapIndexed { idx, set ->
-                    SessionSetRow(
-                        id = set.id,
-                        setNumber = set.setNumber,
-                        prev = prevList.getOrNull(idx),
-                        reps = set.reps.takeIf { it > 0 },
-                        weightKg = set.weightKg,
-                        rir = set.rir,
-                        completed = set.completed,
+        items(displayExercises, key = { it.id }) { se ->
+            ReorderableItem(reorderState, key = se.id) { isDragging ->
+                ExerciseCard(
+                    exerciseName = se.exerciseName,
+                    imageUrl = null, // images resolved by library; session snapshot has no path
+                    subtitle = "",
+                    onMoveUp = if (displayExercises.first().id != se.id) {
+                        {
+                            val idx = displayExercises.indexOfFirst { it.id == se.id }
+                            if (idx > 0) {
+                                displayExercises.add(idx - 1, displayExercises.removeAt(idx))
+                                viewModel.reorderExercises(displayExercises.map { it.id })
+                            }
+                        }
+                    } else null,
+                    onMoveDown = if (displayExercises.last().id != se.id) {
+                        {
+                            val idx = displayExercises.indexOfFirst { it.id == se.id }
+                            if (idx < displayExercises.size - 1) {
+                                displayExercises.add(idx + 1, displayExercises.removeAt(idx))
+                                viewModel.reorderExercises(displayExercises.map { it.id })
+                            }
+                        }
+                    } else null,
+                    onRemove = { viewModel.removeExercise(se) },
+                    isDragging = isDragging,
+                    dragHandleModifier = Modifier.longPressDraggableHandle(
+                        onDragStarted = { dragHaptics.start() },
+                        onDragStopped = {
+                            dragHaptics.end()
+                            viewModel.reorderExercises(displayExercises.map { it.id })
+                        },
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .padding(bottom = 14.dp),
+                ) {
+                    // Build session set rows for this exercise
+                    val prevList = prevMap[se.exerciseId] ?: emptyList()
+                    val sessionRows = se.sets.mapIndexed { idx, set ->
+                        SessionSetRow(
+                            id = set.id,
+                            setNumber = set.setNumber,
+                            prev = prevList.getOrNull(idx),
+                            reps = set.reps.takeIf { it > 0 },
+                            weightKg = set.weightKg,
+                            rir = set.rir,
+                            completed = set.completed,
+                        )
+                    }
+
+                    SetGrid(
+                        mode = SetGridMode.SESSION,
+                        sets = emptyList(), // not used in SESSION mode
+                        onAddSet = {},
+                        onRemoveSet = {},
+                        onSetChanged = { _, _, _ -> },
+                        sessionSets = sessionRows,
+                        onKgChanged = { row, kg ->
+                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                            viewModel.updateKg(se, matchingSet, kg)
+                        },
+                        onRepsChanged = { row, reps ->
+                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                            viewModel.updateReps(se, matchingSet, reps)
+                        },
+                        onRirChanged = { row, rir ->
+                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                            viewModel.updateRir(se, matchingSet, rir)
+                        },
+                        onToggleComplete = { row ->
+                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                            viewModel.toggleComplete(se, matchingSet)
+                        },
+                        onSessionAddSet = { viewModel.addSet(se) },
+                        onSessionRemoveSet = { setId -> viewModel.removeSet(setId) },
                     )
                 }
-
-                SetGrid(
-                    mode = SetGridMode.SESSION,
-                    sets = emptyList(), // not used in SESSION mode
-                    onAddSet = {},
-                    onRemoveSet = {},
-                    onSetChanged = { _, _, _ -> },
-                    sessionSets = sessionRows,
-                    onKgChanged = { row, kg ->
-                        val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                        viewModel.updateKg(se, matchingSet, kg)
-                    },
-                    onRepsChanged = { row, reps ->
-                        val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                        viewModel.updateReps(se, matchingSet, reps)
-                    },
-                    onRirChanged = { row, rir ->
-                        val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                        viewModel.updateRir(se, matchingSet, rir)
-                    },
-                    onToggleComplete = { row ->
-                        val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                        viewModel.toggleComplete(se, matchingSet)
-                    },
-                    onSessionAddSet = { viewModel.addSet(se) },
-                    onSessionRemoveSet = { setId -> viewModel.removeSet(setId) },
-                )
             }
         }
 

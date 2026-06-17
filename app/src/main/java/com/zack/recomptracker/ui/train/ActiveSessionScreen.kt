@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -143,39 +144,39 @@ fun ActiveSessionScreen(
                     )
                 }
 
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(6.dp))
 
-                // Stopwatch icon
-                Icon(
-                    imageVector = Icons.Default.Timer,
-                    contentDescription = null,
-                    tint = appColors.textMuted,
-                    modifier = Modifier.size(16.dp),
-                )
+                // Routine title (prominent) + elapsed timer beneath it
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = s.workoutName,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.textPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = appColors.textMuted,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = elapsedText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = appColors.textMuted,
+                        )
+                    }
+                }
 
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(10.dp))
 
-                // Elapsed timer — center
-                Text(
-                    text = elapsedText,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.textPrimary,
-                    modifier = Modifier.weight(1f),
-                )
-
-                // Workout name (brief)
-                Text(
-                    text = s.workoutName,
-                    fontSize = 13.sp,
-                    color = appColors.textMuted,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp),
-                )
-
-                // Finish button
+                // Finish — filled accent pill (icon + label)
                 LiquidGlassButton(
                     onClick = {
                         scope.launch {
@@ -184,19 +185,17 @@ fun ActiveSessionScreen(
                     },
                     tint = accent.accent,
                     surfaceColor = Color.White.copy(alpha = 0.08f),
-                    buttonHeight = 36.dp,
-                    modifier = Modifier.width(90.dp),
+                    buttonHeight = 40.dp,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = Icons.Default.Check,
                         contentDescription = null,
                         tint = accent.onAccent,
-                        modifier = Modifier.size(15.dp),
+                        modifier = Modifier.size(18.dp),
                     )
-                    Spacer(Modifier.width(5.dp))
                     Text(
                         text = "Finish",
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = accent.onAccent,
                     )

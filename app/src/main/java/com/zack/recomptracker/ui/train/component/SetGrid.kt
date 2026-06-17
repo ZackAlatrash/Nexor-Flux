@@ -707,9 +707,25 @@ private fun SetInputCell(
     var focused by remember { mutableStateOf(false) }
     val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else appColors.frostedBorder
 
+    // Locally-owned text so each keystroke updates the field synchronously. The hoisted
+    // [value] can arrive asynchronously — in SESSION mode every edit round-trips through the
+    // ViewModel → Room → Flow before coming back. Binding BasicTextField straight to that lagging
+    // value desyncs the IME buffer and reorders fast input (typing "121" yields "211"). We adopt
+    // the hoisted value only when it genuinely changes upstream (set prefill / reset), ignoring the
+    // delayed echo of our own keystrokes.
+    var localValue by remember { mutableStateOf(value) }
+    var lastUpstream by remember { mutableStateOf(value) }
+    if (value != lastUpstream) {
+        lastUpstream = value
+        localValue = value
+    }
+
     BasicTextField(
-        value = value,
-        onValueChange = onChanged,
+        value = localValue,
+        onValueChange = {
+            localValue = it
+            onChanged(it)
+        },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         textStyle = TextStyle(
@@ -730,7 +746,7 @@ private fun SetInputCell(
             .padding(horizontal = 8.dp, vertical = 8.dp),
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.Center) {
-                if (value.isEmpty()) {
+                if (localValue.isEmpty()) {
                     Text(
                         text = placeholder,
                         fontSize = 14.sp,

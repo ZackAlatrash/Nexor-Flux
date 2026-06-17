@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -45,6 +46,9 @@ import com.zack.recomptracker.ui.train.component.ExerciseCard
 import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
 import com.zack.recomptracker.ui.train.component.SetRowData
+import com.zack.recomptracker.ui.train.component.rememberDragHaptics
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlinx.coroutines.launch
 
 /**
@@ -113,9 +117,21 @@ fun RoutineBuilderScreen(
     // ── Total planned set count ───────────────────────────────────────────────
     val totalSets = state.exercises.sumOf { it.sets.size }
 
+    val lazyListState = rememberLazyListState()
+    val dragHaptics = rememberDragHaptics()
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        val fromIdx = state.exercises.indexOfFirst { it.id == from.key }
+        val toIdx = state.exercises.indexOfFirst { it.id == to.key }
+        if (fromIdx != -1 && toIdx != -1 && fromIdx != toIdx) {
+            viewModel.reorder(fromIdx, toIdx)
+            dragHaptics.move()
+        }
+    }
+
     // ── Screen layout ─────────────────────────────────────────────────────────
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
+            state = lazyListState,
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
 
@@ -262,7 +278,8 @@ fun RoutineBuilderScreen(
             }
 
             // ── Exercise cards ────────────────────────────────────────────────
-            itemsIndexed(state.exercises, key = { _, ex -> ex.exercise.id }) { exIndex, builderEx ->
+            items(state.exercises, key = { it.id }) { builderEx ->
+                val exIndex = state.exercises.indexOfFirst { it.id == builderEx.id }
                 val exercise = builderEx.exercise
 
                 val subtitle = listOfNotNull(
@@ -270,36 +287,41 @@ fun RoutineBuilderScreen(
                     exercise.equipment?.replaceFirstChar { it.uppercase() },
                 ).joinToString(" · ")
 
-                ExerciseCard(
-                    exerciseName = exercise.name,
-                    imageUrl = exercise.images.firstOrNull(),
-                    subtitle = subtitle,
-                    onMoveUp = if (exIndex > 0) { { viewModel.reorder(exIndex, exIndex - 1) } } else null,
-                    onMoveDown = if (exIndex < state.exercises.lastIndex) {
-                        { viewModel.reorder(exIndex, exIndex + 1) }
-                    } else {
-                        null
-                    },
-                    onRemove = { viewModel.removeExercise(exIndex) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    SetGrid(
-                        mode = SetGridMode.PLAN,
-                        sets = builderEx.sets.map { bs ->
-                            SetRowData(
-                                targetReps = bs.targetReps,
-                                targetWeightKg = bs.targetWeightKg,
-                            )
-                        },
-                        onAddSet = { viewModel.addSet(exIndex) },
-                        onRemoveSet = { setIndex -> viewModel.removeSet(exIndex, setIndex) },
-                        onSetChanged = { setIndex, reps, weightKg ->
-                            viewModel.setTarget(exIndex, setIndex, reps, weightKg)
-                        },
-                    )
+                ReorderableItem(reorderState, key = builderEx.id) { isDragging ->
+                    ExerciseCard(
+                        exerciseName = exercise.name,
+                        imageUrl = exercise.images.firstOrNull(),
+                        subtitle = subtitle,
+                        onMoveUp = if (exIndex > 0) { { viewModel.reorder(exIndex, exIndex - 1) } } else null,
+                        onMoveDown = if (exIndex < state.exercises.lastIndex) {
+                            { viewModel.reorder(exIndex, exIndex + 1) }
+                        } else null,
+                        onRemove = { viewModel.removeExercise(exIndex) },
+                        isDragging = isDragging,
+                        dragHandleModifier = Modifier.longPressDraggableHandle(
+                            onDragStarted = { dragHaptics.start() },
+                            onDragStopped = { dragHaptics.end() },
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp)
+                            .padding(bottom = 12.dp),
+                    ) {
+                        SetGrid(
+                            mode = SetGridMode.PLAN,
+                            sets = builderEx.sets.map { bs ->
+                                SetRowData(
+                                    targetReps = bs.targetReps,
+                                    targetWeightKg = bs.targetWeightKg,
+                                )
+                            },
+                            onAddSet = { viewModel.addSet(exIndex) },
+                            onRemoveSet = { setIndex -> viewModel.removeSet(exIndex, setIndex) },
+                            onSetChanged = { setIndex, reps, weightKg ->
+                                viewModel.setTarget(exIndex, setIndex, reps, weightKg)
+                            },
+                        )
+                    }
                 }
             }
 

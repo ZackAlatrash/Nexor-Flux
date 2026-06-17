@@ -56,6 +56,8 @@ import com.zack.recomptracker.ui.train.ExercisePickerScreen
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.RoutineBuilderScreen
 import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
+import com.zack.recomptracker.ui.train.SessionSummaryScreen
+import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
 import com.zack.recomptracker.ui.train.TrainViewModel
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
@@ -91,6 +93,8 @@ object Routes {
     const val ExercisePicker = "exercise_picker"
     const val RoutineBuilder = "routine_builder?workoutId={workoutId}"
     fun routineBuilder(workoutId: Long? = null) = "routine_builder?workoutId=${workoutId ?: -1L}"
+    const val SessionSummary = "session_summary/{sessionId}"
+    fun sessionSummary(id: Long) = "session_summary/$id"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -234,10 +238,31 @@ fun AppNavGraph(
                 },
                 onAddExercise = { navController.navigate(Routes.ExercisePicker) },
                 onMinimize = { navController.popBackStack() },
-                onFinish = { _ ->
-                    // TODO(session-summary): navigate to session_summary/$sessionId when that
-                    // route is implemented. For now, return to Train Home.
-                    navController.popBackStack(Routes.Train, inclusive = false)
+                onFinish = { sid ->
+                    navController.navigate(Routes.sessionSummary(sid)) {
+                        popUpTo(Routes.Train)
+                    }
+                },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.SessionSummary,
+            arguments = listOf(
+                androidx.navigation.navArgument("sessionId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            SessionSummaryScreen(
+                viewModel = viewModel<SessionSummaryViewModel>(factory = factory),
+                onDone = {
+                    navController.navigate(Routes.Train) {
+                        popUpTo(Routes.Train) { inclusive = true }
+                    }
                 },
                 modifier = Modifier,
             )

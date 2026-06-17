@@ -132,6 +132,9 @@ open class WorkoutSessionRepository(
     open fun observeCompletedSessions(): Flow<List<WorkoutSession>> =
         sessionDao.observeCompletedSessions().map { list -> list.map { it.toDomain() } }
 
+    open suspend fun getSession(sessionId: Long): WorkoutSession? =
+        sessionDao.getSessionWithDetails(sessionId)?.toDomain()
+
     open suspend fun getExerciseHistory(exerciseId: Long): List<ExerciseHistoryPoint> =
         sessionDao.getExerciseHistory(exerciseId).map {
             ExerciseHistoryPoint(date = it.date, reps = it.reps, weightKg = it.weightKg, rir = it.rir)

@@ -239,6 +239,13 @@ class ActiveSessionViewModel(
         }
     }
 
+    /** Persist a full exercise order (used by drag-to-reorder). */
+    fun reorderExercises(orderedIds: List<Long>) {
+        viewModelScope.launch {
+            runCatching { sessionRepository.reorderSessionExercises(orderedIds) }
+        }
+    }
+
     // ── Notes ─────────────────────────────────────────────────────────────────
 
     fun setNote(text: String) {

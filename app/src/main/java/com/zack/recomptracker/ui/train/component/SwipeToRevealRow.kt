@@ -7,11 +7,6 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -26,8 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -44,12 +40,13 @@ private val RemoveButtonWidth = 72.dp
 /**
  * Wraps [content] with a trailing swipe-to-reveal Remove action.
  *
- * The row and a **fixed-size** red liquid-glass Remove pill live in one horizontal strip: the
- * pill sits just off-screen to the right of the content. Swiping left slides the whole strip,
- * bringing the pill into view — the row keeps its own (frosted) material untouched and nothing
- * is layered behind it, so there is no bleed-through and no material change. Tap the pill to
- * remove; tap the open row to close it. When [enabled] is false the row is static — used for
- * the last-set guard (an exercise must keep at least one set).
+ * The row content is pinned at the left edge and a **fixed-size** red liquid-glass Remove pill
+ * is placed immediately to its right, just off-screen. Swiping left slides both together (via a
+ * layout-phase placement, so no per-frame recomposition), bringing the pill into view. The row
+ * keeps its own (frosted) material untouched — nothing is layered over or behind it, so there is
+ * no bleed-through, no material change, and at rest the content sits exactly at x=0 with the set
+ * number fully visible. Tap the pill to remove; tap the open row to close it. When [enabled] is
+ * false the row is static — used for the last-set guard (an exercise must keep at least one set).
  */
 @Composable
 fun SwipeToRevealRow(
@@ -68,36 +65,29 @@ fun SwipeToRevealRow(
     val revealPx = with(density) { RevealWidth.toPx() }
     val offsetX = remember { Animatable(0f) }
     // derivedStateOf so this only recomposes when the boolean flips — the per-frame offset is
-    // read in the layout phase (offset { }) below, never during composition.
+    // read in the layout/placement phase below, never during composition.
     val isOpen by remember { derivedStateOf { offsetX.value <= -1f } }
 
-    BoxWithConstraints(modifier.clipToBounds()) {
-        val rowWidth = maxWidth
-
-        Row(
-            modifier = Modifier
-                // Strip = row width + the trailing reveal area; the extra hangs off the right
-                // edge and is clipped until the strip is dragged left.
-                .requiredWidth(rowWidth + RevealWidth)
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                            offsetX.snapTo((offsetX.value + delta).coerceIn(-revealPx, 0f))
-                        }
-                    },
-                    onDragStopped = {
-                        val target = if (offsetX.value < -revealPx / 2f) -revealPx else 0f
-                        scope.launch { offsetX.animateTo(target) }
-                    },
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.width(rowWidth)) {
+    Layout(
+        modifier = modifier
+            .clipToBounds()
+            .draggable(
+                orientation = Orientation.Horizontal,
+                state = rememberDraggableState { delta ->
+                    scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                        offsetX.snapTo((offsetX.value + delta).coerceIn(-revealPx, 0f))
+                    }
+                },
+                onDragStopped = {
+                    val target = if (offsetX.value < -revealPx / 2f) -revealPx else 0f
+                    scope.launch { offsetX.animateTo(target) }
+                },
+            ),
+        content = {
+            // Slot 0 — the row content, plus a tap-to-close overlay while open.
+            Box {
                 content()
                 if (isOpen) {
-                    // Absorb taps on the open row → close instead of hitting inner clickables.
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -109,14 +99,8 @@ fun SwipeToRevealRow(
                     )
                 }
             }
-
-            // Trailing reveal area holding the fixed-size red liquid-glass pill.
-            Box(
-                modifier = Modifier
-                    .width(RevealWidth)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center,
-            ) {
+            // Slot 1 — the fixed-size red liquid-glass Remove pill.
+            Box(contentAlignment = Alignment.Center) {
                 LiquidGlassButton(
                     onClick = {
                         scope.launch {
@@ -138,6 +122,17 @@ fun SwipeToRevealRow(
                     )
                 }
             }
+        },
+    ) { measurables, constraints ->
+        val contentPlaceable = measurables[0].measure(constraints)
+        val rowHeight = contentPlaceable.height
+        val pillWidthPx = with(density) { RevealWidth.roundToPx() }
+        val pillPlaceable = measurables[1].measure(Constraints.fixed(pillWidthPx, rowHeight))
+
+        layout(contentPlaceable.width, rowHeight) {
+            val dx = offsetX.value.roundToInt()
+            contentPlaceable.placeRelative(dx, 0)
+            pillPlaceable.placeRelative(contentPlaceable.width + dx, 0)
         }
     }
 }

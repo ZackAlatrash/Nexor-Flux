@@ -8,6 +8,7 @@ import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
 import com.zack.recomptracker.data.local.entity.WorkoutSessionWithDetailsDb
 import com.zack.recomptracker.domain.workout.Exercise
+import com.zack.recomptracker.domain.workout.PlannedSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutTemplateExercise
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -75,7 +77,12 @@ class WorkoutSessionRepositoryTest {
             WorkoutTemplateExercise(
                 id = 1,
                 exercise = Exercise(10, "Squat", "Squat", null, null, null, null, null, emptyList(), emptyList(), emptyList(), emptyList(), false),
-                plannedSets = 3, targetReps = 5, sortOrder = 0, note = null,
+                plannedSets = listOf(
+                    PlannedSet(id = 0, setNumber = 1, targetReps = 5, targetWeightKg = 100.0),
+                    PlannedSet(id = 0, setNumber = 2, targetReps = 5, targetWeightKg = 100.0),
+                    PlannedSet(id = 0, setNumber = 3, targetReps = 5, targetWeightKg = 100.0),
+                ),
+                sortOrder = 0, note = null,
             ),
         ),
     )
@@ -102,6 +109,22 @@ class WorkoutSessionRepositoryTest {
     }
 
     @Test
+    fun `startSession pre-fills session sets from planned sets as uncompleted`() = runTest {
+        val dao = FakeSessionDao()
+        val repo = repo(dao)
+
+        val sessionId = repo.startSession(template())
+
+        val seId = dao.exercises.values.first { it.sessionId == sessionId }.id
+        val sessionSets = dao.sets.values.filter { it.sessionExerciseId == seId }
+        assertEquals(3, sessionSets.size)
+        assertTrue(sessionSets.all { !it.completed })
+        assertEquals(listOf(1, 2, 3), sessionSets.sortedBy { it.setNumber }.map { it.setNumber })
+        assertEquals(listOf(5, 5, 5), sessionSets.sortedBy { it.setNumber }.map { it.reps })
+        assertEquals(listOf(100.0, 100.0, 100.0), sessionSets.sortedBy { it.setNumber }.map { it.weightKg })
+    }
+
+    @Test
     fun `addSet assigns incrementing set numbers`() = runTest {
         val dao = FakeSessionDao()
         val repo = repo(dao)
@@ -111,8 +134,10 @@ class WorkoutSessionRepositoryTest {
         repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 2)
         repo.addSet(seId, reps = 5, weightKg = 100.0, rir = 1)
 
-        val setNumbers = dao.sets.values.filter { it.sessionExerciseId == seId }.map { it.setNumber }.sorted()
-        assertEquals(listOf(1, 2), setNumbers)
+        val completedSets = dao.sets.values.filter { it.sessionExerciseId == seId && it.completed }
+        val setNumbers = completedSets.map { it.setNumber }.sorted()
+        // Template pre-fills 3 uncompleted sets (setNumbers 1,2,3); new completed sets are 4 and 5
+        assertEquals(listOf(4, 5), setNumbers)
     }
 
     @Test
@@ -136,7 +161,9 @@ class WorkoutSessionRepositoryTest {
 
         repo.removeSet(setId)
 
-        assertTrue(dao.sets.isEmpty())
+        // Only pre-filled sets remain (the 3 planned ones)
+        val remaining = dao.sets.values.filter { it.sessionExerciseId == seId }
+        assertEquals(3, remaining.size)
     }
 
     @Test
@@ -164,7 +191,9 @@ class WorkoutSessionRepositoryTest {
         val last = repo.getLastCompletedSession(workoutId = 7)!!
 
         assertEquals(SessionStatus.COMPLETED, last.status)
-        assertEquals(100.0, last.exercises.first().sets.first().weightKg!!, 0.0001)
+        // The first completed set
+        val completedSet = last.exercises.first().sets.first { it.completed && it.weightKg == 100.0 }
+        assertEquals(100.0, completedSet.weightKg!!, 0.0001)
     }
 
     @Test

@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.local.entity.ExerciseEntity
+import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.SessionExerciseEntity
 import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.local.entity.WorkoutEntity
@@ -51,8 +52,8 @@ class WorkoutDatabaseTest {
         workoutDao.replaceExercises(
             workoutId,
             listOf(
-                WorkoutExerciseEntity(workoutId = workoutId, exerciseId = squatId, plannedSets = 3, targetReps = 5, sortOrder = 0, note = null),
-                WorkoutExerciseEntity(workoutId = workoutId, exerciseId = benchId, plannedSets = 4, targetReps = 8, sortOrder = 1, note = null),
+                WorkoutExerciseEntity(workoutId = workoutId, exerciseId = squatId, sortOrder = 0, note = null) to emptyList(),
+                WorkoutExerciseEntity(workoutId = workoutId, exerciseId = benchId, sortOrder = 1, note = null) to emptyList(),
             ),
         )
 

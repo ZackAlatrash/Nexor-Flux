@@ -1,6 +1,7 @@
 package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.data.local.dao.WorkoutDao
+import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.WorkoutEntity
 import com.zack.recomptracker.data.local.entity.WorkoutExerciseEntity
 import com.zack.recomptracker.domain.workout.ValidationResult
@@ -10,11 +11,16 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/** One planned set's target values when creating/updating a workout template. */
+data class PlannedSetDraft(
+    val targetReps: Int? = null,
+    val targetWeightKg: Double? = null,
+)
+
 /** Caller-facing template line, decoupled from Room entities. */
 data class NewWorkoutLine(
     val exerciseId: Long,
-    val plannedSets: Int,
-    val targetReps: Int? = null,
+    val plannedSets: List<PlannedSetDraft>,
     val note: String? = null,
 )
 
@@ -35,7 +41,7 @@ open class WorkoutRepository(
         val workoutId = workoutDao.insertWorkout(
             WorkoutEntity(name = name.trim(), note = note?.trim(), createdAt = timestamp, updatedAt = timestamp),
         )
-        workoutDao.replaceExercises(workoutId, lines.toEntities(workoutId))
+        workoutDao.replaceExercises(workoutId, lines.toEntityPairs(workoutId))
         return workoutId
     }
 
@@ -46,7 +52,7 @@ open class WorkoutRepository(
         workoutDao.updateWorkout(
             WorkoutEntity(id = workoutId, name = name.trim(), note = note?.trim(), createdAt = createdAt, updatedAt = now()),
         )
-        workoutDao.replaceExercises(workoutId, lines.toEntities(workoutId))
+        workoutDao.replaceExercises(workoutId, lines.toEntityPairs(workoutId))
     }
 
     open suspend fun deleteWorkout(workoutId: Long) = workoutDao.deleteWorkoutById(workoutId)
@@ -55,22 +61,29 @@ open class WorkoutRepository(
         val result = WorkoutValidation.validateTemplate(
             name = name,
             exerciseCount = lines.size,
-            plannedSets = lines.map { it.plannedSets },
+            plannedSets = lines.map { it.plannedSets.size },
         )
         if (result is ValidationResult.Invalid) {
             throw IllegalArgumentException(result.reasons.joinToString(" "))
         }
     }
 
-    private fun List<NewWorkoutLine>.toEntities(workoutId: Long): List<WorkoutExerciseEntity> =
+    private fun List<NewWorkoutLine>.toEntityPairs(workoutId: Long): List<Pair<WorkoutExerciseEntity, List<PlannedSetEntity>>> =
         mapIndexed { index, line ->
-            WorkoutExerciseEntity(
+            val exerciseEntity = WorkoutExerciseEntity(
                 workoutId = workoutId,
                 exerciseId = line.exerciseId,
-                plannedSets = line.plannedSets,
-                targetReps = line.targetReps,
                 sortOrder = index,
                 note = line.note,
             )
+            val plannedSetEntities = line.plannedSets.mapIndexed { n, draft ->
+                PlannedSetEntity(
+                    workoutExerciseId = 0L, // placeholder, assigned in replaceExercises
+                    setNumber = n + 1,
+                    targetReps = draft.targetReps,
+                    targetWeightKg = draft.targetWeightKg,
+                )
+            }
+            exerciseEntity to plannedSetEntities
         }
 }

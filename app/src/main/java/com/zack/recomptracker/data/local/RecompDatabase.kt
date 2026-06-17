@@ -24,6 +24,7 @@ import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
+import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.RecipeEntity
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
@@ -50,11 +51,12 @@ import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
         ExerciseEntity::class,
         WorkoutEntity::class,
         WorkoutExerciseEntity::class,
+        PlannedSetEntity::class,
         WorkoutSessionEntity::class,
         SessionExerciseEntity::class,
         SessionSetEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -229,6 +231,34 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS planned_sets (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "workoutExerciseId INTEGER NOT NULL, setNumber INTEGER NOT NULL, " +
+                        "targetReps INTEGER, targetWeightKg REAL, " +
+                        "FOREIGN KEY(workoutExerciseId) REFERENCES workout_exercises(id) ON DELETE CASCADE)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_planned_sets_workoutExerciseId ON planned_sets (workoutExerciseId)")
+                db.execSQL(
+                    "CREATE TABLE workout_exercises_new (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, workoutId INTEGER NOT NULL, " +
+                        "exerciseId INTEGER NOT NULL, sortOrder INTEGER NOT NULL, note TEXT, " +
+                        "FOREIGN KEY(workoutId) REFERENCES workouts(id) ON DELETE CASCADE, " +
+                        "FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE NO ACTION)",
+                )
+                db.execSQL(
+                    "INSERT INTO workout_exercises_new (id, workoutId, exerciseId, sortOrder, note) " +
+                        "SELECT id, workoutId, exerciseId, sortOrder, note FROM workout_exercises",
+                )
+                db.execSQL("DROP TABLE workout_exercises")
+                db.execSQL("ALTER TABLE workout_exercises_new RENAME TO workout_exercises")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_workoutId ON workout_exercises (workoutId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_exerciseId ON workout_exercises (exerciseId)")
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -259,7 +289,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
             .build()
     }
 }

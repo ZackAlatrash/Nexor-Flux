@@ -4,9 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import kotlinx.serialization.Serializable
 
-@Serializable
 @Entity(
     tableName = "workout_exercises",
     foreignKeys = [
@@ -28,8 +26,6 @@ data class WorkoutExerciseEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val workoutId: Long,
     val exerciseId: Long,
-    val plannedSets: Int,
-    val targetReps: Int?,
     val sortOrder: Int,
     val note: String?,
 )

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.WorkoutEntity
 import com.zack.recomptracker.data.local.entity.WorkoutExerciseEntity
 import com.zack.recomptracker.data.local.entity.WorkoutWithExercisesDb
@@ -36,11 +37,20 @@ abstract class WorkoutDao {
     @Query("DELETE FROM workout_exercises WHERE workoutId = :workoutId")
     abstract suspend fun deleteExercisesByWorkoutId(workoutId: Long)
 
+    @Insert
+    abstract suspend fun insertPlannedSet(set: PlannedSetEntity): Long
+
+    @Query("DELETE FROM planned_sets WHERE workoutExerciseId = :workoutExerciseId")
+    abstract suspend fun deletePlannedSetsByExerciseId(workoutExerciseId: Long)
+
     @Transaction
-    open suspend fun replaceExercises(workoutId: Long, lines: List<WorkoutExerciseEntity>) {
+    open suspend fun replaceExercises(workoutId: Long, lines: List<Pair<WorkoutExerciseEntity, List<PlannedSetEntity>>>) {
         deleteExercisesByWorkoutId(workoutId)
-        lines.forEachIndexed { index, line ->
-            insertWorkoutExercise(line.copy(workoutId = workoutId, sortOrder = index, id = 0))
+        lines.forEachIndexed { index, (line, planned) ->
+            val exId = insertWorkoutExercise(line.copy(workoutId = workoutId, sortOrder = index, id = 0))
+            planned.forEachIndexed { n, ps ->
+                insertPlannedSet(ps.copy(workoutExerciseId = exId, setNumber = n + 1, id = 0))
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ import com.zack.recomptracker.data.local.entity.WorkoutSessionWithDetailsDb
 import com.zack.recomptracker.data.local.entity.WorkoutWithExercisesDb
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.domain.workout.ExerciseLibraryJson
+import com.zack.recomptracker.domain.workout.PlannedSet
 import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.SessionStatus
@@ -43,8 +44,8 @@ internal fun WorkoutWithExercisesDb.toDomain(): WorkoutTemplate = WorkoutTemplat
 internal fun WorkoutExerciseWithExercise.toDomain(): WorkoutTemplateExercise = WorkoutTemplateExercise(
     id = workoutExercise.id,
     exercise = exercise.toDomain(),
-    plannedSets = workoutExercise.plannedSets,
-    targetReps = workoutExercise.targetReps,
+    plannedSets = plannedSets.sortedBy { it.setNumber }
+        .map { PlannedSet(it.id, it.setNumber, it.targetReps, it.targetWeightKg) },
     sortOrder = workoutExercise.sortOrder,
     note = workoutExercise.note,
 )

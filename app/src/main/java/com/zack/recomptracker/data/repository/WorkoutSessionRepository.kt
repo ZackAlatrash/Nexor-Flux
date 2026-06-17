@@ -21,7 +21,8 @@ open class WorkoutSessionRepository(
     private val today: () -> String = { LocalDate.now().toString() },
 ) {
 
-    /** Creates an ACTIVE session snapshotting the template's name and exercises. */
+    /** Creates an ACTIVE session snapshotting the template's name and exercises,
+     *  pre-filling session_sets from planned sets (completed=false). */
     open suspend fun startSession(template: WorkoutTemplate): Long {
         val sessionId = sessionDao.insertSession(
             WorkoutSessionEntity(
@@ -35,7 +36,7 @@ open class WorkoutSessionRepository(
             ),
         )
         template.exercises.sortedBy { it.sortOrder }.forEachIndexed { index, line ->
-            sessionDao.insertSessionExercise(
+            val seId = sessionDao.insertSessionExercise(
                 SessionExerciseEntity(
                     sessionId = sessionId,
                     exerciseId = line.exercise.id,
@@ -44,6 +45,18 @@ open class WorkoutSessionRepository(
                     note = line.note,
                 ),
             )
+            line.plannedSets.forEach { ps ->
+                sessionDao.insertSet(
+                    SessionSetEntity(
+                        sessionExerciseId = seId,
+                        setNumber = ps.setNumber,
+                        reps = ps.targetReps ?: 0,
+                        weightKg = ps.targetWeightKg,
+                        rir = null,
+                        completed = false,
+                    ),
+                )
+            }
         }
         return sessionId
     }

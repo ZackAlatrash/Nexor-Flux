@@ -17,12 +17,19 @@ data class Exercise(
     val userCreated: Boolean,
 )
 
+/** One planned set target within a workout template exercise. */
+data class PlannedSet(
+    val id: Long,
+    val setNumber: Int,
+    val targetReps: Int?,
+    val targetWeightKg: Double?,
+)
+
 /** One line of a workout template. */
 data class WorkoutTemplateExercise(
     val id: Long,
     val exercise: Exercise,
-    val plannedSets: Int,
-    val targetReps: Int?,
+    val plannedSets: List<PlannedSet>,
     val sortOrder: Int,
     val note: String?,
 )

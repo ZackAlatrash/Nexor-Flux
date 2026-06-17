@@ -50,6 +50,8 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ui.train.ActiveSessionScreen
+import com.zack.recomptracker.ui.train.ActiveSessionViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerScreen
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.RoutineBuilderScreen
@@ -85,6 +87,7 @@ object Routes {
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
     const val Train          = "train"
+    const val ActiveSession  = "active_session"
     const val ExercisePicker = "exercise_picker"
     const val RoutineBuilder = "routine_builder?workoutId={workoutId}"
     fun routineBuilder(workoutId: Long? = null) = "routine_builder?workoutId=${workoutId ?: -1L}"
@@ -209,8 +212,33 @@ fun AppNavGraph(
                 viewModel = viewModel<TrainViewModel>(factory = factory),
                 onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
                 onEditRoutine = { id -> navController.navigate(Routes.routineBuilder(id)) },
-                onStart = { /* TODO: Active Session — later task */ },
-                onResume = { /* TODO: Active Session — later task */ },
+                onStart = { _ -> navController.navigate(Routes.ActiveSession) },
+                onResume = { _ -> navController.navigate(Routes.ActiveSession) },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.ActiveSession,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) { backStackEntry ->
+            val pickedIds by backStackEntry.savedStateHandle
+                .getStateFlow<LongArray?>("picked_exercise_ids", null)
+                .collectAsStateWithLifecycle()
+
+            ActiveSessionScreen(
+                viewModel = viewModel<ActiveSessionViewModel>(factory = factory),
+                pickedExerciseIds = pickedIds,
+                onPickedConsumed = {
+                    backStackEntry.savedStateHandle.remove<LongArray>("picked_exercise_ids")
+                },
+                onAddExercise = { navController.navigate(Routes.ExercisePicker) },
+                onMinimize = { navController.popBackStack() },
+                onFinish = { _ ->
+                    // TODO(session-summary): navigate to session_summary/$sessionId when that
+                    // route is implemented. For now, return to Train Home.
+                    navController.popBackStack(Routes.Train, inclusive = false)
+                },
                 modifier = Modifier,
             )
         }

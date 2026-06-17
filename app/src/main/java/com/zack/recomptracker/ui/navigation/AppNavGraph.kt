@@ -52,6 +52,8 @@ import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerScreen
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
+import com.zack.recomptracker.ui.train.RoutineBuilderScreen
+import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
 import com.zack.recomptracker.ui.train.TrainViewModel
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
@@ -84,6 +86,8 @@ object Routes {
     const val DataBackup   = "data_backup"
     const val Train          = "train"
     const val ExercisePicker = "exercise_picker"
+    const val RoutineBuilder = "routine_builder?workoutId={workoutId}"
+    fun routineBuilder(workoutId: Long? = null) = "routine_builder?workoutId=${workoutId ?: -1L}"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -203,8 +207,8 @@ fun AppNavGraph(
         ) {
             TrainHomeScreen(
                 viewModel = viewModel<TrainViewModel>(factory = factory),
-                onCreateRoutine = { /* TODO: Routine Builder — next task */ },
-                onEditRoutine = { /* TODO: Routine Builder — next task */ },
+                onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
+                onEditRoutine = { id -> navController.navigate(Routes.routineBuilder(id)) },
                 onStart = { /* TODO: Active Session — later task */ },
                 onResume = { /* TODO: Active Session — later task */ },
                 modifier = Modifier,
@@ -224,6 +228,44 @@ fun AppNavGraph(
                         ?.set("picked_exercise_ids", ids.toLongArray())
                     navController.popBackStack()
                 },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.RoutineBuilder,
+            arguments = listOf(
+                androidx.navigation.navArgument("workoutId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) { backStackEntry ->
+            val rawId = backStackEntry.arguments?.getLong("workoutId") ?: -1L
+            val workoutId = if (rawId == -1L) null else rawId
+
+            val vm = viewModel<RoutineBuilderViewModel>(factory = factory)
+
+            // Load existing workout data on first composition (edit mode only)
+            androidx.compose.runtime.LaunchedEffect(workoutId) {
+                vm.loadWorkout(workoutId)
+            }
+
+            // Observe picked exercise IDs returned from the Exercise Picker
+            val pickedIds by backStackEntry.savedStateHandle
+                .getStateFlow<LongArray?>("picked_exercise_ids", null)
+                .collectAsStateWithLifecycle()
+
+            RoutineBuilderScreen(
+                viewModel = vm,
+                pickedExerciseIds = pickedIds,
+                onPickedConsumed = {
+                    backStackEntry.savedStateHandle.remove<LongArray>("picked_exercise_ids")
+                },
+                onClose = { navController.popBackStack() },
+                onAddExercise = { navController.navigate(Routes.ExercisePicker) },
+                onSaved = { navController.popBackStack() },
                 modifier = Modifier,
             )
         }

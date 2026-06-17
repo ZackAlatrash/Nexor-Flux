@@ -21,8 +21,9 @@ data class BuilderSet(
     val targetWeightKg: Double?,
 )
 
-/** One exercise line in the builder. */
+/** One exercise line in the builder. [id] is a stable per-instance key for reorder. */
 data class BuilderExercise(
+    val id: Long,
     val exercise: Exercise,
     val sets: List<BuilderSet>,
     val note: String?,
@@ -53,6 +54,9 @@ class RoutineBuilderViewModel(
     private val _state = MutableStateFlow(RoutineBuilderUiState())
     val state: StateFlow<RoutineBuilderUiState> = _state.asStateFlow()
 
+    private var nextBuilderId = 0L
+    private fun newBuilderId(): Long = nextBuilderId++
+
     // Serialises save() so a rapid double-tap can't fire two concurrent inserts.
     private val saveMutex = Mutex()
 
@@ -63,6 +67,7 @@ class RoutineBuilderViewModel(
         val template = workoutRepository.getById(workoutId) ?: return
         val exercises = template.exercises.map { templateEx ->
             BuilderExercise(
+                id = newBuilderId(),
                 exercise = templateEx.exercise,
                 sets = templateEx.plannedSets.map { ps ->
                     BuilderSet(
@@ -91,6 +96,7 @@ class RoutineBuilderViewModel(
         _state.update { current ->
             val newExercises = resolved.map { exercise ->
                 BuilderExercise(
+                    id = newBuilderId(),
                     exercise = exercise,
                     sets = listOf(BuilderSet(null, null)),
                     note = null,

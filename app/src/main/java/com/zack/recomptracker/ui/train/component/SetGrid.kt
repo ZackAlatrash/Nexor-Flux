@@ -23,9 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -225,190 +223,183 @@ private fun SessionSetGrid(
             val isExpanded = row.id in expandedRir.value
             val rowBg = if (row.completed) accent.tintedSurface else Color.Transparent
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(CornerSmall))
-                    .background(rowBg)
-                    .clickable {
-                        // toggle RIR reveal
-                        expandedRir.value = if (isExpanded)
-                            expandedRir.value - row.id
-                        else
-                            expandedRir.value + row.id
-                    }
-                    .padding(vertical = 4.dp),
+            SwipeToRevealRow(
+                onRemove = { onRemoveSet(row.id) },
+                enabled = sets.size > 1,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Set number badge
-                    Box(
-                        modifier = Modifier
-                            .width(28.dp)
-                            .clip(RoundedCornerShape(CornerSmall))
-                            .background(appColors.cardSurface)
-                            .padding(vertical = 4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "${row.setNumber}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (row.completed) accent.inkLighter else appColors.textMuted,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-
-                    Spacer(Modifier.width(6.dp))
-
-                    // PREV hint
-                    Box(
-                        modifier = Modifier
-                            .width(52.dp)
-                            .padding(horizontal = 4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = row.prev ?: "–",
-                            fontSize = 12.sp,
-                            color = appColors.textMuted,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                        )
-                    }
-
-                    Spacer(Modifier.width(6.dp))
-
-                    // KG cell
-                    SetInputCell(
-                        value = row.weightKg?.let { formatWeight(it) } ?: "",
-                        placeholder = "–",
-                        keyboardType = KeyboardType.Decimal,
-                        completed = row.completed,
-                        modifier = Modifier.weight(1f),
-                        onChanged = { raw ->
-                            onKgChanged(row, if (raw.isBlank()) null else raw.toDoubleOrNull())
-                        },
-                    )
-
-                    Spacer(Modifier.width(6.dp))
-
-                    // REPS cell
-                    SetInputCell(
-                        value = row.reps?.takeIf { it > 0 }?.toString() ?: "",
-                        placeholder = "–",
-                        keyboardType = KeyboardType.Number,
-                        completed = row.completed,
-                        modifier = Modifier.weight(1f),
-                        onChanged = { raw ->
-                            onRepsChanged(row, if (raw.isBlank()) null else raw.toIntOrNull())
-                        },
-                    )
-
-                    Spacer(Modifier.width(4.dp))
-
-                    // ✓ check button
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (row.completed) accent.accent
-                                else appColors.cardSurface
-                            )
-                            .border(
-                                width = 1.5.dp,
-                                color = if (row.completed) accent.accent
-                                        else appColors.frostedBorder,
-                                shape = CircleShape,
-                            )
-                            .clickable { onToggleComplete(row) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (row.completed) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Completed",
-                                tint = accent.onAccent,
-                                modifier = Modifier.size(16.dp),
-                            )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(CornerSmall))
+                        .background(rowBg)
+                        .clickable {
+                            // toggle RIR reveal
+                            expandedRir.value = if (isExpanded)
+                                expandedRir.value - row.id
+                            else
+                                expandedRir.value + row.id
                         }
-                    }
-
-                    // Remove icon (same width slot as PLAN mode)
-                    IconButton(
-                        onClick = { onRemoveSet(row.id) },
-                        modifier = Modifier
-                            .width(28.dp)
-                            .height(28.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove set ${row.setNumber}",
-                            tint = if (sets.size > 1) appColors.textMuted
-                                   else appColors.textMuted.copy(alpha = 0.3f),
-                            modifier = Modifier.size(12.dp),
-                        )
-                    }
-                }
-
-                // ── RIR stepper (revealed on row tap) ────────────────────────
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(),
-                    exit = shrinkVertically(),
+                        .padding(vertical = 4.dp),
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp, bottom = 2.dp, start = 8.dp, end = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            text = "RIR",
-                            fontSize = 11.sp,
-                            color = appColors.textMuted,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Spacer(Modifier.weight(1f))
-                        // Decrement
+                        // Set number badge
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
+                                .width(28.dp)
+                                .clip(RoundedCornerShape(CornerSmall))
                                 .background(appColors.cardSurface)
-                                .clickable {
-                                    val cur = row.rir ?: 0
-                                    onRirChanged(row, (cur - 1).coerceAtLeast(0))
-                                },
+                                .padding(vertical = 4.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("–", fontSize = 16.sp, color = appColors.textPrimary, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "${row.setNumber}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (row.completed) accent.inkLighter else appColors.textMuted,
+                                textAlign = TextAlign.Center,
+                            )
                         }
-                        Text(
-                            text = row.rir?.toString() ?: "–",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = appColors.textPrimary,
-                            modifier = Modifier.width(24.dp),
-                            textAlign = TextAlign.Center,
+
+                        Spacer(Modifier.width(6.dp))
+
+                        // PREV hint
+                        Box(
+                            modifier = Modifier
+                                .width(52.dp)
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = row.prev ?: "–",
+                                fontSize = 12.sp,
+                                color = appColors.textMuted,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                            )
+                        }
+
+                        Spacer(Modifier.width(6.dp))
+
+                        // KG cell
+                        SetInputCell(
+                            value = row.weightKg?.let { formatWeight(it) } ?: "",
+                            placeholder = "–",
+                            keyboardType = KeyboardType.Decimal,
+                            completed = row.completed,
+                            modifier = Modifier.weight(1f),
+                            onChanged = { raw ->
+                                onKgChanged(row, if (raw.isBlank()) null else raw.toDoubleOrNull())
+                            },
                         )
-                        // Increment
+
+                        Spacer(Modifier.width(6.dp))
+
+                        // REPS cell
+                        SetInputCell(
+                            value = row.reps?.takeIf { it > 0 }?.toString() ?: "",
+                            placeholder = "–",
+                            keyboardType = KeyboardType.Number,
+                            completed = row.completed,
+                            modifier = Modifier.weight(1f),
+                            onChanged = { raw ->
+                                onRepsChanged(row, if (raw.isBlank()) null else raw.toIntOrNull())
+                            },
+                        )
+
+                        Spacer(Modifier.width(4.dp))
+
+                        // ✓ check button
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(CircleShape)
-                                .background(appColors.cardSurface)
-                                .clickable {
-                                    val cur = row.rir ?: 0
-                                    onRirChanged(row, cur + 1)
-                                },
+                                .background(
+                                    if (row.completed) accent.accent
+                                    else appColors.cardSurface
+                                )
+                                .border(
+                                    width = 1.5.dp,
+                                    color = if (row.completed) accent.accent
+                                            else appColors.frostedBorder,
+                                    shape = CircleShape,
+                                )
+                                .clickable { onToggleComplete(row) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("+", fontSize = 16.sp, color = appColors.textPrimary, fontWeight = FontWeight.Bold)
+                            if (row.completed) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Completed",
+                                    tint = accent.onAccent,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+
+                        // Check placeholder (keeps column alignment)
+                        Spacer(Modifier.width(4.dp))
+                    }
+
+                    // ── RIR stepper (revealed on row tap) ────────────────────────
+                    AnimatedVisibility(
+                        visible = isExpanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically(),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp, bottom = 2.dp, start = 8.dp, end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "RIR",
+                                fontSize = 11.sp,
+                                color = appColors.textMuted,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            // Decrement
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(appColors.cardSurface)
+                                    .clickable {
+                                        val cur = row.rir ?: 0
+                                        onRirChanged(row, (cur - 1).coerceAtLeast(0))
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("–", fontSize = 16.sp, color = appColors.textPrimary, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                text = row.rir?.toString() ?: "–",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.textPrimary,
+                                modifier = Modifier.width(24.dp),
+                                textAlign = TextAlign.Center,
+                            )
+                            // Increment
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(appColors.cardSurface)
+                                    .clickable {
+                                        val cur = row.rir ?: 0
+                                        onRirChanged(row, cur + 1)
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("+", fontSize = 16.sp, color = appColors.textPrimary, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -575,90 +566,80 @@ private fun PlanSetGrid(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(32.dp))
         }
 
         // ── Rows ──────────────────────────────────────────────────────────────
         sets.forEachIndexed { index, setRow ->
-            Row(
+            SwipeToRevealRow(
+                onRemove = { onRemoveSet(index) },
+                enabled = sets.size > 1,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(28.dp)
-                        .clip(RoundedCornerShape(CornerSmall))
-                        .background(appColors.cardSurface)
-                        .padding(vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "${index + 1}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = appColors.textMuted,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-
-                Spacer(Modifier.width(6.dp))
-
-                var kgRaw by remember(setRow.targetWeightKg) {
-                    mutableStateOf(setRow.targetWeightKg?.let { formatWeight(it) } ?: "")
-                }
-                SetInputCell(
-                    value = kgRaw,
-                    placeholder = "–",
-                    keyboardType = KeyboardType.Decimal,
-                    completed = false,
-                    modifier = Modifier.weight(1f),
-                    onChanged = { raw ->
-                        kgRaw = raw
-                        if (raw.isBlank()) {
-                            onSetChanged(index, setRow.targetReps, null)
-                        } else {
-                            val kg = raw.toDoubleOrNull()
-                            if (kg != null) onSetChanged(index, setRow.targetReps, kg)
-                        }
-                    },
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                var repsRaw by remember(setRow.targetReps) {
-                    mutableStateOf(setRow.targetReps?.toString() ?: "")
-                }
-                SetInputCell(
-                    value = repsRaw,
-                    placeholder = "–",
-                    keyboardType = KeyboardType.Number,
-                    completed = false,
-                    modifier = Modifier.weight(1f),
-                    onChanged = { raw ->
-                        repsRaw = raw
-                        if (raw.isBlank()) {
-                            onSetChanged(index, null, setRow.targetWeightKg)
-                        } else {
-                            val reps = raw.toIntOrNull()
-                            if (reps != null) onSetChanged(index, reps, setRow.targetWeightKg)
-                        }
-                    },
-                )
-
-                IconButton(
-                    onClick = { onRemoveSet(index) },
-                    modifier = Modifier.width(32.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Remove set ${index + 1}",
-                        tint = if (sets.size > 1) appColors.textMuted
-                               else appColors.textMuted.copy(alpha = 0.3f),
+                    Box(
                         modifier = Modifier
-                            .width(14.dp)
-                            .height(14.dp),
+                            .width(28.dp)
+                            .clip(RoundedCornerShape(CornerSmall))
+                            .background(appColors.cardSurface)
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "${index + 1}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = appColors.textMuted,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    Spacer(Modifier.width(6.dp))
+
+                    var kgRaw by remember(setRow.targetWeightKg) {
+                        mutableStateOf(setRow.targetWeightKg?.let { formatWeight(it) } ?: "")
+                    }
+                    SetInputCell(
+                        value = kgRaw,
+                        placeholder = "–",
+                        keyboardType = KeyboardType.Decimal,
+                        completed = false,
+                        modifier = Modifier.weight(1f),
+                        onChanged = { raw ->
+                            kgRaw = raw
+                            if (raw.isBlank()) {
+                                onSetChanged(index, setRow.targetReps, null)
+                            } else {
+                                val kg = raw.toDoubleOrNull()
+                                if (kg != null) onSetChanged(index, setRow.targetReps, kg)
+                            }
+                        },
+                    )
+
+                    Spacer(Modifier.width(6.dp))
+
+                    var repsRaw by remember(setRow.targetReps) {
+                        mutableStateOf(setRow.targetReps?.toString() ?: "")
+                    }
+                    SetInputCell(
+                        value = repsRaw,
+                        placeholder = "–",
+                        keyboardType = KeyboardType.Number,
+                        completed = false,
+                        modifier = Modifier.weight(1f),
+                        onChanged = { raw ->
+                            repsRaw = raw
+                            if (raw.isBlank()) {
+                                onSetChanged(index, null, setRow.targetWeightKg)
+                            } else {
+                                val reps = raw.toIntOrNull()
+                                if (reps != null) onSetChanged(index, reps, setRow.targetWeightKg)
+                            }
+                        },
                     )
                 }
             }

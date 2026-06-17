@@ -38,8 +38,20 @@ history + per-exercise progress.
 
 ## Navigation
 
-Add a **5th bottom-nav destination, "Train"** (`ti-barbell`-style icon), alongside Home · Body ·
-Coach · More → Home · Body · **Train** · Coach · More. Train is the root of the workout flow.
+The bottom bar already has 5 tabs (Home · Body · Food · Coach · More). **Replace the More tab with
+Train**, and **move "More" to a settings/gear icon next to the page title on Home.** Result:
+
+- Bottom bar stays 5 tabs: **Home · Body · Food · Coach · Train** (Train in the slot previously held
+  by More; barbell icon).
+- The existing `more` route/screen is unchanged; it's now opened from a **gear `IconButton` in the
+  Home header** (next to the title), not a bottom tab. The `onOpenSettings` hook on
+  `HomeDashboardScreen` already navigates to More — wire the gear to it.
+
+Concrete changes in `RecompApp.kt`: in `tabRoutes` and `routeToTabIndex`, replace
+`TopLevelDestination.More.route` with the new `Routes.Train`; update the `topLevelRoutes` set
+(add `Routes.Train`, drop `More`); change the 5th `LiquidBottomTab` from More (MoreHoriz icon,
+"More") to Train (barbell icon, "Train"). Add `Routes.Train` + a `TrainScreen` composable to
+`AppNavGraph`. Train is the root of the workout flow.
 
 ```
 Train tab → Train Home ──┬─ + / New routine ─→ Routine Builder ─→ Exercise Picker ─→ (Detail 3b)

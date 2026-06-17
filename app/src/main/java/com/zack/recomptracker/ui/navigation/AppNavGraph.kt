@@ -51,6 +51,7 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
+import com.zack.recomptracker.ui.train.TrainViewModel
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import java.time.LocalDate
 import kotlinx.serialization.encodeToString
@@ -197,7 +198,14 @@ fun AppNavGraph(
             enterTransition = { tabEnter },
             exitTransition  = { tabExit },
         ) {
-            TrainHomeScreen(modifier = Modifier)
+            TrainHomeScreen(
+                viewModel = viewModel<TrainViewModel>(factory = factory),
+                onCreateRoutine = { /* TODO: Routine Builder — next task */ },
+                onEditRoutine = { /* TODO: Routine Builder — next task */ },
+                onStart = { /* TODO: Active Session — later task */ },
+                onResume = { /* TODO: Active Session — later task */ },
+                modifier = Modifier,
+            )
         }
         composable(
             route = Routes.BodyHistory,

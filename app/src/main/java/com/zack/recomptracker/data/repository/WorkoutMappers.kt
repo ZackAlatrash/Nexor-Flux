@@ -77,5 +77,6 @@ internal fun WorkoutSessionWithDetailsDb.toDomain(): WorkoutSession = WorkoutSes
     completedAt = session.completedAt,
     status = runCatching { SessionStatus.valueOf(session.status) }.getOrDefault(SessionStatus.ACTIVE),
     note = session.note,
+    durationSeconds = session.durationSeconds,
     exercises = exercises.sortedBy { it.sessionExercise.sortOrder }.map { it.toDomain() },
 )

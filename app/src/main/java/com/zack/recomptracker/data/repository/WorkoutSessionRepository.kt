@@ -33,6 +33,7 @@ open class WorkoutSessionRepository(
                 completedAt = null,
                 status = SessionStatus.ACTIVE.name,
                 note = null,
+                durationSeconds = null,
             ),
         )
         template.exercises.sortedBy { it.sortOrder }.forEachIndexed { index, line ->
@@ -111,7 +112,14 @@ open class WorkoutSessionRepository(
     open suspend fun setSessionNote(sessionId: Long, note: String?) =
         sessionDao.updateSessionNote(sessionId, note)
 
-    open suspend fun completeSession(sessionId: Long) = setStatus(sessionId, SessionStatus.COMPLETED)
+    open suspend fun completeSession(sessionId: Long, durationSeconds: Int? = null) {
+        val current = sessionDao.getSessionWithDetails(sessionId)?.session ?: return
+        sessionDao.updateSession(current.copy(
+            status = SessionStatus.COMPLETED.name,
+            completedAt = now(),
+            durationSeconds = durationSeconds,
+        ))
+    }
 
     open suspend fun abandonSession(sessionId: Long) = setStatus(sessionId, SessionStatus.ABANDONED)
 

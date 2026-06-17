@@ -28,4 +28,5 @@ data class WorkoutSessionEntity(
     val completedAt: String?,
     val status: String,
     val note: String?,
+    val durationSeconds: Int?,
 )

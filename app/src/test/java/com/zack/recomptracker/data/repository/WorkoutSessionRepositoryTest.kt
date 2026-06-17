@@ -269,4 +269,12 @@ class WorkoutSessionRepositoryTest {
         assertEquals("tempo 3-1-1", dao.exercises.getValue(seId).note)
         assertEquals("felt strong", dao.sessions.getValue(sid).note)
     }
+
+    @Test fun `completeSession stores duration override`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        val sid = repo.startSession(template())
+        repo.completeSession(sid, durationSeconds = 3120)
+        val s = repo.getLastCompletedSession(workoutId = 7)!!
+        assertEquals(3120, s.durationSeconds)
+    }
 }

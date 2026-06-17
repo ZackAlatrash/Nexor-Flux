@@ -73,6 +73,7 @@ data class WorkoutSession(
     val completedAt: String?,
     val status: SessionStatus,
     val note: String?,
+    val durationSeconds: Int?,
     val exercises: List<SessionExercise>,
 )
 

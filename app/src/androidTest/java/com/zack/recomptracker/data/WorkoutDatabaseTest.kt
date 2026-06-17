@@ -78,7 +78,7 @@ class WorkoutDatabaseTest {
                 WorkoutSessionEntity(
                     workoutId = workoutId, workoutName = "Legs", date = date,
                     startedAt = date + "T10:00", completedAt = date + "T11:00",
-                    status = "COMPLETED", note = null,
+                    status = "COMPLETED", note = null, durationSeconds = null,
                 ),
             )
             val seId = sessionDao.insertSessionExercise(
@@ -110,7 +110,7 @@ class WorkoutDatabaseTest {
         val sessionId = sessionDao.insertSession(
             WorkoutSessionEntity(
                 workoutId = workoutId, workoutName = "Temp", date = "2026-06-17",
-                startedAt = "2026-06-17T10:00", completedAt = "2026-06-17T11:00", status = "COMPLETED", note = null,
+                startedAt = "2026-06-17T10:00", completedAt = "2026-06-17T11:00", status = "COMPLETED", note = null, durationSeconds = null,
             ),
         )
 

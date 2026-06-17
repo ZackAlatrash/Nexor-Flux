@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -79,13 +80,22 @@ fun ExerciseCard(
     onMoveDown: (() -> Unit)?,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    dragHandleModifier: Modifier = Modifier,
+    isDragging: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val appColors = LocalAppColors.current
     var menuOpen by remember { mutableStateOf(false) }
 
     FrostedCard(
-        modifier = modifier,
+        modifier = modifier.graphicsLayer {
+            val s = if (isDragging) 1.02f else 1f
+            scaleX = s
+            scaleY = s
+            shadowElevation = if (isDragging) 16f else 0f
+            shape = RoundedCornerShape(20.dp)
+            clip = false
+        },
         contentPadding = 12.dp,
     ) {
         // ── Header row ────────────────────────────────────────────────────────
@@ -98,7 +108,7 @@ fun ExerciseCard(
                 imageVector = Icons.Default.DragHandle,
                 contentDescription = "Drag to reorder",
                 tint = appColors.textMuted.copy(alpha = 0.45f),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(18.dp).then(dragHandleModifier),
             )
 
             Spacer(Modifier.width(10.dp))

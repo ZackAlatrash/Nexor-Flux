@@ -49,7 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
@@ -393,7 +393,6 @@ private fun RoutineCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        val imageUrl = ex.exercise.images.firstOrNull()
                         Box(
                             modifier = Modifier
                                 .size(30.dp)
@@ -401,21 +400,11 @@ private fun RoutineCard(
                                 .background(Color.White.copy(alpha = 0.06f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (imageUrl != null) {
-                                AsyncImage(
-                                    model = imageUrl,
-                                    contentDescription = ex.exercise.name,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.FitnessCenter,
-                                    contentDescription = null,
-                                    tint = accent.accentLighter,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
+                            MuscleGroupIcon(
+                                primaryMuscles = ex.exercise.primaryMuscles,
+                                tint = accent.accentLighter,
+                                modifier = Modifier.fillMaxSize(),
+                            )
                         }
                         Text(
                             text = ex.exercise.name,

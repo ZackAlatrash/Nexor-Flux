@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ai.AiInsightState
@@ -325,19 +326,26 @@ private fun HeaderMoreButton(onClick: () -> Unit) {
     val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .minimumInteractiveComponentSize()
             .clip(CircleShape)
-            .background(appColors.cardSurface)
-            .border(1.dp, appColors.frostedBorder, CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Default.MoreHoriz,
-            contentDescription = "More",
-            tint = appColors.textMuted,
-            modifier = Modifier.size(20.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(appColors.cardSurface)
+                .border(1.dp, appColors.frostedBorder, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreHoriz,
+                contentDescription = "More",
+                tint = appColors.textMuted,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

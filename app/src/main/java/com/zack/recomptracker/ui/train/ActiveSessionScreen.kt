@@ -24,7 +24,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -51,9 +54,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.moveByKey
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.CornerSmall
+import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.ExerciseCard
@@ -69,29 +74,46 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  * Active Session screen — the live workout tracker.
  *
  * @param viewModel            Active session ViewModel.
- * @param pickedExerciseIds    Non-null when returning from Exercise Picker.
+ * @param pickedExerciseIds    Non-null when returning from Exercise Picker (add mode).
  * @param onPickedConsumed     Clear the savedStateHandle entry after consuming.
+ * @param replacementResult    [targetSessionExerciseId, chosenExerciseId] from the picker (replace mode).
+ * @param onReplacementConsumed Clear the replacement savedStateHandle entry after consuming.
+ * @param onReplaceExercise    Open the picker in replace mode for the given session exercise.
  * @param onAddExercise        Navigate to Exercise Picker.
  * @param onMinimize           Pop back to Train Home; session remains ACTIVE.
  * @param onFinish             Called with sessionId after completing.
+ * @param onDiscard            Called after the active session is abandoned; exits to Train Home.
  */
 @Composable
 fun ActiveSessionScreen(
     viewModel: ActiveSessionViewModel,
     pickedExerciseIds: LongArray?,
     onPickedConsumed: () -> Unit,
+    replacementResult: LongArray?,
+    onReplacementConsumed: () -> Unit,
+    onReplaceExercise: (sessionExerciseId: Long) -> Unit,
     onAddExercise: () -> Unit,
     onMinimize: () -> Unit,
     onFinish: (sessionId: Long) -> Unit,
+    onDiscard: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val elapsed by viewModel.elapsed.collectAsStateWithLifecycle()
     val prevMap by viewModel.prevMap.collectAsStateWithLifecycle()
     val exerciseVisuals by viewModel.exerciseVisuals.collectAsStateWithLifecycle()
+    val detailExercise by viewModel.detailExercise.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
+
+    // Local-only UI state for the header overflow menu + discard confirmation.
+    // Kept out of the ViewModel so opening/closing them never touches workout state.
+    var menuOpen by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    // Pending replacement awaiting confirmation: (targetSessionExerciseId, chosenExerciseId, oldName).
+    // Only set when the target already has logged sets that the replacement would clear.
+    var pendingReplacement by remember { mutableStateOf<Triple<Long, Long, String>?>(null) }
 
     // Consume picked exercise IDs returned from Exercise Picker
     LaunchedEffect(pickedExerciseIds) {
@@ -99,6 +121,24 @@ fun ActiveSessionScreen(
             viewModel.addExercises(ids)
             onPickedConsumed()
         }
+    }
+
+    // Consume a replacement chosen in the picker (replace mode). If the target already has logged
+    // sets, defer to a confirm dialog (clearing them is destructive); otherwise replace immediately.
+    LaunchedEffect(replacementResult) {
+        val result = replacementResult ?: return@LaunchedEffect
+        if (result.size == 2) {
+            val targetSeId = result[0]
+            val chosenExerciseId = result[1]
+            val target = viewModel.session.value?.exercises?.firstOrNull { it.id == targetSeId }
+            val hasLoggedSets = target?.sets?.any { it.completed || it.reps > 0 || it.weightKg != null } == true
+            if (hasLoggedSets) {
+                pendingReplacement = Triple(targetSeId, chosenExerciseId, target?.exerciseName ?: "this exercise")
+            } else {
+                viewModel.replaceExercise(targetSeId, chosenExerciseId)
+            }
+        }
+        onReplacementConsumed()
     }
 
     // Format elapsed seconds into mm:ss or h:mm:ss
@@ -220,6 +260,31 @@ fun ActiveSessionScreen(
                         color = accent.onAccent,
                     )
                 }
+
+                // Overflow menu — fast path to discard the active workout. The existing
+                // Finish → Session Summary → "Discard Workout" flow is unchanged.
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = appColors.textPrimary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Discard workout", color = ErrorRed) },
+                            onClick = {
+                                menuOpen = false
+                                showDiscardDialog = true
+                            },
+                        )
+                    }
+                }
             }
         }
 
@@ -276,6 +341,8 @@ fun ActiveSessionScreen(
                         }
                     } else null,
                     onRemove = { viewModel.removeExercise(se) },
+                    onReplace = { onReplaceExercise(se.id) },
+                    onShowDetails = { viewModel.showExerciseDetails(se.exerciseId) },
                     isDragging = isDragging,
                     dragHandleModifier = Modifier.longPressDraggableHandle(
                         onDragStarted = { dragHaptics.start() },
@@ -360,6 +427,47 @@ fun ActiveSessionScreen(
                 )
             }
         }
+    }
+
+    // ── Exercise details popup ──────────────────────────────────────────────────
+    // Overlaid above the session list; the workout state (sets, order, timer, notes)
+    // is untouched while it is open or when it is dismissed.
+    detailExercise?.let { exercise ->
+        ExerciseDetailSheet(
+            exercise = exercise,
+            onDismiss = { viewModel.dismissExerciseDetails() },
+        )
+    }
+
+    // ── Discard confirmation ────────────────────────────────────────────────────
+    if (showDiscardDialog) {
+        ConfirmDialog(
+            title = "Discard workout?",
+            body = "This permanently deletes the current session. This can't be undone.",
+            confirmLabel = "Discard",
+            onConfirm = {
+                showDiscardDialog = false
+                scope.launch {
+                    viewModel.discard()
+                    onDiscard()
+                }
+            },
+            onDismiss = { showDiscardDialog = false },
+        )
+    }
+
+    // ── Replace confirmation (only when logged sets would be cleared) ────────────
+    pendingReplacement?.let { (targetSeId, chosenExerciseId, oldName) ->
+        ConfirmDialog(
+            title = "Replace exercise?",
+            body = "You've logged sets for $oldName. Replacing it will clear those sets.",
+            confirmLabel = "Replace",
+            onConfirm = {
+                viewModel.replaceExercise(targetSeId, chosenExerciseId)
+                pendingReplacement = null
+            },
+            onDismiss = { pendingReplacement = null },
+        )
     }
 }
 

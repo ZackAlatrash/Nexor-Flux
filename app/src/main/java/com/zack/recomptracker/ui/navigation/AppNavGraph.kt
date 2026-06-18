@@ -93,6 +93,10 @@ object Routes {
     const val Train          = "train"
     const val ActiveSession  = "active_session"
     const val ExercisePicker = "exercise_picker"
+    // Single composable, optional replaceTargetId arg: omitted (-1) = add mode; >=0 = replace that
+    // session_exercises row. Navigate to ExercisePicker for add, exercisePickerReplace(id) for replace.
+    const val ExercisePickerRoute = "exercise_picker?replaceTargetId={replaceTargetId}"
+    fun exercisePickerReplace(sessionExerciseId: Long) = "exercise_picker?replaceTargetId=$sessionExerciseId"
     const val RoutineBuilder = "routine_builder?workoutId={workoutId}"
     fun routineBuilder(workoutId: Long? = null) = "routine_builder?workoutId=${workoutId ?: -1L}"
     const val SessionSummary = "session_summary/{sessionId}"
@@ -234,6 +238,10 @@ fun AppNavGraph(
             val pickedIds by backStackEntry.savedStateHandle
                 .getStateFlow<LongArray?>("picked_exercise_ids", null)
                 .collectAsStateWithLifecycle()
+            // [targetSessionExerciseId, chosenExerciseId] returned from the picker in replace mode.
+            val replacementResult by backStackEntry.savedStateHandle
+                .getStateFlow<LongArray?>("replacement_result", null)
+                .collectAsStateWithLifecycle()
 
             ActiveSessionScreen(
                 viewModel = viewModel<ActiveSessionViewModel>(factory = factory),
@@ -241,11 +249,23 @@ fun AppNavGraph(
                 onPickedConsumed = {
                     backStackEntry.savedStateHandle.remove<LongArray>("picked_exercise_ids")
                 },
+                replacementResult = replacementResult,
+                onReplacementConsumed = {
+                    backStackEntry.savedStateHandle.remove<LongArray>("replacement_result")
+                },
+                onReplaceExercise = { sessionExerciseId ->
+                    navController.navigate(Routes.exercisePickerReplace(sessionExerciseId))
+                },
                 onAddExercise = { navController.navigate(Routes.ExercisePicker) },
                 onMinimize = { navController.popBackStack() },
                 onFinish = { sid ->
                     navController.navigate(Routes.sessionSummary(sid)) {
                         popUpTo(Routes.Train)
+                    }
+                },
+                onDiscard = {
+                    navController.navigate(Routes.Train) {
+                        popUpTo(Routes.Train) { inclusive = true }
                     }
                 },
                 modifier = Modifier,
@@ -290,10 +310,17 @@ fun AppNavGraph(
             )
         }
         composable(
-            route = Routes.ExercisePicker,
+            route = Routes.ExercisePickerRoute,
+            arguments = listOf(
+                androidx.navigation.navArgument("replaceTargetId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
-        ) {
+        ) { backStackEntry ->
+            val replaceTargetId = backStackEntry.arguments?.getLong("replaceTargetId") ?: -1L
             ExercisePickerScreen(
                 viewModel = viewModel<ExercisePickerViewModel>(factory = factory),
                 onClose = { navController.popBackStack() },
@@ -301,6 +328,13 @@ fun AppNavGraph(
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("picked_exercise_ids", ids.toLongArray())
+                    navController.popBackStack()
+                },
+                replaceMode = replaceTargetId >= 0,
+                onReplacePick = { chosenExerciseId ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("replacement_result", longArrayOf(replaceTargetId, chosenExerciseId))
                     navController.popBackStack()
                 },
                 modifier = Modifier,

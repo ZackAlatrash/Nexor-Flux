@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,6 +75,10 @@ fun ExercisePickerScreen(
     onClose: () -> Unit,
     onConfirm: (List<Long>) -> Unit,
     modifier: Modifier = Modifier,
+    /** When true the picker is single-select: tapping an exercise immediately calls [onReplacePick]
+     *  (the "Add N" button is hidden). Used to replace one exercise in an active session. */
+    replaceMode: Boolean = false,
+    onReplacePick: (Long) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
@@ -107,7 +112,7 @@ fun ExercisePickerScreen(
                         )
                     }
                     Text(
-                        text = "Add exercises",
+                        text = if (replaceMode) "Replace exercise" else "Add exercises",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = appColors.textPrimary,
@@ -293,7 +298,10 @@ fun ExercisePickerScreen(
                     ExercisePickerRow(
                         exercise = exercise,
                         isSelected = exercise.id in state.selected,
-                        onToggle = { viewModel.toggle(exercise.id) },
+                        onToggle = {
+                            if (replaceMode) onReplacePick(exercise.id)
+                            else viewModel.toggle(exercise.id)
+                        },
                         onThumbnailClick = { showDetailFor = exercise },
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                     )
@@ -301,27 +309,31 @@ fun ExercisePickerScreen(
             }
         }
 
-        // ── Sticky "Add N" button ───────────────────────────────────────────────
-        val count = state.selected.size
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            LiquidGlassButton(
-                onClick = { onConfirm(viewModel.selectedExercises()) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = count > 0,
-                tint = accent.accent,
-                surfaceColor = Color.White.copy(alpha = 0.08f),
+        // ── Sticky "Add N" button (add mode only — replace mode confirms on row tap) ──
+        if (!replaceMode) {
+            val count = state.selected.size
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    // Ride just above the keyboard when it's open; rests at the bottom when closed.
+                    .imePadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
-                Text(
-                    text = if (count == 0) "Add exercises" else "Add $count ${if (count == 1) "exercise" else "exercises"}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (count > 0) accent.onAccent else appColors.textMuted,
-                )
+                LiquidGlassButton(
+                    onClick = { onConfirm(viewModel.selectedExercises()) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = count > 0,
+                    tint = accent.accent,
+                    surfaceColor = Color.White.copy(alpha = 0.08f),
+                ) {
+                    Text(
+                        text = if (count == 0) "Add exercises" else "Add $count ${if (count == 1) "exercise" else "exercises"}",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (count > 0) accent.onAccent else appColors.textMuted,
+                    )
+                }
             }
         }
     }
@@ -354,7 +366,10 @@ fun ExercisePickerScreen(
                     onClick = {
                         val name = customName.trim()
                         if (name.isNotEmpty()) {
-                            scope.launch { viewModel.createCustom(name) }
+                            scope.launch {
+                                val id = viewModel.createCustom(name)
+                                if (replaceMode) onReplacePick(id)
+                            }
                             showCreateDialog = false
                             customName = ""
                         }

@@ -486,7 +486,7 @@ private class AppViewModelFactory(
                     },
                     saveCalorieTarget = { target ->
                         val prefs = container.planRepository.preferences.first()
-                        container.planRepository.save(prefs.copy(targetCalories = target))
+                        container.planRepository.save(prefs.withCalorieTarget(target))
                     },
                     markSeen = { signature -> container.uiPreferences.setLastSeenBriefingSignature(signature) },
                     lastSeenSignatureFlow = container.uiPreferences.lastSeenBriefingSignature,

@@ -276,7 +276,8 @@ private fun SessionSetGrid(
                             Text(
                                 text = row.prev ?: "–",
                                 fontSize = 12.sp,
-                                color = appColors.textPrimary,
+                                // Real previous value reads bright; the "–" empty state stays faint.
+                                color = if (row.prev != null) appColors.textPrimary else appColors.textMuted,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                             )

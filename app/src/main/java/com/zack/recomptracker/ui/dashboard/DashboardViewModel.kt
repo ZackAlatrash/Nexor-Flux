@@ -9,6 +9,7 @@ import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
@@ -50,6 +51,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
@@ -86,6 +90,22 @@ data class DashboardUiState(
     val crossMetricContext: CrossMetricContext? = null,
 )
 
+/** Profile visual for the dashboard header avatar. */
+data class HeaderAvatar(val photoUri: String?, val initials: String?)
+
+/**
+ * Derives up-to-two-letter initials from a display name: first + last word's first
+ * letters (or a single letter for one word), uppercased. Null when there's no name.
+ */
+internal fun initialsOf(name: String?): String? {
+    val parts = name?.trim().orEmpty().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    return when {
+        parts.isEmpty() -> null
+        parts.size == 1 -> parts[0].take(1).uppercase()
+        else -> (parts.first().take(1) + parts.last().take(1)).uppercase()
+    }
+}
+
 @OptIn(FlowPreview::class)
 class DashboardViewModel(
     private val logRepository: LogRepository,
@@ -95,7 +115,15 @@ class DashboardViewModel(
     private val adherenceCalculator: AdherenceCalculator,
     private val adjustmentEngine: AdjustmentEngine,
     private val aiInsightCoordinator: AiInsightCoordinator,
+    private val userProfileStore: UserProfilePreferencesStore,
 ) : ViewModel() {
+
+    /** Profile photo + initials for the header avatar; updates live with the profile. */
+    val headerAvatar: StateFlow<HeaderAvatar> =
+        userProfileStore.preferences
+            .map { HeaderAvatar(photoUri = it.profilePhotoUri, initials = initialsOf(it.name)) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HeaderAvatar(null, null))
+
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 

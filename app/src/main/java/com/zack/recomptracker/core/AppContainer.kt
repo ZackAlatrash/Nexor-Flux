@@ -400,6 +400,7 @@ private class AppViewModelFactory(
                 adherenceCalculator = container.adherenceCalculator,
                 adjustmentEngine = container.adjustmentEngine,
                 aiInsightCoordinator = container.aiInsightCoordinator,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             ProgressViewModel::class.java -> ProgressViewModel(
                 logRepository = container.logRepository,

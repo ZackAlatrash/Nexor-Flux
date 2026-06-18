@@ -11,8 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -60,8 +60,8 @@ private val topLevelRoutes = setOf(
     TopLevelDestination.Home.route,
     TopLevelDestination.Body.route,
     TopLevelDestination.Coach.route,
-    TopLevelDestination.More.route,
     Routes.Food,
+    Routes.Train,
 )
 
 // Maps a route string to a 0-based tab index.
@@ -70,7 +70,7 @@ private fun routeToTabIndex(route: String?): Int = when (route) {
     TopLevelDestination.Body.route -> 1
     Routes.Food -> 2
     TopLevelDestination.Coach.route -> 3
-    TopLevelDestination.More.route -> 4
+    Routes.Train -> 4
     else -> 0
 }
 
@@ -79,7 +79,7 @@ private val tabRoutes = listOf(
     TopLevelDestination.Body.route,
     Routes.Food,
     TopLevelDestination.Coach.route,
-    TopLevelDestination.More.route,
+    Routes.Train,
 )
 
 @Composable
@@ -270,10 +270,10 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 Text("Coach", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
 
-                            // More
+                            // Train
                             LiquidBottomTab(
                                 onClick = {
-                                    navController.navigate(TopLevelDestination.More.route) {
+                                    navController.navigate(Routes.Train) {
                                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
@@ -281,12 +281,12 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreHoriz,
-                                    contentDescription = "More",
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = "Train",
                                     tint = appColors.textPrimary,
                                     modifier = Modifier.size(22.dp),
                                 )
-                                Text("More", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
+                                Text("Train", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
                             }
                         }
                     }

@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.zack.recomptracker.data.local.dao.DailyLogDao
 import com.zack.recomptracker.data.local.dao.CatalogFoodDao
+import com.zack.recomptracker.data.local.dao.ExerciseDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
 import com.zack.recomptracker.data.local.dao.PerformanceDao
@@ -15,16 +16,25 @@ import com.zack.recomptracker.data.local.dao.RecipeDao
 import com.zack.recomptracker.data.local.dao.SavedFoodDao
 import com.zack.recomptracker.data.local.dao.SavedMealDao
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
+import com.zack.recomptracker.data.local.dao.WorkoutDao
+import com.zack.recomptracker.data.local.dao.WorkoutSessionDao
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.CatalogFoodEntity
+import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
+import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.RecipeEntity
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
+import com.zack.recomptracker.data.local.entity.SessionExerciseEntity
+import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
+import com.zack.recomptracker.data.local.entity.WorkoutEntity
+import com.zack.recomptracker.data.local.entity.WorkoutExerciseEntity
+import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
 
 @Database(
     entities = [
@@ -38,8 +48,15 @@ import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
         MealSlotEntity::class,
         RecipeEntity::class,
         RecipeIngredientEntity::class,
+        ExerciseEntity::class,
+        WorkoutEntity::class,
+        WorkoutExerciseEntity::class,
+        PlannedSetEntity::class,
+        WorkoutSessionEntity::class,
+        SessionExerciseEntity::class,
+        SessionSetEntity::class,
     ],
-    version = 9,
+    version = 12,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -52,6 +69,9 @@ abstract class RecompDatabase : RoomDatabase() {
     abstract fun weeklyReviewDao(): WeeklyReviewDao
     abstract fun mealSlotDao(): MealSlotDao
     abstract fun recipeDao(): RecipeDao
+    abstract fun exerciseDao(): ExerciseDao
+    abstract fun workoutDao(): WorkoutDao
+    abstract fun workoutSessionDao(): WorkoutSessionDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -146,6 +166,105 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS exercises (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "source TEXT NOT NULL, sourceVersion TEXT NOT NULL, externalId TEXT NOT NULL, " +
+                        "name TEXT NOT NULL, category TEXT, force TEXT, level TEXT, mechanic TEXT, equipment TEXT, " +
+                        "primaryMuscles TEXT NOT NULL, secondaryMuscles TEXT NOT NULL, instructions TEXT NOT NULL, " +
+                        "images TEXT NOT NULL, userCreated INTEGER NOT NULL DEFAULT 0)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_exercises_source_externalId ON exercises (source, externalId)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_exercises_name ON exercises (name)")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS workouts (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "name TEXT NOT NULL, note TEXT, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL)",
+                )
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS workout_exercises (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "workoutId INTEGER NOT NULL, exerciseId INTEGER NOT NULL, " +
+                        "plannedSets INTEGER NOT NULL, targetReps INTEGER, sortOrder INTEGER NOT NULL, note TEXT, " +
+                        "FOREIGN KEY(workoutId) REFERENCES workouts(id) ON DELETE CASCADE, " +
+                        "FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE NO ACTION)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_workoutId ON workout_exercises (workoutId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_exerciseId ON workout_exercises (exerciseId)")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS workout_sessions (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "workoutId INTEGER, workoutName TEXT NOT NULL, date TEXT NOT NULL, " +
+                        "startedAt TEXT NOT NULL, completedAt TEXT, status TEXT NOT NULL, note TEXT, " +
+                        "FOREIGN KEY(workoutId) REFERENCES workouts(id) ON DELETE SET NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_sessions_workoutId ON workout_sessions (workoutId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_sessions_date ON workout_sessions (date)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_sessions_status ON workout_sessions (status)")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS session_exercises (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "sessionId INTEGER NOT NULL, exerciseId INTEGER NOT NULL, exerciseName TEXT NOT NULL, " +
+                        "sortOrder INTEGER NOT NULL, note TEXT, " +
+                        "FOREIGN KEY(sessionId) REFERENCES workout_sessions(id) ON DELETE CASCADE, " +
+                        "FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE NO ACTION)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_session_exercises_sessionId ON session_exercises (sessionId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_session_exercises_exerciseId ON session_exercises (exerciseId)")
+
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS session_sets (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "sessionExerciseId INTEGER NOT NULL, setNumber INTEGER NOT NULL, reps INTEGER NOT NULL, " +
+                        "weightKg REAL, rir INTEGER, completed INTEGER NOT NULL DEFAULT 1, " +
+                        "FOREIGN KEY(sessionExerciseId) REFERENCES session_exercises(id) ON DELETE CASCADE)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_session_sets_sessionExerciseId ON session_sets (sessionExerciseId)")
+            }
+        }
+
+        internal val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS planned_sets (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "workoutExerciseId INTEGER NOT NULL, setNumber INTEGER NOT NULL, " +
+                        "targetReps INTEGER, targetWeightKg REAL, " +
+                        "FOREIGN KEY(workoutExerciseId) REFERENCES workout_exercises(id) ON DELETE CASCADE)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_planned_sets_workoutExerciseId ON planned_sets (workoutExerciseId)")
+                db.execSQL(
+                    "CREATE TABLE workout_exercises_new (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, workoutId INTEGER NOT NULL, " +
+                        "exerciseId INTEGER NOT NULL, sortOrder INTEGER NOT NULL, note TEXT, " +
+                        "FOREIGN KEY(workoutId) REFERENCES workouts(id) ON DELETE CASCADE, " +
+                        "FOREIGN KEY(exerciseId) REFERENCES exercises(id) ON DELETE NO ACTION)",
+                )
+                db.execSQL(
+                    "INSERT INTO workout_exercises_new (id, workoutId, exerciseId, sortOrder, note) " +
+                        "SELECT id, workoutId, exerciseId, sortOrder, note FROM workout_exercises",
+                )
+                db.execSQL("DROP TABLE workout_exercises")
+                db.execSQL("ALTER TABLE workout_exercises_new RENAME TO workout_exercises")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_workoutId ON workout_exercises (workoutId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_exerciseId ON workout_exercises (exerciseId)")
+            }
+        }
+
+        internal val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE workout_sessions ADD COLUMN durationSeconds INTEGER")
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -176,7 +295,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
             .build()
     }
 }

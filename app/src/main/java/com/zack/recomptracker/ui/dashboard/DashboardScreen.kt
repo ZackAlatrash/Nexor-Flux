@@ -21,7 +21,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.animateFloatAsState
@@ -37,11 +40,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ai.AiInsightState
@@ -54,6 +61,7 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.GeneratedInsightCard
+import coil.compose.AsyncImage
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.charts.SparklineChart
@@ -87,6 +95,7 @@ fun HomeDashboardScreen(
     val targetChangeInsightState by viewModel.targetChangeInsightState.collectAsStateWithLifecycle()
     val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
     val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
+    val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
     LaunchedEffect(state.patternInsightContext?.key()) {
         viewModel.onPatternInsightVisible()
     }
@@ -102,8 +111,11 @@ fun HomeDashboardScreen(
 
     HomeDashboardContent(
         state = state,
+        avatarPhotoUri = headerAvatar.photoUri,
+        avatarInitials = headerAvatar.initials,
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+        onOpenSettings = onOpenSettings,
         patternInsightState = patternInsightState,
         onRetryPatternInsight = viewModel::retryPatternInsight,
         targetChangeInsightState = targetChangeInsightState,
@@ -137,9 +149,12 @@ fun HomeDashboardScreen(
 @Composable
 fun HomeDashboardContent(
     state: DashboardUiState,
+    avatarPhotoUri: String? = null,
+    avatarInitials: String? = null,
     modifier: Modifier = Modifier,
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     patternInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryPatternInsight: () -> Unit = {},
     targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
@@ -173,7 +188,12 @@ fun HomeDashboardContent(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp))
+            ScreenHeader(
+                onOpenSettings = onOpenSettings,
+                avatarPhotoUri = avatarPhotoUri,
+                avatarInitials = avatarInitials,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            )
 
             LazyColumn(
                 contentPadding = PaddingValues(
@@ -277,7 +297,12 @@ fun HomeDashboardContent(
 }
 
 @Composable
-private fun ScreenHeader(modifier: Modifier = Modifier) {
+private fun ScreenHeader(
+    onOpenSettings: (() -> Unit)? = null,
+    avatarPhotoUri: String? = null,
+    avatarInitials: String? = null,
+    modifier: Modifier = Modifier,
+) {
     val appColors = LocalAppColors.current
     val today = remember { LocalDate.now() }
     val dateStr = remember(today) {
@@ -286,20 +311,82 @@ private fun ScreenHeader(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.Top,
     ) {
-        Text(
-            text = "Dashboard",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = appColors.textPrimary,
-            letterSpacing = (-0.8).sp,
-        )
-        Text(
-            text = dateStr,
-            fontSize = 12.sp,
-            color = appColors.textMuted,
-        )
+        Column {
+            Text(
+                text = "Dashboard",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = appColors.textPrimary,
+                letterSpacing = (-0.8).sp,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = dateStr,
+                fontSize = 12.sp,
+                color = appColors.textMuted,
+            )
+        }
+        if (onOpenSettings != null) {
+            HeaderProfileButton(
+                photoUri = avatarPhotoUri,
+                initials = avatarInitials,
+                onClick = onOpenSettings,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeaderProfileButton(
+    photoUri: String?,
+    initials: String?,
+    onClick: () -> Unit,
+) {
+    val accent = LocalAppAccent.current
+    val gradient = remember(accent.accent, accent.accentDark) {
+        Brush.linearGradient(listOf(accent.accent, accent.accentDark))
+    }
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "Profile and more" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(gradient)
+                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                photoUri != null -> AsyncImage(
+                    model = photoUri,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                )
+                initials != null -> Text(
+                    text = initials,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = accent.onAccent,
+                )
+                else -> Icon(
+                    imageVector = Icons.Rounded.Person,
+                    contentDescription = null,
+                    tint = accent.onAccent,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
     }
 }
 

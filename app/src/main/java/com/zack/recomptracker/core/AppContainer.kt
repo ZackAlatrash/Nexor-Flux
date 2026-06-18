@@ -10,10 +10,13 @@ import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.AppPreferences
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.BackupRepository
+import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.WorkoutRepository
+import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
@@ -59,6 +62,7 @@ import com.zack.recomptracker.ui.body.BodyEditViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
@@ -72,6 +76,13 @@ import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.today.FoodLogViewModel
 import com.zack.recomptracker.ui.today.TodayViewModel
+import com.zack.recomptracker.ui.train.ActiveSessionViewModel
+import com.zack.recomptracker.ui.train.ExercisePickerViewModel
+import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
+import com.zack.recomptracker.ui.train.SessionDetailViewModel
+import com.zack.recomptracker.ui.train.SessionSummaryViewModel
+import com.zack.recomptracker.ui.train.TrainViewModel
+import com.zack.recomptracker.ui.train.component.MuscleArt
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.RecipeRepository
@@ -129,6 +140,25 @@ class AppContainer(context: Context) {
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
+    val workoutRepository = WorkoutRepository(database.workoutDao())
+    val workoutSessionRepository = WorkoutSessionRepository(database.workoutSessionDao())
+
+    init {
+        appScope.launch {
+            runCatching {
+                exerciseLibraryRepository.seedIfEmpty(ExerciseLibraryRepository.VERSION) {
+                    context.applicationContext.assets.open("exercises/exercises.json")
+                }
+            }.onFailure {
+                Log.w("RecompWorkout", "Exercise library seed failed — library will be empty", it)
+            }
+        }
+        appScope.launch(Dispatchers.IO) {
+            runCatching { MuscleArt.load(context.applicationContext) }
+        }
+    }
+
     val gemmaServiceHolder = GemmaServiceHolder(context)
     val secureKeyStore = SecureKeyStore(context)
     val openAiCompatClient = OpenAiCompatClient()
@@ -370,6 +400,7 @@ private class AppViewModelFactory(
                 adherenceCalculator = container.adherenceCalculator,
                 adjustmentEngine = container.adjustmentEngine,
                 aiInsightCoordinator = container.aiInsightCoordinator,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             ProgressViewModel::class.java -> ProgressViewModel(
                 logRepository = container.logRepository,
@@ -468,6 +499,30 @@ private class AppViewModelFactory(
             RecipeBuilderViewModel::class.java -> RecipeBuilderViewModel(
                 recipeRepository = container.recipeRepository,
                 recipeNamer = container.recipeNamer,
+                savedStateHandle = extras.createSavedStateHandle(),
+            )
+            TrainViewModel::class.java -> TrainViewModel(
+                workoutRepository = container.workoutRepository,
+                sessionRepository = container.workoutSessionRepository,
+            )
+            ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
+                repository = container.exerciseLibraryRepository,
+            )
+            RoutineBuilderViewModel::class.java -> RoutineBuilderViewModel(
+                workoutRepository = container.workoutRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
+            )
+            ActiveSessionViewModel::class.java -> ActiveSessionViewModel(
+                sessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
+            )
+            SessionSummaryViewModel::class.java -> SessionSummaryViewModel(
+                sessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
+            )
+            SessionDetailViewModel::class.java -> SessionDetailViewModel(
+                sessionRepository = container.workoutSessionRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")

@@ -14,8 +14,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.snapshotFlow
+import kotlin.math.abs
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -398,8 +405,8 @@ fun SessionSummaryScreen(
         DurationEditDialog(
             currentSeconds = state.durationSeconds,
             onDismiss = { showDurationDialog = false },
-            onConfirm = { minutes ->
-                viewModel.setDuration(minutes * 60)
+            onConfirm = { totalSeconds ->
+                viewModel.setDuration(totalSeconds)
                 showDurationDialog = false
             },
         )
@@ -412,11 +419,13 @@ fun SessionSummaryScreen(
 private fun DurationEditDialog(
     currentSeconds: Int,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
+    onConfirm: (Int) -> Unit, // total seconds
 ) {
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
-    var minutesText by remember { mutableStateOf((currentSeconds / 60).toString()) }
+    val (initialHours, initialMinutes) = durationToHm(currentSeconds)
+    var hours by remember { mutableStateOf(initialHours) }
+    var minutes by remember { mutableStateOf(initialMinutes) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -428,48 +437,15 @@ private fun DurationEditDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "DURATION (MINUTES)",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = appColors.textMuted,
-                    letterSpacing = 0.4.sp,
-                )
-                var focused by remember { mutableStateOf(false) }
-                val borderColor = if (focused) accent.accent.copy(alpha = 0.55f) else appColors.frostedBorder
-                BasicTextField(
-                    value = minutesText,
-                    onValueChange = { v ->
-                        if (v.all { it.isDigit() } && v.length <= 4) minutesText = v
-                    },
-                    textStyle = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = appColors.textPrimary,
-                    ),
-                    cursorBrush = SolidColor(accent.accentLighter),
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(CornerSmall))
-                        .background(appColors.cardSurface)
-                        .border(1.dp, borderColor, RoundedCornerShape(CornerSmall))
-                        .onFocusChanged { fs -> focused = fs.isFocused }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                )
-            }
+            DurationWheelPicker(
+                hours = hours,
+                minutes = minutes,
+                onHoursChange = { hours = it },
+                onMinutesChange = { minutes = it },
+            )
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    val minutes = minutesText.toIntOrNull() ?: (currentSeconds / 60)
-                    onConfirm(minutes)
-                },
-            ) {
+            TextButton(onClick = { onConfirm(hmToSeconds(hours, minutes)) }) {
                 Text(text = "Set", color = accent.inkLight, fontWeight = FontWeight.SemiBold)
             }
         },
@@ -543,6 +519,127 @@ private fun SummaryNoteField(
             inner()
         },
     )
+}
+
+// ── Duration wheel picker ─────────────────────────────────────────────────────
+
+private val WheelItemHeight = 40.dp
+private const val WheelVisibleCount = 5
+
+@Composable
+private fun WheelPicker(
+    count: Int,
+    selectedIndex: Int,
+    onSelectedChange: (Int) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = selectedIndex.coerceIn(0, (count - 1).coerceAtLeast(0)),
+    )
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    val centeredIndex by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            info.visibleItemsInfo
+                .minByOrNull { abs((it.offset + it.size / 2) - center) }
+                ?.index ?: selectedIndex
+        }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { scrolling -> if (!scrolling) onSelectedChange(centeredIndex) }
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = modifier
+                .width(64.dp)
+                .height(WheelItemHeight * WheelVisibleCount),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Center selection band
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WheelItemHeight)
+                    .clip(RoundedCornerShape(CornerSmall))
+                    .background(accent.tintedSurface)
+                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerSmall)),
+            )
+            LazyColumn(
+                state = listState,
+                flingBehavior = flingBehavior,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                contentPadding = PaddingValues(
+                    vertical = WheelItemHeight * ((WheelVisibleCount - 1) / 2),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items(count) { index ->
+                    val distance = abs(index - centeredIndex)
+                    val alpha = when (distance) {
+                        0 -> 1f
+                        1 -> 0.55f
+                        2 -> 0.3f
+                        else -> 0.15f
+                    }
+                    Box(
+                        modifier = Modifier
+                            .height(WheelItemHeight)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = index.toString(),
+                            fontSize = 20.sp,
+                            fontWeight = if (distance == 0) FontWeight.Bold else FontWeight.Medium,
+                            color = appColors.textPrimary.copy(alpha = alpha),
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            color = appColors.textMuted,
+        )
+    }
+}
+
+@Composable
+private fun DurationWheelPicker(
+    hours: Int,
+    minutes: Int,
+    onHoursChange: (Int) -> Unit,
+    onMinutesChange: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WheelPicker(
+            count = MAX_DURATION_HOURS + 1,
+            selectedIndex = hours,
+            onSelectedChange = onHoursChange,
+            label = "h",
+        )
+        Spacer(Modifier.width(20.dp))
+        WheelPicker(
+            count = 60,
+            selectedIndex = minutes,
+            onSelectedChange = onMinutesChange,
+            label = "min",
+        )
+    }
 }
 
 // ── Formatters ────────────────────────────────────────────────────────────────

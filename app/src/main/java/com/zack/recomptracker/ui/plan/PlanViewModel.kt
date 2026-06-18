@@ -67,7 +67,20 @@ class PlanViewModel(
         }
     }
 
-    fun updateTargetCalories(value: String) = edit { copy(targetCalories = value) }
+    fun updateTargetCalories(value: String) = edit {
+        // Re-centre the calorie zone on the new target so the dashboard/food zone tracks the plan.
+        // A non-numeric in-progress edit leaves the zone at its last valid value.
+        val calories = value.toNullableInt()
+        if (calories != null) {
+            copy(
+                targetCalories = value,
+                calorieZoneLowerBound = (calories - PlanPreferences.CALORIE_ZONE_MARGIN).toString(),
+                calorieZoneUpperBound = (calories + PlanPreferences.CALORIE_ZONE_MARGIN).toString(),
+            )
+        } else {
+            copy(targetCalories = value)
+        }
+    }
     fun updateProtein(value: String) = edit { copy(targetProteinG = value) }
     fun updateCarbs(value: String) = edit { copy(targetCarbsG = value) }
     fun updateFat(value: String) = edit { copy(targetFatG = value) }

@@ -518,6 +518,7 @@ private class AppViewModelFactory(
             )
             SessionSummaryViewModel::class.java -> SessionSummaryViewModel(
                 sessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
             )
             SessionDetailViewModel::class.java -> SessionDetailViewModel(

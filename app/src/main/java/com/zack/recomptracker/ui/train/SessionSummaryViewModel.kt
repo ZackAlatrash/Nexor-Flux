@@ -3,6 +3,7 @@ package com.zack.recomptracker.ui.train
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import java.time.Instant
@@ -21,6 +22,7 @@ data class ExerciseRecap(
     val topSet: String,
     val volume: Double,
     val isPr: Boolean,
+    val primaryMuscles: List<String> = emptyList(),
 )
 
 data class SessionSummaryUiState(
@@ -37,6 +39,7 @@ data class SessionSummaryUiState(
 
 class SessionSummaryViewModel(
     private val sessionRepository: WorkoutSessionRepository,
+    private val exerciseLibraryRepository: ExerciseLibraryRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -128,6 +131,8 @@ class SessionSummaryViewModel(
                 topSet = topSetStr,
                 volume = vol,
                 isPr = isPr,
+                primaryMuscles = exerciseLibraryRepository.getById(ex.exerciseId)?.primaryMuscles
+                    ?: emptyList(),
             )
         }
 

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workout UI — design preview</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+  :root{ --accent:#8B5CF6; --accentLight:#a78bfa; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:#070510; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header.top{ padding:28px 24px 8px; }
+  header.top h1{ font-size:22px; font-weight:600; margin:0 0 4px; }
+  header.top p{ color:rgba(255,255,255,0.5); font-size:14px; margin:0; }
+  .gallery{ display:flex; flex-wrap:wrap; gap:28px; padding:24px; align-items:flex-start; }
+  .screen{ width:340px; }
+  .screen .label{ font-size:13px; font-weight:600; color:var(--accentLight); margin:0 0 2px; letter-spacing:0.3px; }
+  .screen .sub{ font-size:12px; color:rgba(255,255,255,0.45); margin:0 0 10px; line-height:1.5; }
+  .phone{ width:330px; background:#0D0818; border-radius:30px; padding:14px 0 8px; border:1px solid rgba(255,255,255,0.10); overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.5); }
+  .pending{ border:1px dashed rgba(167,139,250,0.5); border-radius:16px; padding:22px 16px; color:var(--accentLight); font-size:13px; text-align:center; background:rgba(139,92,246,0.06); margin:8px 14px; }
+  .ti{ line-height:1; }
+  .ghdr{ color:rgba(255,255,255,0.4); font-size:11px; letter-spacing:0.5px; }
+  .cellnum{ background:rgba(255,255,255,0.06); border-radius:9px; height:38px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:500; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Workout UI — design preview</h1>
+  <p>Recomp Tracker · dark glass theme · violet accent. Refresh as screens are added.</p>
+</header>
+<div class="gallery">
+
+  <!-- ============ SCREEN 1 — TRAIN HOME ============ -->
+  <section class="screen">
+    <p class="label">1 · TRAIN HOME</p>
+    <p class="sub">Routines list + Routines/History toggle + resume banner. Locked.</p>
+    <div class="phone">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 16px 12px;">
+        <span style="color:#fff; font-size:21px; font-weight:500;">Train</span>
+        <span style="width:34px; height:34px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center;"><i class="ti ti-plus" style="color:#fff; font-size:19px;"></i></span>
+      </div>
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.05); border-radius:100px; padding:4px; display:flex;">
+        <span style="flex:1; text-align:center; background:#8B5CF6; color:#fff; font-size:13px; font-weight:500; padding:8px 0; border-radius:100px;">Routines</span>
+        <span style="flex:1; text-align:center; color:rgba(255,255,255,0.55); font-size:13px; padding:8px 0;">History</span>
+      </div>
+      <div style="margin:0 14px 14px; background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.35); border-radius:16px; padding:11px 13px; display:flex; align-items:center; gap:10px;">
+        <i class="ti ti-player-play" style="color:#a78bfa; font-size:20px;"></i>
+        <div style="flex:1;">
+          <div style="color:#fff; font-size:13px; font-weight:500;">Resume “Push”</div>
+          <div style="color:rgba(255,255,255,0.5); font-size:11px;">In progress · 12:04 · 3 of 6 done</div>
+        </div>
+        <i class="ti ti-chevron-right" style="color:rgba(255,255,255,0.5); font-size:18px;"></i>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:0 16px 8px;">
+        <span style="color:rgba(255,255,255,0.55); font-size:12px; letter-spacing:0.4px;">MY ROUTINES · 2</span>
+      </div>
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:13px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div><div style="color:#fff; font-size:16px; font-weight:500;">Push</div>
+          <div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:1px;">6 exercises · 19 sets</div></div>
+          <i class="ti ti-dots-vertical" style="color:rgba(255,255,255,0.4); font-size:17px;"></i>
+        </div>
+        <div style="margin-top:11px; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:10px;"><span style="width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:16px;"></i></span><span style="color:rgba(255,255,255,0.85); font-size:13px; flex:1;">Cable Lateral Raise</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">4 sets</span></div>
+          <div style="display:flex; align-items:center; gap:10px;"><span style="width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:16px;"></i></span><span style="color:rgba(255,255,255,0.85); font-size:13px; flex:1;">Iso-Lateral Shoulder Press</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">3 sets</span></div>
+          <div style="display:flex; align-items:center; gap:10px;"><span style="width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:16px;"></i></span><span style="color:rgba(255,255,255,0.85); font-size:13px; flex:1;">Incline Bench Press</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">3 sets</span></div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px;">
+          <span style="color:rgba(255,255,255,0.4); font-size:11px;">and 3 more</span>
+          <span style="background:#8B5CF6; color:#fff; font-size:13px; font-weight:500; padding:8px 22px; border-radius:100px; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-player-play" style="font-size:15px;"></i>Start</span>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-around; align-items:center; padding:10px 8px 4px; border-top:1px solid rgba(255,255,255,0.07);">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;"><i class="ti ti-home" style="color:rgba(255,255,255,0.4); font-size:20px;"></i><span style="color:rgba(255,255,255,0.4); font-size:9px;">Home</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;"><i class="ti ti-activity-heartbeat" style="color:rgba(255,255,255,0.4); font-size:20px;"></i><span style="color:rgba(255,255,255,0.4); font-size:9px;">Body</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;"><i class="ti ti-apple" style="color:rgba(255,255,255,0.4); font-size:20px;"></i><span style="color:rgba(255,255,255,0.4); font-size:9px;">Food</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;"><i class="ti ti-message-chatbot" style="color:rgba(255,255,255,0.4); font-size:20px;"></i><span style="color:rgba(255,255,255,0.4); font-size:9px;">Coach</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;"><span style="width:38px; height:26px; border-radius:100px; background:rgba(139,92,246,0.18); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:20px;"></i></span><span style="color:#a78bfa; font-size:9px;">Train</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 4 — ACTIVE SESSION (Liftoff-faithful) ============ -->
+  <section class="screen">
+    <p class="label">4 · ACTIVE SESSION</p>
+    <p class="sub">Liftoff layout in our theme: elapsed timer + finish, exercise cards, SET·PREV·KG·REPS·✓ grid, completed rows tint the theme accent, +Add set, +Exercise. Rank band dropped. Tap a set row → reveal optional RIR.</p>
+    <div class="phone">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 14px 14px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <i class="ti ti-chevron-down" style="color:rgba(255,255,255,0.7); font-size:22px;"></i>
+          <i class="ti ti-stopwatch" style="color:rgba(255,255,255,0.7); font-size:21px;"></i>
+        </div>
+        <span style="color:#fff; font-size:24px; font-weight:500; font-variant-numeric:tabular-nums;">12:04</span>
+        <span style="width:36px; height:36px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center;"><i class="ti ti-flag-check" style="color:#fff; font-size:19px;"></i></span>
+      </div>
+
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 13px;">
+        <span style="color:rgba(255,255,255,0.4); font-size:13px;">Your workout notes…</span>
+      </div>
+
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:10px; padding:11px 12px;">
+          <span style="width:36px; height:36px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:18px;"></i></span>
+          <span style="flex:1; color:#fff; font-size:15px; font-weight:500;">Cable Lateral Raise</span>
+          <i class="ti ti-chevron-up" style="color:#a78bfa; font-size:19px;"></i>
+          <i class="ti ti-dots-vertical" style="color:rgba(255,255,255,0.45); font-size:18px;"></i>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 58px 1fr 1fr 34px; gap:6px; padding:12px 13px 4px; border-top:1px solid rgba(255,255,255,0.06);">
+          <span class="ghdr">SET</span><span class="ghdr">PREV</span><span class="ghdr" style="text-align:center;">KG</span><span class="ghdr" style="text-align:center;">REPS</span><span></span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:26px 58px 1fr 1fr 34px; gap:6px; align-items:center; padding:5px 13px; margin:0 6px; background:rgba(139,92,246,0.16); border-radius:10px;">
+          <span style="color:#fff; font-size:15px; font-weight:500; text-align:center;">1</span>
+          <span style="color:rgba(255,255,255,0.4); font-size:12px;">10×15</span>
+          <span style="text-align:center; color:#fff; font-size:15px;">10</span>
+          <span style="text-align:center; color:#fff; font-size:15px;">15</span>
+          <span style="width:30px; height:30px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#fff; font-size:17px;"></i></span>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 58px 1fr 1fr 34px; gap:6px; align-items:center; padding:5px 13px; margin:4px 6px 0; background:rgba(139,92,246,0.16); border-radius:10px;">
+          <span style="color:#fff; font-size:15px; font-weight:500; text-align:center;">2</span>
+          <span style="color:rgba(255,255,255,0.4); font-size:12px;">10×15</span>
+          <span style="text-align:center; color:#fff; font-size:15px;">10</span>
+          <span style="text-align:center; color:#fff; font-size:15px;">15</span>
+          <span style="width:30px; height:30px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#fff; font-size:17px;"></i></span>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 58px 1fr 1fr 34px; gap:6px; align-items:center; padding:5px 13px; margin:6px 6px 0;">
+          <span style="color:#fff; font-size:15px; font-weight:500; text-align:center;">3</span>
+          <span style="color:rgba(255,255,255,0.4); font-size:12px;">10×15</span>
+          <span class="cellnum">10</span>
+          <span class="cellnum">15</span>
+          <span style="width:30px; height:30px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:rgba(255,255,255,0.3); font-size:16px;"></i></span>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 58px 1fr 1fr 34px; gap:6px; align-items:center; padding:5px 13px; margin:6px 6px 0;">
+          <span style="color:#fff; font-size:15px; font-weight:500; text-align:center;">4</span>
+          <span style="color:rgba(255,255,255,0.4); font-size:12px;">7.5×15</span>
+          <span class="cellnum" style="color:rgba(255,255,255,0.35);">—</span>
+          <span class="cellnum" style="color:rgba(255,255,255,0.35);">—</span>
+          <span style="width:30px; height:30px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:rgba(255,255,255,0.3); font-size:16px;"></i></span>
+        </div>
+
+        <div style="margin:10px 6px 10px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:9px; text-align:center; color:rgba(255,255,255,0.7); font-size:13px;"><i class="ti ti-plus" style="font-size:14px; vertical-align:-2px;"></i> Add set</div>
+      </div>
+
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:11px 12px; display:flex; align-items:center; gap:10px;">
+        <span style="width:36px; height:36px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:18px;"></i></span>
+        <span style="flex:1; color:#fff; font-size:15px; font-weight:500;">Iso-Lateral Shoulder Press</span>
+        <i class="ti ti-chevron-down" style="color:rgba(255,255,255,0.5); font-size:19px;"></i>
+        <i class="ti ti-dots-vertical" style="color:rgba(255,255,255,0.45); font-size:18px;"></i>
+      </div>
+
+      <div style="margin:4px 14px 10px; background:#8B5CF6; border-radius:14px; padding:13px; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <i class="ti ti-plus" style="color:#fff; font-size:18px;"></i>
+        <span style="color:#fff; font-size:14px; font-weight:500;">Exercise</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACCENT TINT ACROSS THEMES ============ -->
+  <section class="screen">
+    <p class="label">✓ COMPLETED-SET TINT · ACROSS THEMES</p>
+    <p class="sub">The done-row tint + check follow the active accent, so it harmonizes with every theme instead of a fixed green.</p>
+    <div class="phone" style="padding:16px 12px;">
+
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;"><span style="width:12px; height:12px; border-radius:4px; background:#8B5CF6;"></span><span style="color:rgba(255,255,255,0.75); font-size:12px;">Violet (default)</span></div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:6px;">
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; background:rgba(139,92,246,0.16); border-radius:9px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="text-align:center; color:#fff; font-size:14px;">10</span><span style="text-align:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#fff; font-size:15px;"></i></span></div>
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; margin-top:5px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">10</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); margin-left:auto;"></span></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;"><span style="width:12px; height:12px; border-radius:4px; background:#06B6D4;"></span><span style="color:rgba(255,255,255,0.75); font-size:12px;">Cyan</span></div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:6px;">
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; background:rgba(6,182,212,0.16); border-radius:9px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="text-align:center; color:#fff; font-size:14px;">10</span><span style="text-align:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; background:#06B6D4; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#fff; font-size:15px;"></i></span></div>
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; margin-top:5px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">10</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); margin-left:auto;"></span></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;"><span style="width:12px; height:12px; border-radius:4px; background:#10B981;"></span><span style="color:rgba(255,255,255,0.75); font-size:12px;">Emerald</span></div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:6px;">
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; background:rgba(16,185,129,0.16); border-radius:9px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="text-align:center; color:#fff; font-size:14px;">10</span><span style="text-align:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; background:#10B981; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#fff; font-size:15px;"></i></span></div>
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; margin-top:5px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">10</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); margin-left:auto;"></span></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;"><span style="width:12px; height:12px; border-radius:4px; background:#F59E0B;"></span><span style="color:rgba(255,255,255,0.75); font-size:12px;">Amber (pale → dark check ink)</span></div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:6px;">
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; background:rgba(245,158,11,0.16); border-radius:9px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="text-align:center; color:#fff; font-size:14px;">10</span><span style="text-align:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; background:#F59E0B; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#141019; font-size:15px;"></i></span></div>
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; margin-top:5px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">10</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); margin-left:auto;"></span></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;"><span style="width:12px; height:12px; border-radius:4px; background:#F43F5E;"></span><span style="color:rgba(255,255,255,0.75); font-size:12px;">Rose</span></div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:6px;">
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; background:rgba(244,63,94,0.16); border-radius:9px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="text-align:center; color:#fff; font-size:14px;">10</span><span style="text-align:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; background:#F43F5E; display:flex; align-items:center; justify-content:center; margin-left:auto;"><i class="ti ti-check" style="color:#fff; font-size:15px;"></i></span></div>
+          <div style="display:grid; grid-template-columns:24px 56px 1fr 1fr 32px; gap:6px; align-items:center; padding:5px 11px; margin-top:5px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">10×15</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">10</span><span style="background:rgba(255,255,255,0.06); border-radius:8px; height:34px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;">15</span><span style="width:27px; height:27px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25); margin-left:auto;"></span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 2 — ROUTINE BUILDER ============ -->
+  <section class="screen">
+    <p class="label">2 · ROUTINE BUILDER</p>
+    <p class="sub">Liftoff-style per-set grid in plan mode. KG + REPS targets are OPTIONAL — leave blank to just define the set count (2nd exercise shows empty targets). Drag to reorder, ⋮ to replace/remove. Backend: planned_sets(targetReps?, targetWeightKg?) both nullable.</p>
+    <div class="phone">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 14px 14px;">
+        <i class="ti ti-x" style="color:rgba(255,255,255,0.7); font-size:22px;"></i>
+        <span style="color:#fff; font-size:16px; font-weight:500;">New routine</span>
+        <span style="background:#8B5CF6; color:#fff; font-size:13px; font-weight:500; padding:7px 16px; border-radius:100px;">Save</span>
+      </div>
+      <div style="margin:0 14px 8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px 13px;">
+        <span style="color:#fff; font-size:16px; font-weight:500;">Push</span>
+      </div>
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:11px 13px;">
+        <span style="color:rgba(255,255,255,0.4); font-size:13px;">Add a note (optional)…</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:0 16px 8px;">
+        <span style="color:rgba(255,255,255,0.55); font-size:12px; letter-spacing:0.4px;">EXERCISES · 2</span>
+        <span style="color:rgba(255,255,255,0.4); font-size:11px;">7 sets total</span>
+      </div>
+
+      <div style="margin:0 14px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:11px 12px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <i class="ti ti-grip-vertical" style="color:rgba(255,255,255,0.3); font-size:18px;"></i>
+          <span style="width:34px; height:34px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:17px;"></i></span>
+          <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Cable Lateral Raise</div><div style="color:rgba(255,255,255,0.4); font-size:11px; margin-top:1px;">Shoulders · cable</div></div>
+          <i class="ti ti-dots-vertical" style="color:rgba(255,255,255,0.45); font-size:17px;"></i>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:11px 4px 4px 28px;">
+          <span class="ghdr">SET</span><span class="ghdr" style="text-align:center;">KG</span><span class="ghdr" style="text-align:center;">REPS</span>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:3px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span class="cellnum">10</span><span class="cellnum">15</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:6px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span class="cellnum">10</span><span class="cellnum">15</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:6px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">3</span><span class="cellnum">10</span><span class="cellnum">15</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:6px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">4</span><span class="cellnum">7.5</span><span class="cellnum">15</span></div>
+        <div style="margin:9px 4px 0 28px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:8px; text-align:center; color:rgba(255,255,255,0.7); font-size:12px;"><i class="ti ti-plus" style="font-size:13px; vertical-align:-2px;"></i> Add set</div>
+      </div>
+
+      <div style="margin:0 14px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:11px 12px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <i class="ti ti-grip-vertical" style="color:rgba(255,255,255,0.3); font-size:18px;"></i>
+          <span style="width:34px; height:34px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:17px;"></i></span>
+          <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Incline Bench Press</div><div style="color:rgba(255,255,255,0.4); font-size:11px; margin-top:1px;">Chest · barbell</div></div>
+          <i class="ti ti-dots-vertical" style="color:rgba(255,255,255,0.45); font-size:17px;"></i>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:11px 4px 4px 28px;">
+          <span class="ghdr">SET</span><span class="ghdr" style="text-align:center;">KG</span><span class="ghdr" style="text-align:center;">REPS</span>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:3px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">1</span><span class="cellnum" style="color:rgba(255,255,255,0.22);">–</span><span class="cellnum" style="color:rgba(255,255,255,0.22);">–</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:6px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">2</span><span class="cellnum" style="color:rgba(255,255,255,0.22);">–</span><span class="cellnum" style="color:rgba(255,255,255,0.22);">–</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; padding:6px 4px 0 28px;"><span style="color:#fff; font-size:14px; font-weight:500; text-align:center;">3</span><span class="cellnum" style="color:rgba(255,255,255,0.22);">–</span><span class="cellnum" style="color:rgba(255,255,255,0.22);">–</span></div>
+        <div style="margin:9px 4px 0 28px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:8px; text-align:center; color:rgba(255,255,255,0.7); font-size:12px;"><i class="ti ti-plus" style="font-size:13px; vertical-align:-2px;"></i> Add set</div>
+      </div>
+
+      <div style="margin:4px 14px 8px; background:#8B5CF6; border-radius:14px; padding:13px; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <i class="ti ti-plus" style="color:#fff; font-size:18px;"></i>
+        <span style="color:#fff; font-size:14px; font-weight:500;">Add exercise</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 3 — EXERCISE PICKER ============ -->
+  <section class="screen">
+    <p class="label">3 · EXERCISE PICKER</p>
+    <p class="sub">Search the ~870 library + filter chips (muscle/equipment), multi-select with thumbnails. Tap a row’s image → exercise detail (instructions/images). Sticky “Add N”. Reached from builder & +Exercise.</p>
+    <div class="phone">
+      <div style="display:flex; align-items:center; gap:12px; padding:6px 14px 12px;">
+        <i class="ti ti-x" style="color:rgba(255,255,255,0.7); font-size:22px;"></i>
+        <span style="color:#fff; font-size:16px; font-weight:500;">Add exercises</span>
+      </div>
+
+      <div style="margin:0 14px 11px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:9px;">
+        <i class="ti ti-search" style="color:rgba(255,255,255,0.45); font-size:17px;"></i>
+        <span style="color:rgba(255,255,255,0.4); font-size:14px;">Search exercises…</span>
+      </div>
+
+      <div style="display:flex; gap:7px; padding:0 14px 12px; overflow:hidden;">
+        <span style="background:#8B5CF6; color:#fff; font-size:12px; font-weight:500; padding:6px 13px; border-radius:20px; white-space:nowrap;">All</span>
+        <span style="background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.65); font-size:12px; padding:6px 13px; border-radius:20px; white-space:nowrap;">Chest</span>
+        <span style="background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.65); font-size:12px; padding:6px 13px; border-radius:20px; white-space:nowrap;">Back</span>
+        <span style="background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.65); font-size:12px; padding:6px 13px; border-radius:20px; white-space:nowrap;">Legs</span>
+        <span style="background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.65); font-size:12px; padding:6px 9px; border-radius:20px; white-space:nowrap; display:flex; align-items:center;"><i class="ti ti-dots" style="font-size:13px;"></i></span>
+      </div>
+
+      <div style="margin:0 14px 9px; background:rgba(139,92,246,0.14); border:1px solid rgba(139,92,246,0.4); border-radius:14px; padding:10px 11px; display:flex; align-items:center; gap:11px;">
+        <span style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:20px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Incline Bench Press</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px;">Chest · barbell</div></div>
+        <span style="width:26px; height:26px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center;"><i class="ti ti-check" style="color:#fff; font-size:15px;"></i></span>
+      </div>
+
+      <div style="margin:0 14px 9px; background:rgba(139,92,246,0.14); border:1px solid rgba(139,92,246,0.4); border-radius:14px; padding:10px 11px; display:flex; align-items:center; gap:11px;">
+        <span style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:20px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Cable Lateral Raise</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px;">Shoulders · cable</div></div>
+        <span style="width:26px; height:26px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center;"><i class="ti ti-check" style="color:#fff; font-size:15px;"></i></span>
+      </div>
+
+      <div style="margin:0 14px 9px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px 11px; display:flex; align-items:center; gap:11px;">
+        <span style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:20px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Lat Pulldown</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px;">Back · cable</div></div>
+        <span style="width:26px; height:26px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25);"></span>
+      </div>
+
+      <div style="margin:0 14px 9px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px 11px; display:flex; align-items:center; gap:11px;">
+        <span style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:20px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Seated Cable Row</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px;">Back · cable</div></div>
+        <span style="width:26px; height:26px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25);"></span>
+      </div>
+
+      <div style="margin:0 14px 9px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px 11px; display:flex; align-items:center; gap:11px;">
+        <span style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:20px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:14px; font-weight:500;">Lying Tricep Extension</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px;">Triceps · barbell</div></div>
+        <span style="width:26px; height:26px; border-radius:100px; border:1.5px solid rgba(255,255,255,0.25);"></span>
+      </div>
+
+      <div style="margin:6px 14px 8px; background:#8B5CF6; border-radius:100px; padding:13px; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <i class="ti ti-plus" style="color:#fff; font-size:17px;"></i>
+        <span style="color:#fff; font-size:14px; font-weight:500;">Add 2 exercises</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 5 — SESSION SUMMARY ============ -->
+  <section class="screen">
+    <p class="label">5 · SESSION SUMMARY</p>
+    <p class="sub">After finish (→): review + save. Editable duration (tap pencil), volume/sets/PRs, per-exercise recap with PR badges, session note. Save → completeSession with the (possibly edited) duration.</p>
+    <div class="phone" style="padding:16px 0;">
+      <div style="text-align:center; padding:6px 16px 16px;">
+        <span style="width:52px; height:52px; border-radius:100px; background:rgba(139,92,246,0.16); display:inline-flex; align-items:center; justify-content:center;"><i class="ti ti-flag-check" style="color:#a78bfa; font-size:26px;"></i></span>
+        <div style="color:#fff; font-size:18px; font-weight:500; margin-top:10px;">Workout complete</div>
+        <div style="color:rgba(255,255,255,0.45); font-size:12px; margin-top:2px;">Push · Tue, Jun 17</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 14px 14px;">
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; position:relative;">
+          <div style="color:rgba(255,255,255,0.5); font-size:11px;">Duration</div>
+          <div style="color:#fff; font-size:21px; font-weight:500; margin-top:3px;">52 min</div>
+          <i class="ti ti-pencil" style="color:#a78bfa; font-size:15px; position:absolute; top:12px; right:12px;"></i>
+        </div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px;">
+          <div style="color:rgba(255,255,255,0.5); font-size:11px;">Total volume</div>
+          <div style="color:#fff; font-size:21px; font-weight:500; margin-top:3px;">8,420 <span style="font-size:13px; color:rgba(255,255,255,0.5);">kg</span></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px;">
+          <div style="color:rgba(255,255,255,0.5); font-size:11px;">Sets</div>
+          <div style="color:#fff; font-size:21px; font-weight:500; margin-top:3px;">14</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px;">
+          <div style="color:rgba(255,255,255,0.5); font-size:11px;">New PRs</div>
+          <div style="color:#a78bfa; font-size:21px; font-weight:500; margin-top:3px;">2</div>
+        </div>
+      </div>
+
+      <div style="padding:0 16px 8px;"><span style="color:rgba(255,255,255,0.55); font-size:12px; letter-spacing:0.4px;">EXERCISES</span></div>
+      <div style="margin:0 14px 9px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:11px 12px; display:flex; align-items:center; gap:11px;">
+        <span style="width:36px; height:36px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:18px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:13px; font-weight:500;">Cable Lateral Raise</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:1px;">4 sets · top 10×15 · 600 kg</div></div>
+        <span style="background:rgba(139,92,246,0.2); color:#a78bfa; font-size:10px; font-weight:500; padding:4px 9px; border-radius:20px;">PR</span>
+      </div>
+      <div style="margin:0 14px 9px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:11px 12px; display:flex; align-items:center; gap:11px;">
+        <span style="width:36px; height:36px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:18px;"></i></span>
+        <div style="flex:1;"><div style="color:#fff; font-size:13px; font-weight:500;">Incline Bench Press</div><div style="color:rgba(255,255,255,0.45); font-size:11px; margin-top:1px;">3 sets · top 60×8 · 1,440 kg</div></div>
+      </div>
+
+      <div style="margin:6px 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:11px 13px;">
+        <span style="color:rgba(255,255,255,0.4); font-size:13px;">Add a note about this workout…</span>
+      </div>
+
+      <div style="margin:0 14px 8px; background:#8B5CF6; border-radius:100px; padding:13px; text-align:center; color:#fff; font-size:14px; font-weight:500;">Save workout</div>
+      <div style="text-align:center; color:#fb7185; font-size:12px;">Discard</div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 6 — WORKOUT HISTORY ============ -->
+  <section class="screen">
+    <p class="label">6 · WORKOUT HISTORY</p>
+    <p class="sub">The History toggle on Train Home: completed sessions newest-first. Tap a card → session detail (6b).</p>
+    <div class="phone">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 16px 12px;">
+        <span style="color:#fff; font-size:21px; font-weight:500;">Train</span>
+        <span style="width:34px; height:34px; border-radius:100px; background:#8B5CF6; display:flex; align-items:center; justify-content:center;"><i class="ti ti-plus" style="color:#fff; font-size:19px;"></i></span>
+      </div>
+      <div style="margin:0 14px 14px; background:rgba(255,255,255,0.05); border-radius:100px; padding:4px; display:flex;">
+        <span style="flex:1; text-align:center; color:rgba(255,255,255,0.55); font-size:13px; padding:8px 0;">Routines</span>
+        <span style="flex:1; text-align:center; background:#8B5CF6; color:#fff; font-size:13px; font-weight:500; padding:8px 0; border-radius:100px;">History</span>
+      </div>
+
+      <div style="padding:0 16px 8px;"><span style="color:rgba(255,255,255,0.55); font-size:12px; letter-spacing:0.4px;">JUNE</span></div>
+
+      <div style="margin:0 14px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:13px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="color:#fff; font-size:15px; font-weight:500;">Push</span>
+          <span style="display:flex; align-items:center; gap:7px;"><span style="background:rgba(139,92,246,0.2); color:#a78bfa; font-size:10px; font-weight:500; padding:3px 8px; border-radius:20px;">2 PR</span><span style="color:rgba(255,255,255,0.4); font-size:11px;">Tue, Jun 17</span></span>
+        </div>
+        <div style="display:flex; gap:14px; margin-top:9px; color:rgba(255,255,255,0.55); font-size:12px;">
+          <span><i class="ti ti-clock" style="font-size:13px; vertical-align:-2px;"></i> 52 min</span>
+          <span><i class="ti ti-stack-2" style="font-size:13px; vertical-align:-2px;"></i> 14 sets</span>
+          <span><i class="ti ti-weight" style="font-size:13px; vertical-align:-2px;"></i> 8,420 kg</span>
+        </div>
+      </div>
+
+      <div style="margin:0 14px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:13px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="color:#fff; font-size:15px; font-weight:500;">Pull</span>
+          <span style="color:rgba(255,255,255,0.4); font-size:11px;">Sun, Jun 15</span>
+        </div>
+        <div style="display:flex; gap:14px; margin-top:9px; color:rgba(255,255,255,0.55); font-size:12px;">
+          <span><i class="ti ti-clock" style="font-size:13px; vertical-align:-2px;"></i> 55 min</span>
+          <span><i class="ti ti-stack-2" style="font-size:13px; vertical-align:-2px;"></i> 16 sets</span>
+          <span><i class="ti ti-weight" style="font-size:13px; vertical-align:-2px;"></i> 9,100 kg</span>
+        </div>
+      </div>
+
+      <div style="margin:0 14px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:13px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="color:#fff; font-size:15px; font-weight:500;">Push</span>
+          <span style="color:rgba(255,255,255,0.4); font-size:11px;">Thu, Jun 12</span>
+        </div>
+        <div style="display:flex; gap:14px; margin-top:9px; color:rgba(255,255,255,0.55); font-size:12px;">
+          <span><i class="ti ti-clock" style="font-size:13px; vertical-align:-2px;"></i> 50 min</span>
+          <span><i class="ti ti-stack-2" style="font-size:13px; vertical-align:-2px;"></i> 14 sets</span>
+          <span><i class="ti ti-weight" style="font-size:13px; vertical-align:-2px;"></i> 8,150 kg</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 6b — SESSION DETAIL + PROGRESS ============ -->
+  <section class="screen">
+    <p class="label">6b · SESSION DETAIL + EXERCISE PROGRESS</p>
+    <p class="sub">Read-only breakdown of a past session (exercises + logged sets), plus a per-exercise progress sparkline (est 1RM over time) — the AI-friendly progress view.</p>
+    <div class="phone">
+      <div style="display:flex; align-items:center; gap:12px; padding:6px 14px 14px;">
+        <i class="ti ti-chevron-left" style="color:rgba(255,255,255,0.7); font-size:22px;"></i>
+        <div><div style="color:#fff; font-size:16px; font-weight:500;">Push</div><div style="color:rgba(255,255,255,0.45); font-size:11px;">Tue, Jun 17 · 52 min · 8,420 kg</div></div>
+      </div>
+
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:11px 12px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span style="width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center;"><i class="ti ti-barbell" style="color:#a78bfa; font-size:16px;"></i></span>
+          <span style="flex:1; color:#fff; font-size:14px; font-weight:500;">Cable Lateral Raise</span>
+          <span style="background:rgba(139,92,246,0.2); color:#a78bfa; font-size:10px; font-weight:500; padding:3px 8px; border-radius:20px;">PR</span>
+        </div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:0 4px 4px 8px;"><span class="ghdr">SET</span><span class="ghdr" style="text-align:center;">KG</span><span class="ghdr" style="text-align:center;">REPS</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:2px 4px 2px 8px;"><span style="color:#fff; font-size:13px; text-align:center;">1</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">10</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">15</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:2px 4px 2px 8px;"><span style="color:#fff; font-size:13px; text-align:center;">2</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">10</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">15</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:2px 4px 2px 8px;"><span style="color:#fff; font-size:13px; text-align:center;">3</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">10</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">15</span></div>
+        <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; padding:2px 4px 2px 8px;"><span style="color:#fff; font-size:13px; text-align:center;">4</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">7.5</span><span style="text-align:center; color:rgba(255,255,255,0.8); font-size:13px;">15</span></div>
+      </div>
+
+      <div style="margin:0 14px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:13px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <span style="color:rgba(255,255,255,0.7); font-size:12px;">Cable Lateral Raise · est 1RM</span>
+          <span style="color:#a78bfa; font-size:12px; font-weight:500;">+12% · 90d</span>
+        </div>
+        <svg viewBox="0 0 290 72" width="100%" height="72" preserveAspectRatio="none">
+          <line x1="0" y1="64" x2="290" y2="64" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <polyline points="6,56 64,50 122,44 180,34 238,24 284,14" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="284" cy="14" r="4" fill="#a78bfa"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

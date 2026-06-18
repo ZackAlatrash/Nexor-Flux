@@ -20,6 +20,9 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+/** Per-exercise visual info resolved from the library for the active session. */
+data class ExerciseVisual(val imagePath: String?, val primaryMuscles: List<String>)
+
 class ActiveSessionViewModel(
     private val sessionRepository: WorkoutSessionRepository,
     private val exerciseLibraryRepository: ExerciseLibraryRepository,
@@ -48,14 +51,37 @@ class ActiveSessionViewModel(
     private val _prevMap = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
     val prevMap: StateFlow<Map<Long, List<String>>> = _prevMap
 
+    /** Map of exerciseId → resolved image path + primary muscles, for thumbnails. */
+    private val _exerciseVisuals = MutableStateFlow<Map<Long, ExerciseVisual>>(emptyMap())
+    val exerciseVisuals: StateFlow<Map<Long, ExerciseVisual>> = _exerciseVisuals
+
     init {
         viewModelScope.launch {
             session.collect { s ->
                 if (s != null && s.workoutId != null && _prevMap.value.isEmpty()) {
                     loadPrevMap(s.workoutId)
                 }
+                if (s != null) {
+                    resolveVisuals(s)
+                }
             }
         }
+    }
+
+    private suspend fun resolveVisuals(session: WorkoutSession) {
+        val current = _exerciseVisuals.value
+        val missing = session.exercises.map { it.exerciseId }.distinct()
+            .filter { it !in current }
+        if (missing.isEmpty()) return
+        val resolved = current.toMutableMap()
+        missing.forEach { id ->
+            val ex = exerciseLibraryRepository.getById(id)
+            resolved[id] = ExerciseVisual(
+                imagePath = ex?.images?.firstOrNull(),
+                primaryMuscles = ex?.primaryMuscles ?: emptyList(),
+            )
+        }
+        _exerciseVisuals.value = resolved
     }
 
     private suspend fun loadPrevMap(workoutId: Long) {

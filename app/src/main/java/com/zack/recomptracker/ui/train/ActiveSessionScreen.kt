@@ -88,6 +88,7 @@ fun ActiveSessionScreen(
     val session by viewModel.session.collectAsStateWithLifecycle()
     val elapsed by viewModel.elapsed.collectAsStateWithLifecycle()
     val prevMap by viewModel.prevMap.collectAsStateWithLifecycle()
+    val exerciseVisuals by viewModel.exerciseVisuals.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
@@ -250,9 +251,11 @@ fun ActiveSessionScreen(
         // ── Exercise cards ────────────────────────────────────────────────────
         items(displayExercises, key = { it.id }) { se ->
             ReorderableItem(reorderState, key = se.id) { isDragging ->
+                val visual = exerciseVisuals[se.exerciseId]
                 ExerciseCard(
                     exerciseName = se.exerciseName,
-                    imageUrl = null, // images resolved by library; session snapshot has no path
+                    imageUrl = visual?.imagePath,
+                    fallbackMuscles = visual?.primaryMuscles,
                     subtitle = "",
                     onMoveUp = if (displayExercises.first().id != se.id) {
                         {

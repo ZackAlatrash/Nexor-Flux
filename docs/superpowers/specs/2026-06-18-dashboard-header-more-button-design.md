@@ -2,99 +2,75 @@
 
 **Date:** 2026-06-18
 **Branch:** `feat/workout-tracking`
-**Status:** Approved
+**Status:** Implemented
 
 ## Goal
 
-Fix the dashboard's top-right control. Today it's a bare filled **gear**
-(`Icons.Default.Settings`) jammed next to the date, which (a) reads as "settings"
-though it opens the **More** hub (Profile / Plan / Appearance / …), (b) is cramped
-against the date with no container, and (c) has no glass treatment to match the
-rest of the dashboard.
+Fix the dashboard's top-right control. It started as a bare filled **gear**
+(`Icons.Default.Settings`) jammed next to the date, which read as "settings"
+though it opens the **More** hub (Profile / Plan / Appearance / …), was cramped,
+and had no treatment matching the rest of the dashboard.
 
-## Decision (Option A)
+## Decision history
 
-A frosted circular **"more" chip** (`⋯`) on the right, with the date moved to a
-subtitle under the title.
+1. First shipped **Option A** — a frosted circular "⋯" chip with the date moved
+   to a subtitle under the title (commits `89dd5aa`, `385e0a9`).
+2. Pivoted to **Option B** (final) — a **profile avatar** in that same slot. Same
+   destination (tap → More) and same layout (date under title, `Alignment.Top`,
+   48dp touch target); only the visual changed from a `⋯` chip to an avatar.
 
 ## Scope
 
-Rework **only** the `ScreenHeader` composable in
-`app/src/main/java/com/zack/recomptracker/ui/dashboard/DashboardScreen.kt`.
-No navigation, callback, or other-screen changes. The `onOpenSettings` callback
-and its wiring are unchanged.
+`DashboardScreen.kt` (header composables + screen wiring), `DashboardViewModel.kt`
+(avatar state), `AppContainer.kt` (one DI argument). No navigation/callback change —
+`onOpenSettings` still opens the More screen.
 
-## Why frosted (not real liquid glass)
+## Avatar content (Option B)
 
-The dashboard provides no `LocalBackdrop` / `drawBackdrop` layer, so the real
-Kyant liquid-glass material can't sample a backdrop here without new plumbing —
-disproportionate for one header button. The dashboard is built entirely from
-`FrostedCard`, so the chip reuses the **same frosted tokens** (`cardSurface` +
-`frostedBorder`), staying visually consistent with every card on the screen.
+The 40dp circular avatar (inside a 48dp touch target) shows, in order:
+1. **Profile photo** (`UserProfilePreferences.profilePhotoUri`) via Coil `AsyncImage`, cropped circular.
+2. else **initials** from `UserProfilePreferences.name` — first + last word initials
+   (one letter for a single word), uppercased — in `accent.onAccent` on an accent
+   gradient (`accent.accent → accent.accentDark`).
+3. else **`Icons.Rounded.Person`** on the same gradient (mirrors the Profile screen placeholder).
 
-## Layout
+A 1dp `Color.White @ 0.18` border; single accessibility node
+`contentDescription = "Profile and more"` with `Role.Button`.
 
-Replace the current `Row(SpaceBetween) { Title ; Row { date, gear } }` with:
+## Data flow
 
-```
-Row(fillMaxWidth, horizontalArrangement = SpaceBetween, verticalAlignment = Top)
-├─ Column
-│   ├─ Text("Dashboard")            // 28sp ExtraBold, letterSpacing -0.8sp (unchanged)
-│   ├─ Spacer(3.dp)
-│   └─ Text(dateStr)                // 12sp, appColors.textMuted (unchanged style)
-└─ HeaderMoreButton(onClick)        // only when onOpenSettings != null
-```
+`DashboardViewModel` takes `UserProfilePreferencesStore` and exposes an isolated
+`headerAvatar: StateFlow<HeaderAvatar(photoUri, initials)>` mapped from
+`userProfileStore.preferences` (kept out of the existing `combine` that builds
+`uiState`). `HomeDashboardScreen` collects it and threads `photoUri`/`initials`
+through `HomeDashboardContent` → `ScreenHeader` → `HeaderProfileButton`.
 
-`verticalAlignment = Top` so the chip lines up with the title, not the centre of
-the taller title+date column.
+`initialsOf(name): String?` is a pure top-level helper (blank/null → null), unit-tested.
 
-## Component: `HeaderMoreButton` (new private composable, same file)
+## Layout (unchanged from Option A)
 
 ```
-@Composable
-private fun HeaderMoreButton(onClick: () -> Unit) {
-    val appColors = LocalAppColors.current
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(appColors.cardSurface)
-            .border(1.dp, appColors.frostedBorder, CircleShape)
-            .clickable(role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.MoreHoriz,
-            contentDescription = "More",
-            tint = appColors.textMuted,
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}
+Row(fillMaxWidth, SpaceBetween, verticalAlignment = Top)
+├─ Column { "Dashboard" (28sp ExtraBold) ; Spacer(3.dp) ; date (12sp textMuted) }
+└─ HeaderProfileButton(photoUri, initials, onClick)   // only when onOpenSettings != null
 ```
 
-- 40dp box → adequate touch target; circular frosted material matches `FrostedCard`.
-- `⋯` (`MoreHoriz`) honestly signals "more options," matching the destination.
-- Rendered only when `onOpenSettings != null` (preserves the existing nullability
-  guard; the preview/`@Preview` path passes null and shows no button, as today).
+## Edge cases
 
-## Edge Cases / Risks
-
-- **`Icons.Default.MoreHoriz` availability:** it's in the standard Material icons
-  set (sibling of the already-used `MoreVert`). If the compile step reports it
-  missing, fall back to three small drawn dots in the same `Box`. The build step
-  confirms.
-- Light theme: `cardSurface` + `frostedBorder` are theme-aware tokens, so the
-  chip adapts automatically (no hard-coded colors).
+- No name and no photo → person icon.
+- Photo present but still loading / fails → the accent gradient shows behind until
+  Coil resolves (acceptable placeholder); no separate fallback wiring needed.
+- Light theme: `accent.*` / `onAccent` are theme/mode-aware, so the gradient and
+  text contrast adapt automatically.
 
 ## Testing
 
-Pure presentational change — no unit test. Verified by `compileDebugKotlin` +
-`assembleDebug`, then the user's in-app visual check (header spacing, chip looks
-like a real frosted control, tap still opens More).
+`initialsOf` unit-tested (two/three-word, single-word, whitespace/case, null/blank).
+Rendering verified by `compileDebugKotlin` + `assembleDebug`, then the user's in-app
+visual check (photo, initials, and no-name cases).
 
-## Out of Scope
+## Out of scope
 
-- Removing the control (Option D) or changing its destination.
+- Removing the control or changing its destination.
 - Touching the bottom-nav "More" tab or `MoreScreen`.
-- Adding a backdrop layer / real liquid-glass material to the dashboard.
+- Real liquid-glass material (no backdrop layer on the dashboard).

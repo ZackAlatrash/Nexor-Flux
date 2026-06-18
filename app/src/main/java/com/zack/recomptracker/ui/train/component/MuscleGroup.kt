@@ -32,3 +32,25 @@ fun muscleTargetFor(primaryMuscles: List<String>): MuscleTarget? {
         else -> null
     }
 }
+
+/**
+ * Friendly muscle-group label for the first of [primaryMuscles] (case/space-insensitive).
+ * Back muscles collapse to "Back"; lower-body to "Legs". Null when empty or unmapped.
+ */
+fun muscleGroupLabel(primaryMuscles: List<String>): String? {
+    val key = primaryMuscles.firstOrNull()?.trim()?.lowercase() ?: return null
+    return when (key) {
+        "chest" -> "Chest"
+        "shoulders" -> "Shoulders"
+        "biceps" -> "Biceps"
+        "triceps" -> "Triceps"
+        "forearms" -> "Forearms"
+        "abdominals" -> "Abs"
+        "glutes" -> "Glutes"
+        "traps" -> "Traps"
+        "neck" -> "Neck"
+        "lats", "middle back", "lower back" -> "Back"
+        "quadriceps", "hamstrings", "calves", "adductors", "abductors" -> "Legs"
+        else -> null
+    }
+}

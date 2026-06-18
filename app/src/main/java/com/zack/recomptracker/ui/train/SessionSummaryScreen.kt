@@ -46,13 +46,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
+import com.zack.recomptracker.ui.train.component.muscleGroupLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerChip
@@ -273,6 +278,20 @@ fun SessionSummaryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(CornerSmall))
+                            .background(appColors.cardSurface),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        MuscleGroupIcon(
+                            primaryMuscles = recap.primaryMuscles,
+                            tint = accent.accentLighter,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Spacer(Modifier.width(11.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = recap.name,
@@ -281,8 +300,21 @@ fun SessionSummaryScreen(
                             color = appColors.textPrimary,
                         )
                         Spacer(Modifier.height(3.dp))
+                        val group = muscleGroupLabel(recap.primaryMuscles)
+                        val stats = buildRecapSubtitle(recap)
                         Text(
-                            text = buildRecapSubtitle(recap),
+                            text = buildAnnotatedString {
+                                if (group != null) {
+                                    withStyle(
+                                        SpanStyle(
+                                            color = accent.inkLight,
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                    ) { append(group) }
+                                    if (stats.isNotEmpty()) append(" · ")
+                                }
+                                append(stats)
+                            },
                             fontSize = 12.sp,
                             color = appColors.textMuted,
                         )

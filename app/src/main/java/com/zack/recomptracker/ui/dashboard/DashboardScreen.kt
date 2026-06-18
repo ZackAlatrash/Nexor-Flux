@@ -21,7 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -296,32 +297,47 @@ private fun ScreenHeader(
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
-        Text(
-            text = "Dashboard",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = appColors.textPrimary,
-            letterSpacing = (-0.8).sp,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            Text(
+                text = "Dashboard",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = appColors.textPrimary,
+                letterSpacing = (-0.8).sp,
+            )
+            Spacer(Modifier.height(3.dp))
             Text(
                 text = dateStr,
                 fontSize = 12.sp,
                 color = appColors.textMuted,
             )
-            if (onOpenSettings != null) {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "More",
-                        tint = appColors.textMuted,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
         }
+        if (onOpenSettings != null) {
+            HeaderMoreButton(onClick = onOpenSettings)
+        }
+    }
+}
+
+@Composable
+private fun HeaderMoreButton(onClick: () -> Unit) {
+    val appColors = LocalAppColors.current
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.frostedBorder, CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.MoreHoriz,
+            contentDescription = "More",
+            tint = appColors.textMuted,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

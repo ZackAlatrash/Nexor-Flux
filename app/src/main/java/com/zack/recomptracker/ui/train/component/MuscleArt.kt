@@ -20,16 +20,18 @@ object MuscleArt {
     @Volatile private var loaded = false
 
     /** Parses both views once. Safe to call repeatedly and from any thread. */
-    @Synchronized
     fun load(context: Context) {
-        if (loaded) return
-        val parsedFront = parse(context, "muscles/body_front.json")
-        val parsedBack = parse(context, "muscles/body_back.json")
-        // Publish both views before flipping loaded so a reader gating on it
-        // never observes one view populated and the other still empty.
-        front = parsedFront
-        back = parsedBack
-        loaded = true
+        if (loaded) return // lock-free fast-path: volatile read, no monitor acquisition
+        synchronized(this) {
+            if (loaded) return // double-check under the lock
+            val parsedFront = parse(context, "muscles/body_front.json")
+            val parsedBack = parse(context, "muscles/body_back.json")
+            // Publish both views before flipping loaded so a reader gating on it
+            // never observes one view populated and the other still empty.
+            front = parsedFront
+            back = parsedBack
+            loaded = true
+        }
     }
 
     fun front(): List<MusclePath> = front

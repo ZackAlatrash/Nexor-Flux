@@ -154,7 +154,7 @@ class AppContainer(context: Context) {
                 Log.w("RecompWorkout", "Exercise library seed failed — library will be empty", it)
             }
         }
-        appScope.launch {
+        appScope.launch(Dispatchers.IO) {
             runCatching { MuscleArt.load(context.applicationContext) }
         }
     }

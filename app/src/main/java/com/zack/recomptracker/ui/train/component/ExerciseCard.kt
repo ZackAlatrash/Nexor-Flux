@@ -38,9 +38,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
 private const val BASE_IMAGE_URL =
@@ -75,6 +77,7 @@ fun exerciseImageUrl(path: String): String =
 fun ExerciseCard(
     exerciseName: String,
     imageUrl: String?,
+    fallbackMuscles: List<String>? = null,
     subtitle: String,
     onMoveUp: (() -> Unit)?,
     onMoveDown: (() -> Unit)?,
@@ -85,6 +88,7 @@ fun ExerciseCard(
     content: @Composable () -> Unit,
 ) {
     val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
     var menuOpen by remember { mutableStateOf(false) }
 
     FrostedCard(
@@ -114,7 +118,7 @@ fun ExerciseCard(
             Spacer(Modifier.width(10.dp))
 
             // Thumbnail
-            val resolvedUrl = imageUrl?.let { exerciseImageUrl(it) }
+            val resolvedUrl = imageUrl?.takeIf { it.isNotBlank() }?.let { exerciseImageUrl(it) }
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -123,19 +127,16 @@ fun ExerciseCard(
                 contentAlignment = Alignment.Center,
             ) {
                 if (resolvedUrl != null) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = resolvedUrl,
                         contentDescription = exerciseName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
+                        loading = { ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter) },
+                        error = { ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter) },
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.FitnessCenter,
-                        contentDescription = null,
-                        tint = appColors.textMuted,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter)
                 }
             }
 
@@ -213,5 +214,27 @@ fun ExerciseCard(
 
         // ── Content slot (SetGrid) ────────────────────────────────────────────
         content()
+    }
+}
+
+@Composable
+private fun ExerciseThumbFallback(
+    fallbackMuscles: List<String>?,
+    dumbbellTint: Color,
+    accentTint: Color,
+) {
+    if (fallbackMuscles != null) {
+        MuscleGroupIcon(
+            primaryMuscles = fallbackMuscles,
+            tint = accentTint,
+            modifier = Modifier.fillMaxSize(),
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Default.FitnessCenter,
+            contentDescription = null,
+            tint = dumbbellTint,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }

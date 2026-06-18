@@ -82,6 +82,7 @@ import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
 import com.zack.recomptracker.ui.train.SessionDetailViewModel
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainViewModel
+import com.zack.recomptracker.ui.train.component.MuscleArt
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.RecipeRepository
@@ -152,6 +153,9 @@ class AppContainer(context: Context) {
             }.onFailure {
                 Log.w("RecompWorkout", "Exercise library seed failed — library will be empty", it)
             }
+        }
+        appScope.launch {
+            runCatching { MuscleArt.load(context.applicationContext) }
         }
     }
 

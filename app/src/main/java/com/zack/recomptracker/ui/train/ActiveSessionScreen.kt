@@ -236,7 +236,7 @@ fun ActiveSessionScreen(
                     text = "SESSION NOTES",
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = appColors.textMuted,
+                    color = appColors.textSecondary,
                     letterSpacing = 0.4.sp,
                     modifier = Modifier.padding(bottom = 6.dp),
                 )

@@ -177,7 +177,7 @@ private fun SessionSetGrid(
                 text = "SET",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = appColors.textMuted,
+                color = appColors.textSecondary,
                 letterSpacing = 0.4.sp,
                 modifier = Modifier.width(28.dp),
             )
@@ -187,7 +187,7 @@ private fun SessionSetGrid(
                 text = "PREV",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = appColors.textMuted,
+                color = appColors.textSecondary,
                 letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.width(52.dp),
@@ -198,7 +198,7 @@ private fun SessionSetGrid(
                 text = "KG",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = appColors.textMuted,
+                color = appColors.textSecondary,
                 letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
@@ -209,7 +209,7 @@ private fun SessionSetGrid(
                 text = "REPS",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = appColors.textMuted,
+                color = appColors.textSecondary,
                 letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
@@ -259,7 +259,7 @@ private fun SessionSetGrid(
                                 text = "${row.setNumber}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (row.completed) accent.inkLighter else appColors.textMuted,
+                                color = if (row.completed) accent.inkLighter else appColors.textSecondary,
                                 textAlign = TextAlign.Center,
                             )
                         }
@@ -276,7 +276,7 @@ private fun SessionSetGrid(
                             Text(
                                 text = row.prev ?: "–",
                                 fontSize = 12.sp,
-                                color = appColors.textMuted,
+                                color = appColors.textPrimary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                             )
@@ -360,7 +360,7 @@ private fun SessionSetGrid(
                             Text(
                                 text = "RIR",
                                 fontSize = 11.sp,
-                                color = appColors.textMuted,
+                                color = appColors.textSecondary,
                                 fontWeight = FontWeight.Medium,
                             )
                             Spacer(Modifier.weight(1f))

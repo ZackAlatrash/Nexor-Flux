@@ -1,6 +1,7 @@
 package com.zack.recomptracker.ui.train
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +48,9 @@ import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.exerciseImageUrl
 
+/** Top-corner radius of the sheet — matches the Weekly Review card (ModalCorner = 24.dp). */
+private val SheetCorner = 24.dp
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ExerciseDetailSheet(
@@ -55,6 +61,17 @@ fun ExerciseDetailSheet(
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
 
+    // Same neutral frosted surface as the Weekly Review card (BriefingGlassCard): a near-opaque
+    // dark/light fill with a top sheen and a hairline edge. The container is kept transparent so
+    // this surface — not the busy workout screen — is what reads behind the frosted info cards.
+    val sheetShape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner)
+    val sheetSurface = if (appColors.isDark) {
+        Color(0xFF101014).copy(alpha = 0.92f)
+    } else {
+        Color(0xFFF6F6F8).copy(alpha = 0.95f)
+    }
+    val sheetHairline = Color.White.copy(alpha = if (appColors.isDark) 0.16f else 0.24f)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -62,7 +79,20 @@ fun ExerciseDetailSheet(
         dragHandle = null,
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(sheetShape)
+                .background(sheetSurface)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.12f),
+                            0.14f to Color.Transparent,
+                        ),
+                    )
+                }
+                .border(0.5.dp, sheetHairline, sheetShape),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // ── Header row ──────────────────────────────────────────────────────
@@ -207,15 +237,27 @@ fun ExerciseDetailSheet(
             }
 
             // ── Instructions ────────────────────────────────────────────────────
-            if (exercise.instructions.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Instructions",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = appColors.textPrimary,
+                )
+            }
+            if (exercise.instructions.isEmpty()) {
+                // Clean fallback for exercises with no recorded instructions (e.g. custom).
                 item {
-                    Text(
-                        text = "Instructions",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = appColors.textPrimary,
-                    )
+                    FrostedCard(contentPadding = 12.dp) {
+                        Text(
+                            text = "No instructions available for this exercise.",
+                            fontSize = 13.sp,
+                            lineHeight = 19.sp,
+                            color = appColors.textMuted,
+                        )
+                    }
                 }
+            } else {
                 itemsIndexed(exercise.instructions) { index, step ->
                     FrostedCard(contentPadding = 12.dp) {
                         Row(verticalAlignment = Alignment.Top) {

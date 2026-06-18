@@ -76,6 +76,16 @@ class WorkoutSessionRepositoryTest {
             exercises[id] = exercises.getValue(id).copy(note = note)
         }
 
+        override suspend fun deleteSetsForSessionExercise(sessionExerciseId: Long) {
+            sets.values.filter { it.sessionExerciseId == sessionExerciseId }
+                .map { it.id }
+                .forEach { sets.remove(it) }
+        }
+
+        override suspend fun updateSessionExerciseExercise(id: Long, exerciseId: Long, exerciseName: String) {
+            exercises[id] = exercises.getValue(id).copy(exerciseId = exerciseId, exerciseName = exerciseName)
+        }
+
         override suspend fun updateSessionNote(id: Long, note: String?) {
             sessions[id] = sessions.getValue(id).copy(note = note)
         }
@@ -286,5 +296,47 @@ class WorkoutSessionRepositoryTest {
         repo.completeSession(sid, durationSeconds = 3120)
         val s = repo.getLastCompletedSession(workoutId = 7)!!
         assertEquals(3120, s.durationSeconds)
+    }
+
+    @Test
+    fun `replaceSessionExercise repoints id and name and keeps set count but clears values`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        repo.startSession(template())
+        val seId = dao.exercises.values.first().id
+        // Simulate logged work on the original (Squat): values set + one completed.
+        dao.sets.values.filter { it.sessionExerciseId == seId }.forEach {
+            dao.updateSet(it.copy(reps = 5, weightKg = 100.0, rir = 2, completed = it.setNumber == 1))
+        }
+
+        repo.replaceSessionExercise(seId, newExerciseId = 42, newExerciseName = "Dumbbell Press")
+
+        // Row repointed to the new exercise.
+        val row = dao.exercises.getValue(seId)
+        assertEquals(42L, row.exerciseId)
+        assertEquals("Dumbbell Press", row.exerciseName)
+        // Same number of sets, but all values reset to blank/uncompleted with sequential numbers.
+        val newSets = dao.sets.values.filter { it.sessionExerciseId == seId }.sortedBy { it.setNumber }
+        assertEquals(3, newSets.size)
+        assertEquals(listOf(1, 2, 3), newSets.map { it.setNumber })
+        assertTrue(newSets.all { it.reps == 0 && it.weightKg == null && it.rir == null && !it.completed })
+    }
+
+    @Test
+    fun `replaceSessionExercise does not touch other session exercises`() = runTest {
+        val dao = FakeSessionDao(); val repo = repo(dao)
+        val sid = repo.startSession(template())
+        val firstId = dao.exercises.values.first().id
+        val otherId = repo.addExerciseToSession(sid, exerciseId = 99, exerciseName = "Dip")
+        repo.addSet(otherId, reps = 8, weightKg = 20.0, rir = 1)
+
+        repo.replaceSessionExercise(firstId, newExerciseId = 42, newExerciseName = "Dumbbell Press")
+
+        // The untouched exercise keeps its id, name, and its logged set.
+        val other = dao.exercises.getValue(otherId)
+        assertEquals(99L, other.exerciseId)
+        assertEquals("Dip", other.exerciseName)
+        val otherSets = dao.sets.values.filter { it.sessionExerciseId == otherId }
+        assertEquals(1, otherSets.size)
+        assertEquals(8, otherSets.first().reps)
     }
 }

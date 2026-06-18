@@ -1,6 +1,7 @@
 package com.zack.recomptracker.ui.train.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +70,8 @@ fun exerciseImageUrl(path: String): String =
  * @param onMoveUp           Move this exercise one position earlier; null to hide the option.
  * @param onMoveDown         Move this exercise one position later; null to hide the option.
  * @param onRemove           Remove this exercise from the list.
+ * @param onReplace          Replace this exercise (session only); null to hide the option.
+ * @param onShowDetails      Tap the thumbnail or name to open exercise details; null to disable.
  * @param modifier           Applied to the outer [FrostedCard].
  * @param content            Inner content slot (a [SetGrid] in the expected mode).
  */
@@ -81,6 +84,8 @@ fun ExerciseCard(
     onMoveUp: (() -> Unit)?,
     onMoveDown: (() -> Unit)?,
     onRemove: () -> Unit,
+    onReplace: (() -> Unit)? = null,
+    onShowDetails: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     dragHandleModifier: Modifier = Modifier,
     isDragging: Boolean = false,
@@ -122,7 +127,12 @@ fun ExerciseCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(CornerSmall))
-                    .background(appColors.cardSurface),
+                    .background(appColors.cardSurface)
+                    .then(
+                        if (onShowDetails != null) {
+                            Modifier.clickable(onClickLabel = "View exercise details") { onShowDetails() }
+                        } else Modifier
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (resolvedUrl != null) {
@@ -143,7 +153,15 @@ fun ExerciseCard(
 
             // Name + subtitle
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(CornerSmall))
+                    .then(
+                        if (onShowDetails != null) {
+                            Modifier.clickable(onClickLabel = "View exercise details") { onShowDetails() }
+                        } else Modifier
+                    )
+                    .padding(vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
@@ -194,6 +212,15 @@ fun ExerciseCard(
                             onClick = {
                                 menuOpen = false
                                 onMoveDown()
+                            },
+                        )
+                    }
+                    if (onReplace != null) {
+                        DropdownMenuItem(
+                            text = { Text("Replace exercise") },
+                            onClick = {
+                                menuOpen = false
+                                onReplace()
                             },
                         )
                     }

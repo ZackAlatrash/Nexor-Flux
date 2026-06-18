@@ -100,6 +100,37 @@ open class WorkoutSessionRepository(
     open suspend fun removeSessionExercise(sessionExerciseId: Long) =
         sessionDao.deleteSessionExerciseById(sessionExerciseId)
 
+    /**
+     * Replace the exercise in a single session_exercises row (this workout only — the routine
+     * template is never touched). Keeps the same number of sets but resets their values to blank,
+     * because reps/weights are exercise-specific. No-op if the row count is 0.
+     *
+     * @param sessionExerciseId the session_exercises row to repoint
+     * @param newExerciseId     library id of the replacement exercise
+     * @param newExerciseName   denormalised name to store on the row
+     */
+    open suspend fun replaceSessionExercise(
+        sessionExerciseId: Long,
+        newExerciseId: Long,
+        newExerciseName: String,
+    ) {
+        val setCount = sessionDao.getSessionExerciseSetCount(sessionExerciseId)
+        sessionDao.updateSessionExerciseExercise(sessionExerciseId, newExerciseId, newExerciseName)
+        sessionDao.deleteSetsForSessionExercise(sessionExerciseId)
+        for (setNumber in 1..setCount) {
+            sessionDao.insertSet(
+                SessionSetEntity(
+                    sessionExerciseId = sessionExerciseId,
+                    setNumber = setNumber,
+                    reps = 0,
+                    weightKg = null,
+                    rir = null,
+                    completed = false,
+                ),
+            )
+        }
+    }
+
     open suspend fun reorderSessionExercises(orderedSessionExerciseIds: List<Long>) {
         orderedSessionExerciseIds.forEachIndexed { i, id ->
             sessionDao.updateSessionExerciseSortOrder(id, i)

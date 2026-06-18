@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.WorkoutSession
@@ -54,6 +55,14 @@ class ActiveSessionViewModel(
     /** Map of exerciseId → resolved image path + primary muscles, for thumbnails. */
     private val _exerciseVisuals = MutableStateFlow<Map<Long, ExerciseVisual>>(emptyMap())
     val exerciseVisuals: StateFlow<Map<Long, ExerciseVisual>> = _exerciseVisuals
+
+    /**
+     * The library exercise whose details popup is currently open, or null when closed.
+     * Purely a UI overlay flag — independent of the workout session data, so opening
+     * and closing it never touches sets, reps, ordering, or notes.
+     */
+    private val _detailExercise = MutableStateFlow<Exercise?>(null)
+    val detailExercise: StateFlow<Exercise?> = _detailExercise
 
     init {
         viewModelScope.launch {
@@ -233,6 +242,21 @@ class ActiveSessionViewModel(
         }
     }
 
+    /**
+     * Replace one exercise in the current session with a library exercise — this workout only.
+     * The routine template is untouched, so next time the original exercise reappears. The active
+     * session flow re-emits from the DB, so the card name/thumbnail refresh automatically. No-op if
+     * the replacement id can't be resolved.
+     */
+    fun replaceExercise(sessionExerciseId: Long, newExerciseId: Long) {
+        viewModelScope.launch {
+            runCatching {
+                val exercise = exerciseLibraryRepository.getById(newExerciseId) ?: return@launch
+                sessionRepository.replaceSessionExercise(sessionExerciseId, newExerciseId, exercise.name)
+            }
+        }
+    }
+
     fun moveExerciseUp(se: SessionExercise) {
         val exercises = session.value?.exercises ?: return
         val sorted = exercises.sortedBy { it.sortOrder }
@@ -272,6 +296,26 @@ class ActiveSessionViewModel(
         }
     }
 
+    // ── Exercise details popup ────────────────────────────────────────────────
+
+    /**
+     * Open the details popup for a library exercise. Resolves the full [Exercise]
+     * from the library by id; if the lookup fails (e.g. a custom exercise that was
+     * removed) the popup simply stays closed rather than showing a broken sheet.
+     */
+    fun showExerciseDetails(exerciseId: Long) {
+        viewModelScope.launch {
+            runCatching { exerciseLibraryRepository.getById(exerciseId) }
+                .getOrNull()
+                ?.let { _detailExercise.value = it }
+        }
+    }
+
+    /** Close the details popup. */
+    fun dismissExerciseDetails() {
+        _detailExercise.value = null
+    }
+
     // ── Notes ─────────────────────────────────────────────────────────────────
 
     fun setNote(text: String) {
@@ -305,5 +349,17 @@ class ActiveSessionViewModel(
         }.getOrElse { null }
         runCatching { sessionRepository.completeSession(s.id, duration) }
         return s.id
+    }
+
+    // ── Discard ───────────────────────────────────────────────────────────────
+
+    /**
+     * Abandon the ACTIVE session directly (status → ABANDONED) without completing it.
+     * A fast path that mirrors the end state of Finish → Session Summary → "Discard
+     * Workout", but skips the completion + summary detour. No-op if no active session.
+     */
+    suspend fun discard() {
+        val s = session.value ?: return
+        runCatching { sessionRepository.abandonSession(s.id) }
     }
 }

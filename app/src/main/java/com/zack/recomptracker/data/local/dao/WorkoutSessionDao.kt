@@ -36,6 +36,9 @@ abstract class WorkoutSessionDao {
     @Query("DELETE FROM session_sets WHERE id = :id")
     abstract suspend fun deleteSetById(id: Long)
 
+    @Query("DELETE FROM session_sets WHERE sessionExerciseId = :sessionExerciseId")
+    abstract suspend fun deleteSetsForSessionExercise(sessionExerciseId: Long)
+
     @Query("SELECT COUNT(*) FROM session_sets WHERE sessionExerciseId = :sessionExerciseId")
     abstract suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int
 
@@ -80,6 +83,9 @@ abstract class WorkoutSessionDao {
 
     @Query("UPDATE session_exercises SET note = :note WHERE id = :id")
     abstract suspend fun updateSessionExerciseNote(id: Long, note: String?)
+
+    @Query("UPDATE session_exercises SET exerciseId = :exerciseId, exerciseName = :exerciseName WHERE id = :id")
+    abstract suspend fun updateSessionExerciseExercise(id: Long, exerciseId: Long, exerciseName: String)
 
     @Query("UPDATE workout_sessions SET note = :note WHERE id = :id")
     abstract suspend fun updateSessionNote(id: Long, note: String?)

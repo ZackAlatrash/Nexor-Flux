@@ -23,8 +23,12 @@ object MuscleArt {
     @Synchronized
     fun load(context: Context) {
         if (loaded) return
-        front = parse(context, "muscles/body_front.json")
-        back = parse(context, "muscles/body_back.json")
+        val parsedFront = parse(context, "muscles/body_front.json")
+        val parsedBack = parse(context, "muscles/body_back.json")
+        // Publish both views before flipping loaded so a reader gating on it
+        // never observes one view populated and the other still empty.
+        front = parsedFront
+        back = parsedBack
         loaded = true
     }
 

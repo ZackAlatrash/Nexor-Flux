@@ -17,4 +17,21 @@ data class PlanPreferences(
     val calorieZoneLowerBound: Int = 2400,
     val calorieZoneUpperBound: Int = 2600,
     val healthConnectEnabled: Boolean = false,
-)
+) {
+    /**
+     * Returns a copy with the calorie target set and the calorie zone re-centred to
+     * target ± [CALORIE_ZONE_MARGIN]. Use this anywhere calories change so the zone never
+     * drifts out of sync with the target (which would make the dashboard zone look
+     * disconnected from the plan).
+     */
+    fun withCalorieTarget(calories: Int): PlanPreferences = copy(
+        targetCalories = calories,
+        calorieZoneLowerBound = calories - CALORIE_ZONE_MARGIN,
+        calorieZoneUpperBound = calories + CALORIE_ZONE_MARGIN,
+    )
+
+    companion object {
+        /** Half-width of the calorie zone band: zone = target ± this. Matches PlanCalculator. */
+        const val CALORIE_ZONE_MARGIN = 100
+    }
+}

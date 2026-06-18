@@ -272,7 +272,7 @@ class CoachToolExecutor(
             return """{"error":"target_calories must be between 500 and 6000"}"""
         }
         val prefs = planRepository.preferences.first()
-        planRepository.save(prefs.copy(targetCalories = newTarget))
+        planRepository.save(prefs.withCalorieTarget(newTarget))
         return """{"success":true,"new_target_calories":$newTarget}"""
     }
 

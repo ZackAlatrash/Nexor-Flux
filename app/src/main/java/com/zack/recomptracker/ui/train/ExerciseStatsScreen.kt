@@ -38,7 +38,6 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.charts.ProgressLineChart
-import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate

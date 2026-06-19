@@ -66,6 +66,7 @@ import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
 import com.zack.recomptracker.ui.train.component.SessionSetRow
 import com.zack.recomptracker.ui.train.component.rememberDragHaptics
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -99,7 +100,6 @@ fun ActiveSessionScreen(
     modifier: Modifier = Modifier,
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
-    val elapsed by viewModel.elapsed.collectAsStateWithLifecycle()
     val prevMap by viewModel.prevMap.collectAsStateWithLifecycle()
     val exerciseVisuals by viewModel.exerciseVisuals.collectAsStateWithLifecycle()
     val detailExercise by viewModel.detailExercise.collectAsStateWithLifecycle()
@@ -140,9 +140,6 @@ fun ActiveSessionScreen(
         }
         onReplacementConsumed()
     }
-
-    // Format elapsed seconds into mm:ss or h:mm:ss
-    val elapsedText = remember(elapsed) { formatElapsed(elapsed) }
 
     // Session note local state — initialized once per session id to avoid wiping mid-typed text
     var noteText by rememberSaveable { mutableStateOf("") }
@@ -225,10 +222,10 @@ fun ActiveSessionScreen(
                             modifier = Modifier.size(14.dp),
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = elapsedText,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
+                        // Isolated so the per-second tick recomposes only this Text,
+                        // not the whole session list (exercise cards stay untouched).
+                        ElapsedTimerText(
+                            elapsedFlow = viewModel.elapsed,
                             color = appColors.textMuted,
                         )
                     }
@@ -515,6 +512,27 @@ private fun SessionNoteField(
             }
             inner()
         },
+    )
+}
+
+// ── Elapsed timer (isolated recomposition scope) ──────────────────────────────
+
+/**
+ * Renders the live elapsed time. Collects [elapsedFlow] here — and nowhere higher — so the
+ * once-per-second tick recomposes only this Text, leaving the exercise list/cards untouched.
+ */
+@Composable
+private fun ElapsedTimerText(
+    elapsedFlow: StateFlow<Long>,
+    color: Color,
+) {
+    val elapsed by elapsedFlow.collectAsStateWithLifecycle()
+    val text = remember(elapsed) { formatElapsed(elapsed) }
+    Text(
+        text = text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = color,
     )
 }
 

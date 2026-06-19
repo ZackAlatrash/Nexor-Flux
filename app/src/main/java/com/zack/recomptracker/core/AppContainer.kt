@@ -79,6 +79,7 @@ import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.ui.train.ActiveSessionViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
 import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
+import com.zack.recomptracker.ui.train.ExerciseStatsViewModel
 import com.zack.recomptracker.ui.train.SessionDetailViewModel
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainViewModel
@@ -504,6 +505,7 @@ private class AppViewModelFactory(
             TrainViewModel::class.java -> TrainViewModel(
                 workoutRepository = container.workoutRepository,
                 sessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
             )
             ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
                 repository = container.exerciseLibraryRepository,
@@ -523,6 +525,11 @@ private class AppViewModelFactory(
             )
             SessionDetailViewModel::class.java -> SessionDetailViewModel(
                 sessionRepository = container.workoutSessionRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
+            )
+            ExerciseStatsViewModel::class.java -> ExerciseStatsViewModel(
+                sessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")

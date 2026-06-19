@@ -18,6 +18,7 @@ import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import com.zack.recomptracker.ui.component.AmountMode
 import com.zack.recomptracker.ui.component.MessageKind
 import java.time.LocalDate
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -55,6 +56,10 @@ data class FoodLibraryUiState(
     val amountMode: AmountMode = AmountMode.SERVINGS,
     val servingsValue: String = "1",
     val gramsValue: String = "100",
+    // Recipe portion picker: log a multiple of the whole recipe (1 = whole recipe).
+    val showRecipeAmountSheet: Boolean = false,
+    val pendingRecipe: RecipeWithIngredients? = null,
+    val recipePortions: String = "1",
     val editingFoodId: Long? = null,
     val newFoodName: String = "",
     val newFoodServing: String = "100g",
@@ -113,6 +118,26 @@ data class FoodLibraryUiState(
             return FoodScaling.scale(
                 FoodMacros(food.calories, food.proteinG, food.carbsG, food.fatG),
                 grams,
+            )
+        }
+
+    /** Portion multiplier for the pending recipe (1 = whole recipe). Null if invalid. */
+    val recipePortionFactor: Double?
+        get() {
+            val v = recipePortions.toDoubleOrNull() ?: return null
+            return if (v < FoodScaling.MIN_SERVINGS) null else v
+        }
+
+    /** Whole-recipe macros scaled by [recipePortionFactor], for the live preview. */
+    val recipePreviewMacros: FoodMacros?
+        get() {
+            val recipe = pendingRecipe ?: return null
+            val factor = recipePortionFactor ?: return null
+            return FoodMacros(
+                calories = (recipe.totalCalories * factor).roundToInt(),
+                proteinG = recipe.totalProteinG * factor,
+                carbsG = recipe.totalCarbsG * factor,
+                fatG = recipe.totalFatG * factor,
             )
         }
 
@@ -481,7 +506,39 @@ class FoodLibraryViewModel(
         }
     }
 
-    fun logRecipe(recipe: RecipeWithIngredients) {
+    fun requestLogRecipe(recipe: RecipeWithIngredients) {
+        _uiState.update {
+            it.copy(
+                showRecipeAmountSheet = true,
+                pendingRecipe = recipe,
+                recipePortions = "1",
+                message = null,
+            )
+        }
+    }
+
+    fun onRecipePortionsChanged(v: String) = _uiState.update { it.copy(recipePortions = v) }
+
+    fun stepRecipePortions(delta: Double) = _uiState.update {
+        val current = it.recipePortions.toDoubleOrNull() ?: 1.0
+        val next = (current + delta).coerceAtLeast(FoodScaling.MIN_SERVINGS)
+        val text = if (next == next.toLong().toDouble()) next.toLong().toString() else next.toString()
+        it.copy(recipePortions = text)
+    }
+
+    fun dismissRecipeAmountSheet() = _uiState.update {
+        it.copy(showRecipeAmountSheet = false, pendingRecipe = null)
+    }
+
+    /** Logs each ingredient scaled by the chosen portion factor (1 = whole recipe). */
+    fun confirmLogRecipe() {
+        val state = _uiState.value
+        val recipe = state.pendingRecipe ?: return
+        val factor = state.recipePortionFactor
+        if (factor == null) {
+            _uiState.update { it.copy(message = "Enter a valid portion.", messageKind = MessageKind.ERROR) }
+            return
+        }
         viewModelScope.launch {
             recipe.ingredients.forEach { ingredient ->
                 logRepository.addMealToSlot(
@@ -489,11 +546,11 @@ class FoodLibraryViewModel(
                         date = logDate,
                         mealType = MealEntryTypes.RECIPE,
                         name = ingredient.name,
-                        calories = ingredient.calories,
-                        proteinG = ingredient.proteinG,
-                        carbsG = ingredient.carbsG,
-                        fatG = ingredient.fatG,
-                        amountGrams = ingredient.amountGrams,
+                        calories = (ingredient.calories * factor).roundToInt(),
+                        proteinG = ingredient.proteinG * factor,
+                        carbsG = ingredient.carbsG * factor,
+                        fatG = ingredient.fatG * factor,
+                        amountGrams = ingredient.amountGrams?.let { it * factor },
                         basePer100Calories = ingredient.basePer100Calories,
                         basePer100ProteinG = ingredient.basePer100ProteinG,
                         basePer100CarbsG = ingredient.basePer100CarbsG,
@@ -503,10 +560,11 @@ class FoodLibraryViewModel(
                         loggedByServings = ingredient.loggedByServings,
                         planned = isPlannedDate(),
                     ),
-                    slotId = _uiState.value.slotId,
+                    slotId = state.slotId,
                 )
             }
-            val slotLabel = if (_uiState.value.slotId != null) _uiState.value.slotName else "log"
+            _uiState.update { it.copy(showRecipeAmountSheet = false, pendingRecipe = null, message = null) }
+            val slotLabel = if (state.slotId != null) state.slotName else "log"
             val verb = if (isPlannedDate()) "planned for ${dayLabel()}" else "added to $slotLabel"
             _loggedEvent.emit("${recipe.recipe.name} $verb (${recipe.ingredients.size} items)")
         }

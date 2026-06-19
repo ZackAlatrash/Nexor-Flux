@@ -76,6 +76,7 @@ fun TrainHomeScreen(
     onStart: () -> Unit,
     onResume: () -> Unit,
     onOpenSession: (Long) -> Unit = {},
+    onOpenExerciseStats: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -144,7 +145,11 @@ fun TrainHomeScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = if (tab == TrainTab.ROUTINES) "Routines" else "History",
+                            text = when (tab) {
+                                TrainTab.ROUTINES -> "Routines"
+                                TrainTab.HISTORY -> "History"
+                                TrainTab.STATS -> "Stats"
+                            },
                             fontSize = 13.sp,
                             fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
                             color = if (isActive) accent.onAccent else appColors.textPrimary.copy(alpha = 0.55f),
@@ -296,6 +301,11 @@ fun TrainHomeScreen(
                     }
                 }
             }
+        }
+
+        // ── Stats tab ──────────────────────────────────────────────────────────
+        if (state.tab == TrainTab.STATS) {
+            item { StatsContent(state = state, onOpenExerciseStats = onOpenExerciseStats) }
         }
     }
 }
@@ -618,6 +628,137 @@ private fun HistoryCard(
             if (volume > 0) {
                 Text(text = "·", fontSize = 12.sp, color = appColors.textMuted)
                 Text(text = "◆ ${volume.roundToInt()} kg", fontSize = 12.sp, color = appColors.textMuted)
+            }
+        }
+    }
+}
+
+// ── Stats tab content ───────────────────────────────────────────────────────────
+
+@Composable
+private fun StatsContent(
+    state: TrainUiState,
+    onOpenExerciseStats: (Long) -> Unit,
+) {
+    val appColors = LocalAppColors.current
+    var selected by remember { mutableStateOf<com.zack.recomptracker.domain.workout.MuscleCategory?>(null) }
+
+    val anyLogged = state.statsCategories.any { it.exercises.isNotEmpty() }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+        com.zack.recomptracker.ui.train.component.BodyMap(
+            selected = selected,
+            onMuscleTap = { category -> selected = if (selected == category) null else category },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+        )
+
+        if (!anyLogged) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Log a workout to see your stats by muscle.",
+                    fontSize = 14.sp,
+                    color = appColors.textMuted,
+                )
+            }
+            return@Column
+        }
+
+        Text(
+            text = "BY MUSCLE",
+            fontSize = 11.sp,
+            color = appColors.textPrimary.copy(alpha = 0.55f),
+            letterSpacing = 0.4.sp,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+
+        state.statsCategories.forEach { cat ->
+            MuscleCategoryRow(
+                category = cat,
+                expanded = selected == cat.category,
+                onToggle = { selected = if (selected == cat.category) null else cat.category },
+                onOpenExerciseStats = onOpenExerciseStats,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MuscleCategoryRow(
+    category: com.zack.recomptracker.domain.workout.TrainStatsBuilder.CategoryStats,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onOpenExerciseStats: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val count = category.exercises.size
+
+    FrostedCard(
+        modifier = modifier.fillMaxWidth().clickable { onToggle() },
+        contentPadding = 13.dp,
+        surfaceTint = if (expanded) accent.tintedSurface else Color.Unspecified,
+        borderColor = if (expanded) accent.tintedBorder else Color.Unspecified,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = category.category.displayName,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = appColors.textPrimary,
+            )
+            Text(
+                text = if (count == 0) "none" else "$count exercise${if (count == 1) "" else "s"}",
+                fontSize = 12.sp,
+                color = appColors.textMuted,
+            )
+        }
+
+        androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                if (category.exercises.isEmpty()) {
+                    Text(
+                        text = "No exercises logged yet.",
+                        fontSize = 13.sp,
+                        color = appColors.textMuted,
+                    )
+                } else {
+                    category.exercises.forEach { ex ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(CornerSmall))
+                                .background(Color.White.copy(alpha = 0.06f))
+                                .clickable { onOpenExerciseStats(ex.exerciseId) }
+                                .padding(horizontal = 11.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = ex.name,
+                                fontSize = 13.sp,
+                                color = appColors.textPrimary.copy(alpha = 0.9f),
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = appColors.textMuted,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }

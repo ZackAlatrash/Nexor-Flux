@@ -103,6 +103,8 @@ object Routes {
     fun sessionSummary(id: Long) = "session_summary/$id"
     const val SessionDetail = "session_detail/{sessionId}"
     fun sessionDetail(id: Long) = "session_detail/$id"
+    const val ExerciseStats = "exercise_stats/{exerciseId}"
+    fun exerciseStats(exerciseId: Long) = "exercise_stats/$exerciseId"
     const val BodyHistory = "body_history"
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
@@ -227,6 +229,7 @@ fun AppNavGraph(
                 onStart = { navController.navigate(Routes.ActiveSession) },
                 onResume = { navController.navigate(Routes.ActiveSession) },
                 onOpenSession = { id -> navController.navigate(Routes.sessionDetail(id)) },
+                onOpenExerciseStats = { exerciseId -> navController.navigate(Routes.exerciseStats(exerciseId)) },
                 modifier = Modifier,
             )
         }
@@ -305,6 +308,23 @@ fun AppNavGraph(
         ) {
             SessionDetailScreen(
                 viewModel = viewModel<SessionDetailViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.ExerciseStats,
+            arguments = listOf(
+                androidx.navigation.navArgument("exerciseId") {
+                    type = androidx.navigation.NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            com.zack.recomptracker.ui.train.ExerciseStatsScreen(
+                viewModel = viewModel<com.zack.recomptracker.ui.train.ExerciseStatsViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
                 modifier = Modifier,
             )

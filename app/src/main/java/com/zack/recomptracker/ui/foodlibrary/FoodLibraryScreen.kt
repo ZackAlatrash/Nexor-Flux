@@ -354,7 +354,7 @@ fun FoodLibraryScreen(
                                 GlassRecipeRow(
                                     recipe = recipe,
                                     pickerMode = pickerMode,
-                                    onLog = { viewModel.logRecipe(recipe) },
+                                    onLog = { viewModel.requestLogRecipe(recipe) },
                                     onEdit = { onEditRecipe(recipe.recipe.id) },
                                 )
                             }
@@ -410,6 +410,9 @@ fun FoodLibraryScreen(
     // ── Bottom Sheets ─────────────────────────────────────────────────────────
     if (state.showAmountSheet && state.pendingFood != null) {
         AmountSheet(state = state, viewModel = viewModel)
+    }
+    if (state.showRecipeAmountSheet && state.pendingRecipe != null) {
+        RecipeAmountSheet(state = state, viewModel = viewModel)
     }
     if (state.showCreateFoodForm) {
         CreateFoodSheet(state = state, viewModel = viewModel)
@@ -941,6 +944,55 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                     else -> "Save"
                 },
                 onClick = viewModel::confirmAmount,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecipeAmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
+    val recipe = state.pendingRecipe ?: return
+    val appColors = LocalAppColors.current
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = viewModel::dismissRecipeAmountSheet,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(recipe.recipe.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                "Whole recipe: ${recipe.totalCalories} kcal · ${recipe.ingredients.size} items",
+                color = appColors.textMuted,
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            AmountStepper(
+                value = state.recipePortions,
+                onValueChange = viewModel::onRecipePortionsChanged,
+                onMinus = { viewModel.stepRecipePortions(-FoodScaling.SERVING_STEP) },
+                onPlus = { viewModel.stepRecipePortions(FoodScaling.SERVING_STEP) },
+                caption = "",
+                suffix = "portions",
+            )
+            val preview = state.recipePreviewMacros
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
+                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
+                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
+                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+            }
+            MessageText(state.message, state.messageKind)
+            LiquidPrimaryButton(
+                text = if (state.slotId != null) "Add to ${state.slotName}" else "Add",
+                onClick = viewModel::confirmLogRecipe,
             )
         }
     }

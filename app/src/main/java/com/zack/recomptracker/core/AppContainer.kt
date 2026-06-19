@@ -504,6 +504,7 @@ private class AppViewModelFactory(
             TrainViewModel::class.java -> TrainViewModel(
                 workoutRepository = container.workoutRepository,
                 sessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
             )
             ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
                 repository = container.exerciseLibraryRepository,

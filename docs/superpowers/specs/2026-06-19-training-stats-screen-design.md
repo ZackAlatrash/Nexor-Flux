@@ -130,6 +130,15 @@ the reference for styling conventions (`ChartDefaults`).
   for the muscle-group badge; Material3 expandable/`AnimatedVisibility` for the accordion;
   `LocalAppAccent` / `LocalAppColors` for theming and highlight color.
 
+**Theming requirement (hard constraint):** the implementation must match the app's
+system theme and exclusively use the existing component library — glass/frosted cards,
+the existing buttons/badges/inputs, and theme colors via `LocalAppAccent` /
+`LocalAppColors`. No hard-coded colors, no ad-hoc one-off composables where an existing
+one fits. Body highlight, chart accents, and selection states all derive from the theme
+accent. The browser mockups produced during design were **structural wireframes only**
+(blocky shapes, placeholder violet) — they convey layout, not the visual target; the real
+look comes entirely from the app's design system.
+
 ## Data Flow
 
 ```

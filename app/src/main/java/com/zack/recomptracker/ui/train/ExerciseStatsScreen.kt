@@ -54,7 +54,6 @@ fun ExerciseStatsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val appColors = LocalAppColors.current
-    val accent = LocalAppAccent.current
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),

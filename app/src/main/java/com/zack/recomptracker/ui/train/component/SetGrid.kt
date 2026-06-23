@@ -379,13 +379,13 @@ private fun SessionSetGrid(
                                     },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("–", fontSize = 16.sp, color = appColors.textPrimary, fontWeight = FontWeight.Bold)
+                                Text("–", fontSize = 16.sp, color = if (row.completed) appColors.textMuted else appColors.textPrimary, fontWeight = FontWeight.Bold)
                             }
                             Text(
                                 text = row.rir?.toString() ?: "–",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = appColors.textPrimary,
+                                color = if (row.completed) appColors.textMuted else appColors.textPrimary,
                                 modifier = Modifier.width(24.dp),
                                 textAlign = TextAlign.Center,
                             )
@@ -401,7 +401,7 @@ private fun SessionSetGrid(
                                     },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("+", fontSize = 16.sp, color = appColors.textPrimary, fontWeight = FontWeight.Bold)
+                                Text("+", fontSize = 16.sp, color = if (row.completed) appColors.textMuted else appColors.textPrimary, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

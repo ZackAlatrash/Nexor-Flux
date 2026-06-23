@@ -27,7 +27,10 @@ android {
         applicationId = "com.zack.recomptracker"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
+        // CI passes a monotonic VERSION_CODE (git commit count) so every build is a
+        // distinct Firebase release; local builds fall back to 1. Both pipelines use the
+        // same scheme so debug/testers builds never trip Android's downgrade block.
+        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

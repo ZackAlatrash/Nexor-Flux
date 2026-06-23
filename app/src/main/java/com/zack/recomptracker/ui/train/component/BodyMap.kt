@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,9 +50,10 @@ fun BodyMap(
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
 
-    remember { MuscleArt.load(context); true }
-    val front = MuscleArt.front()
-    val back = MuscleArt.back()
+    val (front, back) = remember(context) {
+        MuscleArt.load(context)
+        MuscleArt.front() to MuscleArt.back()
+    }
     val highlight = selected?.let { highlightFor(it) }
 
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -90,17 +93,20 @@ private fun androidx.compose.foundation.layout.RowScope.BodyFigure(
         }
     }
     val aspect = (bounds.width() / bounds.height()).coerceIn(0.3f, 1.0f)
+    // Keep the tap callback current without re-keying pointerInput (which would restart the
+    // gesture detector every time the selected highlight changes — the detector doesn't use it).
+    val currentOnMuscleTap by rememberUpdatedState(onMuscleTap)
 
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspect)
-                .pointerInput(paths, highlightSlugs) {
+                .pointerInput(paths) {
                     detectTapGestures { offset ->
                         val t = BodyMapGeometry.fit(bounds.left, bounds.top, bounds.right, bounds.bottom, size.width.toFloat(), size.height.toFloat())
                         val slug = hitSlug(paths, t.toContentX(offset.x), t.toContentY(offset.y))
-                        slug?.let { categoryForSlug(it) }?.let(onMuscleTap)
+                        slug?.let { categoryForSlug(it) }?.let(currentOnMuscleTap)
                     }
                 },
         ) {

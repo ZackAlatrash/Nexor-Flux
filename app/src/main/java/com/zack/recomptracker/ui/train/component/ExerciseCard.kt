@@ -89,6 +89,12 @@ fun ExerciseCard(
     modifier: Modifier = Modifier,
     dragHandleModifier: Modifier = Modifier,
     isDragging: Boolean = false,
+    /**
+     * Sample the app's pre-blurred backdrop instead of running this card's own blur — set for
+     * scroll-heavy screens (the active workout) where many cards are on screen at once. Pixel-
+     * identical; see [FrostedCard]. Requires a pre-blurred backdrop to be provided up the tree.
+     */
+    preBlurred: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val appColors = LocalAppColors.current
@@ -105,6 +111,7 @@ fun ExerciseCard(
             clip = false
         },
         contentPadding = 12.dp,
+        preBlurred = preBlurred,
     ) {
         // ── Header row ────────────────────────────────────────────────────────
         Row(

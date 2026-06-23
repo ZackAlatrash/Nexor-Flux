@@ -129,9 +129,21 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                 // Inside it, contentBackdrop records the gradient only.
                 // Glass buttons in screens read contentBackdrop (gradient, no circular read).
                 // The nav bar (outside this box) reads navBackdrop (gradient + content).
+                //
+                // navBackdrop is consumed ONLY by the bottom nav bar, which is shown only on
+                // top-level routes. Recording the whole screen into navBackdrop every frame on other
+                // screens (e.g. the active workout) is pure waste — and a per-frame, content-
+                // independent cost that shows up as scroll jank. So only record it when the nav bar
+                // is actually on screen; elsewhere the modifier is dropped and nothing is captured.
                 Box(
                     modifier = Modifier
-                        .layerBackdrop(navBackdrop)
+                        .then(
+                            if (currentRoute in topLevelRoutes) {
+                                Modifier.layerBackdrop(navBackdrop)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .fillMaxSize(),
                 ) {
                     // Pre-blur exporter (active workout only): bakes the gradient's vibrancy + 12dp

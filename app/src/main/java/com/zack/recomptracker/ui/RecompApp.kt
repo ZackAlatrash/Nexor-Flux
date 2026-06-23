@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -35,8 +36,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.vibrancy
 import com.zack.recomptracker.core.AppContainer
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
+import com.zack.recomptracker.ui.liquidglass.LocalCardBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTab
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTabs
 import com.zack.recomptracker.ui.component.GlassOrbBackground
@@ -106,11 +111,17 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
         //     it can blur the live content scrolling behind it, restoring the glass effect.
         val contentBackdrop = rememberLayerBackdrop()
         val navBackdrop     = rememberLayerBackdrop()
+        //   cardBackdrop — the gradient with vibrancy + 12dp blur baked in ONCE (see the exporter
+        //     below). FrostedCard(preBlurred = true) samples this and skips its own per-card blur,
+        //     so a list of frosted cards costs one shared blur pass instead of one per card per
+        //     frame. Only populated while a screen that uses it is visible (active workout).
+        val cardBackdrop = rememberLayerBackdrop()
 
         CompositionLocalProvider(
             LocalAppContainer provides container,
             LocalToastController provides toastController,
             LocalBackdrop provides contentBackdrop,
+            LocalCardBackdrop provides cardBackdrop,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
 
@@ -118,11 +129,47 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                 // Inside it, contentBackdrop records the gradient only.
                 // Glass buttons in screens read contentBackdrop (gradient, no circular read).
                 // The nav bar (outside this box) reads navBackdrop (gradient + content).
+                //
+                // navBackdrop is consumed ONLY by the bottom nav bar, which is shown only on
+                // top-level routes. Recording the whole screen into navBackdrop every frame on other
+                // screens (e.g. the active workout) is pure waste — and a per-frame, content-
+                // independent cost that shows up as scroll jank. So only record it when the nav bar
+                // is actually on screen; elsewhere the modifier is dropped and nothing is captured.
                 Box(
                     modifier = Modifier
-                        .layerBackdrop(navBackdrop)
+                        .then(
+                            if (currentRoute in topLevelRoutes) {
+                                Modifier.layerBackdrop(navBackdrop)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .fillMaxSize(),
                 ) {
+                    // Pre-blur exporter (active workout only): bakes the gradient's vibrancy + 12dp
+                    // blur into cardBackdrop ONCE per frame, so FrostedCard(preBlurred = true) can
+                    // blit it instead of each card running its own blur pass. Drawn first → fully
+                    // occluded by the opaque gradient below, so it's never visible itself; it reads
+                    // last frame's contentBackdrop (imperceptible for a near-static gradient). Gated
+                    // on the route so every other screen pays nothing for it.
+                    if (currentRoute == Routes.ActiveSession) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .drawBackdrop(
+                                    backdrop = contentBackdrop,
+                                    shape = { RectangleShape },
+                                    effects = {
+                                        vibrancy()
+                                        blur(12f.dp.toPx())
+                                    },
+                                    highlight = null,
+                                    shadow = null,
+                                    exportedBackdrop = cardBackdrop,
+                                ),
+                        )
+                    }
+
                     // Background captured into contentBackdrop.
                     // Glass composables inside AppNavGraph read this backdrop and blur over it.
                     Box(

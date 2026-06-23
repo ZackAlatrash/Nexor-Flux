@@ -84,6 +84,20 @@ fun TrainHomeScreen(
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
 
+    // History grouped by month (newest first). Computed once per history change rather than
+    // on every recomposition — the sort + per-row date parse/format is otherwise re-run each pass.
+    val historyGrouped = remember(state.history) {
+        val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
+        state.history
+            .sortedByDescending { it.date }
+            .groupBy { session ->
+                runCatching { LocalDate.parse(session.date).format(monthFormatter).uppercase() }
+                    .getOrElse { "UNKNOWN" }
+            }
+            .entries
+            .toList()
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = FloatingNavHeight + 16.dp),
@@ -266,18 +280,7 @@ fun TrainHomeScreen(
                     }
                 }
             } else {
-                // Group by month (newest first)
-                val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
-                val grouped = state.history
-                    .sortedByDescending { it.date }
-                    .groupBy { session ->
-                        runCatching { LocalDate.parse(session.date).format(monthFormatter).uppercase() }
-                            .getOrElse { "UNKNOWN" }
-                    }
-                    .entries
-                    .toList()
-
-                grouped.forEach { (monthLabel, sessions) ->
+                historyGrouped.forEach { (monthLabel, sessions) ->
                     item(key = "header_$monthLabel") {
                         Text(
                             text = monthLabel,

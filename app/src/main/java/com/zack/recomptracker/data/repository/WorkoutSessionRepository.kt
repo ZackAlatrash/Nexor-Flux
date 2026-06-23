@@ -21,8 +21,11 @@ open class WorkoutSessionRepository(
     private val today: () -> String = { LocalDate.now().toString() },
 ) {
 
-    /** Creates an ACTIVE session snapshotting the template's name and exercises,
-     *  pre-filling session_sets from planned sets (completed=false). */
+    /** Creates an ACTIVE session snapshotting the template's name and exercises.
+     *  Each set's KG/REPS are pre-filled from the matching exercise + set index of the
+     *  last COMPLETED session for this routine (actual values). When there is no prior
+     *  session — or no matching set — the set is left blank (reps=0, weightKg=null).
+     *  Routine plan targets are not used for prefill. All sets start uncompleted. */
     open suspend fun startSession(template: WorkoutTemplate): Long {
         val sessionId = sessionDao.insertSession(
             WorkoutSessionEntity(
@@ -36,6 +39,16 @@ open class WorkoutSessionRepository(
                 durationSeconds = null,
             ),
         )
+        // exerciseId -> previous (reps, weightKg) ordered by set index, from the last completed session.
+        val prevByExercise: Map<Long, List<Pair<Int, Double?>>> =
+            sessionDao.getLastCompletedSession(template.id)?.toDomain()?.exercises
+                ?.groupBy { it.exerciseId }
+                ?.mapValues { (_, exs) ->
+                    // A routine normally has one row per exercise; if duplicated, take the first.
+                    exs.first().sets.sortedBy { it.setNumber }.map { it.reps to it.weightKg }
+                }
+                ?: emptyMap()
+
         template.exercises.sortedBy { it.sortOrder }.forEachIndexed { index, line ->
             val seId = sessionDao.insertSessionExercise(
                 SessionExerciseEntity(
@@ -46,13 +59,15 @@ open class WorkoutSessionRepository(
                     note = line.note,
                 ),
             )
-            line.plannedSets.forEach { ps ->
+            val prevSets = prevByExercise[line.exercise.id]
+            line.plannedSets.forEachIndexed { setIdx, ps ->
+                val prev = prevSets?.getOrNull(setIdx)
                 sessionDao.insertSet(
                     SessionSetEntity(
                         sessionExerciseId = seId,
                         setNumber = ps.setNumber,
-                        reps = ps.targetReps ?: 0,
-                        weightKg = ps.targetWeightKg,
+                        reps = prev?.first ?: 0,
+                        weightKg = prev?.second,
                         rir = null,
                         completed = false,
                     ),

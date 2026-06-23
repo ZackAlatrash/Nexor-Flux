@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -278,8 +279,7 @@ fun RoutineBuilderScreen(
             }
 
             // ── Exercise cards ────────────────────────────────────────────────
-            items(state.exercises, key = { it.id }) { builderEx ->
-                val exIndex = state.exercises.indexOfFirst { it.id == builderEx.id }
+            itemsIndexed(state.exercises, key = { _, it -> it.id }) { exIndex, builderEx ->
                 val exercise = builderEx.exercise
 
                 val subtitle = listOfNotNull(

@@ -38,7 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -142,17 +142,19 @@ fun ExerciseCard(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
+                // Fallback sits behind the image: visible while the async image is loading or on
+                // error (AsyncImage draws nothing until it succeeds), covered once it loads, and the
+                // sole content when there's no URL. Pixel-identical to the old SubcomposeAsyncImage
+                // loading/error slots, but AsyncImage avoids a per-card SubcomposeLayout — far cheaper
+                // to compose as cards scroll into view (the scroll-jank hot path).
+                ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter)
                 if (resolvedUrl != null) {
-                    SubcomposeAsyncImage(
+                    AsyncImage(
                         model = resolvedUrl,
                         contentDescription = exerciseName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
-                        loading = { ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter) },
-                        error = { ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter) },
                     )
-                } else {
-                    ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter)
                 }
             }
 

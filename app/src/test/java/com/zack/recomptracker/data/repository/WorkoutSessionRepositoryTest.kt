@@ -140,19 +140,43 @@ class WorkoutSessionRepositoryTest {
     }
 
     @Test
-    fun `startSession pre-fills session sets from planned sets as uncompleted`() = runTest {
+    fun `startSession seeds blank sets when there is no previous session`() = runTest {
         val dao = FakeSessionDao()
         val repo = repo(dao)
 
         val sessionId = repo.startSession(template())
 
         val seId = dao.exercises.values.first { it.sessionId == sessionId }.id
-        val sessionSets = dao.sets.values.filter { it.sessionExerciseId == seId }
+        val sessionSets = dao.sets.values.filter { it.sessionExerciseId == seId }.sortedBy { it.setNumber }
         assertEquals(3, sessionSets.size)
         assertTrue(sessionSets.all { !it.completed })
-        assertEquals(listOf(1, 2, 3), sessionSets.sortedBy { it.setNumber }.map { it.setNumber })
-        assertEquals(listOf(5, 5, 5), sessionSets.sortedBy { it.setNumber }.map { it.reps })
-        assertEquals(listOf(100.0, 100.0, 100.0), sessionSets.sortedBy { it.setNumber }.map { it.weightKg })
+        assertEquals(listOf(1, 2, 3), sessionSets.map { it.setNumber })
+        // Plan targets are no longer used for prefill — blank when no history.
+        assertEquals(listOf(0, 0, 0), sessionSets.map { it.reps })
+        assertEquals(listOf(null, null, null), sessionSets.map { it.weightKg })
+    }
+
+    @Test
+    fun `startSession prefills sets from last completed session actuals`() = runTest {
+        val dao = FakeSessionDao()
+        val repo = repo(dao)
+
+        // First session: log actuals for the Squat sets, mark completed, then complete the session.
+        val s1 = repo.startSession(template())
+        val se1 = dao.exercises.values.first { it.sessionId == s1 }.id
+        val s1sets = dao.sets.values.filter { it.sessionExerciseId == se1 }.sortedBy { it.setNumber }
+        dao.updateSet(s1sets[0].copy(reps = 6, weightKg = 102.5, completed = true))
+        dao.updateSet(s1sets[1].copy(reps = 5, weightKg = 100.0, completed = true))
+        dao.updateSet(s1sets[2].copy(reps = 4, weightKg = 97.5, completed = true))
+        repo.completeSession(s1)
+
+        // Second session for the same routine should prefill from those actuals (uncompleted).
+        val s2 = repo.startSession(template())
+        val se2 = dao.exercises.values.first { it.sessionId == s2 }.id
+        val s2sets = dao.sets.values.filter { it.sessionExerciseId == se2 }.sortedBy { it.setNumber }
+        assertEquals(listOf(6, 5, 4), s2sets.map { it.reps })
+        assertEquals(listOf(102.5, 100.0, 97.5), s2sets.map { it.weightKg })
+        assertTrue(s2sets.all { !it.completed })
     }
 
     @Test

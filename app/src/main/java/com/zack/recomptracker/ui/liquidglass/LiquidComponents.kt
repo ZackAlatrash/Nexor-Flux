@@ -717,13 +717,6 @@ private object EmptyBackdrop : Backdrop {
 // content — no plumbing changes needed per screen.
 val LocalBackdrop = staticCompositionLocalOf<Backdrop> { EmptyBackdrop }
 
-// Pre-blurred variant of the app backdrop: the static gradient with vibrancy + blur
-// already baked in ONCE at the app root (see RecompApp). Glass surfaces that opt in
-// (FrostedCard(preBlurred = true)) sample this and skip their own per-card blur, so a
-// list of cards costs one blur pass for the whole screen instead of one per card per
-// frame. Falls back to the empty backdrop when no pre-blurred source is provided.
-val LocalCardBackdrop = staticCompositionLocalOf<Backdrop> { EmptyBackdrop }
-
 // ── LiquidGlassButton (flexible base) ────────────────────────────────────────
 
 @Composable

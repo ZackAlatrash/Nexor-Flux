@@ -57,6 +57,7 @@ import com.zack.recomptracker.domain.workout.moveByKey
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -109,7 +110,6 @@ fun ActiveSessionScreen(
 
     // Local-only UI state for the header overflow menu + discard confirmation.
     // Kept out of the ViewModel so opening/closing them never touches workout state.
-    var menuOpen by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
     // Pending replacement awaiting confirmation: (targetSessionExerciseId, chosenExerciseId, oldName).
     // Only set when the target already has logged sets that the replacement would clear.
@@ -177,250 +177,165 @@ fun ActiveSessionScreen(
         }
     }
 
-    LazyColumn(
-        state = lazyListState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 40.dp),
-    ) {
-        // ── Top bar ───────────────────────────────────────────────────────────
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .padding(top = 14.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Minimize (collapse chevron)
-                IconButton(onClick = onMinimize) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Minimize",
-                        tint = appColors.textPrimary,
-                        modifier = Modifier.size(24.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        // ── Pinned header (always visible) ────────────────────────────────────
+        ActiveSessionHeader(
+            workoutName = s.workoutName,
+            elapsedFlow = viewModel.elapsed,
+            onMinimize = onMinimize,
+            onFinish = {
+                scope.launch {
+                    viewModel.finish()?.let { sid -> onFinish(sid) }
+                }
+            },
+            onDiscardRequest = { showDiscardDialog = true },
+        )
+
+        // ── Scrolling content ─────────────────────────────────────────────────
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 40.dp),
+        ) {
+            // ── Session notes ─────────────────────────────────────────────────
+            item {
+                FrostedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .padding(top = 14.dp, bottom = 14.dp),
+                    contentPadding = 12.dp,
+                ) {
+                    Text(
+                        text = "SESSION NOTES",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.textSecondary,
+                        letterSpacing = 0.4.sp,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                    SessionNoteField(
+                        value = noteText,
+                        onValueChange = { noteText = it },
+                        onFocusLost = { viewModel.setNote(noteText) },
                     )
                 }
+            }
 
-                Spacer(Modifier.width(6.dp))
+            // ── Exercise cards ────────────────────────────────────────────────
+            items(displayExercises, key = { it.id }) { se ->
+                ReorderableItem(reorderState, key = se.id) { isDragging ->
+                    val visual = exerciseVisuals[se.exerciseId]
+                    ExerciseCard(
+                        exerciseName = se.exerciseName,
+                        imageUrl = visual?.imagePath,
+                        fallbackMuscles = visual?.primaryMuscles,
+                        subtitle = "",
+                        onMoveUp = if (displayExercises.first().id != se.id) {
+                            {
+                                val idx = displayExercises.indexOfFirst { it.id == se.id }
+                                if (idx > 0) {
+                                    displayExercises.add(idx - 1, displayExercises.removeAt(idx))
+                                    viewModel.reorderExercises(displayExercises.map { it.id })
+                                }
+                            }
+                        } else null,
+                        onMoveDown = if (displayExercises.last().id != se.id) {
+                            {
+                                val idx = displayExercises.indexOfFirst { it.id == se.id }
+                                if (idx < displayExercises.size - 1) {
+                                    displayExercises.add(idx + 1, displayExercises.removeAt(idx))
+                                    viewModel.reorderExercises(displayExercises.map { it.id })
+                                }
+                            }
+                        } else null,
+                        onRemove = { viewModel.removeExercise(se) },
+                        onReplace = { onReplaceExercise(se.id) },
+                        onShowDetails = { viewModel.showExerciseDetails(se.exerciseId) },
+                        isDragging = isDragging,
+                        dragHandleModifier = Modifier.longPressDraggableHandle(
+                            onDragStarted = { dragHaptics.start() },
+                            onDragStopped = {
+                                dragHaptics.end()
+                                viewModel.reorderExercises(displayExercises.map { it.id })
+                            },
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp)
+                            .padding(bottom = 14.dp),
+                    ) {
+                        // Build session set rows for this exercise
+                        val prevList = prevMap[se.exerciseId] ?: emptyList()
+                        val sessionRows = se.sets.mapIndexed { idx, set ->
+                            SessionSetRow(
+                                id = set.id,
+                                setNumber = set.setNumber,
+                                prev = prevList.getOrNull(idx),
+                                reps = set.reps.takeIf { it > 0 },
+                                weightKg = set.weightKg,
+                                rir = set.rir,
+                                completed = set.completed,
+                            )
+                        }
 
-                // Routine title (prominent) + elapsed timer beneath it
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = s.workoutName,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = appColors.textPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            tint = appColors.textMuted,
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        // Isolated so the per-second tick recomposes only this Text,
-                        // not the whole session list (exercise cards stay untouched).
-                        ElapsedTimerText(
-                            elapsedFlow = viewModel.elapsed,
-                            color = appColors.textMuted,
+                        SetGrid(
+                            mode = SetGridMode.SESSION,
+                            sets = emptyList(), // not used in SESSION mode
+                            onAddSet = {},
+                            onRemoveSet = {},
+                            onSetChanged = { _, _, _ -> },
+                            sessionSets = sessionRows,
+                            onKgChanged = { row, kg ->
+                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                viewModel.updateKg(se, matchingSet, kg)
+                            },
+                            onRepsChanged = { row, reps ->
+                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                viewModel.updateReps(se, matchingSet, reps)
+                            },
+                            onRirChanged = { row, rir ->
+                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                viewModel.updateRir(se, matchingSet, rir)
+                            },
+                            onToggleComplete = { row ->
+                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                viewModel.toggleComplete(se, matchingSet)
+                            },
+                            onSessionAddSet = { viewModel.addSet(se) },
+                            onSessionRemoveSet = { setId -> viewModel.removeSet(setId) },
                         )
                     }
                 }
+            }
 
-                Spacer(Modifier.width(10.dp))
-
-                // Finish — filled accent pill (icon + label)
+            // ── Add Exercise button ───────────────────────────────────────────
+            item {
                 LiquidGlassButton(
-                    onClick = {
-                        scope.launch {
-                            viewModel.finish()?.let { sid -> onFinish(sid) }
-                        }
-                    },
+                    onClick = onAddExercise,
                     tint = accent.accent,
                     surfaceColor = Color.White.copy(alpha = 0.08f),
-                    buttonHeight = 40.dp,
+                    buttonHeight = 44.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .padding(top = 4.dp, bottom = 8.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        imageVector = Icons.Default.Add,
                         contentDescription = null,
                         tint = accent.onAccent,
                         modifier = Modifier.size(18.dp),
                     )
                     Text(
-                        text = "Finish",
+                        text = "Add Exercise",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = accent.onAccent,
                     )
                 }
-
-                // Overflow menu — fast path to discard the active workout. The existing
-                // Finish → Session Summary → "Discard Workout" flow is unchanged.
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
-                            tint = appColors.textPrimary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuOpen,
-                        onDismissRequest = { menuOpen = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Discard workout", color = ErrorRed) },
-                            onClick = {
-                                menuOpen = false
-                                showDiscardDialog = true
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        // ── Session notes ─────────────────────────────────────────────────────
-        item {
-            FrostedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .padding(bottom = 14.dp),
-                contentPadding = 12.dp,
-            ) {
-                Text(
-                    text = "SESSION NOTES",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = appColors.textSecondary,
-                    letterSpacing = 0.4.sp,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-                SessionNoteField(
-                    value = noteText,
-                    onValueChange = { noteText = it },
-                    onFocusLost = { viewModel.setNote(noteText) },
-                )
-            }
-        }
-
-        // ── Exercise cards ────────────────────────────────────────────────────
-        items(displayExercises, key = { it.id }) { se ->
-            ReorderableItem(reorderState, key = se.id) { isDragging ->
-                val visual = exerciseVisuals[se.exerciseId]
-                ExerciseCard(
-                    exerciseName = se.exerciseName,
-                    imageUrl = visual?.imagePath,
-                    fallbackMuscles = visual?.primaryMuscles,
-                    subtitle = "",
-                    onMoveUp = if (displayExercises.first().id != se.id) {
-                        {
-                            val idx = displayExercises.indexOfFirst { it.id == se.id }
-                            if (idx > 0) {
-                                displayExercises.add(idx - 1, displayExercises.removeAt(idx))
-                                viewModel.reorderExercises(displayExercises.map { it.id })
-                            }
-                        }
-                    } else null,
-                    onMoveDown = if (displayExercises.last().id != se.id) {
-                        {
-                            val idx = displayExercises.indexOfFirst { it.id == se.id }
-                            if (idx < displayExercises.size - 1) {
-                                displayExercises.add(idx + 1, displayExercises.removeAt(idx))
-                                viewModel.reorderExercises(displayExercises.map { it.id })
-                            }
-                        }
-                    } else null,
-                    onRemove = { viewModel.removeExercise(se) },
-                    onReplace = { onReplaceExercise(se.id) },
-                    onShowDetails = { viewModel.showExerciseDetails(se.exerciseId) },
-                    isDragging = isDragging,
-                    dragHandleModifier = Modifier.longPressDraggableHandle(
-                        onDragStarted = { dragHaptics.start() },
-                        onDragStopped = {
-                            dragHaptics.end()
-                            viewModel.reorderExercises(displayExercises.map { it.id })
-                        },
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                        .padding(bottom = 14.dp),
-                ) {
-                    // Build session set rows for this exercise
-                    val prevList = prevMap[se.exerciseId] ?: emptyList()
-                    val sessionRows = se.sets.mapIndexed { idx, set ->
-                        SessionSetRow(
-                            id = set.id,
-                            setNumber = set.setNumber,
-                            prev = prevList.getOrNull(idx),
-                            reps = set.reps.takeIf { it > 0 },
-                            weightKg = set.weightKg,
-                            rir = set.rir,
-                            completed = set.completed,
-                        )
-                    }
-
-                    SetGrid(
-                        mode = SetGridMode.SESSION,
-                        sets = emptyList(), // not used in SESSION mode
-                        onAddSet = {},
-                        onRemoveSet = {},
-                        onSetChanged = { _, _, _ -> },
-                        sessionSets = sessionRows,
-                        onKgChanged = { row, kg ->
-                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                            viewModel.updateKg(se, matchingSet, kg)
-                        },
-                        onRepsChanged = { row, reps ->
-                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                            viewModel.updateReps(se, matchingSet, reps)
-                        },
-                        onRirChanged = { row, rir ->
-                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                            viewModel.updateRir(se, matchingSet, rir)
-                        },
-                        onToggleComplete = { row ->
-                            val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                            viewModel.toggleComplete(se, matchingSet)
-                        },
-                        onSessionAddSet = { viewModel.addSet(se) },
-                        onSessionRemoveSet = { setId -> viewModel.removeSet(setId) },
-                    )
-                }
-            }
-        }
-
-        // ── + Exercise button ─────────────────────────────────────────────────
-        item {
-            LiquidGlassButton(
-                onClick = onAddExercise,
-                tint = accent.accent,
-                surfaceColor = Color.White.copy(alpha = 0.08f),
-                buttonHeight = 44.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .padding(top = 4.dp, bottom = 8.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    tint = accent.onAccent,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = "Add Exercise",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = accent.onAccent,
-                )
             }
         }
     }
@@ -463,6 +378,139 @@ fun ActiveSessionScreen(
                 pendingReplacement = null
             },
             onDismiss = { pendingReplacement = null },
+        )
+    }
+}
+
+// ── Pinned header (title · timer pill · Finish · overflow) ────────────────────
+
+@Composable
+private fun ActiveSessionHeader(
+    workoutName: String,
+    elapsedFlow: StateFlow<Long>,
+    onMinimize: () -> Unit,
+    onFinish: () -> Unit,
+    onDiscardRequest: () -> Unit,
+) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    var menuOpen by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp)
+                .padding(top = 14.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Minimize (collapse chevron)
+            IconButton(onClick = onMinimize) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Minimize",
+                    tint = appColors.textPrimary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+
+            Spacer(Modifier.width(6.dp))
+
+            // Routine title (prominent) + elapsed timer pill beneath it
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = workoutName,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = appColors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                ElapsedTimerPill(elapsedFlow = elapsedFlow)
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Finish — filled accent pill (icon + label)
+            LiquidGlassButton(
+                onClick = onFinish,
+                tint = accent.accent,
+                surfaceColor = Color.White.copy(alpha = 0.08f),
+                buttonHeight = 40.dp,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = accent.onAccent,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = "Finish",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = accent.onAccent,
+                )
+            }
+
+            // Overflow menu — fast path to discard the active workout.
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More options",
+                        tint = appColors.textPrimary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Discard workout", color = ErrorRed) },
+                        onClick = {
+                            menuOpen = false
+                            onDiscardRequest()
+                        },
+                    )
+                }
+            }
+        }
+
+        // Subtle divider so the header reads as pinned above the scrolling list.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(appColors.frostedBorder),
+        )
+    }
+}
+
+// ── Elapsed timer pill (accent-tinted, isolated recomposition) ────────────────
+
+@Composable
+private fun ElapsedTimerPill(elapsedFlow: StateFlow<Long>) {
+    val accent = LocalAppAccent.current
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(CornerChip))
+            .background(accent.tintedSurface)
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerChip))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Timer,
+            contentDescription = null,
+            tint = accent.inkLight,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        ElapsedTimerText(
+            elapsedFlow = elapsedFlow,
+            color = accent.inkLight,
         )
     }
 }
@@ -529,8 +577,8 @@ private fun ElapsedTimerText(
     val text = remember(elapsed) { formatElapsed(elapsed) }
     Text(
         text = text,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold,
         color = color,
     )
 }

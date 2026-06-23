@@ -415,9 +415,8 @@ fun ActiveSessionScreen(
                     tint = accent.onAccent,
                     modifier = Modifier.size(18.dp),
                 )
-                Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "+ Exercise",
+                    text = "Add Exercise",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = accent.onAccent,

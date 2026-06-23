@@ -338,8 +338,10 @@ class ActiveSessionViewModel(
     // ── Finish ────────────────────────────────────────────────────────────────
 
     /**
-     * Mark the session COMPLETED. Returns the session id on success, null if no
-     * active session is loaded yet.
+     * Prepare the session for its summary WITHOUT completing it. Records the elapsed
+     * duration but leaves the session ACTIVE, so backing out of the summary keeps the
+     * workout in progress. The session is only finalised by Save (complete) or Discard
+     * (abandon) on the summary screen. Returns the session id, or null if none loaded.
      */
     suspend fun finish(): Long? {
         val s = session.value ?: return null
@@ -347,7 +349,7 @@ class ActiveSessionViewModel(
             val start = Instant.parse(s.startedAt)
             ChronoUnit.SECONDS.between(start, Instant.now()).toInt().coerceAtLeast(0)
         }.getOrElse { null }
-        runCatching { sessionRepository.completeSession(s.id, duration) }
+        runCatching { sessionRepository.updateSessionDuration(s.id, duration) }
         return s.id
     }
 

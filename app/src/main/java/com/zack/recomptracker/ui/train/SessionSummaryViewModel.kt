@@ -163,7 +163,8 @@ class SessionSummaryViewModel(
 
     suspend fun save() {
         val s = _state.value
-        sessionRepository.updateSessionDuration(sessionId, s.durationSeconds)
+        // Finalise the session: ACTIVE → COMPLETED. This is the only place a workout is saved.
+        sessionRepository.completeSession(sessionId, s.durationSeconds)
         sessionRepository.setSessionNote(sessionId, s.note.takeIf { it.isNotBlank() })
     }
 

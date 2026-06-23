@@ -51,7 +51,6 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
-import com.zack.recomptracker.ui.liquidglass.LocalCardBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -91,18 +90,9 @@ fun FrostedCard(
     surfaceTint: Color = Color.Unspecified,
     /** Optional border colour override. Defaults to the standard frosted border. */
     borderColor: Color = Color.Unspecified,
-    /**
-     * When true, sample the app-level pre-blurred backdrop ([LocalCardBackdrop]) and skip this
-     * card's own vibrancy + blur. The result is pixel-identical (the same vibrancy + 12dp blur of
-     * the same static gradient, baked once at the app root) but costs one shared blur pass for the
-     * whole screen instead of one per card per frame — a scroll-performance win for screens that
-     * show many frosted cards at once (e.g. the active workout). Requires a pre-blurred backdrop to
-     * be provided via [LocalCardBackdrop]; otherwise the card samples the empty backdrop.
-     */
-    preBlurred: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val backdrop = if (preBlurred) LocalCardBackdrop.current else LocalBackdrop.current
+    val backdrop = LocalBackdrop.current
     val appColors = LocalAppColors.current
     val resolvedBorder = if (borderColor != Color.Unspecified) borderColor else appColors.frostedBorder
     var cardWidth by remember { mutableIntStateOf(0) }
@@ -122,12 +112,8 @@ fun FrostedCard(
                 backdrop = backdrop,
                 shape = { RoundedRectangle(CornerCard) },
                 effects = {
-                    // Pre-blurred backdrop already has vibrancy + blur baked in; applying them
-                    // again would double the effect (and re-introduce the per-card blur cost).
-                    if (!preBlurred) {
-                        vibrancy()
-                        blur(12f.dp.toPx())
-                    }
+                    vibrancy()
+                    blur(12f.dp.toPx())
                 },
                 onDrawSurface = {
                     drawRect(appColors.glassOverlay)

@@ -207,7 +207,6 @@ fun ActiveSessionScreen(
                         .padding(horizontal = 14.dp)
                         .padding(top = 14.dp, bottom = 14.dp),
                     contentPadding = 12.dp,
-                    preBlurred = true,
                 ) {
                     Text(
                         text = "SESSION NOTES",
@@ -234,7 +233,6 @@ fun ActiveSessionScreen(
                         imageUrl = visual?.imagePath,
                         fallbackMuscles = visual?.primaryMuscles,
                         subtitle = "",
-                        preBlurred = true,
                         onMoveUp = if (displayExercises.first().id != se.id) {
                             {
                                 val idx = displayExercises.indexOfFirst { it.id == se.id }

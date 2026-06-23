@@ -48,10 +48,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.moveByKey
 import com.zack.recomptracker.ui.component.ConfirmDialog
@@ -63,6 +67,7 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.ExerciseCard
+import com.zack.recomptracker.ui.train.component.exerciseImageUrl
 import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
 import com.zack.recomptracker.ui.train.component.SessionSetRow
@@ -145,6 +150,24 @@ fun ActiveSessionScreen(
     var noteText by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(session?.id) {
         if (session != null) noteText = session!!.note ?: ""
+    }
+
+    // Preload this session's exercise thumbnails at display size as soon as their paths resolve, so
+    // the decode + GPU upload happens up front instead of mid-scroll (the image scroll-jank cost).
+    // Bounded to a handful of exercises; the app's Coil loader caches them as hardware bitmaps.
+    val imageContext = LocalContext.current
+    val thumbPx = with(LocalDensity.current) { 44.dp.roundToPx() }
+    LaunchedEffect(exerciseVisuals) {
+        val loader = imageContext.imageLoader
+        exerciseVisuals.values.forEach { visual ->
+            val path = visual.imagePath?.takeIf { it.isNotBlank() } ?: return@forEach
+            loader.enqueue(
+                ImageRequest.Builder(imageContext)
+                    .data(exerciseImageUrl(path))
+                    .size(thumbPx)
+                    .build(),
+            )
+        }
     }
 
     // Show loading placeholder if no session yet

@@ -291,6 +291,7 @@ private fun SessionSetGrid(
                             placeholder = "–",
                             keyboardType = KeyboardType.Decimal,
                             completed = row.completed,
+                            locked = row.completed,
                             modifier = Modifier.weight(1f),
                             onChanged = { raw ->
                                 onKgChanged(row, if (raw.isBlank()) null else raw.toDoubleOrNull())
@@ -305,6 +306,7 @@ private fun SessionSetGrid(
                             placeholder = "–",
                             keyboardType = KeyboardType.Number,
                             completed = row.completed,
+                            locked = row.completed,
                             modifier = Modifier.weight(1f),
                             onChanged = { raw ->
                                 onRepsChanged(row, if (raw.isBlank()) null else raw.toIntOrNull())
@@ -371,7 +373,7 @@ private fun SessionSetGrid(
                                     .size(28.dp)
                                     .clip(CircleShape)
                                     .background(appColors.cardSurface)
-                                    .clickable {
+                                    .clickable(enabled = !row.completed) {
                                         val cur = row.rir ?: 0
                                         onRirChanged(row, (cur - 1).coerceAtLeast(0))
                                     },
@@ -393,7 +395,7 @@ private fun SessionSetGrid(
                                     .size(28.dp)
                                     .clip(CircleShape)
                                     .background(appColors.cardSurface)
-                                    .clickable {
+                                    .clickable(enabled = !row.completed) {
                                         val cur = row.rir ?: 0
                                         onRirChanged(row, cur + 1)
                                     },
@@ -683,6 +685,7 @@ private fun SetInputCell(
     completed: Boolean,
     onChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
+    locked: Boolean = false,
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
@@ -708,6 +711,7 @@ private fun SetInputCell(
             localValue = it
             onChanged(it)
         },
+        enabled = !locked,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         textStyle = TextStyle(
@@ -724,7 +728,7 @@ private fun SetInputCell(
                 else appColors.cardSurface
             )
             .border(1.dp, borderColor, RoundedCornerShape(CornerSmall))
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged { focused = !locked && it.isFocused }
             .padding(horizontal = 8.dp, vertical = 8.dp),
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.Center) {

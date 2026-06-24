@@ -1,9 +1,7 @@
 package com.zack.recomptracker.ui.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,11 +25,16 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
 private val SheetCorner = 26.dp
 
 /**
- * App-themed bottom sheet. Wraps the Material [ModalBottomSheet] (keeping its drag-to-dismiss,
- * scrim, and animation) but skins it as frosted glass: transparent Material container, the app's
- * [scrim][com.zack.recomptracker.ui.theme.AppColors.scrim], a frosted surface with a hairline
- * top border, rounded top corners, and a slim grab handle — so popups match [FrostedCard] and the
- * rest of the app instead of stock Material.
+ * App-themed bottom sheet. A thin skin over Material [ModalBottomSheet] (keeping its
+ * drag-to-dismiss, scrim, animation, and — importantly — its native nested-scroll handling for
+ * scrollable content): the sheet's own container is painted as a solid panel tinted by the current
+ * accent theme, the scrim is the app scrim, the top corners are rounded, and a slim grab handle is
+ * supplied via the `dragHandle` slot.
+ *
+ * The caller's [content] is the sheet's DIRECT content (a `ColumnScope`), so a scrollable child
+ * (LazyColumn / verticalScroll Column) participates in the sheet's nested scroll cleanly. Do NOT
+ * re-wrap the content in another height-wrapping container — that breaks the sheet's measurement
+ * and makes scrollable content jitter.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +46,6 @@ fun GlassBottomSheet(
 ) {
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
-    val shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner)
     // Solid panel tinted by the current accent theme (dark-tinted in dark mode, light-tinted in
     // light mode) so the sheet matches whatever theme is active instead of always reading purple.
     val panelColor = lerp(
@@ -55,28 +57,26 @@ fun GlassBottomSheet(
         onDismissRequest = onDismiss,
         modifier = modifier,
         sheetState = sheetState,
-        shape = shape,
-        containerColor = Color.Transparent,
+        shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
+        containerColor = panelColor,
         scrimColor = appColors.scrim,
-        dragHandle = null,
+        dragHandle = { GlassGrabHandle() },
+        content = content,
+    )
+}
+
+@Composable
+private fun GlassGrabHandle() {
+    val appColors = LocalAppColors.current
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(shape)
-                .background(panelColor)
-                .border(1.dp, appColors.frostedBorder, shape)
-                .padding(top = 10.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 6.dp)
-                    .size(width = 36.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(100))
-                    .background(appColors.textVeryMuted),
-            )
-            content()
-        }
+                .size(width = 36.dp, height = 4.dp)
+                .clip(RoundedCornerShape(100))
+                .background(appColors.textVeryMuted),
+        )
     }
 }

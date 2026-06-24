@@ -26,6 +26,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -56,6 +58,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,7 +74,7 @@ import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
 import com.zack.recomptracker.ui.toast.ToastType
-import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.component.AmountMode
 import com.zack.recomptracker.ui.component.AmountPreviewStat
@@ -206,15 +209,17 @@ fun FoodLibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 GlassActionButton(
-                    text = "+ New food",
+                    text = "New food",
                     onClick = viewModel::toggleCreateFoodForm,
                     isPrimary = true,
+                    leadingIcon = Icons.Default.Add,
                     modifier = Modifier.weight(1f),
                 )
                 GlassActionButton(
-                    text = "⚡ Quick add",
+                    text = "Quick add",
                     onClick = viewModel::openQuickAdd,
                     isPrimary = false,
+                    leadingIcon = Icons.Default.Bolt,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -224,9 +229,10 @@ fun FoodLibraryScreen(
         // ── Create Recipe button (pinned above list, hidden in picker mode) ───
         if (!pickerMode && (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS)) {
             GlassActionButton(
-                text = "+ Create Recipe",
+                text = "Create Recipe",
                 onClick = onCreateRecipe,
                 isPrimary = true,
+                leadingIcon = Icons.Default.Add,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -552,14 +558,36 @@ private fun GlassActionButton(
     onClick: () -> Unit,
     isPrimary: Boolean,
     modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
 ) {
-    LiquidActionButton(
-        text = text,
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val contentColor = if (isPrimary) accent.accentLighter else appColors.textPrimary.copy(alpha = 0.85f)
+    LiquidGlassButton(
         onClick = onClick,
-        isPrimary = isPrimary,
-        small = true,
         modifier = modifier,
-    )
+        tint = if (isPrimary) accent.accent else Color.Unspecified,
+        surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f)
+            else if (appColors.isDark) Color.White.copy(alpha = 0.14f) else appColors.glassPillSurface,
+        buttonHeight = 32.dp,
+    ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            text = text,
+            style = AppType.body,
+            fontSize = 13.sp,
+            fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
+            color = contentColor,
+        )
+    }
 }
 
 // ── Glass Food Row ────────────────────────────────────────────────────────────

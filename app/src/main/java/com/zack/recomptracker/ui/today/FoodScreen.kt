@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -83,6 +84,7 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -845,7 +847,12 @@ private fun LockedSlotCard(
                                 .clickable(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null) { menuOpen = true },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("⋯", fontSize = 15.sp, color = appColors.textDim)
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More options",
+                                tint = appColors.textDim,
+                                modifier = Modifier.size(17.dp),
+                            )
                         }
                         androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             androidx.compose.material3.DropdownMenuItem(
@@ -856,12 +863,26 @@ private fun LockedSlotCard(
                     }
                 }
                 if (!isSelecting) {
-                    LiquidActionButton(
-                        text = "＋ Add",
+                    LiquidGlassButton(
                         onClick = onAddClick,
-                        isPrimary = true,
-                        small = true,
-                    )
+                        tint = accent.accent,
+                        surfaceColor = Color.White.copy(alpha = 0.08f),
+                        buttonHeight = 32.dp,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = accent.accentLighter,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Add",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accent.accentLighter,
+                        )
+                    }
                 }
             }
         }

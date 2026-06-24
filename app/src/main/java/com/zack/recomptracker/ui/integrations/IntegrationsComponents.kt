@@ -44,6 +44,7 @@ import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
@@ -91,13 +92,12 @@ internal fun HealthConnectSection(
                 val appColors = LocalAppColors.current
                 Text(
                     "Health Connect",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                 )
                 Text(
                     "Auto-fill steps, weight & sleep",
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                 )
             }
@@ -183,7 +183,7 @@ internal fun HistoricalFoodReviewDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100 g baseline.",
-                    fontSize = 12.sp,
+                    style = AppType.cardSubtitle,
                     color = LocalAppColors.current.textMuted,
                     lineHeight = 17.sp,
                 )
@@ -202,10 +202,10 @@ internal fun HistoricalFoodReviewDialog(
                                 onCheckedChange = { onToggle(candidate) },
                             )
                             Column {
-                                Text(candidate.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(candidate.name, style = AppType.body.copy(fontWeight = FontWeight.SemiBold))
                                 Text(
                                     "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
-                                    fontSize = 11.sp,
+                                    style = AppType.label,
                                     color = LocalAppColors.current.textMuted,
                                 )
                             }
@@ -265,6 +265,6 @@ internal fun HcStatusRow(dotColor: Color, text: String) {
                 .clip(CircleShape)
                 .background(dotColor),
         )
-        Text(text = text, fontSize = 12.sp, color = LocalAppColors.current.textPrimary.copy(alpha = 0.8f))
+        Text(text = text, style = AppType.cardSubtitle, color = LocalAppColors.current.textPrimary.copy(alpha = 0.8f))
     }
 }

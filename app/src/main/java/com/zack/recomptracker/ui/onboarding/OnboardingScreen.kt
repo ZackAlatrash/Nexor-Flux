@@ -11,7 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +47,7 @@ import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.Instant
 import java.time.LocalDate
@@ -65,15 +70,13 @@ fun OnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 16.dp),
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(top = 32.dp, bottom = 24.dp)) {
             // --- shared frame: step counter + progress bar ---
             Text(
                 text = "STEP ${state.step + 1} OF $ONBOARDING_STEPS · ${STEP_TITLES[state.step].uppercase()}",
-                fontSize = 10.sp,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.metaLabel,
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.height(10.dp))
@@ -94,7 +97,7 @@ fun OnboardingScreen(
                 Text(
                     it,
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp,
+                    style = AppType.body,
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
             }
@@ -282,8 +285,7 @@ private fun PlanStep(state: OnboardingUiState, vm: OnboardingViewModel) {
                 } else {
                     Text(
                         text = state.adjCalories.ifBlank { plan.targetCalories.toString() },
-                        fontSize = 44.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        style = AppType.displayHero,
                         color = appColors.textPrimary,
                     )
                     Text("kcal / day", fontSize = 12.sp, color = appColors.textMuted, letterSpacing = 2.sp)
@@ -307,8 +309,8 @@ private fun PlanStep(state: OnboardingUiState, vm: OnboardingViewModel) {
 private fun StepHeader(title: String, subtitle: String) {
     val appColors = LocalAppColors.current
     Column {
-        Text(title, fontSize = 21.sp, fontWeight = FontWeight.Bold, color = appColors.textPrimary)
-        Text(subtitle, fontSize = 13.sp, color = appColors.textMuted, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp))
+        Text(title, style = AppType.screenTitleCompact, color = appColors.textPrimary)
+        Text(subtitle, style = AppType.screenSubtitle, color = appColors.textMuted, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp))
     }
 }
 
@@ -336,8 +338,13 @@ private fun PickerRow(value: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(value, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
-        Text("›", fontSize = 18.sp, color = appColors.textMuted)
+        Text(value, style = AppType.cardTitle, color = appColors.textPrimary)
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = appColors.textMuted,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -351,8 +358,8 @@ private fun MacroTile(label: String, value: String, modifier: Modifier = Modifie
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("${value}g", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = appColors.textPrimary)
-        Text(label.uppercase(), fontSize = 9.sp, letterSpacing = 1.sp, color = appColors.textMuted)
+        Text("${value}g", style = AppType.statValueSmall, color = appColors.textPrimary)
+        Text(label.uppercase(), style = AppType.metaLabel, color = appColors.textMuted)
     }
 }
 

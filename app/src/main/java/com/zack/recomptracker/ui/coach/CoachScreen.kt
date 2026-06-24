@@ -71,6 +71,8 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.MarkdownText
+import com.zack.recomptracker.ui.component.ScreenHeader
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -122,40 +124,32 @@ fun CoachScreen(viewModel: CoachViewModel) {
         modifier = Modifier.fillMaxSize(),
     ) {
         // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Coach",
-                modifier = Modifier.weight(1f),
-                color = appColors.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            AiBadge()
-            IconButton(
-                onClick = {
-                    viewModel.clearHistory()
-                    inputText = ""
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                },
-                enabled = canClear,
-                modifier = Modifier.semantics {
-                    role = androidx.compose.ui.semantics.Role.Button
-                    contentDescription = "Clear conversation"
-                    stateDescription = if (canClear) "Available" else "Disabled"
-                },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.RestartAlt,
-                    contentDescription = null,
-                    tint = if (canClear) appColors.textPrimary.copy(alpha = 0.7f) else appColors.textPrimary.copy(alpha = 0.2f),
-                )
-            }
-        }
+        ScreenHeader(
+            title = "Coach",
+            modifier = Modifier.padding(horizontal = 16.dp),
+            trailing = {
+                AiBadge()
+                IconButton(
+                    onClick = {
+                        viewModel.clearHistory()
+                        inputText = ""
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    },
+                    enabled = canClear,
+                    modifier = Modifier.semantics {
+                        role = androidx.compose.ui.semantics.Role.Button
+                        contentDescription = "Clear conversation"
+                        stateDescription = if (canClear) "Available" else "Disabled"
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RestartAlt,
+                        contentDescription = null,
+                        tint = if (canClear) appColors.textPrimary.copy(alpha = 0.7f) else appColors.textPrimary.copy(alpha = 0.2f),
+                    )
+                }
+            },
+        )
 
         // Main content
         Box(
@@ -289,14 +283,13 @@ private fun UnavailableContent() {
             Text(
                 text = "AI Coach",
                 color = appColors.textPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.cardTitle,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Download the AI model in More → AI Model to unlock the coach.",
                 color = appColors.textMuted,
-                fontSize = 14.sp,
+                style = AppType.body,
             )
         }
     }
@@ -316,7 +309,7 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
         Text(
             text = "What would you like to know?",
             color = appColors.textMuted,
-            fontSize = 15.sp,
+            style = AppType.cardTitle,
         )
         Spacer(modifier = Modifier.height(16.dp))
         suggestions.forEach { suggestion ->
@@ -327,7 +320,7 @@ private fun ReadyContent(onSuggestion: (String) -> Unit) {
                     Text(
                         text = suggestion,
                         color = appColors.textPrimary,
-                        fontSize = 14.sp,
+                        style = AppType.body,
                     )
                 },
                 modifier = Modifier
@@ -425,7 +418,7 @@ private fun ChatContent(
                     Text(
                         text = errorMessage,
                         color = ErrorRed,
-                        fontSize = 14.sp,
+                        style = AppType.body,
                     )
                 }
             }
@@ -455,7 +448,7 @@ private fun ConfirmationBar(
             Text(
                 text = action.displayText,
                 color = confirmCols.textPrimary,
-                fontSize = 14.sp,
+                style = AppType.body,
             )
         }
         // No bottom padding here — the input row directly below already reserves
@@ -475,7 +468,7 @@ private fun ConfirmationBar(
                     Text(
                         text = "Cancel",
                         color = androidx.compose.ui.graphics.Color(0xFFEF5350),
-                        fontSize = 14.sp,
+                        style = AppType.body,
                     )
                 },
                 modifier = Modifier.weight(1f),
@@ -496,7 +489,7 @@ private fun ConfirmationBar(
                     Text(
                         text = "Confirm",
                         color = androidx.compose.ui.graphics.Color(0xFF66BB6A),
-                        fontSize = 14.sp,
+                        style = AppType.body,
                     )
                 },
                 modifier = Modifier.weight(1f),
@@ -551,14 +544,15 @@ private fun ThinkingProcess(steps: List<String>) {
                 Text(
                     text = if (active) "›" else "✓",
                     color = if (active) accent.inkLight else accent.inkLight.copy(alpha = 0.6f),
-                    fontSize = 13.sp,
+                    style = AppType.body,
                     modifier = Modifier.width(20.dp),
                 )
                 Text(
                     text = step,
                     color = if (active) cols.textPrimary else cols.textMuted,
-                    fontSize = 14.sp,
-                    fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+                    style = AppType.body.copy(
+                        fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
                 if (active) {
@@ -595,7 +589,7 @@ private fun ChatBubble(message: ChatMessage) {
                 Text(
                     text = message.text,
                     color = appColors.textPrimary,
-                    fontSize = 14.sp,
+                    style = AppType.body,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 )
             }

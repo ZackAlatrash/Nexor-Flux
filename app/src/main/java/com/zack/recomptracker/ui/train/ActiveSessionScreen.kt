@@ -2,6 +2,8 @@ package com.zack.recomptracker.ui.train
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +45,9 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -60,7 +64,9 @@ import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.moveByKey
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -116,6 +122,9 @@ fun ActiveSessionScreen(
     // Local-only UI state for the header overflow menu + discard confirmation.
     // Kept out of the ViewModel so opening/closing them never touches workout state.
     var showDiscardDialog by remember { mutableStateOf(false) }
+    // Set when Finish is tapped while exercises still have unchecked sets — gates the actual finish
+    // behind a confirmation so the user can choose to keep going instead.
+    var showUnfinishedDialog by remember { mutableStateOf(false) }
     // Pending replacement awaiting confirmation: (targetSessionExerciseId, chosenExerciseId, oldName).
     // Only set when the target already has logged sets that the replacement would clear.
     var pendingReplacement by remember { mutableStateOf<Triple<Long, Long, String>?>(null) }
@@ -178,7 +187,7 @@ fun ActiveSessionScreen(
         ) {
             Text(
                 text = "Loading session…",
-                fontSize = 14.sp,
+                style = AppType.body,
                 color = appColors.textMuted,
             )
         }
@@ -200,208 +209,227 @@ fun ActiveSessionScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // ── Pinned header (always visible) ────────────────────────────────────
-        ActiveSessionHeader(
-            workoutName = s.workoutName,
-            elapsedFlow = viewModel.elapsed,
-            onMinimize = onMinimize,
-            onFinish = {
-                scope.launch {
-                    viewModel.finish()?.let { sid -> onFinish(sid) }
-                }
-            },
-            onDiscardRequest = { showDiscardDialog = true },
-        )
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ── Pinned header (always visible) ────────────────────────────────────
+            ActiveSessionHeader(
+                workoutName = s.workoutName,
+                elapsedFlow = viewModel.elapsed,
+                onMinimize = onMinimize,
+                onFinish = {
+                    // If any set is still unchecked, confirm before finishing; otherwise finish directly.
+                    if (s.exercises.any { ex -> ex.sets.any { !it.completed } }) {
+                        showUnfinishedDialog = true
+                    } else {
+                        scope.launch {
+                            viewModel.finish()?.let { sid -> onFinish(sid) }
+                        }
+                    }
+                },
+                onDiscardRequest = { showDiscardDialog = true },
+            )
 
-        // ── Scrolling content ─────────────────────────────────────────────────
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 40.dp),
-        ) {
-            // ── Session notes ─────────────────────────────────────────────────
-            item {
-                FrostedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                        .padding(top = 14.dp, bottom = 14.dp),
-                    contentPadding = 12.dp,
-                ) {
-                    Text(
-                        text = "SESSION NOTES",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = appColors.textSecondary,
-                        letterSpacing = 0.4.sp,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
-                    SessionNoteField(
-                        value = noteText,
-                        onValueChange = { noteText = it },
-                        onFocusLost = { viewModel.setNote(noteText) },
-                    )
-                }
-            }
-
-            // ── Exercise cards ────────────────────────────────────────────────
-            items(displayExercises, key = { it.id }) { se ->
-                ReorderableItem(reorderState, key = se.id) { isDragging ->
-                    val visual = exerciseVisuals[se.exerciseId]
-                    ExerciseCard(
-                        exerciseName = se.exerciseName,
-                        imageUrl = visual?.imagePath,
-                        fallbackMuscles = visual?.primaryMuscles,
-                        subtitle = "",
-                        onMoveUp = if (displayExercises.first().id != se.id) {
-                            {
-                                val idx = displayExercises.indexOfFirst { it.id == se.id }
-                                if (idx > 0) {
-                                    displayExercises.add(idx - 1, displayExercises.removeAt(idx))
-                                    viewModel.reorderExercises(displayExercises.map { it.id })
-                                }
-                            }
-                        } else null,
-                        onMoveDown = if (displayExercises.last().id != se.id) {
-                            {
-                                val idx = displayExercises.indexOfFirst { it.id == se.id }
-                                if (idx < displayExercises.size - 1) {
-                                    displayExercises.add(idx + 1, displayExercises.removeAt(idx))
-                                    viewModel.reorderExercises(displayExercises.map { it.id })
-                                }
-                            }
-                        } else null,
-                        onRemove = { viewModel.removeExercise(se) },
-                        onReplace = { onReplaceExercise(se.id) },
-                        onShowDetails = { viewModel.showExerciseDetails(se.exerciseId) },
-                        isDragging = isDragging,
-                        dragHandleModifier = Modifier.longPressDraggableHandle(
-                            onDragStarted = { dragHaptics.start() },
-                            onDragStopped = {
-                                dragHaptics.end()
-                                viewModel.reorderExercises(displayExercises.map { it.id })
-                            },
-                        ),
+            // ── Scrolling content ─────────────────────────────────────────────────
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 40.dp),
+            ) {
+                // ── Session notes ─────────────────────────────────────────────────
+                item {
+                    FrostedCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp)
-                            .padding(bottom = 14.dp),
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 14.dp, bottom = 14.dp),
+                        contentPadding = 12.dp,
                     ) {
-                        // Build session set rows for this exercise
-                        val prevList = prevMap[se.exerciseId] ?: emptyList()
-                        val sessionRows = se.sets.mapIndexed { idx, set ->
-                            SessionSetRow(
-                                id = set.id,
-                                setNumber = set.setNumber,
-                                prev = prevList.getOrNull(idx),
-                                reps = set.reps.takeIf { it > 0 },
-                                weightKg = set.weightKg,
-                                rir = set.rir,
-                                completed = set.completed,
+                        SectionLabel(
+                            text = "Session notes",
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                        SessionNoteField(
+                            value = noteText,
+                            onValueChange = { noteText = it },
+                            onFocusLost = { viewModel.setNote(noteText) },
+                        )
+                    }
+                }
+
+                // ── Exercise cards ────────────────────────────────────────────────
+                items(displayExercises, key = { it.id }) { se ->
+                    ReorderableItem(reorderState, key = se.id) { isDragging ->
+                        val visual = exerciseVisuals[se.exerciseId]
+                        ExerciseCard(
+                            exerciseName = se.exerciseName,
+                            imageUrl = visual?.imagePath,
+                            fallbackMuscles = visual?.primaryMuscles,
+                            subtitle = "",
+                            onMoveUp = if (displayExercises.first().id != se.id) {
+                                {
+                                    val idx = displayExercises.indexOfFirst { it.id == se.id }
+                                    if (idx > 0) {
+                                        displayExercises.add(idx - 1, displayExercises.removeAt(idx))
+                                        viewModel.reorderExercises(displayExercises.map { it.id })
+                                    }
+                                }
+                            } else null,
+                            onMoveDown = if (displayExercises.last().id != se.id) {
+                                {
+                                    val idx = displayExercises.indexOfFirst { it.id == se.id }
+                                    if (idx < displayExercises.size - 1) {
+                                        displayExercises.add(idx + 1, displayExercises.removeAt(idx))
+                                        viewModel.reorderExercises(displayExercises.map { it.id })
+                                    }
+                                }
+                            } else null,
+                            onRemove = { viewModel.removeExercise(se) },
+                            onReplace = { onReplaceExercise(se.id) },
+                            onShowDetails = { viewModel.showExerciseDetails(se.exerciseId) },
+                            isDragging = isDragging,
+                            dragHandleModifier = Modifier.longPressDraggableHandle(
+                                onDragStarted = { dragHaptics.start() },
+                                onDragStopped = {
+                                    dragHaptics.end()
+                                    viewModel.reorderExercises(displayExercises.map { it.id })
+                                },
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 14.dp),
+                        ) {
+                            // Build session set rows for this exercise
+                            val prevList = prevMap[se.exerciseId] ?: emptyList()
+                            val sessionRows = se.sets.mapIndexed { idx, set ->
+                                SessionSetRow(
+                                    id = set.id,
+                                    setNumber = set.setNumber,
+                                    prev = prevList.getOrNull(idx),
+                                    reps = set.reps.takeIf { it > 0 },
+                                    weightKg = set.weightKg,
+                                    rir = set.rir,
+                                    completed = set.completed,
+                                )
+                            }
+
+                            SetGrid(
+                                mode = SetGridMode.SESSION,
+                                sets = emptyList(), // not used in SESSION mode
+                                onAddSet = {},
+                                onRemoveSet = {},
+                                onSetChanged = { _, _, _ -> },
+                                sessionSets = sessionRows,
+                                onKgChanged = { row, kg ->
+                                    val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                    viewModel.updateKg(se, matchingSet, kg)
+                                },
+                                onRepsChanged = { row, reps ->
+                                    val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                    viewModel.updateReps(se, matchingSet, reps)
+                                },
+                                onRirChanged = { row, rir ->
+                                    val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                    viewModel.updateRir(se, matchingSet, rir)
+                                },
+                                onToggleComplete = { row ->
+                                    val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
+                                    viewModel.toggleComplete(se, matchingSet)
+                                },
+                                onSessionAddSet = { viewModel.addSet(se) },
+                                onSessionRemoveSet = { setId -> viewModel.removeSet(setId) },
                             )
                         }
+                    }
+                }
 
-                        SetGrid(
-                            mode = SetGridMode.SESSION,
-                            sets = emptyList(), // not used in SESSION mode
-                            onAddSet = {},
-                            onRemoveSet = {},
-                            onSetChanged = { _, _, _ -> },
-                            sessionSets = sessionRows,
-                            onKgChanged = { row, kg ->
-                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                                viewModel.updateKg(se, matchingSet, kg)
-                            },
-                            onRepsChanged = { row, reps ->
-                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                                viewModel.updateReps(se, matchingSet, reps)
-                            },
-                            onRirChanged = { row, rir ->
-                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                                viewModel.updateRir(se, matchingSet, rir)
-                            },
-                            onToggleComplete = { row ->
-                                val matchingSet = se.sets.firstOrNull { it.id == row.id } ?: return@SetGrid
-                                viewModel.toggleComplete(se, matchingSet)
-                            },
-                            onSessionAddSet = { viewModel.addSet(se) },
-                            onSessionRemoveSet = { setId -> viewModel.removeSet(setId) },
+                // ── Add Exercise button ───────────────────────────────────────────
+                item {
+                    LiquidGlassButton(
+                        onClick = onAddExercise,
+                        tint = accent.accent,
+                        surfaceColor = Color.White.copy(alpha = 0.08f),
+                        buttonHeight = 44.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 4.dp, bottom = 8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = accent.onAccent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            text = "Add Exercise",
+                            style = AppType.body.copy(fontWeight = FontWeight.Medium),
+                            color = accent.onAccent,
                         )
                     }
                 }
             }
-
-            // ── Add Exercise button ───────────────────────────────────────────
-            item {
-                LiquidGlassButton(
-                    onClick = onAddExercise,
-                    tint = accent.accent,
-                    surfaceColor = Color.White.copy(alpha = 0.08f),
-                    buttonHeight = 44.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                        .padding(top = 4.dp, bottom = 8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        tint = accent.onAccent,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = "Add Exercise",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = accent.onAccent,
-                    )
-                }
-            }
         }
-    }
 
-    // ── Exercise details popup ──────────────────────────────────────────────────
-    // Overlaid above the session list; the workout state (sets, order, timer, notes)
-    // is untouched while it is open or when it is dismissed.
-    detailExercise?.let { exercise ->
-        ExerciseDetailSheet(
-            exercise = exercise,
-            onDismiss = { viewModel.dismissExerciseDetails() },
-        )
-    }
+        // ── Exercise details popup ──────────────────────────────────────────────────
+        // Overlaid above the session list; the workout state (sets, order, timer, notes)
+        // is untouched while it is open or when it is dismissed.
+        detailExercise?.let { exercise ->
+            ExerciseDetailSheet(
+                exercise = exercise,
+                onDismiss = { viewModel.dismissExerciseDetails() },
+            )
+        }
 
-    // ── Discard confirmation ────────────────────────────────────────────────────
-    if (showDiscardDialog) {
-        ConfirmDialog(
-            title = "Discard workout?",
-            body = "This permanently deletes the current session. This can't be undone.",
-            confirmLabel = "Discard",
-            onConfirm = {
-                showDiscardDialog = false
-                scope.launch {
-                    viewModel.discard()
-                    onDiscard()
-                }
-            },
-            onDismiss = { showDiscardDialog = false },
-        )
-    }
+        // ── Discard confirmation ────────────────────────────────────────────────────
+        if (showDiscardDialog) {
+            ConfirmDialog(
+                title = "Discard workout?",
+                body = "This permanently deletes the current session. This can't be undone.",
+                confirmLabel = "Discard",
+                onConfirm = {
+                    showDiscardDialog = false
+                    scope.launch {
+                        viewModel.discard()
+                        onDiscard()
+                    }
+                },
+                onDismiss = { showDiscardDialog = false },
+            )
+        }
 
-    // ── Replace confirmation (only when logged sets would be cleared) ────────────
-    pendingReplacement?.let { (targetSeId, chosenExerciseId, oldName) ->
-        ConfirmDialog(
-            title = "Replace exercise?",
-            body = "You've logged sets for $oldName. Replacing it will clear those sets.",
-            confirmLabel = "Replace",
-            onConfirm = {
-                viewModel.replaceExercise(targetSeId, chosenExerciseId)
-                pendingReplacement = null
-            },
-            onDismiss = { pendingReplacement = null },
-        )
+        // ── Unfinished-sets confirmation (Finish tapped with unchecked sets) ─────────
+        if (showUnfinishedDialog) {
+            val incompleteExercises = s.exercises.filter { ex -> ex.sets.any { !it.completed } }
+            val incompleteSetCount = incompleteExercises.sumOf { ex -> ex.sets.count { !it.completed } }
+            UnfinishedSetsOverlay(
+                incompleteSets = incompleteSetCount,
+                incompleteExercises = incompleteExercises.size,
+                onEndAnyway = {
+                    showUnfinishedDialog = false
+                    scope.launch {
+                        viewModel.finish()?.let { sid -> onFinish(sid) }
+                    }
+                },
+                onKeepGoing = { showUnfinishedDialog = false },
+            )
+        }
+
+        // ── Replace confirmation (only when logged sets would be cleared) ────────────
+        pendingReplacement?.let { (targetSeId, chosenExerciseId, oldName) ->
+            ConfirmDialog(
+                title = "Replace exercise?",
+                body = "You've logged sets for $oldName. Replacing it will clear those sets.",
+                confirmLabel = "Replace",
+                onConfirm = {
+                    viewModel.replaceExercise(targetSeId, chosenExerciseId)
+                    pendingReplacement = null
+                },
+                onDismiss = { pendingReplacement = null },
+            )
+        }
     }
 }
 
@@ -443,8 +471,7 @@ private fun ActiveSessionHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = workoutName,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = AppType.screenTitleCompact,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -470,8 +497,7 @@ private fun ActiveSessionHeader(
                 )
                 Text(
                     text = "Finish",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.body.copy(fontWeight = FontWeight.Medium),
                     color = accent.onAccent,
                 )
             }
@@ -555,10 +581,7 @@ private fun SessionNoteField(
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        textStyle = TextStyle(
-            fontSize = 13.sp,
-            color = appColors.textPrimary,
-        ),
+        textStyle = AppType.body.copy(color = appColors.textPrimary),
         cursorBrush = SolidColor(accent.accentLighter),
         modifier = modifier
             .fillMaxWidth()
@@ -576,7 +599,7 @@ private fun SessionNoteField(
             if (value.isEmpty()) {
                 Text(
                     text = "Add a note about this session…",
-                    fontSize = 13.sp,
+                    style = AppType.body,
                     color = appColors.textMuted,
                 )
             }
@@ -600,8 +623,7 @@ private fun ElapsedTimerText(
     val text = remember(elapsed) { formatElapsed(elapsed) }
     Text(
         text = text,
-        fontSize = 16.sp,
-        fontWeight = FontWeight.SemiBold,
+        style = AppType.statValueSmall,
         color = color,
     )
 }
@@ -616,5 +638,115 @@ private fun formatElapsed(seconds: Long): String {
         "%d:%02d:%02d".format(h, m, s)
     } else {
         "%d:%02d".format(m, s)
+    }
+}
+
+// ── Unfinished-sets overlay (custom glass modal with liquid-glass buttons) ────
+
+/**
+ * Shown when the user taps Finish while some sets are still unchecked. Rendered in-composition
+ * (not in a Dialog window) so the [LiquidGlassButton] actions read the live app backdrop and render
+ * as true liquid glass — a Dialog window has no backdrop layer, so glass would fall flat there.
+ *
+ * A dimming scrim sits over the workout screen; tapping it (outside the card) is treated as
+ * "Keep going". The card matches the app's [WeeklyBriefingOverlay] modal surface (dark translucent
+ * fill, top sheen, hairline edge); no AI edge glow, which is reserved for AI features.
+ *
+ * "Keep going" is the encouraged path (accent-tinted glass pill). "End anyway" is a clear glass pill —
+ * ending with unchecked sets isn't destructive (the sets carry through to the summary).
+ */
+@Composable
+private fun UnfinishedSetsOverlay(
+    incompleteSets: Int,
+    incompleteExercises: Int,
+    onEndAnyway: () -> Unit,
+    onKeepGoing: () -> Unit,
+) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val shape = RoundedCornerShape(24.dp)
+    val surface = if (appColors.isDark) Color(0xFF101014).copy(alpha = 0.92f)
+                  else Color(0xFFF6F6F8).copy(alpha = 0.95f)
+    val hairline = Color.White.copy(alpha = if (appColors.isDark) 0.16f else 0.24f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            // Tap outside the card dismisses (= keep going). No ripple on the scrim.
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onKeepGoing,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+                .clip(shape)
+                .background(surface)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = 0.12f),
+                            0.14f to Color.Transparent,
+                        ),
+                    )
+                }
+                .border(0.5.dp, hairline, shape)
+                // Swallow taps on the card so they don't fall through to the scrim's dismiss.
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                )
+                .padding(22.dp),
+        ) {
+            Text(
+                text = "Unfinished sets",
+                style = AppType.screenTitleCompact,
+                color = appColors.textPrimary,
+            )
+            Spacer(Modifier.height(8.dp))
+            val setWord = if (incompleteSets == 1) "set" else "sets"
+            val exWord = if (incompleteExercises == 1) "exercise" else "exercises"
+            Text(
+                text = "You still have $incompleteSets unchecked $setWord across " +
+                    "$incompleteExercises $exWord. End the workout anyway, or keep going to complete them?",
+                style = AppType.body,
+                color = appColors.textMuted,
+                lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // End anyway — clear glass pill (not destructive: sets carry through to the summary).
+                LiquidGlassButton(
+                    onClick = onEndAnyway,
+                    surfaceColor = Color.White.copy(alpha = 0.14f),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "End anyway",
+                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                        color = appColors.textPrimary,
+                    )
+                }
+                // Keep going — accent-tinted glass pill (the encouraged path).
+                LiquidGlassButton(
+                    onClick = onKeepGoing,
+                    tint = accent.accent,
+                    surfaceColor = Color.White.copy(alpha = 0.08f),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Keep going",
+                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                        color = accent.onAccent,
+                    )
+                }
+            }
+        }
     }
 }

@@ -80,6 +80,8 @@ import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
@@ -186,8 +188,7 @@ fun FoodLibraryScreen(
                 ) {
                     Text(
                         text = cat.label(),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
                         color = if (isActive) accent.accentLighter else appColors.textPrimary.copy(alpha = 0x59 / 255f),
                     )
                 }
@@ -276,7 +277,7 @@ fun FoodLibraryScreen(
                                         ) { viewModel.requestLogFood(food) }
                                         .padding(horizontal = 12.dp, vertical = 6.dp),
                                 ) {
-                                    Text(food.name, fontSize = 12.sp, color = appColors.textPrimary.copy(alpha = 0xBF / 255f))
+                                    Text(food.name, style = AppType.cardSubtitle, color = appColors.textPrimary.copy(alpha = 0xBF / 255f))
                                 }
                             }
                         }
@@ -365,12 +366,8 @@ fun FoodLibraryScreen(
                     if (filteredMeals.isNotEmpty()) {
                         item(key = "${category}_legacy_header") {
                             Spacer(Modifier.height(12.dp))
-                            Text(
-                                text = "LEGACY SAVED MEALS",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = appColors.textMuted,
-                                letterSpacing = 0.14.sp,
+                            SectionLabel(
+                                "Legacy saved meals",
                                 modifier = Modifier.padding(vertical = 4.dp),
                             )
                         }
@@ -452,61 +449,16 @@ private fun FoodLibraryTopBar(
     onBack: () -> Unit,
     pickerMode: Boolean = false,
 ) {
-    val accent = LocalAppAccent.current
-    val appColors = LocalAppColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // Back button
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(appColors.cardSurface)
-                .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onBack,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = appColors.textPrimary.copy(alpha = 0xBF / 255f),
-                modifier = Modifier.size(18.dp),
-            )
-        }
-
-        // Title column
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = when {
-                    pickerMode -> "Add Ingredient"
-                    slotId != null -> "Add to $slotName"
-                    else -> "Foods & Meals"
-                },
-                fontSize = 17.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = appColors.textPrimary,
-                letterSpacing = (-0.3).sp,
-            )
-            if (slotId != null) {
-                Text(
-                    text = "$remainingCalories kcal remaining to zone",
-                    fontSize = 11.sp,
-                    color = accent.inkLight.copy(alpha = 0.75f),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-
-    }
+    SubScreenHeader(
+        title = when {
+            pickerMode -> "Add Ingredient"
+            slotId != null -> "Add to $slotName"
+            else -> "Foods & Meals"
+        },
+        onBack = onBack,
+        modifier = Modifier.padding(horizontal = 16.dp),
+        subtitle = if (slotId != null) "$remainingCalories kcal remaining to zone" else null,
+    )
 }
 
 // ── Glass Search Field ────────────────────────────────────────────────────────
@@ -631,8 +583,7 @@ private fun GlassFoodRow(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = food.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -652,14 +603,13 @@ private fun GlassFoodRow(
             }
             Text(
                 text = "${food.proteinG.toInt()}P ${food.carbsG.toInt()}C ${food.fatG.toInt()}F",
-                fontSize = 10.sp,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
             )
         }
         Text(
             text = "${food.calories} kcal",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.label.copy(fontWeight = FontWeight.Bold),
             color = appColors.textDim,
         )
         if (onEdit != null) {
@@ -714,8 +664,7 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = meal.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -732,14 +681,13 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
             }
             Text(
                 text = "${meal.proteinG.toInt()}P ${meal.carbsG.toInt()}C ${meal.fatG.toInt()}F",
-                fontSize = 10.sp,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
             )
         }
         Text(
             text = "${meal.calories} kcal",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.label.copy(fontWeight = FontWeight.Bold),
             color = appColors.textDim,
         )
         Box(
@@ -781,8 +729,7 @@ private fun GlassRecipeRow(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     recipe.recipe.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -801,14 +748,13 @@ private fun GlassRecipeRow(
             Text(
                 "${recipe.ingredients.size} ingredients · " +
                 "${recipe.totalProteinG.toInt()}P ${recipe.totalCarbsG.toInt()}C ${recipe.totalFatG.toInt()}F",
-                fontSize = 10.sp,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
             )
         }
         Text(
             text = "${recipe.totalCalories} kcal",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.label.copy(fontWeight = FontWeight.Bold),
             color = appColors.textDim,
         )
         if (!pickerMode) {
@@ -853,7 +799,7 @@ private fun EmptyStateLabel(category: FoodCategory) {
                 FoodCategory.OFF -> "Use the search bar above to find\nproducts from Open Food Facts."
                 else -> "No foods found."
             },
-            fontSize = 12.sp,
+            style = AppType.cardSubtitle,
             color = appColors.textMuted,
             textAlign = TextAlign.Center,
         )

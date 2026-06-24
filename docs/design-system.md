@@ -117,6 +117,18 @@ Material `Button` or a `Surface`-as-button.
 `VioletToggle`. Prefer these over `OutlinedTextField`/`Switch` for visual consistency. (Complex
 readonly dropdowns / suffixed number fields may stay Material where a clean swap isn't possible.)
 
+## Bottom sheets & toggles
+
+- **`GlassBottomSheet(onDismiss, sheetState?, content)`** — the app-themed bottom sheet. Wraps
+  Material `ModalBottomSheet` (keeps drag-to-dismiss / scrim / animation) but skins it as frosted
+  glass: transparent Material container, the app `scrim`, a frosted surface with a hairline top
+  border, 26dp rounded top corners, and a slim grab handle. **Never use a bare `ModalBottomSheet`**
+  — use this so popups match `FrostedCard`.
+- **`GlassSegmentedToggle(options, selectedIndex, onSelect)`** — glass pill toggle; the
+  replacement for Material `SegmentedButton`.
+- For an editable amount with +/- steppers use `AmountStepper`; for macro preview tiles use
+  `AmountPreviewStat`.
+
 ## Section labels & icons
 
 - **Section headers** → always `SectionLabel("My section")` (it uppercases for you). Never an

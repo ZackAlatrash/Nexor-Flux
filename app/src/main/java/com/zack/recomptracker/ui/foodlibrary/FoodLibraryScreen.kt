@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ui.foodlibrary
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +25,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -34,11 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -56,6 +53,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,9 +69,11 @@ import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
 import com.zack.recomptracker.ui.toast.ToastType
-import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.component.AmountMode
+import com.zack.recomptracker.ui.component.GlassBottomSheet
+import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.MessageKind
@@ -206,15 +206,17 @@ fun FoodLibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 GlassActionButton(
-                    text = "+ New food",
+                    text = "New food",
                     onClick = viewModel::toggleCreateFoodForm,
                     isPrimary = true,
+                    leadingIcon = Icons.Default.Add,
                     modifier = Modifier.weight(1f),
                 )
                 GlassActionButton(
-                    text = "⚡ Quick add",
+                    text = "Quick add",
                     onClick = viewModel::openQuickAdd,
                     isPrimary = false,
+                    leadingIcon = Icons.Default.Bolt,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -224,9 +226,10 @@ fun FoodLibraryScreen(
         // ── Create Recipe button (pinned above list, hidden in picker mode) ───
         if (!pickerMode && (state.category == FoodCategory.ALL || state.category == FoodCategory.MEALS)) {
             GlassActionButton(
-                text = "+ Create Recipe",
+                text = "Create Recipe",
                 onClick = onCreateRecipe,
                 isPrimary = true,
+                leadingIcon = Icons.Default.Add,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -552,14 +555,33 @@ private fun GlassActionButton(
     onClick: () -> Unit,
     isPrimary: Boolean,
     modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
 ) {
-    LiquidActionButton(
-        text = text,
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val contentColor = if (isPrimary) accent.accentLighter else appColors.textPrimary.copy(alpha = 0.85f)
+    LiquidGlassButton(
         onClick = onClick,
-        isPrimary = isPrimary,
-        small = true,
         modifier = modifier,
-    )
+        tint = if (isPrimary) accent.accent else Color.Unspecified,
+        surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f)
+            else if (appColors.isDark) Color.White.copy(alpha = 0.14f) else appColors.glassPillSurface,
+        buttonHeight = 32.dp,
+    ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = text,
+            style = AppType.body.copy(fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium),
+            color = contentColor,
+        )
+    }
 }
 
 // ── Glass Food Row ────────────────────────────────────────────────────────────
@@ -823,11 +845,7 @@ private fun FoodCategory.label() = when (this) {
 private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
     val food = state.pendingFood ?: return
     val appColors = LocalAppColors.current
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = viewModel::dismissAmountSheet,
-        sheetState = sheetState,
-    ) {
+    GlassBottomSheet(onDismiss = viewModel::dismissAmountSheet) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -835,36 +853,29 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(food.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(food.name, style = AppType.screenTitleCompact, color = appColors.textPrimary)
             val servingLabel = food.householdServingName ?: "serving"
             val servingGrams = food.householdServingGrams?.toInt() ?: 100
             Text(
                 "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g",
+                style = AppType.cardSubtitle,
                 color = appColors.textMuted,
-                fontSize = 11.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = state.amountMode == AmountMode.SERVINGS,
-                    onClick = { viewModel.onAmountModeChanged(AmountMode.SERVINGS) },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                ) { Text("Servings") }
-                SegmentedButton(
-                    selected = state.amountMode == AmountMode.GRAMS,
-                    onClick = { viewModel.onAmountModeChanged(AmountMode.GRAMS) },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                ) { Text("Grams") }
-            }
+            GlassSegmentedToggle(
+                options = listOf("Servings", "Grams"),
+                selectedIndex = if (state.amountMode == AmountMode.SERVINGS) 0 else 1,
+                onSelect = { viewModel.onAmountModeChanged(if (it == 0) AmountMode.SERVINGS else AmountMode.GRAMS) },
+            )
             if (state.amountMode == AmountMode.SERVINGS) {
                 AmountStepper(
                     value = state.servingsValue,
                     onValueChange = viewModel::onServingsChanged,
                     onMinus = { viewModel.stepServings(-FoodScaling.SERVING_STEP) },
                     onPlus = { viewModel.stepServings(FoodScaling.SERVING_STEP) },
-                    caption = state.resolvedGrams?.let { "${it.toInt()} g" } ?: "",
-                    suffix = "servings",
+                    caption = "",
+                    suffix = state.resolvedGrams?.let { "servings · ${it.toInt()} g" } ?: "servings",
                 )
             } else {
                 AmountStepper(
@@ -877,11 +888,11 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                 )
             }
             val preview = state.previewMacros
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
-                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
-                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
-                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—", Modifier.weight(1f))
+                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
             }
             MessageText(state.message, state.messageKind)
             LiquidPrimaryButton(
@@ -901,11 +912,7 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
 private fun RecipeAmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
     val recipe = state.pendingRecipe ?: return
     val appColors = LocalAppColors.current
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = viewModel::dismissRecipeAmountSheet,
-        sheetState = sheetState,
-    ) {
+    GlassBottomSheet(onDismiss = viewModel::dismissRecipeAmountSheet) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -913,11 +920,11 @@ private fun RecipeAmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryV
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(recipe.recipe.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(recipe.recipe.name, style = AppType.screenTitleCompact, color = appColors.textPrimary)
             Text(
                 "Whole recipe: ${recipe.totalCalories} kcal · ${recipe.ingredients.size} items",
+                style = AppType.cardSubtitle,
                 color = appColors.textMuted,
-                fontSize = 11.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -930,11 +937,11 @@ private fun RecipeAmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryV
                 suffix = "portions",
             )
             val preview = state.recipePreviewMacros
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
-                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
-                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
-                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—", Modifier.weight(1f))
+                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
             }
             MessageText(state.message, state.messageKind)
             LiquidPrimaryButton(
@@ -950,10 +957,7 @@ private fun RecipeAmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryV
 private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
     val appColors = LocalAppColors.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = viewModel::toggleCreateFoodForm,
-        sheetState = sheetState,
-    ) {
+    GlassBottomSheet(onDismiss = viewModel::toggleCreateFoodForm, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -964,10 +968,10 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     if (state.editingFoodId != null) "Edit: ${state.newFoodName}" else "New food",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    style = AppType.screenTitleCompact,
+                    color = appColors.textPrimary,
                 )
-                Text("Macros are per 100 g", color = appColors.textMuted, fontSize = 11.sp)
+                Text("Macros are per 100 g", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
             OutlinedTextField(
                 value = state.newFoodName,
@@ -1014,11 +1018,7 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
 @Composable
 private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
     val appColors = LocalAppColors.current
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = viewModel::dismissQuickAdd,
-        sheetState = sheetState,
-    ) {
+    GlassBottomSheet(onDismiss = viewModel::dismissQuickAdd) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1027,8 +1027,8 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("⚡ Quick add", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text("Log calories without creating a food", color = appColors.textMuted, fontSize = 11.sp)
+                Text("Quick add", style = AppType.screenTitleCompact, color = appColors.textPrimary)
+                Text("Log calories without creating a food", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
             OutlinedTextField(
                 value = state.quickAddName,

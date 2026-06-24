@@ -372,11 +372,11 @@ private fun IngredientAmountSheet(
                     )
                 }
                 val preview = editor.preview
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
-                    AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
-                    AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
-                    AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—", Modifier.weight(1f))
+                    AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                    AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                    AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
                 }
             } else {
                 MacroEditField("Calories (kcal)", editor.caloriesInput, viewModel::onEditorCaloriesChanged)

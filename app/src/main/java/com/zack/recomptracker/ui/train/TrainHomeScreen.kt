@@ -25,8 +25,10 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -604,13 +606,40 @@ private fun HistoryCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (durationMin != null && durationMin > 0) {
-                Text(text = "⏱ $durationMin min", style = AppType.cardSubtitle, color = appColors.textMuted)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Schedule,
+                        contentDescription = null,
+                        tint = appColors.textMuted,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(text = "$durationMin min", style = AppType.cardSubtitle, color = appColors.textMuted)
+                }
                 Text(text = "·", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
-            Text(text = "▦ $completedSets sets", style = AppType.cardSubtitle, color = appColors.textMuted)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.FormatListNumbered,
+                    contentDescription = null,
+                    tint = appColors.textMuted,
+                    modifier = Modifier.size(13.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(text = "$completedSets sets", style = AppType.cardSubtitle, color = appColors.textMuted)
+            }
             if (volume > 0) {
                 Text(text = "·", style = AppType.cardSubtitle, color = appColors.textMuted)
-                Text(text = "◆ ${volume.roundToInt()} kg", style = AppType.cardSubtitle, color = appColors.textMuted)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.FitnessCenter,
+                        contentDescription = null,
+                        tint = appColors.textMuted,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(text = "${volume.roundToInt()} kg", style = AppType.cardSubtitle, color = appColors.textMuted)
+                }
             }
         }
     }

@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -121,16 +122,17 @@ fun SubScreenHeader(
 
 /** Canonical 40dp circular back button used by every sub-screen header. */
 @Composable
-fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val appColors = LocalAppColors.current
     Box(
         modifier = modifier
             .minimumInteractiveComponentSize()
             .size(40.dp)
+            .then(if (!enabled) Modifier.alpha(0.38f) else Modifier)
             .clip(CircleShape)
             .background(appColors.cardSurface)
             .border(1.dp, appColors.cardBorder, CircleShape)
-            .clickable(role = Role.Button, onClickLabel = "Navigate back", onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = "Navigate back", onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

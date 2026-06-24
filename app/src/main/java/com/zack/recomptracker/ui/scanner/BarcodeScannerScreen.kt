@@ -175,6 +175,7 @@ fun BarcodeScannerScreen(
 
         BackButton(
             onClick = onBack,
+            enabled = state.scanState !is ScanState.ShowingSuccess,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(8.dp),

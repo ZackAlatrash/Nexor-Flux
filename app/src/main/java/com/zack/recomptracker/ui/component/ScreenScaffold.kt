@@ -62,20 +62,24 @@ fun ScreenScaffold(
 
 /**
  * Tier-1 header for top-level tab destinations. Big display title, optional subtitle,
- * optional trailing slot (avatar / action).
+ * optional back button (for hub destinations reached by a push, e.g. More), optional
+ * trailing slot (avatar / action).
  */
 @Composable
 fun ScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val appColors = LocalAppColors.current
     Row(
         modifier = modifier.fillMaxWidth().padding(vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (onBack != null) BackButton(onBack)
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, style = AppType.screenTitle, color = appColors.textPrimary)
             if (subtitle != null) {

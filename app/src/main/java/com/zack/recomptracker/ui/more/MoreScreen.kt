@@ -63,6 +63,7 @@ fun MoreScreen(
     onAiCoach: () -> Unit,
     onIntegrations: () -> Unit,
     onDataBackup: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by dashboardViewModel.uiState.collectAsStateWithLifecycle()
@@ -95,6 +96,7 @@ fun MoreScreen(
                 com.zack.recomptracker.ui.component.ScreenHeader(
                     title = "More",
                     subtitle = "Insights & setup",
+                    onBack = onBack,
                 )
             }
 
@@ -215,9 +217,9 @@ private fun CalorieDecisionCard(
         Spacer(Modifier.height(6.dp))
         Text(
             text = verdictLabel,
-            style = AppType.statValue,
+            style = AppType.displayLarge,
             color = appColors.textPrimary,
-            lineHeight = 32.sp,
+            lineHeight = 40.sp,
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -270,14 +272,14 @@ private fun MenuRow(
                     indication = null,
                     onClick = onClick,
                 )
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .padding(horizontal = 14.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             MenuIcon(icon)
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = AppType.cardTitle, color = appColors.textPrimary)
-                Text(detail, style = AppType.label, color = appColors.textMuted)
+                Text(detail, style = AppType.cardSubtitle, color = appColors.textMuted)
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

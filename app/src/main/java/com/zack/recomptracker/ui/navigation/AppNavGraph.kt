@@ -460,6 +460,7 @@ fun AppNavGraph(
                 onAiCoach = { navController.navigate(Routes.AiCoach) },
                 onIntegrations = { navController.navigate(Routes.Integrations) },
                 onDataBackup = { navController.navigate(Routes.DataBackup) },
+                onBack = { navController.popBackStack() },
             )
         }
         composable(

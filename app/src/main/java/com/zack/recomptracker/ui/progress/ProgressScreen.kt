@@ -82,6 +82,8 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item { com.zack.recomptracker.ui.component.SubScreenHeader(title = "Trends", onBack = onBack) }
+
             item {
                 GeneratedInsightCard(
                     title = "Trend analysis",
@@ -90,8 +92,6 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
                     variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
                 )
             }
-
-            item { com.zack.recomptracker.ui.component.SubScreenHeader(title = "Trends", onBack = onBack) }
 
             // Range selector
             item {

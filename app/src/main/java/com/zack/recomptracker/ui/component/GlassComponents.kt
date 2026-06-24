@@ -185,10 +185,8 @@ fun TintedCard(
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text.uppercase(),
-        fontSize = 9.sp,
-        fontWeight = FontWeight.Bold,
+        style = com.zack.recomptracker.ui.theme.AppType.sectionLabel,
         color = LocalAppColors.current.textFaint,
-        letterSpacing = 0.14.sp,
         modifier = modifier,
     )
 }

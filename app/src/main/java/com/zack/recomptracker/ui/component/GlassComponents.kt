@@ -1,8 +1,10 @@
 package com.zack.recomptracker.ui.component
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,8 +34,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -431,6 +436,7 @@ fun VioletToggle(
     modifier: Modifier = Modifier,
 ) {
     val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -442,17 +448,35 @@ fun VioletToggle(
             fontWeight = FontWeight.SemiBold,
             color = appColors.textPrimary,
         )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = LocalAppAccent.current.accent,
-                uncheckedThumbColor = appColors.textPrimary.copy(alpha = 0.50f),
-                uncheckedTrackColor = appColors.textPrimary.copy(alpha = 0.10f),
-                uncheckedBorderColor = appColors.textPrimary.copy(alpha = 0.15f),
-            ),
-        )
+        // Tap-only toggle (looks like a switch, but NO drag gesture). A Material `Switch` carries
+        // an internal draggable that fights a ModalBottomSheet's drag and makes the sheet twitch;
+        // a clickable track avoids that conflict while keeping the switch look everywhere.
+        val thumbBias by animateFloatAsState(if (checked) 1f else -1f, label = "toggleThumb")
+        Box(
+            modifier = Modifier
+                .size(width = 46.dp, height = 26.dp)
+                .clip(RoundedCornerShape(100))
+                .background(if (checked) accent.accent else appColors.textPrimary.copy(alpha = 0.10f))
+                .border(
+                    1.dp,
+                    if (checked) Color.Transparent else appColors.textPrimary.copy(alpha = 0.15f),
+                    RoundedCornerShape(100),
+                )
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    role = Role.Switch,
+                ) { onCheckedChange(!checked) }
+                .padding(horizontal = 3.dp),
+            contentAlignment = BiasAlignment(horizontalBias = thumbBias, verticalBias = 0f),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(if (checked) Color.White else appColors.textPrimary.copy(alpha = 0.50f)),
+            )
+        }
     }
 }
 

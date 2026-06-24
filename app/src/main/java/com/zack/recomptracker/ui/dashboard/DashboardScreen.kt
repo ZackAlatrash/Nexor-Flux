@@ -193,7 +193,7 @@ fun HomeDashboardContent(
                 onOpenSettings = onOpenSettings,
                 avatarPhotoUri = avatarPhotoUri,
                 avatarInitials = avatarInitials,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
 
             LazyColumn(

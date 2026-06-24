@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Backup
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,10 +38,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.MenuIcon
@@ -90,25 +92,10 @@ fun MoreScreen(
         ) {
             // ── Header ────────────────────────────────────────────────────────
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = "More",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
-                    )
-                    Text(
-                        text = "Insights & setup",
-                        fontSize = 13.sp,
-                        color = appColors.textMuted,
-                    )
-                }
+                com.zack.recomptracker.ui.component.ScreenHeader(
+                    title = "More",
+                    subtitle = "Insights & setup",
+                )
             }
 
             // ── Insights ──────────────────────────────────────────────────────
@@ -215,26 +202,27 @@ private fun CalorieDecisionCard(
         ) {
             Text(
                 text = "CALORIE DECISION",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.metaLabel,
                 color = accent.inkLight,
-                letterSpacing = 0.12.sp,
             )
-            Text("›", fontSize = 16.sp, color = appColors.textDim)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = appColors.textDim,
+                modifier = Modifier.size(20.dp),
+            )
         }
         Spacer(Modifier.height(6.dp))
         Text(
             text = verdictLabel,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Black,
+            style = AppType.statValue,
             color = appColors.textPrimary,
-            letterSpacing = (-1).sp,
             lineHeight = 32.sp,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = subtitle,
-            fontSize = 12.sp,
+            style = AppType.cardSubtitle,
             color = appColors.textMuted,
             lineHeight = 16.sp,
         )
@@ -288,10 +276,15 @@ private fun MenuRow(
         ) {
             MenuIcon(icon)
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
-                Text(detail, fontSize = 11.sp, color = appColors.textMuted)
+                Text(title, style = AppType.cardTitle, color = appColors.textPrimary)
+                Text(detail, style = AppType.label, color = appColors.textMuted)
             }
-            Text("›", fontSize = 14.sp, color = appColors.textVeryMuted)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = appColors.textVeryMuted,
+                modifier = Modifier.size(20.dp),
+            )
         }
         if (showDivider) {
             Box(

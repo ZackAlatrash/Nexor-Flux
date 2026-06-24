@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,13 +28,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.domain.workout.ExerciseStatsCalculator
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.charts.ProgressLineChart
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
@@ -60,24 +58,11 @@ fun ExerciseStatsScreen(
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 12.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = appColors.textPrimary,
-                    modifier = Modifier.size(22.dp).clickable { onBack() },
-                )
-                Spacer(Modifier.size(10.dp))
-                Text(
-                    text = state.exerciseName,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.textPrimary,
-                )
-            }
+            SubScreenHeader(
+                title = state.exerciseName,
+                onBack = onBack,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
 
         val stats = state.stats
@@ -89,17 +74,17 @@ fun ExerciseStatsScreen(
             item {
                 state.primaryMuscleLabel?.let { muscle ->
                     val label = listOfNotNull(state.category?.displayName, muscle).joinToString(" · ")
-                    VioletBadge(text = label.uppercase(), modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp))
+                    VioletBadge(text = label.uppercase(), modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
                 }
             }
-            item { QuickStats(stats, modifier = Modifier.padding(14.dp)) }
-            item { ChartCard(stats, modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 14.dp)) }
-            item { PersonalRecords(stats, modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 14.dp)) }
+            item { QuickStats(stats, modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) }
+            item { ChartCard(stats, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp)) }
+            item { PersonalRecords(stats, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp)) }
             item {
                 SectionLabel("RECENT SESSIONS", modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
             }
             items(stats.recentSessions.take(8)) { day ->
-                RecentSessionCard(day, modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp))
+                RecentSessionCard(day, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
             }
         }
     }
@@ -109,7 +94,7 @@ fun ExerciseStatsScreen(
 private fun CenterText(text: String) {
     val appColors = LocalAppColors.current
     Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-        Text(text = text, fontSize = 14.sp, color = appColors.textMuted)
+        Text(text = text, style = AppType.body, color = appColors.textMuted)
     }
 }
 
@@ -131,9 +116,9 @@ private fun QuickStats(stats: ExerciseStatsCalculator.ExerciseStats, modifier: M
 private fun androidx.compose.foundation.layout.RowScope.StatChip(label: String, value: String, modifier: Modifier = Modifier) {
     val appColors = LocalAppColors.current
     FrostedCard(modifier = modifier, contentPadding = 11.dp) {
-        Text(text = label, fontSize = 9.sp, color = appColors.textFaint, letterSpacing = 0.6.sp)
+        Text(text = label, style = AppType.metaLabel, color = appColors.textFaint)
         Spacer(Modifier.height(3.dp))
-        Text(text = value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = appColors.textPrimary)
+        Text(text = value, style = AppType.statValueSmall, color = appColors.textPrimary)
     }
 }
 
@@ -162,8 +147,7 @@ private fun ChartCard(stats: ExerciseStatsCalculator.ExerciseStats, modifier: Mo
                 ) {
                     Text(
                         text = m.label,
-                        fontSize = 11.sp,
-                        fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+                        style = AppType.label.copy(fontWeight = if (active) FontWeight.Medium else FontWeight.Normal),
                         color = if (active) accent.onAccent else appColors.textMuted,
                     )
                 }
@@ -191,9 +175,9 @@ private fun androidx.compose.foundation.layout.RowScope.PrChip(label: String, va
     val appColors = LocalAppColors.current
     FrostedCard(modifier = modifier, contentPadding = 10.dp) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text(text = label, fontSize = 8.sp, color = appColors.textFaint, letterSpacing = 0.5.sp)
+            Text(text = label, style = AppType.metaLabel, color = appColors.textFaint)
             Spacer(Modifier.height(3.dp))
-            Text(text = value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = appColors.textPrimary)
+            Text(text = value, style = AppType.statValueSmall, color = appColors.textPrimary)
         }
     }
 }
@@ -203,8 +187,8 @@ private fun RecentSessionCard(day: ExerciseStatsCalculator.DaySession, modifier:
     val appColors = LocalAppColors.current
     FrostedCard(modifier = modifier.fillMaxWidth(), contentPadding = 11.dp) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = friendlyDate(day.date), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary)
-            Text(text = "vol ${day.volume.roundToInt()}", fontSize = 12.sp, color = appColors.textMuted)
+            Text(text = friendlyDate(day.date), style = AppType.cardTitle, color = appColors.textPrimary)
+            Text(text = "vol ${day.volume.roundToInt()}", style = AppType.cardSubtitle, color = appColors.textMuted)
         }
         Spacer(Modifier.height(3.dp))
         Text(
@@ -212,7 +196,7 @@ private fun RecentSessionCard(day: ExerciseStatsCalculator.DaySession, modifier:
                 val w = s.weightKg?.let { "${it.roundToInt()}kg" } ?: "BW"
                 "${s.reps}×$w"
             },
-            fontSize = 12.sp,
+            style = AppType.cardSubtitle,
             color = appColors.textPrimary.copy(alpha = 0.7f),
         )
     }

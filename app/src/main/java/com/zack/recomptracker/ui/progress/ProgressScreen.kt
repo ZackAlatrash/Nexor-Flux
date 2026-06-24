@@ -46,6 +46,7 @@ import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.component.charts.MiniSparkline
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -90,36 +91,7 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
                 )
             }
 
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = appColors.textPrimary,
-                        )
-                    }
-                    Text(
-                        text = "Trends",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
-                    )
-                }
-            }
+            item { com.zack.recomptracker.ui.component.SubScreenHeader(title = "Trends", onBack = onBack) }
 
             // Range selector
             item {
@@ -179,8 +151,7 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
             ) {
                 Text(
                     text = "${days}d",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Bold),
                     color = if (isActive) accent.accentLighter else appColors.textMuted,
                 )
             }
@@ -251,26 +222,22 @@ private fun MiniChartCard(series: ChartSeries, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = series.title.uppercase(),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.metaLabel,
             color = appColors.textDim,
-            letterSpacing = 0.08.sp,
         )
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 text = series.currentValue?.let {
                     if (series.unit == "%") "${"%.0f".format(it)}%" else "%.1f".format(it)
                 } ?: "—",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
+                style = AppType.statValueSmall,
                 color = appColors.textPrimary,
-                letterSpacing = (-0.8).sp,
                 lineHeight = 20.sp,
             )
             if (series.currentValue != null && series.unit != "%") {
                 Text(
                     series.unit,
-                    fontSize = 10.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
@@ -312,10 +279,8 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = series.title.uppercase(),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.label,
                 color = appColors.textMuted,
-                letterSpacing = 0.08.sp,
             )
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 val displayValue = overrideValue ?: series.currentValue
@@ -324,16 +289,14 @@ private fun ChartHeader(series: ChartSeries, overrideValue: Float? = null) {
                         if (series.unit == "%" || series.unit == "kcal") "%.0f".format(it)
                         else "%.1f".format(it)
                     } ?: "—",
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
+                    style = AppType.statValue,
                     color = appColors.textPrimary,
-                    letterSpacing = (-1).sp,
                     lineHeight = 26.sp,
                 )
                 if (displayValue != null) {
                     Text(
                         series.unit,
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                         color = appColors.textMuted,
                         modifier = Modifier.padding(bottom = 3.dp),
                     )
@@ -366,6 +329,6 @@ private fun NoDataLabel() {
             .height(44.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text("No data", fontSize = 11.sp, color = appColors.textMuted)
+        Text("No data", style = AppType.label, color = appColors.textMuted)
     }
 }

@@ -2,7 +2,9 @@ package com.zack.recomptracker.ui.body
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -22,7 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ui.component.SectionCard
+import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.ScreenScaffold
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import java.time.format.DateTimeFormatter
 
 private val HEADER_FMT = DateTimeFormatter.ofPattern("MMM d, yyyy")
@@ -68,45 +73,23 @@ fun BodyEditScreen(
         onSave = viewModel::saveMetrics,
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(state.date.format(HEADER_FMT), fontWeight = FontWeight.Bold)
-                        Text(
-                            "Past check-in",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
+    ScreenScaffold(withNavBarInset = false) {
+        item {
+            SubScreenHeader(
+                title = state.date.format(HEADER_FMT),
+                subtitle = "Past check-in",
+                onBack = onBack,
             )
-        },
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                SectionCard("Check-in for ${state.date.format(CARD_FMT)}") {
-                    BodyCheckInFormContent(
-                        state = formState,
-                        actions = formActions,
-                        saveLabel = "Save check-in for ${state.date.format(CARD_FMT)}",
-                    )
-                }
+        }
+        item {
+            FrostedCard {
+                SectionLabel("Check-in for ${state.date.format(CARD_FMT)}")
+                Spacer(Modifier.height(12.dp))
+                BodyCheckInFormContent(
+                    state = formState,
+                    actions = formActions,
+                    saveLabel = "Save check-in for ${state.date.format(CARD_FMT)}",
+                )
             }
         }
     }

@@ -65,8 +65,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
+import com.zack.recomptracker.ui.component.BackButton
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
+import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -164,21 +167,19 @@ fun BarcodeScannerScreen(
                     Text(
                         "Point at a barcode",
                         color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                     )
                 }
             }
         }
 
-        IconButton(
+        BackButton(
             onClick = onBack,
             enabled = state.scanState !is ScanState.ShowingSuccess,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(8.dp),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-        }
+        )
 
         when (val scanState = state.scanState) {
             is ScanState.Loading -> {
@@ -247,8 +248,7 @@ fun BarcodeScannerScreen(
                         Text(
                             scanState.message,
                             color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
+                            style = AppType.cardTitle,
                         )
                     }
                 }
@@ -271,7 +271,11 @@ private fun ScanErrorOverlay(message: String, onRetry: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(24.dp),
         ) {
-            Text(message, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text(
+                message,
+                color = Color.White,
+                style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+            )
             LiquidPrimaryButton(text = "Scan Again", onClick = onRetry)
         }
     }
@@ -290,16 +294,17 @@ private fun ProductFoundSheet(
     onCancel: () -> Unit,
 ) {
     val product = state.product
+    val appColors = LocalAppColors.current
     Column(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(product.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(product.name, style = AppType.screenTitleCompact)
         if (!product.hasCompleteData) {
             Text(
                 "Warning: some nutritional data is missing — check values before logging.",
                 color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
+                style = AppType.cardSubtitle,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -308,7 +313,7 @@ private fun ProductFoundSheet(
             MacroChip("Carbs", "${product.carbsPer100g}g")
             MacroChip("Fat", "${product.fatPer100g}g")
         }
-        Text("per 100g", fontSize = 11.sp, color = Color(0xFF6b7280))
+        Text("per 100g", style = AppType.metaLabel, color = appColors.textMuted)
         if (product.servingGrams != null) {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
@@ -355,9 +360,10 @@ private fun ProductFoundSheet(
 
 @Composable
 private fun MacroChip(label: String, value: String) {
+    val appColors = LocalAppColors.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        Text(label, fontSize = 11.sp, color = Color(0xFF6b7280))
+        Text(value, style = AppType.statValueSmall)
+        Text(label, style = AppType.metaLabel, color = appColors.textMuted)
     }
 }
 

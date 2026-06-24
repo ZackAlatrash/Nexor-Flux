@@ -47,7 +47,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
@@ -55,7 +54,10 @@ import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.ScreenHeader
+import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -104,36 +106,27 @@ fun TrainHomeScreen(
     ) {
         // ── Header ─────────────────────────────────────────────────────────────
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 12.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Train",
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = appColors.textPrimary,
-                )
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(accent.accent)
-                        .clickable { onCreateRoutine() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Create routine",
-                        tint = accent.onAccent,
-                        modifier = Modifier.size(19.dp),
-                    )
-                }
-            }
+            ScreenHeader(
+                title = "Train",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                trailing = {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(accent.accent)
+                            .clickable { onCreateRoutine() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Create routine",
+                            tint = accent.onAccent,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                },
+            )
         }
 
         // ── Routines / History segmented pill ──────────────────────────────────
@@ -141,7 +134,7 @@ fun TrainHomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 12.dp)
                     .clip(RoundedCornerShape(100.dp))
                     .background(Color.White.copy(alpha = 0.05f))
@@ -164,8 +157,9 @@ fun TrainHomeScreen(
                                 TrainTab.HISTORY -> "History"
                                 TrainTab.STATS -> "Stats"
                             },
-                            fontSize = 13.sp,
-                            fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
+                            style = AppType.body.copy(
+                                fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
+                            ),
                             color = if (isActive) accent.onAccent else appColors.textPrimary.copy(alpha = 0.55f),
                         )
                     }
@@ -182,7 +176,7 @@ fun TrainHomeScreen(
                 FrostedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 14.dp)
                         .clickable { onResume() },
                     contentPadding = 11.dp,
@@ -202,13 +196,12 @@ fun TrainHomeScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Resume \"${session.workoutName}\"",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                style = AppType.body,
                                 color = appColors.textPrimary,
                             )
                             Text(
                                 text = "In progress · $completedCount of $totalCount done",
-                                fontSize = 11.sp,
+                                style = AppType.label,
                                 color = appColors.textMuted,
                             )
                         }
@@ -226,12 +219,8 @@ fun TrainHomeScreen(
         // ── Routines tab ───────────────────────────────────────────────────────
         if (state.tab == TrainTab.ROUTINES) {
             item {
-                Text(
-                    text = "MY ROUTINES · ${state.routines.size}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = appColors.textPrimary.copy(alpha = 0.55f),
-                    letterSpacing = 0.4.sp,
+                SectionLabel(
+                    text = "My routines · ${state.routines.size}",
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 8.dp),
@@ -254,7 +243,7 @@ fun TrainHomeScreen(
                         onEditClick = { onEditRoutine(template.id) },
                         onDeleteClick = { viewModel.deleteRoutine(template.id) },
                         modifier = Modifier
-                            .padding(horizontal = 14.dp)
+                            .padding(horizontal = 16.dp)
                             .padding(bottom = 12.dp),
                     )
                 }
@@ -268,13 +257,13 @@ fun TrainHomeScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp)
+                            .padding(horizontal = 16.dp)
                             .padding(top = 32.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "No workouts yet — start one from Routines.",
-                            fontSize = 14.sp,
+                            style = AppType.body,
                             color = appColors.textMuted,
                         )
                     }
@@ -282,12 +271,8 @@ fun TrainHomeScreen(
             } else {
                 historyGrouped.forEach { (monthLabel, sessions) ->
                     item(key = "header_$monthLabel") {
-                        Text(
+                        SectionLabel(
                             text = monthLabel,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = appColors.textPrimary.copy(alpha = 0.55f),
-                            letterSpacing = 0.4.sp,
                             modifier = Modifier
                                 .padding(horizontal = 16.dp)
                                 .padding(top = 8.dp, bottom = 6.dp),
@@ -298,7 +283,7 @@ fun TrainHomeScreen(
                             session = session,
                             onClick = { onOpenSession(session.id) },
                             modifier = Modifier
-                                .padding(horizontal = 14.dp)
+                                .padding(horizontal = 16.dp)
                                 .padding(bottom = 12.dp),
                         )
                     }
@@ -347,15 +332,14 @@ private fun RoutineCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = template.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "$exerciseCount exercises · $totalSets sets",
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                     modifier = Modifier.padding(top = 1.dp),
                 )
@@ -421,7 +405,7 @@ private fun RoutineCard(
                         }
                         Text(
                             text = ex.exercise.name,
-                            fontSize = 13.sp,
+                            style = AppType.body,
                             color = appColors.textPrimary.copy(alpha = 0.85f),
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
@@ -429,7 +413,7 @@ private fun RoutineCard(
                         )
                         Text(
                             text = "${ex.plannedSets.size} sets",
-                            fontSize = 11.sp,
+                            style = AppType.label,
                             color = appColors.textMuted,
                         )
                     }
@@ -448,7 +432,7 @@ private fun RoutineCard(
             if (moreCount > 0) {
                 Text(
                     text = "and $moreCount more",
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                 )
             } else {
@@ -472,8 +456,7 @@ private fun RoutineCard(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "Start",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.body,
                     color = accent.onAccent,
                 )
             }
@@ -483,7 +466,7 @@ private fun RoutineCard(
         if (!hasExercises) {
             Text(
                 text = "Add exercises to start",
-                fontSize = 11.sp,
+                style = AppType.label,
                 color = appColors.textMuted,
                 modifier = Modifier.align(Alignment.End),
             )
@@ -524,7 +507,7 @@ private fun EmptyRoutinesCard(
 
     FrostedCard(
         modifier = modifier
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = 16.dp)
             .padding(top = 16.dp),
         contentPadding = 24.dp,
     ) {
@@ -542,13 +525,12 @@ private fun EmptyRoutinesCard(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "No routines yet",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.cardTitle,
                 color = appColors.textPrimary,
             )
             Text(
                 text = "Build your first workout from 870+ exercises",
-                fontSize = 13.sp,
+                style = AppType.body,
                 color = appColors.textMuted,
             )
             Spacer(Modifier.height(4.dp))
@@ -561,8 +543,7 @@ private fun EmptyRoutinesCard(
             ) {
                 Text(
                     text = "Create routine",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.body,
                     color = accent.onAccent,
                 )
             }
@@ -602,8 +583,7 @@ private fun HistoryCard(
         ) {
             Text(
                 text = session.workoutName,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.cardTitle,
                 color = appColors.textPrimary,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
@@ -611,7 +591,7 @@ private fun HistoryCard(
             )
             Text(
                 text = dateFormatted,
-                fontSize = 12.sp,
+                style = AppType.cardSubtitle,
                 color = appColors.textMuted,
             )
         }
@@ -624,13 +604,13 @@ private fun HistoryCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (durationMin != null && durationMin > 0) {
-                Text(text = "⏱ $durationMin min", fontSize = 12.sp, color = appColors.textMuted)
-                Text(text = "·", fontSize = 12.sp, color = appColors.textMuted)
+                Text(text = "⏱ $durationMin min", style = AppType.cardSubtitle, color = appColors.textMuted)
+                Text(text = "·", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
-            Text(text = "▦ $completedSets sets", fontSize = 12.sp, color = appColors.textMuted)
+            Text(text = "▦ $completedSets sets", style = AppType.cardSubtitle, color = appColors.textMuted)
             if (volume > 0) {
-                Text(text = "·", fontSize = 12.sp, color = appColors.textMuted)
-                Text(text = "◆ ${volume.roundToInt()} kg", fontSize = 12.sp, color = appColors.textMuted)
+                Text(text = "·", style = AppType.cardSubtitle, color = appColors.textMuted)
+                Text(text = "◆ ${volume.roundToInt()} kg", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
         }
     }
@@ -648,7 +628,7 @@ private fun StatsContent(
 
     val anyLogged = state.statsCategories.any { it.exercises.isNotEmpty() }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         com.zack.recomptracker.ui.train.component.BodyMap(
             selected = selected,
             onMuscleTap = { category -> selected = if (selected == category) null else category },
@@ -662,18 +642,15 @@ private fun StatsContent(
             ) {
                 Text(
                     text = "Log a workout to see your stats by muscle.",
-                    fontSize = 14.sp,
+                    style = AppType.body,
                     color = appColors.textMuted,
                 )
             }
             return@Column
         }
 
-        Text(
-            text = "BY MUSCLE",
-            fontSize = 11.sp,
-            color = appColors.textPrimary.copy(alpha = 0.55f),
-            letterSpacing = 0.4.sp,
+        SectionLabel(
+            text = "By muscle",
             modifier = Modifier.padding(bottom = 8.dp),
         )
 
@@ -714,13 +691,12 @@ private fun MuscleCategoryRow(
         ) {
             Text(
                 text = category.category.displayName,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.cardTitle,
                 color = appColors.textPrimary,
             )
             Text(
                 text = if (count == 0) "none" else "$count exercise${if (count == 1) "" else "s"}",
-                fontSize = 12.sp,
+                style = AppType.cardSubtitle,
                 color = appColors.textMuted,
             )
         }
@@ -730,7 +706,7 @@ private fun MuscleCategoryRow(
                 if (category.exercises.isEmpty()) {
                     Text(
                         text = "No exercises logged yet.",
-                        fontSize = 13.sp,
+                        style = AppType.body,
                         color = appColors.textMuted,
                     )
                 } else {
@@ -747,7 +723,7 @@ private fun MuscleCategoryRow(
                         ) {
                             Text(
                                 text = ex.name,
-                                fontSize = 13.sp,
+                                style = AppType.body,
                                 color = appColors.textPrimary.copy(alpha = 0.9f),
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,

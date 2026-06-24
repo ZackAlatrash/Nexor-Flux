@@ -47,6 +47,8 @@ import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.SettingRow
+import com.zack.recomptracker.ui.component.SubScreenHeader
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
@@ -126,35 +128,7 @@ fun IntegrationsScreen(
         ) {
             // ── Header ────────────────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    val appColors = LocalAppColors.current
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = appColors.textPrimary,
-                        )
-                    }
-                    Text(
-                        text = "Integrations",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
-                    )
-                }
+                SubScreenHeader(title = "Integrations", onBack = onBack)
             }
 
             // ── Health sync ───────────────────────────────────────────────────

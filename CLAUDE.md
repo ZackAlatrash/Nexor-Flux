@@ -30,6 +30,15 @@ ai/          On-device AI: insight cards + coach chat
 
 **Dependency rule:** UI → ViewModels → Repositories → Room/DataStore. Domain is pure Kotlin (no Android imports). AI layer depends on repositories and preferences but not on UI.
 
+## Design System
+
+@docs/design-system.md
+
+All UI must use the shared design tokens and components — read the guide before creating or
+changing any screen. Never hardcode `fontSize`/`fontWeight`: use `AppType`. Use `ScreenScaffold`
++ `ScreenHeader` (tab destinations) / `SubScreenHeader` (pushed screens) for screen frames, the
+`FrostedCard`/`NeutralCard` family for cards, and the `Liquid*Button` family for buttons.
+
 ## Source of Truth
 
 - **Room** (schema v8) — all logs, meals, food library, body entries, weekly reviews, recipes.

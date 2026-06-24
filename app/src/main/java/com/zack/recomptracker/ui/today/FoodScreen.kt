@@ -22,8 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -69,6 +75,9 @@ import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
+import com.zack.recomptracker.ui.component.ScreenHeader
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -80,6 +89,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -196,7 +206,6 @@ fun FoodContent(
                 isFuture = state.isFuture,
                 onPrevDay = { onSelectDate(state.selectedDate.minusDays(1)) },
                 onNextDay = { onSelectDate(state.selectedDate.plusDays(1)) },
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
             )
 
             LazyColumn(
@@ -253,13 +262,7 @@ fun FoodContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "MEALS",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = LocalAppColors.current.textMuted,
-                            letterSpacing = 0.12.sp,
-                        )
+                        SectionLabel(text = "Meals")
                         LiquidActionButton(
                             text = if (state.slotsEditMode) "Done" else "Edit",
                             onClick = actions.onToggleEditMode,
@@ -353,56 +356,45 @@ private fun FoodScreenHeader(
     val dateStr = remember(date) {
         date.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                text = "Food Log",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = appColors.textPrimary,
-                letterSpacing = (-0.8).sp,
-            )
-            if (isFuture) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(accent.accent.copy(alpha = 0.20f))
-                        .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(5.dp))
-                        .padding(horizontal = 7.dp, vertical = 2.dp),
+    Column(modifier = modifier.padding(horizontal = 16.dp)) {
+        ScreenHeader(
+            title = "Food Log",
+            subtitle = dateStr,
+            trailing = {
+                // Day navigation stepper
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        text = "PLANNING",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = accent.inkLight,
-                        letterSpacing = 0.10.sp,
-                    )
+                    DayNavButton(icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous day", onClick = onPrevDay)
+                    DayNavButton(icon = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next day", onClick = onNextDay)
                 }
+            },
+        )
+        if (isFuture) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(accent.accent.copy(alpha = 0.20f))
+                    .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(5.dp))
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "PLANNING",
+                    style = AppType.metaLabel,
+                    color = accent.inkLight,
+                )
             }
-        }
-        // Day navigation
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            DayNavButton(text = "‹", onClick = onPrevDay)
-            Text(
-                text = dateStr,
-                fontSize = 12.sp,
-                color = appColors.textMuted,
-                modifier = Modifier.padding(horizontal = 2.dp),
-            )
-            DayNavButton(text = "›", onClick = onNextDay)
         }
     }
 }
 
 @Composable
-private fun DayNavButton(text: String, onClick: () -> Unit) {
+private fun DayNavButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
     val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
@@ -413,7 +405,12 @@ private fun DayNavButton(text: String, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 16.sp, color = appColors.textDim, fontWeight = FontWeight.Bold)
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = appColors.textDim,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
@@ -632,10 +629,8 @@ private fun NutritionStrip(state: FoodLogUiState) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = String.format(Locale.US, "%,d", cal),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black,
+                        style = AppType.statValue.copy(fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp),
                         color = primaryText,
-                        letterSpacing = (-0.8).sp,
                     )
                     Text(
                         text = calSubText,
@@ -755,10 +750,8 @@ private fun MacroProgressItem(
             )
             Text(
                 text = value,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = AppType.body.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp),
                 color = resolvedValue,
-                letterSpacing = (-0.3).sp,
             )
         }
         Box(
@@ -826,13 +819,14 @@ private fun LockedSlotCard(
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     text = slotWithEntries.slot.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    style = AppType.cardSubtitle.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 0.02.sp),
                     color = appColors.textPrimary,
-                    letterSpacing = 0.02.sp,
                 )
                 Text(
-                    text = if (hasEntries) "${slotWithEntries.totals.calories} kcal" else "empty",
+                    text = if (hasEntries) {
+                        val t = slotWithEntries.totals
+                        "${t.calories} kcal · ${t.proteinG.roundToInt()}P · ${t.carbsG.roundToInt()}C · ${t.fatG.roundToInt()}F"
+                    } else "empty",
                     fontSize = 10.sp,
                     fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (hasEntries) accent.accentLight else appColors.textMuted,
@@ -952,8 +946,7 @@ private fun LockedSlotCard(
             ) {
                 Text(
                     "${selectedIds.size} selected",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
                     color = accentBar.inkLight,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1029,7 +1022,12 @@ private fun SlotEntryRow(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isSelected) Text("✓", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                if (isSelected) Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp),
+                )
             }
             Spacer(Modifier.width(4.dp))
         }
@@ -1040,8 +1038,7 @@ private fun SlotEntryRow(
             ) {
                 Text(
                     text = entry.name,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Medium),
                     color = nameColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1059,12 +1056,11 @@ private fun SlotEntryRow(
                     }
                 }
             }
-            Text(text = macroStr, fontSize = 9.sp, color = appColors.textFaint)
+            Text(text = macroStr, style = AppType.metaLabel.copy(fontWeight = FontWeight.Normal, letterSpacing = 0.sp), color = appColors.textFaint)
         }
         Text(
             text = "${entry.calories}",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Bold),
             color = appColors.textMuted,
         )
         if (!isSelecting) {
@@ -1078,7 +1074,12 @@ private fun SlotEntryRow(
                         .clickable { onConfirm() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("✓", fontSize = 13.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Confirm",
+                        tint = Color(0xFF34D399),
+                        modifier = Modifier.size(15.dp),
+                    )
                 }
             } else {
                 // Edit button
@@ -1090,7 +1091,12 @@ private fun SlotEntryRow(
                         .clickable { if (amountEditable) onEditAmount() else showMacroEdit = true },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("✎", fontSize = 12.sp, color = accent.inkLight)
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = accent.inkLight,
+                        modifier = Modifier.size(14.dp),
+                    )
                 }
             }
             // Postpone button (move to next day) — only when not viewing a past day
@@ -1103,7 +1109,12 @@ private fun SlotEntryRow(
                         .clickable { onPostpone() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⤍", fontSize = 13.sp, color = appColors.textDim)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Move to next day",
+                        tint = appColors.textDim,
+                        modifier = Modifier.size(15.dp),
+                    )
                 }
             }
             // Delete button
@@ -1115,7 +1126,12 @@ private fun SlotEntryRow(
                     .clickable { showDeleteConfirm = true },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✕", fontSize = 12.sp, color = ErrorRed.copy(alpha = 0.6f))
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Delete",
+                    tint = ErrorRed.copy(alpha = 0.6f),
+                    modifier = Modifier.size(14.dp),
+                )
             }
         }
     }
@@ -1230,10 +1246,10 @@ private fun EditModeSlotCard(
 
         // ── Slot info ─────────────────────────────────────────────────────────
         Column(modifier = Modifier.weight(1f)) {
-            Text(slotWithEntries.slot.name, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
+            Text(slotWithEntries.slot.name, style = AppType.cardTitle, color = appColors.textPrimary)
             Text(
                 "${slotWithEntries.entries.size} items · ${slotWithEntries.totals.calories} kcal",
-                fontSize = 11.sp,
+                style = AppType.label,
                 color    = appColors.textMuted,
             )
         }
@@ -1248,7 +1264,7 @@ private fun EditModeSlotCard(
                     .clickable { showRename = true; renameValue = slotWithEntries.slot.name }
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Text("Rename", fontSize = 11.sp, color = accent.inkLight)
+                Text("Rename", style = AppType.label, color = accent.inkLight)
             }
             Box(
                 modifier = Modifier
@@ -1258,7 +1274,7 @@ private fun EditModeSlotCard(
                     .clickable { showDeleteConfirm = true }
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Text("Delete", fontSize = 11.sp, color = ErrorRed)
+                Text("Delete", style = AppType.label, color = ErrorRed)
             }
         }
     }

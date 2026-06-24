@@ -32,6 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.ui.component.SubScreenHeader
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.ScreenPaddingH
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -46,25 +50,15 @@ fun BodyHistoryScreen(
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Check-in History", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        },
-    ) { padding ->
+    Column(modifier = Modifier.fillMaxSize()) {
+        SubScreenHeader(
+            title = "Check-in History",
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = ScreenPaddingH),
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = 16.dp),
         ) {
             item { Spacer(Modifier.height(8.dp)) }
@@ -77,7 +71,7 @@ fun BodyHistoryScreen(
             item {
                 Text(
                     "Showing up to 90 days · Tap any row to edit",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = AppType.cardSubtitle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -111,11 +105,11 @@ private fun LoggedRow(item: BodyHistoryItem.Logged, onEdit: (LocalDate) -> Unit)
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(item.date.format(DATE_FMT), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (summary.isNotEmpty()) Text(summary, style = MaterialTheme.typography.bodyMedium)
-            if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(item.date.format(DATE_FMT), style = AppType.cardSubtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (summary.isNotEmpty()) Text(summary, style = AppType.cardTitle)
+            if (detail.isNotEmpty()) Text(detail, style = AppType.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text("Edit", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+        Text("Edit", color = MaterialTheme.colorScheme.primary, style = AppType.label.copy(fontWeight = FontWeight.Bold))
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
@@ -131,21 +125,15 @@ private fun MissingRow(item: BodyHistoryItem.Missing, onAdd: (LocalDate) -> Unit
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(item.date.format(DATE_FMT), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            Text("no entry", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            Text(item.date.format(DATE_FMT), style = AppType.cardSubtitle, color = MaterialTheme.colorScheme.error)
+            Text("no entry", style = AppType.cardTitle, color = MaterialTheme.colorScheme.error)
         }
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer,
-            shape = MaterialTheme.shapes.small,
-        ) {
-            Text(
-                "+ Add",
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
+        LiquidActionButton(
+            text = "Add",
+            onClick = { onAdd(item.date) },
+            isPrimary = true,
+            small = true,
+        )
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }

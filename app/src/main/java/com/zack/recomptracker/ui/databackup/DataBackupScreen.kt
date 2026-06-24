@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FileOpen
@@ -51,7 +52,9 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.integrations.SettingsCard
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -120,35 +123,7 @@ fun DataBackupScreen(
         ) {
             // ── Header ────────────────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    val appColors = LocalAppColors.current
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = appColors.textPrimary,
-                        )
-                    }
-                    Text(
-                        text = "Data & Backup",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
-                    )
-                }
+                SubScreenHeader(title = "Data & Backup", onBack = onBack)
             }
 
             if (state.message != null) {
@@ -353,10 +328,15 @@ private fun DataRow(
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = titleColor)
-                Text(detail, fontSize = 11.sp, color = appColors.textMuted)
+                Text(title, style = AppType.cardTitle, color = titleColor)
+                Text(detail, style = AppType.label, color = appColors.textMuted)
             }
-            Text(text = "›", fontSize = 18.sp, color = chevronColor)
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = chevronColor,
+                modifier = Modifier.size(20.dp),
+            )
         }
         if (showDivider) {
             Box(

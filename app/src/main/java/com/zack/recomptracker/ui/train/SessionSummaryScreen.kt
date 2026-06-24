@@ -47,7 +47,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
@@ -59,6 +58,7 @@ import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
 import com.zack.recomptracker.ui.train.component.muscleGroupLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
@@ -83,7 +83,7 @@ fun SessionSummaryScreen(
 
     if (state.loading) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = "Loading…", fontSize = 14.sp, color = appColors.textMuted)
+            Text(text = "Loading…", style = AppType.body, color = appColors.textMuted)
         }
         return
     }
@@ -97,7 +97,7 @@ fun SessionSummaryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(top = 32.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -120,13 +120,12 @@ fun SessionSummaryScreen(
                 }
                 Text(
                     text = "Workout complete",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = AppType.screenTitleCompact,
                     color = appColors.textPrimary,
                 )
                 Text(
                     text = "${state.workoutName} · ${state.date}",
-                    fontSize = 14.sp,
+                    style = AppType.screenSubtitle,
                     color = appColors.textMuted,
                 )
             }
@@ -137,7 +136,7 @@ fun SessionSummaryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -152,10 +151,8 @@ fun SessionSummaryScreen(
                     ) {
                         Text(
                             text = "DURATION",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
+                            style = AppType.metaLabel,
                             color = appColors.textMuted,
-                            letterSpacing = 0.4.sp,
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(
@@ -173,8 +170,7 @@ fun SessionSummaryScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = formatDuration(state.durationSeconds),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.statValue,
                         color = appColors.textPrimary,
                     )
                 }
@@ -185,16 +181,13 @@ fun SessionSummaryScreen(
                 ) {
                     Text(
                         text = "VOLUME",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.metaLabel,
                         color = appColors.textMuted,
-                        letterSpacing = 0.4.sp,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = "${state.totalVolume.toInt()} kg",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.statValue,
                         color = appColors.textPrimary,
                     )
                 }
@@ -204,7 +197,7 @@ fun SessionSummaryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -215,16 +208,13 @@ fun SessionSummaryScreen(
                 ) {
                     Text(
                         text = "SETS",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.metaLabel,
                         color = appColors.textMuted,
-                        letterSpacing = 0.4.sp,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = "${state.totalSets}",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.statValue,
                         color = appColors.textPrimary,
                     )
                 }
@@ -235,16 +225,13 @@ fun SessionSummaryScreen(
                 ) {
                     Text(
                         text = "NEW PRs",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.metaLabel,
                         color = appColors.textMuted,
-                        letterSpacing = 0.4.sp,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = "${state.prCount}",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = AppType.statValue,
                         color = if (state.prCount > 0) accent.inkLight else appColors.textPrimary,
                     )
                 }
@@ -256,7 +243,7 @@ fun SessionSummaryScreen(
             SectionLabel(
                 text = "Exercises",
                 modifier = Modifier
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
             )
         }
@@ -270,7 +257,7 @@ fun SessionSummaryScreen(
             FrostedCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
                 contentPadding = 14.dp,
             ) {
@@ -295,8 +282,7 @@ fun SessionSummaryScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = recap.name,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            style = AppType.cardTitle,
                             color = appColors.textPrimary,
                         )
                         Spacer(Modifier.height(3.dp))
@@ -315,7 +301,7 @@ fun SessionSummaryScreen(
                                 }
                                 append(stats)
                             },
-                            fontSize = 12.sp,
+                            style = AppType.cardSubtitle,
                             color = appColors.textMuted,
                         )
                     }
@@ -333,13 +319,13 @@ fun SessionSummaryScreen(
             SectionLabel(
                 text = "Session Note",
                 modifier = Modifier
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
             )
             FrostedCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
                 contentPadding = 12.dp,
             ) {
@@ -361,16 +347,15 @@ fun SessionSummaryScreen(
                 },
                 tint = accent.accent,
                 surfaceColor = Color.White.copy(alpha = 0.08f),
-                buttonHeight = 50.dp,
+                buttonHeight = 48.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 12.dp),
             ) {
                 Text(
                     text = "Save Workout",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.cardTitle,
                     color = accent.onAccent,
                 )
             }
@@ -382,12 +367,11 @@ fun SessionSummaryScreen(
                 onClick = { showDiscardDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 16.dp),
             ) {
                 Text(
                     text = "Discard Workout",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.body,
                     color = ErrorRed,
                 )
             }
@@ -526,10 +510,7 @@ private fun SummaryNoteField(
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        textStyle = TextStyle(
-            fontSize = 13.sp,
-            color = appColors.textPrimary,
-        ),
+        textStyle = AppType.body.copy(color = appColors.textPrimary),
         cursorBrush = SolidColor(accent.accentLighter),
         modifier = modifier
             .fillMaxWidth()
@@ -544,7 +525,7 @@ private fun SummaryNoteField(
             if (value.isEmpty()) {
                 Text(
                     text = "How did this session go?",
-                    fontSize = 13.sp,
+                    style = AppType.body,
                     color = appColors.textMuted,
                 )
             }
@@ -640,7 +621,7 @@ private fun WheelPicker(
         Spacer(Modifier.width(6.dp))
         Text(
             text = label,
-            fontSize = 13.sp,
+            style = AppType.body,
             color = appColors.textMuted,
         )
     }

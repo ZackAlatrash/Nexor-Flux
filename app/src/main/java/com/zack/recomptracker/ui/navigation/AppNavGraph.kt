@@ -460,6 +460,7 @@ fun AppNavGraph(
                 onAiCoach = { navController.navigate(Routes.AiCoach) },
                 onIntegrations = { navController.navigate(Routes.Integrations) },
                 onDataBackup = { navController.navigate(Routes.DataBackup) },
+                onBack = { navController.popBackStack() },
             )
         }
         composable(
@@ -467,7 +468,7 @@ fun AppNavGraph(
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
         ) {
-            FoodsScreen(viewModel<FoodsViewModel>(factory = factory))
+            FoodsScreen(viewModel<FoodsViewModel>(factory = factory), onBack = { navController.popBackStack() })
         }
         composable(
             route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}&date={date}&pickerMode={pickerMode}",

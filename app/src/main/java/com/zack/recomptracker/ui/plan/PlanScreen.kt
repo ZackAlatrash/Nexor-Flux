@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ExpandMore
@@ -55,7 +56,9 @@ import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.component.VioletToggle
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.Instant
@@ -95,26 +98,11 @@ fun PlanScreen(viewModel: PlanViewModel, onBack: () -> Unit) {
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = appColors.textPrimary,
-                        )
-                    }
-                    Text("Plan", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                }
-                Text("Targets and review thresholds")
+                SubScreenHeader(
+                    title = "Plan",
+                    subtitle = "Targets and review thresholds",
+                    onBack = onBack,
+                )
                 MessageText(state.message, MessageKind.ERROR)
             }
         }
@@ -290,22 +278,28 @@ private fun GenerateHeroCard(onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 "Generate from profile",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.body.copy(fontWeight = FontWeight.Bold),
                 color = appColors.textPrimary,
             )
             Text(
                 "Auto-calc targets from your TDEE",
-                fontSize = 10.sp,
+                style = AppType.label,
                 color = appColors.textDim,
             )
         }
-        Text(
-            "Run ›",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = accent.inkLight,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Run",
+                style = AppType.label.copy(fontWeight = FontWeight.Bold),
+                color = accent.inkLight,
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = accent.inkLight,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 
@@ -317,10 +311,8 @@ private fun PhaseStartField(value: String, onClick: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(
             text = "PHASE START DATE",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.metaLabel,
             color = appColors.textMuted,
-            letterSpacing = 0.10.sp,
         )
         Row(
             modifier = Modifier
@@ -335,8 +327,7 @@ private fun PhaseStartField(value: String, onClick: () -> Unit) {
         ) {
             Text(
                 text = value.ifBlank { "Not set" },
-                fontSize = 15.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = AppType.cardTitle.copy(fontWeight = FontWeight.ExtraBold),
                 color = if (value.isBlank()) appColors.textMuted else appColors.textPrimary,
             )
             Icon(

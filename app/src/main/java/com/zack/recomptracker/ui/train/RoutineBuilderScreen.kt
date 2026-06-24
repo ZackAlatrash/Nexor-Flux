@@ -36,11 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.GlassTextArea
+import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.ExerciseCard
@@ -141,7 +142,7 @@ fun RoutineBuilderScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(top = 12.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -159,8 +160,7 @@ fun RoutineBuilderScreen(
 
                     Text(
                         text = if (state.workoutId != null) "Edit routine" else "New routine",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.screenTitleCompact,
                         color = appColors.textPrimary,
                         modifier = Modifier
                             .weight(1f)
@@ -182,8 +182,7 @@ fun RoutineBuilderScreen(
                     ) {
                         Text(
                             text = if (state.isSaving) "Saving…" else "Save",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
                             color = if (state.canSave) accent.onAccent else appColors.textMuted,
                         )
                     }
@@ -195,7 +194,7 @@ fun RoutineBuilderScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 10.dp),
                 ) {
                     GlassInputField(
@@ -213,15 +212,11 @@ fun RoutineBuilderScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 14.dp),
                 ) {
-                    Text(
-                        text = "NOTE (OPTIONAL)",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = appColors.textMuted,
-                        letterSpacing = 0.10.sp,
+                    SectionLabel(
+                        text = "Note (optional)",
                         modifier = Modifier.padding(bottom = 5.dp),
                     )
                     GlassTextArea(
@@ -236,12 +231,8 @@ fun RoutineBuilderScreen(
 
             // ── "EXERCISES · N" header ────────────────────────────────────────
             item {
-                Text(
+                SectionLabel(
                     text = if (state.exercises.isEmpty()) "EXERCISES" else "EXERCISES · ${state.exercises.size}  ·  $totalSets SETS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = appColors.textPrimary.copy(alpha = 0.55f),
-                    letterSpacing = 0.4.sp,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 8.dp),
@@ -254,7 +245,7 @@ fun RoutineBuilderScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp)
+                            .padding(horizontal = 16.dp)
                             .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -270,7 +261,7 @@ fun RoutineBuilderScreen(
                             )
                             Text(
                                 text = "Add exercises to build this routine",
-                                fontSize = 13.sp,
+                                style = AppType.body,
                                 color = appColors.textMuted,
                             )
                         }
@@ -304,7 +295,7 @@ fun RoutineBuilderScreen(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp)
+                            .padding(horizontal = 16.dp)
                             .padding(bottom = 12.dp),
                     ) {
                         SetGrid(
@@ -334,12 +325,11 @@ fun RoutineBuilderScreen(
                     surfaceColor = Color.White.copy(alpha = 0.08f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp),
+                        .padding(horizontal = 16.dp),
                 ) {
                     Text(
                         text = "Add exercise",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardTitle,
                         color = accent.onAccent,
                     )
                 }

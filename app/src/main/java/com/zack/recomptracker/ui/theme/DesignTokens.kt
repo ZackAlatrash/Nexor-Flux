@@ -99,6 +99,21 @@ val CornerCard  = 16.dp   // all content cards — Neutral, Frosted, Tinted
 val CornerChip  = 20.dp   // badges, pill indicators, tag chips
 val CornerPill  = 100.dp  // Liquid Glass elements only (nav, buttons, modals)
 
+// ── Screen layout tokens ──────────────────────────────────────────────────────
+/** Canonical horizontal padding for every screen's content. */
+val ScreenPaddingH = 16.dp
+/** Canonical vertical gap between cards / sections within a screen. */
+val ScreenSpacing = 10.dp
+
+/** In-card / inline spacing scale. */
+object Spacing {
+    val xs = 4.dp
+    val sm = 8.dp
+    val md = 12.dp
+    val lg = 16.dp
+    val xl = 20.dp
+}
+
 // ── M3 Frosted Blur surface tokens ────────────────────────────────────────────
 // rgba(18,10,32, 0.62) — dark frosted fill
 val FrostedSurface         = Color(0x9E120A20)

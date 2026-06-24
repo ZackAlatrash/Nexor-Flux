@@ -52,6 +52,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -185,10 +186,8 @@ fun TintedCard(
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text.uppercase(),
-        fontSize = 9.sp,
-        fontWeight = FontWeight.Bold,
+        style = AppType.sectionLabel,
         color = LocalAppColors.current.textFaint,
-        letterSpacing = 0.14.sp,
         modifier = modifier,
     )
 }

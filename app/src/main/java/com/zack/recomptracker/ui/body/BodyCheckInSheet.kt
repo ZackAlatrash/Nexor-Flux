@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ui.body
 
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,24 +8,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.component.GlassBottomSheet
@@ -39,7 +28,6 @@ import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
 
 // Sections for initialSection parameter
 object CheckInSection {
@@ -87,35 +75,16 @@ fun BodyCheckInSheetContent(
     initialSection: Int = CheckInSection.MEASUREMENTS,
 ) {
     val appColors = LocalAppColors.current
-    val scrollState = rememberScrollState()
     val dateStr = remember(state.date) { state.date.format(DateTimeFormatter.ofPattern("MMM d")) }
 
-    // Content offsets of the scroll-target sections, captured once at first layout (scroll == 0,
-    // so positionInParent() is the stable content offset). Used to open the sheet at a section.
-    var recoveryOffset by remember { mutableIntStateOf(0) }
-    var activityOffset by remember { mutableIntStateOf(0) }
-    var didInitialScroll by remember { mutableStateOf(false) }
-    LaunchedEffect(initialSection, recoveryOffset, activityOffset) {
-        if (didInitialScroll) return@LaunchedEffect
-        when (initialSection) {
-            CheckInSection.RECOVERY -> if (recoveryOffset > 0) {
-                scrollState.animateScrollTo(recoveryOffset); didInitialScroll = true
-            }
-            CheckInSection.ACTIVITY -> if (activityOffset > 0) {
-                scrollState.animateScrollTo(activityOffset); didInitialScroll = true
-            }
-            else -> didInitialScroll = true
-        }
-    }
-
-    // Disable the scroll overscroll/stretch effect: the form usually fits, so a swipe with
-    // nothing to scroll would otherwise produce an overscroll bounce that reads as the sheet
-    // twitching up/down after release. Scrolling still works when the content overflows.
-    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+    // Non-scrolling, wrap-content column — same approach as the (working) food-logging sheet.
+    // A verticalScroll/LazyColumn here participated in the ModalBottomSheet's nested scroll and
+    // made the sheet twitch on swipe; the form fits the sheet, so a plain Column is both correct
+    // and avoids the nested-scroll conflict. (initialSection is now a no-op: every section is
+    // visible without scrolling.)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(scrollState)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Row(
@@ -150,10 +119,7 @@ fun BodyCheckInSheetContent(
         SheetDivider(appColors.cardBorder)
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { if (recoveryOffset == 0) recoveryOffset = it.positionInParent().y.roundToInt() }
-                .padding(vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             SectionLabel("Recovery")
@@ -165,10 +131,7 @@ fun BodyCheckInSheetContent(
         SheetDivider(appColors.cardBorder)
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { if (activityOffset == 0) activityOffset = it.positionInParent().y.roundToInt() }
-                .padding(top = 14.dp, bottom = 40.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             SectionLabel("Activity")
@@ -176,7 +139,6 @@ fun BodyCheckInSheetContent(
             GlassTextArea(state.notes, actions.onNotesChanged, placeholder = "Notes...", minLines = 2)
             LiquidPrimaryButton(text = "Save check-in", onClick = actions.onSave)
         }
-    }
     }
 }
 

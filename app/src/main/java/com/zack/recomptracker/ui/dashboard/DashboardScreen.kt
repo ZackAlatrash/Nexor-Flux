@@ -76,6 +76,7 @@ import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
+import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -286,8 +287,7 @@ fun HomeDashboardContent(
                 ) {
                     Text(
                         text = "✦  Weekly Review",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardTitle,
                         color = accent.onAccent,
                     )
                 }
@@ -303,39 +303,18 @@ private fun ScreenHeader(
     avatarInitials: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    val appColors = LocalAppColors.current
     val today = remember { LocalDate.now() }
     val dateStr = remember(today) {
         today.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top,
-    ) {
-        Column {
-            Text(
-                text = "Dashboard",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = appColors.textPrimary,
-                letterSpacing = (-0.8).sp,
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(
-                text = dateStr,
-                fontSize = 12.sp,
-                color = appColors.textMuted,
-            )
-        }
-        if (onOpenSettings != null) {
-            HeaderProfileButton(
-                photoUri = avatarPhotoUri,
-                initials = avatarInitials,
-                onClick = onOpenSettings,
-            )
-        }
-    }
+    com.zack.recomptracker.ui.component.ScreenHeader(
+        title = "Dashboard",
+        subtitle = dateStr,
+        modifier = modifier,
+        trailing = if (onOpenSettings != null) {
+            { HeaderProfileButton(photoUri = avatarPhotoUri, initials = avatarInitials, onClick = onOpenSettings) }
+        } else null,
+    )
 }
 
 @Composable
@@ -429,10 +408,8 @@ private fun TodayCard(state: DashboardUiState) {
         ) {
             Text(
                 text = "TODAY",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.10.sp,
             )
             VioletBadge(text = badgeText)
         }
@@ -445,22 +422,19 @@ private fun TodayCard(state: DashboardUiState) {
         ) {
             Text(
                 text = String.format(Locale.US, "%,d", calories),
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Black,
+                style = AppType.displayLarge,
                 color = appColors.textPrimary,
-                letterSpacing = (-1.5).sp,
                 lineHeight = 36.sp,
             )
             Text(
                 text = "kcal",
-                fontSize = 13.sp,
+                style = AppType.body,
                 color = appColors.textMuted,
-                fontWeight = FontWeight.Normal,
             )
             if (remainText.isNotEmpty()) {
                 Text(
                     text = remainText,
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                 )
             }
@@ -483,13 +457,13 @@ private fun TodayCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("0", fontSize = 9.sp, color = appColors.textVeryMuted)
+            Text("0", style = AppType.metaLabel, color = appColors.textVeryMuted)
             Text(
                 "▌ $zoneLow–$zoneHigh",
-                fontSize = 9.sp,
+                style = AppType.metaLabel,
                 color = accent.inkBase.copy(alpha = 0.65f),
             )
-            Text("$scaleMax", fontSize = 9.sp, color = appColors.textVeryMuted)
+            Text("$scaleMax", style = AppType.metaLabel, color = appColors.textVeryMuted)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -541,12 +515,10 @@ private fun MacroBarItem(
         ) {
             Text(
                 text = label,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.07.sp,
             )
-            Text(text = value, fontSize = 9.sp, color = appColors.textDim)
+            Text(text = value, style = AppType.metaLabel, color = appColors.textDim)
         }
         Box(
             modifier = Modifier
@@ -596,10 +568,8 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             } else {
                 Text(
                     text = "LAST 7 DAYS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = AppType.metaLabel,
                     color = accent.inkLight.copy(alpha = 0.85f),
-                    letterSpacing = 0.13.sp,
                 )
             }
             Row(
@@ -619,8 +589,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                 )
                 Text(
                     text = "$inZone of 7 in zone",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.label,
                     color = accent.inkLighter,
                 )
             }
@@ -721,17 +690,13 @@ private fun ChartStat(
     ) {
         Text(
             text = value,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
+            style = AppType.statValueSmall,
             color = valueColor,
-            letterSpacing = (-0.5).sp,
         )
         Text(
             text = label,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Medium,
+            style = AppType.metaLabel,
             color = appColors.textMuted,
-            letterSpacing = 0.08.sp,
         )
     }
 }
@@ -758,11 +723,9 @@ private fun MotivationalCard(message: String) {
     ) {
         Text(
             text = message,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.statValueSmall,
             color = if (appColors.isDark) Color(0xFFEDE9FE) else accent.inkBase,
             lineHeight = 24.sp,
-            letterSpacing = (-0.3).sp,
         )
     }
 }
@@ -813,19 +776,15 @@ private fun StatTile(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = value,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
+                style = AppType.statValueSmall,
                 color = valueColor,
-                letterSpacing = (-0.5).sp,
                 lineHeight = 18.sp,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = label,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.06.sp,
             )
         }
     }
@@ -871,14 +830,12 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Calorie Decision",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        style = AppType.screenTitle,
                         color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
                     )
                     Text(
                         text = "Today's recommendation",
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                         color = appColors.textMuted,
                     )
                 }
@@ -953,25 +910,20 @@ private fun VerdictHero(result: AdjustmentResult) {
         ) {
             Text(
                 text = "TODAY'S VERDICT",
-                fontSize = 9.5.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.metaLabel,
                 color = accent.inkLight,
-                letterSpacing = 1.2.sp,
             )
             Spacer(Modifier.height(7.dp))
             Text(
                 text = result.verdict.heroLabel(),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = AppType.displayLarge,
                 color = appColors.textPrimary,
-                letterSpacing = (-0.6).sp,
                 lineHeight = 36.sp,
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 text = deltaText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.body,
                 color = accent.inkLighter,
             )
 
@@ -996,7 +948,7 @@ private fun ReasonChip(text: String) {
     val appColors = LocalAppColors.current
     Text(
         text = text,
-        fontSize = 10.sp,
+        style = AppType.label,
         color = appColors.textDim,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -1020,7 +972,7 @@ private fun AiInsightSection(
         if (aiState != AiInsightState.Disabled) {
             Text(
                 text = "AI explanations appear once a weekly verdict is ready.",
-                fontSize = 11.sp,
+                style = AppType.label,
                 color = appColors.textMuted,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
@@ -1037,12 +989,12 @@ private fun AiInsightSection(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "Understand the reasoning behind this verdict.",
-                    fontSize = 13.sp,
+                    style = AppType.body,
                     color = appColors.textMuted,
                 )
                 Text(
                     text = "Requires a ~2.6 GB download · Wi-Fi recommended",
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -1061,7 +1013,7 @@ private fun AiInsightSection(
                 if (progress != null) {
                     Text(
                         text = "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
-                        fontSize = 11.sp,
+                        style = AppType.label,
                         color = appColors.textMuted,
                     )
                     Spacer(Modifier.height(6.dp))
@@ -1070,13 +1022,13 @@ private fun AiInsightSection(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    Text("Downloading…", fontSize = 11.sp, color = appColors.textMuted)
+                    Text("Downloading…", style = AppType.label, color = appColors.textMuted)
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.material3.TextButton(onClick = onCancel) {
-                    Text("Cancel", fontSize = 11.sp)
+                    Text("Cancel", style = AppType.label)
                 }
             }
         }
@@ -1085,7 +1037,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text("Download failed — check your connection.", fontSize = 13.sp, color = appColors.textMuted)
+                Text("Download failed — check your connection.", style = AppType.body, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.Button(onClick = onDownload) { Text("Retry") }
             }
@@ -1104,7 +1056,7 @@ private fun AiInsightSection(
                         strokeWidth = 2.dp,
                         color = accent.inkLight,
                     )
-                    Text("Verifying download…", fontSize = 13.sp, color = appColors.textMuted)
+                    Text("Verifying download…", style = AppType.body, color = appColors.textMuted)
                 }
             }
         }
@@ -1123,7 +1075,7 @@ private fun AiInsightSection(
                         strokeWidth = 2.dp,
                         color = accent.inkLight,
                     )
-                    Text("Preparing model…", fontSize = 13.sp, color = appColors.textMuted)
+                    Text("Preparing model…", style = AppType.body, color = appColors.textMuted)
                 }
             }
         }
@@ -1134,7 +1086,7 @@ private fun AiInsightSection(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = aiState.partialText,
-                    fontSize = 14.sp,
+                    style = AppType.body,
                     color = appColors.textPrimary,
                     lineHeight = 20.sp,
                 )
@@ -1147,7 +1099,7 @@ private fun AiInsightSection(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = aiState.text,
-                    fontSize = 14.sp,
+                    style = AppType.body,
                     color = appColors.textPrimary,
                     lineHeight = 20.sp,
                 )
@@ -1158,7 +1110,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text(aiState.message, fontSize = 13.sp, color = appColors.textMuted)
+                Text(aiState.message, style = AppType.body, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
             }
@@ -1181,10 +1133,8 @@ private fun AiCardHeader(
     ) {
         Text(
             text = title.uppercase(),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.sectionLabel,
             color = appColors.textFaint,
-            letterSpacing = 0.14.sp,
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1208,8 +1158,8 @@ private fun StatRow(label: String, value: String, valueColor: Color? = null) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(label, fontSize = 13.sp, color = appColors.textDim)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = valueColor ?: appColors.textPrimary)
+        Text(label, style = AppType.body, color = appColors.textDim)
+        Text(value, style = AppType.body, fontWeight = FontWeight.SemiBold, color = valueColor ?: appColors.textPrimary)
     }
 }
 

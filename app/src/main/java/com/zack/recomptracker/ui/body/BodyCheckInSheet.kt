@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.body
 
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,6 +108,10 @@ fun BodyCheckInSheetContent(
         }
     }
 
+    // Disable the scroll overscroll/stretch effect: the form usually fits, so a swipe with
+    // nothing to scroll would otherwise produce an overscroll bounce that reads as the sheet
+    // twitching up/down after release. Scrolling still works when the content overflows.
+    CompositionLocalProvider(LocalOverscrollFactory provides null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -170,6 +176,7 @@ fun BodyCheckInSheetContent(
             GlassTextArea(state.notes, actions.onNotesChanged, placeholder = "Notes...", minLines = 2)
             LiquidPrimaryButton(text = "Save check-in", onClick = actions.onSave)
         }
+    }
     }
 }
 

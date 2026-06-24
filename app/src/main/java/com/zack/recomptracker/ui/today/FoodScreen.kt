@@ -875,11 +875,9 @@ private fun LockedSlotCard(
                             tint = accent.accentLighter,
                             modifier = Modifier.size(16.dp),
                         )
-                        Spacer(Modifier.width(6.dp))
                         Text(
                             text = "Add",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
                             color = accent.accentLighter,
                         )
                     }

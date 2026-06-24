@@ -578,7 +578,6 @@ private fun GlassActionButton(
                 tint = contentColor,
                 modifier = Modifier.size(16.dp),
             )
-            Spacer(Modifier.width(6.dp))
         }
         Text(
             text = text,

@@ -881,8 +881,8 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                     onValueChange = viewModel::onServingsChanged,
                     onMinus = { viewModel.stepServings(-FoodScaling.SERVING_STEP) },
                     onPlus = { viewModel.stepServings(FoodScaling.SERVING_STEP) },
-                    caption = state.resolvedGrams?.let { "${it.toInt()} g" } ?: "",
-                    suffix = "servings",
+                    caption = "",
+                    suffix = state.resolvedGrams?.let { "servings · ${it.toInt()} g" } ?: "servings",
                 )
             } else {
                 AmountStepper(

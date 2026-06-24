@@ -332,12 +332,16 @@ class FoodLibraryViewModel(
     }
 
     fun requestLogFood(food: SavedFoodEntity) {
+        // Default to 1 serving when the food defines a household serving; otherwise
+        // fall back to a 100 g grams entry.
+        val hasServing = (food.householdServingGrams ?: 0.0) >= 1.0 &&
+            !food.householdServingName.isNullOrBlank()
         _uiState.update {
             it.copy(
                 showAmountSheet = true,
                 pendingFood = food,
                 editingEntryId = null,
-                amountMode = AmountMode.SERVINGS,
+                amountMode = if (hasServing) AmountMode.SERVINGS else AmountMode.GRAMS,
                 servingsValue = "1",
                 gramsValue = "100",
                 message = null,

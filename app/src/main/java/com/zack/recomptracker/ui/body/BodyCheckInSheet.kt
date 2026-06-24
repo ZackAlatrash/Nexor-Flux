@@ -26,12 +26,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zack.recomptracker.ui.component.GlassBottomSheet
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.GlassTextArea
 import com.zack.recomptracker.ui.component.ScoreStepper
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.VioletToggle
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.format.DateTimeFormatter
 
@@ -58,11 +60,7 @@ fun BodyCheckInSheet(
     initialSection: Int = CheckInSection.MEASUREMENTS,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) {
+    GlassBottomSheet(onDismiss = onDismiss, sheetState = sheetState) {
         BodyCheckInSheetContent(
             state = state,
             actions = actions.copy(onSave = {
@@ -111,10 +109,10 @@ fun BodyCheckInSheetContent(
             ) {
                 Text(
                     text = "Today's check-in",
-                    fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
-                    color = appColors.textPrimary, letterSpacing = (-0.5).sp,
+                    style = AppType.screenTitleCompact,
+                    color = appColors.textPrimary,
                 )
-                Text(text = dateStr, fontSize = 11.sp, color = appColors.textMuted)
+                Text(text = dateStr, style = AppType.cardSubtitle, color = appColors.textMuted)
             }
         }
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -38,30 +39,6 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
 
 /** Whether an amount is entered as servings or grams. */
 enum class AmountMode { SERVINGS, GRAMS }
-
-@Composable
-private fun StepButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    val appColors = LocalAppColors.current
-    Box(
-        modifier = Modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(CornerSmall))
-            .background(appColors.cardSurface)
-            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerSmall))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = contentDescription, tint = appColors.textPrimary, modifier = Modifier.size(20.dp))
-    }
-}
 
 @Composable
 fun AmountStepper(
@@ -79,7 +56,7 @@ fun AmountStepper(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StepButton(Icons.Filled.Remove, "Decrease", onMinus)
+        LiquidStepButton(symbol = "−", enabled = true, onClick = onMinus)
         Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
@@ -123,7 +100,7 @@ fun AmountStepper(
                 )
             }
         }
-        StepButton(Icons.Filled.Add, "Increase", onPlus)
+        LiquidStepButton(symbol = "+", enabled = true, onClick = onPlus)
     }
 }
 

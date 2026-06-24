@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -54,7 +55,11 @@ fun GlassBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .background(appColors.frostedSurfaceFallback)
+                // Solid themed base (adapts to dark/light + the chosen accent theme) so the
+                // panel reads consistently over any of the colourful theme backgrounds, with a
+                // thin frosted veil on top for a hint of glass.
+                .background(MaterialTheme.colorScheme.surface)
+                .background(appColors.frostedSurface)
                 .border(1.dp, appColors.frostedBorder, shape)
                 .padding(top = 10.dp),
         ) {

@@ -70,7 +70,15 @@ class BarcodeScannerViewModel(
             _uiState.update { state ->
                 state.copy(
                     scanState = when (result) {
-                        is BarcodeResult.Found -> ScanState.ProductFound(result.product)
+                        is BarcodeResult.Found -> {
+                            // Default to 1 serving when the product defines a serving; otherwise 100 g.
+                            val hasServing = (result.product.servingGrams ?: 0.0) >= 1.0
+                            ScanState.ProductFound(
+                                product = result.product,
+                                logMode = if (hasServing) LogMode.SERVING else LogMode.GRAMS,
+                                amountInput = if (hasServing) "1" else "100",
+                            )
+                        }
                         BarcodeResult.NotFound -> ScanState.NotFound
                         BarcodeResult.NetworkError -> ScanState.NetworkError
                     },

@@ -28,13 +28,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +49,9 @@ import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.ui.component.AmountMode
 import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
+import com.zack.recomptracker.ui.component.GlassBottomSheet
+import com.zack.recomptracker.ui.component.GlassInputField
+import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
@@ -323,11 +321,7 @@ private fun IngredientAmountSheet(
     viewModel: RecipeBuilderViewModel,
 ) {
     val appColors = LocalAppColors.current
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = viewModel::cancelIngredientEdit,
-        sheetState = sheetState,
-    ) {
+    GlassBottomSheet(onDismiss = viewModel::cancelIngredientEdit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -339,18 +333,11 @@ private fun IngredientAmountSheet(
 
             if (editor.scalable) {
                 if (editor.hasServings) {
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = editor.mode == AmountMode.SERVINGS,
-                            onClick = { viewModel.onEditorAmountModeChanged(AmountMode.SERVINGS) },
-                            shape = SegmentedButtonDefaults.itemShape(0, 2),
-                        ) { Text("Servings") }
-                        SegmentedButton(
-                            selected = editor.mode == AmountMode.GRAMS,
-                            onClick = { viewModel.onEditorAmountModeChanged(AmountMode.GRAMS) },
-                            shape = SegmentedButtonDefaults.itemShape(1, 2),
-                        ) { Text("Grams") }
-                    }
+                    GlassSegmentedToggle(
+                        options = listOf("Servings", "Grams"),
+                        selectedIndex = if (editor.mode == AmountMode.SERVINGS) 0 else 1,
+                        onSelect = { viewModel.onEditorAmountModeChanged(if (it == 0) AmountMode.SERVINGS else AmountMode.GRAMS) },
+                    )
                 }
                 if (editor.mode == AmountMode.SERVINGS) {
                     AmountStepper(
@@ -392,12 +379,10 @@ private fun IngredientAmountSheet(
 
 @Composable
 private fun MacroEditField(label: String, value: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
+    GlassInputField(
+        label = label,
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = Modifier.fillMaxWidth(),
     )
 }

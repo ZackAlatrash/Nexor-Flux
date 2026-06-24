@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.theme.AppType
@@ -119,11 +121,12 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val appColors = LocalAppColors.current
     Box(
         modifier = modifier
+            .minimumInteractiveComponentSize()
             .size(40.dp)
             .clip(CircleShape)
             .background(appColors.cardSurface)
             .border(1.dp, appColors.cardBorder, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClickLabel = "Navigate back", onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

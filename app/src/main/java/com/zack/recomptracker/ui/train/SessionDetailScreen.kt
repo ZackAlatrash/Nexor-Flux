@@ -38,9 +38,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.domain.workout.ExerciseTrendPoint
 import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
 import com.zack.recomptracker.ui.train.component.SessionSetRow
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
@@ -86,46 +88,16 @@ fun SessionDetailScreen(
     ) {
         // ── Header ─────────────────────────────────────────────────────────────
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 12.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(100.dp))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = appColors.textPrimary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = state.workoutName,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = appColors.textPrimary,
-                    )
-                    Text(
-                        text = buildString {
-                            append(dateFormatted)
-                            if (durationMin > 0) append(" · $durationMin min")
-                            if (state.totalVolume > 0) append(" · $volumeDisplay")
-                        },
-                        fontSize = 12.sp,
-                        color = appColors.textMuted,
-                    )
-                }
-            }
+            SubScreenHeader(
+                title = state.workoutName,
+                onBack = onBack,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                subtitle = buildString {
+                    append(dateFormatted)
+                    if (durationMin > 0) append(" · $durationMin min")
+                    if (state.totalVolume > 0) append(" · $volumeDisplay")
+                },
+            )
         }
 
         item { Spacer(Modifier.height(12.dp)) }
@@ -135,7 +107,7 @@ fun SessionDetailScreen(
             ExerciseDetailCard(
                 exercise = ex,
                 modifier = Modifier
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 14.dp),
             )
         }
@@ -150,7 +122,7 @@ fun SessionDetailScreen(
                 ) {
                     Text(
                         text = "No exercises logged.",
-                        fontSize = 14.sp,
+                        style = AppType.body,
                         color = appColors.textMuted,
                     )
                 }
@@ -179,8 +151,7 @@ private fun ExerciseDetailCard(
         ) {
             Text(
                 text = exercise.name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.cardTitle,
                 color = appColors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
@@ -241,8 +212,7 @@ private fun ExerciseDetailCard(
             if (exercise.deltaLabel != null) {
                 Text(
                     text = exercise.deltaLabel,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Medium),
                     color = accent.accentLighter,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -250,7 +220,7 @@ private fun ExerciseDetailCard(
         } else {
             Text(
                 text = "Not enough data yet",
-                fontSize = 12.sp,
+                style = AppType.cardSubtitle,
                 color = appColors.textMuted,
             )
         }

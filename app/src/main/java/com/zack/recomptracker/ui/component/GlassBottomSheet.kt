@@ -59,7 +59,9 @@ fun GlassBottomSheet(
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner),
         containerColor = panelColor,
-        scrimColor = appColors.scrim,
+        // Use Material's default modal scrim (a proper dark dim in both themes). Do NOT use
+        // appColors.scrim here — that token is the background-image veil (near-white in light
+        // mode) and would wash the screen white behind the sheet.
         dragHandle = { GlassGrabHandle() },
         content = content,
     )

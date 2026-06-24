@@ -1,6 +1,5 @@
 package com.zack.recomptracker.ui.foodlibrary
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,11 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -583,9 +578,7 @@ private fun GlassActionButton(
         }
         Text(
             text = text,
-            style = AppType.body,
-            fontSize = 13.sp,
-            fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
+            style = AppType.body.copy(fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium),
             color = contentColor,
         )
     }

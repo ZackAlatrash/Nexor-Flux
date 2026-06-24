@@ -184,11 +184,11 @@ fun FoodLibraryScreen(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) { viewModel.onCategoryChanged(cat) }
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
                 ) {
                     Text(
                         text = cat.label(),
-                        style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
+                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
                         color = if (isActive) accent.accentLighter else appColors.textPrimary.copy(alpha = 0x59 / 255f),
                     )
                 }
@@ -275,9 +275,9 @@ fun FoodLibraryScreen(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
                                         ) { viewModel.requestLogFood(food) }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        .padding(horizontal = 14.dp, vertical = 9.dp),
                                 ) {
-                                    Text(food.name, style = AppType.cardSubtitle, color = appColors.textPrimary.copy(alpha = 0xBF / 255f))
+                                    Text(food.name, style = AppType.body, color = appColors.textPrimary.copy(alpha = 0xBF / 255f))
                                 }
                             }
                         }
@@ -557,6 +557,7 @@ private fun GlassActionButton(
         text = text,
         onClick = onClick,
         isPrimary = isPrimary,
+        small = true,
         modifier = modifier,
     )
 }

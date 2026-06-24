@@ -1159,7 +1159,7 @@ private fun StatRow(label: String, value: String, valueColor: Color? = null) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(label, style = AppType.body, color = appColors.textDim)
-        Text(value, style = AppType.body, fontWeight = FontWeight.SemiBold, color = valueColor ?: appColors.textPrimary)
+        Text(value, style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = valueColor ?: appColors.textPrimary)
     }
 }
 

@@ -74,12 +74,14 @@ private fun StreakDetailCard(
                 Text(text = "BEST", style = AppType.metaLabel, color = appColors.textVeryMuted)
             }
         }
-        Spacer(Modifier.height(14.dp))
-        StreakWeekStrip(marks = result.last7Marks, dotSize = 13.dp)
+        if (result.last7Marks.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            StreakWeekStrip(marks = result.last7Marks, dotSize = 13.dp)
+        }
         if (showStepGoalHint) {
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "Set a daily step goal in Profile.",
+                text = "Set a daily step goal in Profile to start this streak.",
                 style = AppType.cardSubtitle,
                 color = appColors.textMuted,
             )

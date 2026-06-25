@@ -37,13 +37,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -83,9 +78,7 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.streak.CalorieStreakBadge
-import com.zack.recomptracker.ui.streak.StreakSpeechBubble
-import androidx.compose.ui.graphics.TransformOrigin
+import com.zack.recomptracker.ui.streak.CalorieStreakChip
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -191,7 +184,6 @@ fun FoodContent(
     }
     var showAddSlotDialog by remember { mutableStateOf(false) }
     var newSlotName by remember { mutableStateOf("") }
-    var showCalorieStreak by remember { mutableStateOf(false) }
 
     val currentSlots by rememberUpdatedState(state.slots)
     val currentOnReorderSlots by rememberUpdatedState(actions.onReorderSlots)
@@ -246,39 +238,10 @@ fun FoodContent(
 
                 // Nutrition strip
                 item {
-                    Column {
-                        NutritionStrip(
-                            state = state,
-                            calorieStreak = calorieStreak,
-                            onStreakClick = { showCalorieStreak = !showCalorieStreak },
-                        )
-                        // Calorie-streak detail pops out as a comic speech bubble from the
-                        // flame badge — part of the screen, scaling from the top-right corner.
-                        AnimatedVisibility(
-                            visible = showCalorieStreak,
-                            enter = expandVertically(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow,
-                                ),
-                            ) + fadeIn() + scaleIn(
-                                initialScale = 0.7f,
-                                transformOrigin = TransformOrigin(0.92f, 0f),
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow,
-                                ),
-                            ),
-                            exit = shrinkVertically() + fadeOut(),
-                        ) {
-                            StreakSpeechBubble(
-                                result = calorieStreak,
-                                type = com.zack.recomptracker.domain.streak.StreakType.CALORIE,
-                                onCollapse = { showCalorieStreak = false },
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
-                        }
-                    }
+                    NutritionStrip(
+                        state = state,
+                        calorieStreak = calorieStreak,
+                    )
                 }
 
                 // Reconcile banner — past day with unconfirmed plans
@@ -572,7 +535,6 @@ private fun NutritionStrip(
     state: FoodLogUiState,
     calorieStreak: com.zack.recomptracker.domain.streak.StreakResult =
         com.zack.recomptracker.domain.streak.StreakResult.ZERO,
-    onStreakClick: () -> Unit = {},
 ) {
     val cal         = state.totals.calories
     val target      = state.target
@@ -701,10 +663,7 @@ private fun NutritionStrip(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     if (calorieStreak.current > 0) {
-                        CalorieStreakBadge(
-                            current = calorieStreak.current,
-                            onClick = onStreakClick,
-                        )
+                        CalorieStreakChip(result = calorieStreak)
                     }
                     AnimatedContent(
                         targetState = status,

@@ -45,7 +45,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.zack.recomptracker.domain.streak.StreakDayMark
 import com.zack.recomptracker.domain.streak.StreakResult
 import com.zack.recomptracker.domain.streak.StreakType
@@ -545,12 +559,12 @@ fun StreakSpeechBubble(
     modifier: Modifier = Modifier,
 ) {
     val appColors = LocalAppColors.current
-    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
-        // Tail pointing up at the badge that opened the bubble.
+    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
+        // Tail pointing up at the badge that opened the bubble (filled + hairline outline so it reads).
         Canvas(
             modifier = Modifier
-                .padding(end = 20.dp)
-                .size(width = 20.dp, height = 10.dp),
+                .padding(end = 22.dp)
+                .size(width = 20.dp, height = 11.dp),
         ) {
             val tail = Path().apply {
                 moveTo(size.width / 2f, 0f)
@@ -559,6 +573,7 @@ fun StreakSpeechBubble(
                 close()
             }
             drawPath(tail, color = appColors.frostedSurfaceFallback)
+            drawPath(tail, color = appColors.frostedBorder, style = Stroke(width = 1.dp.toPx()))
         }
         StreakDetailContent(
             result = result,
@@ -567,5 +582,50 @@ fun StreakSpeechBubble(
             // Overlap the tail base by 1dp so there's no seam between tail and card.
             modifier = Modifier.offset(y = (-1).dp),
         )
+    }
+}
+
+// ── Calorie streak chip (badge that pops a speech bubble) ─────────────────────
+
+/**
+ * The flame badge plus its comic speech bubble. Tapping the badge pops the bubble open
+ * (scaling from the badge, scrim-less, over the screen content) — tap again, tap outside,
+ * or the collapse chevron to close. Self-contained: owns its expanded state.
+ */
+@Composable
+fun CalorieStreakChip(result: StreakResult, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    Box(modifier = modifier) {
+        CalorieStreakBadge(current = result.current, onClick = { expanded = !expanded })
+        if (expanded) {
+            val dropPx = with(density) { 32.dp.roundToPx() }
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(0, dropPx),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+                AnimatedVisibility(
+                    visibleState = visible,
+                    enter = fadeIn() + scaleIn(
+                        initialScale = 0.5f,
+                        transformOrigin = TransformOrigin(1f, 0f),
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow,
+                        ),
+                    ),
+                ) {
+                    StreakSpeechBubble(
+                        result = result,
+                        type = StreakType.CALORIE,
+                        onCollapse = { expanded = false },
+                        modifier = Modifier.width(290.dp),
+                    )
+                }
+            }
+        }
     }
 }

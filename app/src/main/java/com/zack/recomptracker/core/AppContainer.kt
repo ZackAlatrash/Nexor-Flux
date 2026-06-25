@@ -72,6 +72,7 @@ import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.profile.ProfileViewModel
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.today.FoodLogViewModel
@@ -432,6 +433,10 @@ private class AppViewModelFactory(
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+            )
+            StreakViewModel::class.java -> StreakViewModel(
+                streakRepository = container.streakRepository,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             OnboardingViewModel::class.java -> OnboardingViewModel(
                 userProfileStore = container.userProfilePreferencesStore,

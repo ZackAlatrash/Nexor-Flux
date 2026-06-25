@@ -34,11 +34,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -135,17 +138,30 @@ fun ExerciseCard(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
+                // Fallback sits behind the image: visible while the async image is loading or on
+                // error (AsyncImage draws nothing until it succeeds), covered once it loads, and the
+                // sole content when there's no URL. Pixel-identical to the old SubcomposeAsyncImage
+                // loading/error slots, but AsyncImage avoids a per-card SubcomposeLayout — far cheaper
+                // to compose as cards scroll into view (the scroll-jank hot path).
+                ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter)
                 if (resolvedUrl != null) {
-                    SubcomposeAsyncImage(
-                        model = resolvedUrl,
+                    val context = LocalContext.current
+                    val thumbPx = with(LocalDensity.current) { 44.dp.roundToPx() }
+                    // Decode to the thumbnail's real pixel size (~44dp) so the GPU texture is tiny,
+                    // and let the app loader keep it as a GPU-resident hardware bitmap. Remembered so
+                    // scrolling doesn't rebuild the request each recomposition.
+                    val request = remember(resolvedUrl, thumbPx) {
+                        ImageRequest.Builder(context)
+                            .data(resolvedUrl)
+                            .size(thumbPx)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = request,
                         contentDescription = exerciseName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
-                        loading = { ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter) },
-                        error = { ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter) },
                     )
-                } else {
-                    ExerciseThumbFallback(fallbackMuscles, appColors.textMuted, accent.accentLighter)
                 }
             }
 

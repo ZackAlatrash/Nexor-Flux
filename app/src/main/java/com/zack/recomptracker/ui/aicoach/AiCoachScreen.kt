@@ -43,8 +43,11 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.component.VioletToggle
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
@@ -82,34 +85,7 @@ fun AiCoachScreen(
         ) {
             // ── Header ────────────────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = appColors.textPrimary,
-                        )
-                    }
-                    Text(
-                        text = "AI & Coach",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
-                    )
-                }
+                SubScreenHeader(title = "AI Coach", onBack = onBack)
             }
 
             if (state.message != null) {
@@ -141,13 +117,12 @@ fun AiCoachScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Enable AI",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
+                                style = AppType.cardTitle,
                                 color = appColors.textPrimary,
                             )
                             Text(
                                 text = "Insights & coach chat",
-                                fontSize = 11.sp,
+                                style = AppType.label,
                                 color = appColors.textMuted,
                             )
                         }
@@ -209,8 +184,8 @@ fun AiCoachScreen(
                                 Spacer(Modifier.height(10.dp))
                                 Text(
                                     text = "Your logged data is sent to the API you configure. Switch to On-device to keep everything private.",
+                                    style = AppType.label,
                                     color = appColors.textMuted,
-                                    fontSize = 11.sp,
                                     lineHeight = 15.sp,
                                 )
                                 Spacer(Modifier.height(12.dp))
@@ -248,20 +223,26 @@ fun AiCoachScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    Button(
+                                    LiquidActionButton(
+                                        text = "Save key",
                                         onClick = {
                                             if (apiKeyInput.isNotBlank()) {
                                                 viewModel.setCloudApiKey(apiKeyInput)
                                                 apiKeyInput = ""
                                             }
                                         },
+                                        isPrimary = true,
+                                        small = true,
                                         modifier = Modifier.weight(1f),
-                                    ) { Text("Save key", fontSize = 13.sp) }
+                                    )
                                     if (state.cloudHasKey) {
-                                        Button(
+                                        LiquidActionButton(
+                                            text = "Clear",
                                             onClick = { viewModel.clearCloudApiKey() },
+                                            isPrimary = false,
+                                            small = true,
                                             modifier = Modifier.weight(1f),
-                                        ) { Text("Clear", fontSize = 13.sp) }
+                                        )
                                     }
                                 }
                                 Spacer(Modifier.height(14.dp))
@@ -269,8 +250,8 @@ fun AiCoachScreen(
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     text = "Add a free Tavily API key (tavily.com) to let the coach look up facts it doesn't know, like calories for a restaurant meal.",
+                                    style = AppType.label,
                                     color = appColors.textMuted,
-                                    fontSize = 11.sp,
                                     lineHeight = 15.sp,
                                 )
                                 Spacer(Modifier.height(8.dp))
@@ -288,33 +269,37 @@ fun AiCoachScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    Button(
+                                    LiquidActionButton(
+                                        text = "Save key",
                                         onClick = {
                                             if (webKeyInput.isNotBlank()) {
                                                 viewModel.setWebSearchKey(webKeyInput)
                                                 webKeyInput = ""
                                             }
                                         },
+                                        isPrimary = true,
+                                        small = true,
                                         modifier = Modifier.weight(1f),
-                                    ) { Text("Save key", fontSize = 13.sp) }
+                                    )
                                     if (state.cloudHasWebSearchKey) {
-                                        Button(
+                                        LiquidActionButton(
+                                            text = "Clear",
                                             onClick = { viewModel.clearWebSearchKey() },
+                                            isPrimary = false,
+                                            small = true,
                                             modifier = Modifier.weight(1f),
-                                        ) { Text("Clear", fontSize = 13.sp) }
+                                        )
                                     }
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                Button(
+                                LiquidActionButton(
+                                    text = if (state.testingConnection) "Testing…" else "Test connection",
                                     onClick = { viewModel.testCloudConnection() },
+                                    isPrimary = true,
+                                    small = true,
                                     enabled = !state.testingConnection,
                                     modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(
-                                        if (state.testingConnection) "Testing…" else "Test connection",
-                                        fontSize = 13.sp,
-                                    )
-                                }
+                                )
                             }
                         }
                     }

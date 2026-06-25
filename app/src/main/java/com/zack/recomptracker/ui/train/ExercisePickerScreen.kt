@@ -61,6 +61,7 @@ import coil.compose.AsyncImage
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
@@ -100,7 +101,7 @@ fun ExercisePickerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(top = 12.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -113,8 +114,7 @@ fun ExercisePickerScreen(
                     }
                     Text(
                         text = if (replaceMode) "Replace exercise" else "Add exercises",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.screenTitleCompact,
                         color = appColors.textPrimary,
                         modifier = Modifier.weight(1f).padding(start = 4.dp),
                     )
@@ -126,7 +126,7 @@ fun ExercisePickerScreen(
                 FrostedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 10.dp),
                     contentPadding = 0.dp,
                 ) {
@@ -147,10 +147,7 @@ fun ExercisePickerScreen(
                             value = state.query,
                             onValueChange = { viewModel.setQuery(it) },
                             modifier = Modifier.weight(1f),
-                            textStyle = TextStyle(
-                                color = appColors.textPrimary,
-                                fontSize = 14.sp,
-                            ),
+                            textStyle = AppType.body.copy(color = appColors.textPrimary),
                             cursorBrush = SolidColor(accent.accent),
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Words,
@@ -162,8 +159,8 @@ fun ExercisePickerScreen(
                                     if (state.query.isEmpty()) {
                                         Text(
                                             "Search exercises…",
+                                            style = AppType.body,
                                             color = appColors.textMuted,
-                                            fontSize = 14.sp,
                                         )
                                     }
                                     inner()
@@ -192,7 +189,7 @@ fun ExercisePickerScreen(
                 Row(
                     modifier = Modifier
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -200,8 +197,7 @@ fun ExercisePickerScreen(
                         val isActive = state.muscleFilter == chip
                         Text(
                             text = chip,
-                            fontSize = 12.sp,
-                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            style = AppType.label.copy(fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal),
                             color = if (isActive) accent.onAccent else appColors.textMuted,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(CornerChip))
@@ -223,11 +219,11 @@ fun ExercisePickerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 6.dp)
                         .clip(RoundedCornerShape(CornerCard))
                         .clickable { showCreateDialog = true }
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
@@ -247,8 +243,7 @@ fun ExercisePickerScreen(
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = "Create custom exercise",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
+                        style = AppType.cardTitle,
                         color = accent.inkLight,
                     )
                 }
@@ -272,15 +267,14 @@ fun ExercisePickerScreen(
                         )
                         Text(
                             text = "No exercises match",
-                            fontSize = 15.sp,
+                            style = AppType.cardTitle,
                             color = appColors.textMuted,
                             textAlign = TextAlign.Center,
                         )
                         if (state.query.isNotEmpty() || state.muscleFilter != "All") {
                             Text(
                                 text = "Clear filters",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                style = AppType.body,
                                 color = accent.inkLight,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(CornerChip))
@@ -288,7 +282,7 @@ fun ExercisePickerScreen(
                                         viewModel.setQuery("")
                                         viewModel.setFilter("All")
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                                    .padding(horizontal = 16.dp, vertical = 7.dp),
                             )
                         }
                     }
@@ -303,7 +297,7 @@ fun ExercisePickerScreen(
                             else viewModel.toggle(exercise.id)
                         },
                         onThumbnailClick = { showDetailFor = exercise },
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     )
                 }
             }
@@ -329,8 +323,7 @@ fun ExercisePickerScreen(
                 ) {
                     Text(
                         text = if (count == 0) "Add exercises" else "Add $count ${if (count == 1) "exercise" else "exercises"}",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardTitle,
                         color = if (count > 0) accent.onAccent else appColors.textMuted,
                     )
                 }
@@ -443,8 +436,7 @@ private fun ExercisePickerRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = exercise.name,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -457,7 +449,7 @@ private fun ExercisePickerRow(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = sub,
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                         color = appColors.textMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

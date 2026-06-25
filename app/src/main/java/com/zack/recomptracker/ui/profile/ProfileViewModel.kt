@@ -40,12 +40,16 @@ class ProfileViewModel(
     private val _heightInput = MutableStateFlow("")
     val heightInput: StateFlow<String> = _heightInput.asStateFlow()
 
+    private val _stepGoalInput = MutableStateFlow("")
+    val stepGoalInput: StateFlow<String> = _stepGoalInput.asStateFlow()
+
     init {
         // One-shot seed from the first persisted emission so already-stored values show on open.
         viewModelScope.launch {
             val seed = userProfileStore.preferences.first()
             _nameInput.value = seed.name.orEmpty()
             _heightInput.value = seed.heightCm?.toString() ?: ""
+            _stepGoalInput.value = seed.dailyStepGoal?.toString() ?: ""
         }
     }
 
@@ -80,5 +84,12 @@ class ProfileViewModel(
         val digits = value.filter { it.isDigit() }.take(3)
         _heightInput.value = digits
         update(profile.value.copy(heightCm = digits.toIntOrNull()))
+    }
+
+    /** Daily step goal edit: digit-only, max 5 chars. Synchronous buffer update, async persist. */
+    fun setDailyStepGoal(value: String) {
+        val digits = value.filter { it.isDigit() }.take(5)
+        _stepGoalInput.value = digits
+        update(profile.value.copy(dailyStepGoal = digits.toIntOrNull()))
     }
 }

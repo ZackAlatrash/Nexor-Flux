@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.DatePicker
@@ -52,7 +52,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.zack.recomptracker.data.preferences.ActivityLevel
@@ -66,6 +65,8 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.ScoreStepper
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.SubScreenHeader
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -86,6 +87,7 @@ fun ProfileScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val nameInput by viewModel.nameInput.collectAsStateWithLifecycle()
     val heightInput by viewModel.heightInput.collectAsStateWithLifecycle()
+    val stepGoalInput by viewModel.stepGoalInput.collectAsStateWithLifecycle()
     val currentWeightKg by viewModel.currentWeightKg.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val accent = LocalAppAccent.current
@@ -144,34 +146,7 @@ fun ProfileScreen(
         ) {
             // ── Header ────────────────────────────────────────────────────────
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = appColors.textPrimary,
-                        )
-                    }
-                    Text(
-                        text = "Profile",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
-                    )
-                }
+                SubScreenHeader(title = "Profile", onBack = onBack)
             }
 
             // ── Avatar + name ─────────────────────────────────────────────────
@@ -217,16 +192,13 @@ fun ProfileScreen(
                             SectionLabel("Current weight")
                             Text(
                                 text = currentWeightKg?.let { "%.1f kg".format(it) } ?: "—",
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                style = AppType.statValue,
                                 color = appColors.textPrimary,
-                                letterSpacing = (-0.5).sp,
                             )
                         }
                         Text(
-                            text = "View ›",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            text = "View",
+                            style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
                             color = accent.inkLight,
                         )
                     }
@@ -256,6 +228,15 @@ fun ProfileScreen(
                         value = profile.weeklyGymSessions ?: 0,
                         onValueChange = { viewModel.update(profile.copy(weeklyGymSessions = it)) },
                         range = 0..7,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    GlassInputField(
+                        label = "Daily step goal",
+                        value = stepGoalInput,
+                        onValueChange = viewModel::setDailyStepGoal,
+                        unit = "steps",
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -477,16 +458,20 @@ private fun PickerRow(
             SectionLabel(label)
             Text(
                 text = value,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.cardTitle,
                 color = appColors.textPrimary,
             )
             if (subtitle != null) {
-                Text(text = subtitle, fontSize = 11.sp, color = appColors.textMuted)
+                Text(text = subtitle, style = AppType.label, color = appColors.textMuted)
             }
         }
         Spacer(Modifier.width(8.dp))
-        Text(text = "›", fontSize = 18.sp, color = accent.inkLight)
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = accent.inkLight,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -515,8 +500,7 @@ private fun OptionSheet(
         ) {
             Text(
                 text = title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = AppType.cardTitle.copy(fontWeight = FontWeight.ExtraBold),
                 color = appColors.textPrimary,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
@@ -560,12 +544,11 @@ private fun ProfileOptionRow(
         ) {
             Text(
                 text = label,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
                 color = if (selected) appColors.textPrimary else appColors.textDim,
             )
             if (subtitle != null) {
-                Text(text = subtitle, fontSize = 11.sp, color = appColors.textMuted)
+                Text(text = subtitle, style = AppType.label, color = appColors.textMuted)
             }
         }
         if (selected) {

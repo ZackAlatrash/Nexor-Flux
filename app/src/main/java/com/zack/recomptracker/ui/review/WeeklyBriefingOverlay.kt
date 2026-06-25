@@ -41,6 +41,7 @@ import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.aiEdgeGlow
 import androidx.compose.material3.MaterialTheme
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
@@ -147,13 +148,7 @@ private fun BriefingHeader(showRefresh: Boolean, onRefresh: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "WEEKLY REVIEW",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.textFaint,
-            letterSpacing = 0.14.sp,
-        )
+        SectionLabel(text = "Weekly review")
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -178,15 +173,13 @@ private fun ColumnScope.UpsellBody(onOpenSettings: () -> Unit) {
     val appColors = LocalAppColors.current
     Text(
         text = "Your weekly AI breakdown",
-        fontSize = 17.sp,
-        fontWeight = FontWeight.ExtraBold,
+        style = AppType.statValueSmall.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp),
         color = appColors.textPrimary,
-        letterSpacing = (-0.3).sp,
     )
     Spacer(Modifier.height(6.dp))
     Text(
         text = "Weekly Review runs on cloud AI. Turn it on to get an AI read of your week — what's working, and what to change.",
-        fontSize = 14.sp,
+        style = AppType.body,
         color = appColors.textMuted,
         lineHeight = 20.sp,
     )
@@ -199,16 +192,14 @@ private fun ColumnScope.InsufficientBody(daysRemaining: Int) {
     val appColors = LocalAppColors.current
     Text(
         text = "Building your first review",
-        fontSize = 17.sp,
-        fontWeight = FontWeight.ExtraBold,
+        style = AppType.statValueSmall.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp),
         color = appColors.textPrimary,
-        letterSpacing = (-0.3).sp,
     )
     Spacer(Modifier.height(6.dp))
     val dayWord = if (daysRemaining == 1) "day" else "days"
     Text(
         text = "Keep logging — about $daysRemaining more $dayWord of data and your first AI briefing unlocks.",
-        fontSize = 14.sp,
+        style = AppType.body,
         color = appColors.textMuted,
         lineHeight = 20.sp,
     )
@@ -225,14 +216,14 @@ private fun ColumnScope.GeneratingBody() {
             color = accent.inkLight,
         )
         Spacer(Modifier.width(12.dp))
-        Text("Reading your week…", fontSize = 14.sp, color = appColors.textPrimary)
+        Text("Reading your week…", style = AppType.body, color = appColors.textPrimary)
     }
 }
 
 @Composable
 private fun ColumnScope.ErrorBody(message: String, onRetry: () -> Unit) {
     val appColors = LocalAppColors.current
-    Text(message, fontSize = 14.sp, color = appColors.textMuted, lineHeight = 20.sp)
+    Text(message, style = AppType.body, color = appColors.textMuted, lineHeight = 20.sp)
     Spacer(Modifier.height(16.dp))
     BriefingPrimaryButton(text = "Try again", onClick = onRetry, modifier = Modifier.fillMaxWidth())
 }
@@ -250,15 +241,13 @@ private fun ColumnScope.ReadyBody(
     // Headline + narrative
     Text(
         text = briefing.headline,
-        fontSize = 17.sp,
-        fontWeight = FontWeight.ExtraBold,
+        style = AppType.statValueSmall.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp),
         color = appColors.textPrimary,
         lineHeight = 23.sp,
-        letterSpacing = (-0.3).sp,
     )
     if (briefing.narrative.isNotBlank()) {
         Spacer(Modifier.height(8.dp))
-        Text(briefing.narrative, fontSize = 14.sp, color = appColors.textPrimary.copy(alpha = 0.90f), lineHeight = 20.sp)
+        Text(briefing.narrative, style = AppType.body, color = appColors.textPrimary.copy(alpha = 0.90f), lineHeight = 20.sp)
     }
 
     // Signals
@@ -279,14 +268,12 @@ private fun ColumnScope.ReadyBody(
     Spacer(Modifier.height(6.dp))
     Text(
         text = briefing.action.verdict,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.ExtraBold,
+        style = AppType.cardTitle.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp),
         color = appColors.textPrimary,
-        letterSpacing = (-0.2).sp,
     )
     if (briefing.action.rationale.isNotBlank()) {
         Spacer(Modifier.height(4.dp))
-        Text(briefing.action.rationale, fontSize = 13.sp, color = appColors.textMuted, lineHeight = 18.sp)
+        Text(briefing.action.rationale, style = AppType.body, color = appColors.textMuted, lineHeight = 18.sp)
     }
 
     val applyTarget = briefing.action.applyTargetCalories
@@ -310,7 +297,7 @@ private fun ColumnScope.ReadyBody(
         Spacer(Modifier.height(14.dp))
         SectionLabel(text = "Watch next week")
         Spacer(Modifier.height(6.dp))
-        Text(briefing.watchNext, fontSize = 13.sp, color = appColors.textMuted, lineHeight = 18.sp)
+        Text(briefing.watchNext, style = AppType.body, color = appColors.textMuted, lineHeight = 18.sp)
     }
 
     // Discuss with coach
@@ -337,16 +324,15 @@ private fun SignalRow(signal: SignalLine) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(signal.label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary.copy(alpha = 0.92f))
+            Text(signal.label, style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = appColors.textPrimary.copy(alpha = 0.92f))
             Text(
                 text = "${signal.value}  $arrow",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.body.copy(fontWeight = FontWeight.Bold),
                 color = accent.inkLight,
             )
         }
         if (signal.interpretation.isNotBlank()) {
-            Text(signal.interpretation, fontSize = 12.5.sp, color = appColors.textMuted, lineHeight = 17.sp)
+            Text(signal.interpretation, style = AppType.cardSubtitle, color = appColors.textMuted, lineHeight = 17.sp)
         }
     }
 }
@@ -357,9 +343,8 @@ private fun ApplyConfirm(target: Int, onConfirm: () -> Unit, onCancel: () -> Uni
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "Set your daily target to $target kcal?",
-            fontSize = 14.sp,
+            style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
             color = appColors.textPrimary,
-            fontWeight = FontWeight.SemiBold,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ConfirmChip(
@@ -393,7 +378,7 @@ private fun BriefingPrimaryButton(text: String, onClick: () -> Unit, modifier: M
             .padding(horizontal = 18.dp, vertical = 13.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = appColors.textPrimary)
+        Text(text, style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = appColors.textPrimary)
     }
 }
 
@@ -406,7 +391,7 @@ private fun BriefingGhostButton(text: String, onClick: () -> Unit, modifier: Mod
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = appColors.textPrimary.copy(alpha = 0.65f))
+        Text(text, style = AppType.body.copy(fontWeight = FontWeight.Medium), color = appColors.textPrimary.copy(alpha = 0.65f))
     }
 }
 
@@ -421,7 +406,7 @@ private fun ConfirmChip(text: String, color: Color, onClick: () -> Unit, modifie
             .padding(vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = color)
+        Text(text, style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
 

@@ -50,6 +50,8 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ui.streak.StreakStatsScreen
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.train.ActiveSessionScreen
 import com.zack.recomptracker.ui.train.ActiveSessionViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerScreen
@@ -82,6 +84,7 @@ object Routes {
     const val Onboarding = "onboarding"
     const val CalorieDecision = "calorie_decision"
     const val Trends    = "trends"
+    const val StreakStats = "streak_stats"
     const val Plan      = "plan"
     const val FoodLibrary = "food_library"
     const val Foods     = "foods"
@@ -156,6 +159,7 @@ fun AppNavGraph(
             HomeDashboardScreen(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
                 weeklyReviewViewModel = viewModel<WeeklyReviewViewModel>(factory = factory),
+                streakViewModel = viewModel<StreakViewModel>(factory = factory),
                 onOpenCoach = {
                     navController.navigate(TopLevelDestination.Coach.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
@@ -165,6 +169,21 @@ fun AppNavGraph(
                 },
                 onOpenSettings = {
                     navController.navigate(TopLevelDestination.More.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onOpenStreaks = { navController.navigate(Routes.StreakStats) },
+                onOpenFoodLog = {
+                    navController.navigate(Routes.Food) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onOpenBody = {
+                    navController.navigate(TopLevelDestination.Body.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
@@ -460,6 +479,7 @@ fun AppNavGraph(
                 onAiCoach = { navController.navigate(Routes.AiCoach) },
                 onIntegrations = { navController.navigate(Routes.Integrations) },
                 onDataBackup = { navController.navigate(Routes.DataBackup) },
+                onBack = { navController.popBackStack() },
             )
         }
         composable(
@@ -467,7 +487,7 @@ fun AppNavGraph(
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
         ) {
-            FoodsScreen(viewModel<FoodsViewModel>(factory = factory))
+            FoodsScreen(viewModel<FoodsViewModel>(factory = factory), onBack = { navController.popBackStack() })
         }
         composable(
             route = "${Routes.FoodLibrary}?slotId={slotId}&slotName={slotName}&editEntryId={editEntryId}&date={date}&pickerMode={pickerMode}",
@@ -599,6 +619,16 @@ fun AppNavGraph(
                 onNavigateToFoodPicker = {
                     navController.navigate(Routes.foodLibraryPicker())
                 },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.StreakStats,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            StreakStatsScreen(
+                viewModel = viewModel<StreakViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

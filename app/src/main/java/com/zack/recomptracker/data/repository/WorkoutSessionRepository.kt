@@ -1,6 +1,8 @@
 package com.zack.recomptracker.data.repository
 
+import com.zack.recomptracker.data.local.dao.DailyLogDao
 import com.zack.recomptracker.data.local.dao.WorkoutSessionDao
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.SessionExerciseEntity
 import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
@@ -19,6 +21,7 @@ open class WorkoutSessionRepository(
     private val sessionDao: WorkoutSessionDao,
     private val now: () -> String = { Instant.now().toString() },
     private val today: () -> String = { LocalDate.now().toString() },
+    private val dailyLogDao: DailyLogDao? = null,
 ) {
 
     /** Creates an ACTIVE session snapshotting the template's name and exercises.
@@ -165,6 +168,7 @@ open class WorkoutSessionRepository(
             completedAt = now(),
             durationSeconds = durationSeconds,
         ))
+        dailyLogDao?.let { markDayTrained(it, current.date) }
     }
 
     open suspend fun updateSessionDuration(sessionId: Long, durationSeconds: Int?) =
@@ -197,5 +201,17 @@ open class WorkoutSessionRepository(
                 completedAt = if (status == SessionStatus.COMPLETED) now() else current.completedAt,
             ),
         )
+    }
+}
+
+/**
+ * Sets the `trained` flag to true on the daily log for [date], creating the row if absent and
+ * preserving any other metrics already recorded. Idempotent.
+ */
+internal suspend fun markDayTrained(dailyLogDao: DailyLogDao, date: String) {
+    val existing = dailyLogDao.getByDate(date)
+    when {
+        existing == null -> dailyLogDao.upsert(DailyLogEntity(date = date, trained = true))
+        !existing.trained -> dailyLogDao.upsert(existing.copy(trained = true))
     }
 }

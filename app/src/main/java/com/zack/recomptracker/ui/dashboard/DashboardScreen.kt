@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Icon
@@ -76,6 +77,11 @@ import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
+import com.zack.recomptracker.ui.streak.StreakViewModel
+import com.zack.recomptracker.ui.streak.StreakRow
+import com.zack.recomptracker.domain.streak.StreakType
+import com.zack.recomptracker.domain.streak.Streaks
+import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -84,8 +90,12 @@ import java.util.Locale
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
     weeklyReviewViewModel: WeeklyReviewViewModel,
+    streakViewModel: StreakViewModel,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenStreaks: () -> Unit,
+    onOpenFoodLog: () -> Unit,
+    onOpenBody: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
@@ -96,6 +106,7 @@ fun HomeDashboardScreen(
     val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
     val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
+    val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.patternInsightContext?.key()) {
         viewModel.onPatternInsightVisible()
     }
@@ -116,6 +127,8 @@ fun HomeDashboardScreen(
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
         onOpenSettings = onOpenSettings,
+        onOpenFoodLog = onOpenFoodLog,
+        onOpenBody = onOpenBody,
         patternInsightState = patternInsightState,
         onRetryPatternInsight = viewModel::retryPatternInsight,
         targetChangeInsightState = targetChangeInsightState,
@@ -124,6 +137,8 @@ fun HomeDashboardScreen(
         onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
         crossMetricInsightState = crossMetricInsightState,
         onRetryCrossMetric = viewModel::retryCrossMetric,
+        streaks = streakState.streaks,
+        onOpenStreaks = onOpenStreaks,
     )
 
     WeeklyBriefingOverlay(
@@ -155,6 +170,8 @@ fun HomeDashboardContent(
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    onOpenFoodLog: (() -> Unit)? = null,
+    onOpenBody: (() -> Unit)? = null,
     patternInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryPatternInsight: () -> Unit = {},
     targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
@@ -163,6 +180,8 @@ fun HomeDashboardContent(
     onRetryNoiseDefuser: () -> Unit = {},
     crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryCrossMetric: () -> Unit = {},
+    streaks: Streaks = Streaks.EMPTY,
+    onOpenStreaks: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -192,7 +211,7 @@ fun HomeDashboardContent(
                 onOpenSettings = onOpenSettings,
                 avatarPhotoUri = avatarPhotoUri,
                 avatarInitials = avatarInitials,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
 
             LazyColumn(
@@ -253,9 +272,18 @@ fun HomeDashboardContent(
                     }
                 }
                 item { MotivationalCard(state.motivationalMessage) }
-                item { TodayCard(state) }
-                item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }
+                item { TodayCard(state, onClick = onOpenFoodLog) }
+                item {
+                    StatTilesRow(
+                        state.adherencePercent,
+                        state.weightTrendKgPerWeek,
+                        onTrendClick = onOpenBody,
+                    )
+                }
                 item { SevenDayChartCard(state) }
+                if (onOpenStreaks != null) {
+                    item { StreaksCard(streaks = streaks, onClick = onOpenStreaks) }
+                }
             }
         }
 
@@ -286,8 +314,7 @@ fun HomeDashboardContent(
                 ) {
                     Text(
                         text = "✦  Weekly Review",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardTitle,
                         color = accent.onAccent,
                     )
                 }
@@ -303,39 +330,18 @@ private fun ScreenHeader(
     avatarInitials: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    val appColors = LocalAppColors.current
     val today = remember { LocalDate.now() }
     val dateStr = remember(today) {
         today.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top,
-    ) {
-        Column {
-            Text(
-                text = "Dashboard",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = appColors.textPrimary,
-                letterSpacing = (-0.8).sp,
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(
-                text = dateStr,
-                fontSize = 12.sp,
-                color = appColors.textMuted,
-            )
-        }
-        if (onOpenSettings != null) {
-            HeaderProfileButton(
-                photoUri = avatarPhotoUri,
-                initials = avatarInitials,
-                onClick = onOpenSettings,
-            )
-        }
-    }
+    com.zack.recomptracker.ui.component.ScreenHeader(
+        title = "Dashboard",
+        subtitle = dateStr,
+        modifier = modifier,
+        trailing = if (onOpenSettings != null) {
+            { HeaderProfileButton(photoUri = avatarPhotoUri, initials = avatarInitials, onClick = onOpenSettings) }
+        } else null,
+    )
 }
 
 @Composable
@@ -393,7 +399,7 @@ private fun HeaderProfileButton(
 // ── Card 1: TODAY ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun TodayCard(state: DashboardUiState) {
+private fun TodayCard(state: DashboardUiState, onClick: (() -> Unit)? = null) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val prefs    = state.preferences
@@ -420,7 +426,9 @@ private fun TodayCard(state: DashboardUiState) {
     val carbsFrac   = safeFrac(state.todayTotals.carbsG,   prefs.targetCarbsG)
     val fatFrac     = safeFrac(state.todayTotals.fatG,     prefs.targetFatG)
 
-    FrostedCard {
+    FrostedCard(
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
         // Header row
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -429,10 +437,8 @@ private fun TodayCard(state: DashboardUiState) {
         ) {
             Text(
                 text = "TODAY",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.10.sp,
             )
             VioletBadge(text = badgeText)
         }
@@ -445,22 +451,19 @@ private fun TodayCard(state: DashboardUiState) {
         ) {
             Text(
                 text = String.format(Locale.US, "%,d", calories),
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Black,
+                style = AppType.displayLarge,
                 color = appColors.textPrimary,
-                letterSpacing = (-1.5).sp,
                 lineHeight = 36.sp,
             )
             Text(
                 text = "kcal",
-                fontSize = 13.sp,
+                style = AppType.body,
                 color = appColors.textMuted,
-                fontWeight = FontWeight.Normal,
             )
             if (remainText.isNotEmpty()) {
                 Text(
                     text = remainText,
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                 )
             }
@@ -483,13 +486,13 @@ private fun TodayCard(state: DashboardUiState) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("0", fontSize = 9.sp, color = appColors.textVeryMuted)
+            Text("0", style = AppType.metaLabel, color = appColors.textVeryMuted)
             Text(
                 "▌ $zoneLow–$zoneHigh",
-                fontSize = 9.sp,
+                style = AppType.metaLabel,
                 color = accent.inkBase.copy(alpha = 0.65f),
             )
-            Text("$scaleMax", fontSize = 9.sp, color = appColors.textVeryMuted)
+            Text("$scaleMax", style = AppType.metaLabel, color = appColors.textVeryMuted)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -541,12 +544,10 @@ private fun MacroBarItem(
         ) {
             Text(
                 text = label,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.07.sp,
             )
-            Text(text = value, fontSize = 9.sp, color = appColors.textDim)
+            Text(text = value, style = AppType.metaLabel, color = appColors.textDim)
         }
         Box(
             modifier = Modifier
@@ -568,6 +569,34 @@ private fun MacroBarItem(
     }
 }
 
+// ── Card: STREAKS SUMMARY ─────────────────────────────────────────────────────
+
+@Composable
+private fun StreaksCard(streaks: Streaks, onClick: () -> Unit) {
+    val appColors = LocalAppColors.current
+    FrostedCard(modifier = Modifier.clickable(role = Role.Button, onClick = onClick)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionLabel("Streaks")
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = appColors.textVeryMuted,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            StreakRow(result = streaks.workout, type = StreakType.WORKOUT)
+            StreakRow(result = streaks.calorie, type = StreakType.CALORIE)
+            StreakRow(result = streaks.steps, type = StreakType.STEPS)
+        }
+    }
+}
+
 // ── Card 2: LAST 7 DAYS CHART ─────────────────────────────────────────────────
 
 @Composable
@@ -577,7 +606,12 @@ private fun SevenDayChartCard(state: DashboardUiState) {
     val inZone = state.inZoneDays7
 
     FrostedCard {
-        var scrubCalories by remember { mutableStateOf<Float?>(null) }
+        val days = state.last7DaysCalories
+        var scrubIndex by remember { mutableStateOf<Int?>(null) }
+        // Selected day drives the header kcal + the macro row. Defaults to today (the last
+        // point, under the glow dot) when not actively scrubbing the chart.
+        val selectedDay = scrubIndex?.let { days.getOrNull(it) } ?: days.lastOrNull()
+        val isScrubbing = scrubIndex != null
 
         // Header
         Row(
@@ -585,9 +619,9 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (scrubCalories != null) {
+            if (isScrubbing && selectedDay != null) {
                 Text(
-                    text = String.format(java.util.Locale.US, "%,d kcal", scrubCalories!!.toInt()),
+                    text = String.format(java.util.Locale.US, "%s · %,d kcal", selectedDay.label, selectedDay.calories),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = appColors.textPrimary,
@@ -596,10 +630,8 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             } else {
                 Text(
                     text = "LAST 7 DAYS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = AppType.metaLabel,
                     color = accent.inkLight.copy(alpha = 0.85f),
-                    letterSpacing = 0.13.sp,
                 )
             }
             Row(
@@ -619,8 +651,7 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                 )
                 Text(
                     text = "$inZone of 7 in zone",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.label,
                     color = accent.inkLighter,
                 )
             }
@@ -628,29 +659,30 @@ private fun SevenDayChartCard(state: DashboardUiState) {
         Spacer(Modifier.height(10.dp))
 
         SparklineChart(
-            values       = state.last7DaysCalories.map { it.calories.toFloat() },
+            values       = days.map { it.calories.toFloat() },
             height       = 90.dp,
             showGlowDot  = true,
             showScrubber = true,
             zoneLow      = state.preferences.calorieZoneLowerBound.toFloat(),
             zoneHigh     = state.preferences.calorieZoneUpperBound.toFloat(),
-            onScrubValue = { scrubCalories = it },
+            onScrubIndex = { scrubIndex = it },
         )
 
-        // Day labels
-        if (state.last7DaysCalories.isNotEmpty()) {
+        // Day labels — the scrubbed day (or today by default) is emphasised.
+        if (days.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 5.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                state.last7DaysCalories.forEach { day ->
+                days.forEachIndexed { index, day ->
+                    val highlighted = if (isScrubbing) index == scrubIndex else day.isToday
                     Text(
                         text = day.label,
                         fontSize = 9.sp,
-                        fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
-                        color = if (day.isToday) accent.accentLighter else appColors.textVeryMuted,
+                        fontWeight = if (highlighted) FontWeight.Bold else FontWeight.Medium,
+                        color = if (highlighted) accent.accentLighter else appColors.textVeryMuted,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -667,12 +699,13 @@ private fun SevenDayChartCard(state: DashboardUiState) {
         )
         Spacer(Modifier.height(10.dp))
 
-        // Stats row
+        // Macro row — mirrors the scrubbed day's calories. Tracks the chart scrubber so
+        // protein / carbs / fat update in lockstep with the kcal in the header above.
         Row(modifier = Modifier.fillMaxWidth()) {
-            ChartStat(
-                value = "${state.weightTrendKgPerWeek.formatSignedOneDecimal()} kg",
-                label = "Trend/wk",
-                valueColor = ErrorRed,
+            MacroChartStat(
+                grams = selectedDay?.proteinG ?: 0,
+                label = "Protein",
+                dotColor = accent.accent,
                 modifier = Modifier.weight(1f),
             )
             Box(
@@ -682,10 +715,10 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .align(Alignment.CenterVertically)
                     .background(appColors.cardBorder),
             )
-            ChartStat(
-                value = state.adherencePercent.formatPercent(),
-                label = "Adherence",
-                valueColor = accent.accentLight,
+            MacroChartStat(
+                grams = selectedDay?.carbsG ?: 0,
+                label = "Carbs",
+                dotColor = accent.accentLight,
                 modifier = Modifier.weight(1f),
             )
             Box(
@@ -695,10 +728,10 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .align(Alignment.CenterVertically)
                     .background(appColors.cardBorder),
             )
-            ChartStat(
-                value = "${state.loggedDaysInWindow} / 14",
-                label = "Days logged",
-                valueColor = appColors.textPrimary,
+            MacroChartStat(
+                grams = selectedDay?.fatG ?: 0,
+                label = "Fat",
+                dotColor = accent.accentLighter,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -707,31 +740,38 @@ private fun SevenDayChartCard(state: DashboardUiState) {
 
 
 @Composable
-private fun ChartStat(
-    value: String,
+private fun MacroChartStat(
+    grams: Int,
     label: String,
-    valueColor: Color,
+    dotColor: Color,
     modifier: Modifier = Modifier,
 ) {
     val appColors = LocalAppColors.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(
-            text = value,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = valueColor,
-            letterSpacing = (-0.5).sp,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(dotColor),
+            )
+            Text(
+                text = "${grams}g",
+                style = AppType.statValueSmall,
+                color = appColors.textPrimary,
+            )
+        }
         Text(
             text = label,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Medium,
+            style = AppType.metaLabel,
             color = appColors.textMuted,
-            letterSpacing = 0.08.sp,
         )
     }
 }
@@ -758,11 +798,9 @@ private fun MotivationalCard(message: String) {
     ) {
         Text(
             text = message,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.statValueSmall,
             color = if (appColors.isDark) Color(0xFFEDE9FE) else accent.inkBase,
             lineHeight = 24.sp,
-            letterSpacing = (-0.3).sp,
         )
     }
 }
@@ -773,6 +811,7 @@ private fun MotivationalCard(message: String) {
 private fun StatTilesRow(
     adherencePercent: Double,
     weightTrendKgPerWeek: Double,
+    onTrendClick: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
     Row(
@@ -790,6 +829,7 @@ private fun StatTilesRow(
             label = "Trend / week",
             valueColor = if (weightTrendKgPerWeek <= 0.0) ErrorRed else Color(0xFF4ADE80),
             modifier = Modifier.weight(1f),
+            onClick = onTrendClick,
         )
     }
 }
@@ -800,11 +840,13 @@ private fun StatTile(
     label: String,
     valueColor: Color,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val appColors = LocalAppColors.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(appColors.cardSurface)
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 11.dp),
@@ -813,19 +855,15 @@ private fun StatTile(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = value,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
+                style = AppType.statValueSmall,
                 color = valueColor,
-                letterSpacing = (-0.5).sp,
                 lineHeight = 18.sp,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = label,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.06.sp,
             )
         }
     }
@@ -871,14 +909,12 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Calorie Decision",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        style = AppType.screenTitle,
                         color = appColors.textPrimary,
-                        letterSpacing = (-0.8).sp,
                     )
                     Text(
                         text = "Today's recommendation",
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                         color = appColors.textMuted,
                     )
                 }
@@ -953,25 +989,20 @@ private fun VerdictHero(result: AdjustmentResult) {
         ) {
             Text(
                 text = "TODAY'S VERDICT",
-                fontSize = 9.5.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.metaLabel,
                 color = accent.inkLight,
-                letterSpacing = 1.2.sp,
             )
             Spacer(Modifier.height(7.dp))
             Text(
                 text = result.verdict.heroLabel(),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = AppType.displayLarge,
                 color = appColors.textPrimary,
-                letterSpacing = (-0.6).sp,
                 lineHeight = 36.sp,
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 text = deltaText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.body,
                 color = accent.inkLighter,
             )
 
@@ -996,7 +1027,7 @@ private fun ReasonChip(text: String) {
     val appColors = LocalAppColors.current
     Text(
         text = text,
-        fontSize = 10.sp,
+        style = AppType.label,
         color = appColors.textDim,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -1020,7 +1051,7 @@ private fun AiInsightSection(
         if (aiState != AiInsightState.Disabled) {
             Text(
                 text = "AI explanations appear once a weekly verdict is ready.",
-                fontSize = 11.sp,
+                style = AppType.label,
                 color = appColors.textMuted,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
@@ -1037,12 +1068,12 @@ private fun AiInsightSection(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "Understand the reasoning behind this verdict.",
-                    fontSize = 13.sp,
+                    style = AppType.body,
                     color = appColors.textMuted,
                 )
                 Text(
                     text = "Requires a ~2.6 GB download · Wi-Fi recommended",
-                    fontSize = 11.sp,
+                    style = AppType.label,
                     color = appColors.textMuted,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -1061,7 +1092,7 @@ private fun AiInsightSection(
                 if (progress != null) {
                     Text(
                         text = "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
-                        fontSize = 11.sp,
+                        style = AppType.label,
                         color = appColors.textMuted,
                     )
                     Spacer(Modifier.height(6.dp))
@@ -1070,13 +1101,13 @@ private fun AiInsightSection(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    Text("Downloading…", fontSize = 11.sp, color = appColors.textMuted)
+                    Text("Downloading…", style = AppType.label, color = appColors.textMuted)
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.material3.TextButton(onClick = onCancel) {
-                    Text("Cancel", fontSize = 11.sp)
+                    Text("Cancel", style = AppType.label)
                 }
             }
         }
@@ -1085,7 +1116,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text("Download failed — check your connection.", fontSize = 13.sp, color = appColors.textMuted)
+                Text("Download failed — check your connection.", style = AppType.body, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.Button(onClick = onDownload) { Text("Retry") }
             }
@@ -1104,7 +1135,7 @@ private fun AiInsightSection(
                         strokeWidth = 2.dp,
                         color = accent.inkLight,
                     )
-                    Text("Verifying download…", fontSize = 13.sp, color = appColors.textMuted)
+                    Text("Verifying download…", style = AppType.body, color = appColors.textMuted)
                 }
             }
         }
@@ -1123,7 +1154,7 @@ private fun AiInsightSection(
                         strokeWidth = 2.dp,
                         color = accent.inkLight,
                     )
-                    Text("Preparing model…", fontSize = 13.sp, color = appColors.textMuted)
+                    Text("Preparing model…", style = AppType.body, color = appColors.textMuted)
                 }
             }
         }
@@ -1134,7 +1165,7 @@ private fun AiInsightSection(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = aiState.partialText,
-                    fontSize = 14.sp,
+                    style = AppType.body,
                     color = appColors.textPrimary,
                     lineHeight = 20.sp,
                 )
@@ -1147,7 +1178,7 @@ private fun AiInsightSection(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = aiState.text,
-                    fontSize = 14.sp,
+                    style = AppType.body,
                     color = appColors.textPrimary,
                     lineHeight = 20.sp,
                 )
@@ -1158,7 +1189,7 @@ private fun AiInsightSection(
             AiInsightCard(borderMode = AiBorderMode.Static) {
                 AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
                 Spacer(Modifier.height(8.dp))
-                Text(aiState.message, fontSize = 13.sp, color = appColors.textMuted)
+                Text(aiState.message, style = AppType.body, color = appColors.textMuted)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
             }
@@ -1181,10 +1212,8 @@ private fun AiCardHeader(
     ) {
         Text(
             text = title.uppercase(),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.sectionLabel,
             color = appColors.textFaint,
-            letterSpacing = 0.14.sp,
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1208,8 +1237,8 @@ private fun StatRow(label: String, value: String, valueColor: Color? = null) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(label, fontSize = 13.sp, color = appColors.textDim)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = valueColor ?: appColors.textPrimary)
+        Text(label, style = AppType.body, color = appColors.textDim)
+        Text(value, style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = valueColor ?: appColors.textPrimary)
     }
 }
 

@@ -41,7 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.domain.streak.StreakType
+import com.zack.recomptracker.ui.LocalAppContainer
+import com.zack.recomptracker.ui.streak.StreakGoalRing
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
@@ -56,6 +61,7 @@ import com.zack.recomptracker.ui.component.NeutralCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.charts.SparklineChart
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -111,6 +117,12 @@ fun BodyRecoveryContent(
     onRetryRecoveryInsight: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val streakVm: StreakViewModel =
+        viewModel(factory = LocalAppContainer.current.viewModelFactory)
+    val streakUi by streakVm.uiState.collectAsStateWithLifecycle()
+    val stepsStreak = streakUi.streaks.steps
+    val todaySteps = state.steps.toIntOrNull() ?: 0
+
     val accent = LocalAppAccent.current
     val bodyRecoveryOrbBrush = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.18f), Color.Transparent))
@@ -155,6 +167,14 @@ fun BodyRecoveryContent(
         ) {
             item { ScreenHeader(state) }
             item { MetricsHeroCard(state) }
+            item {
+                StreakGoalRing(
+                    result = stepsStreak,
+                    type = StreakType.STEPS,
+                    todayValue = todaySteps,
+                    goalValue = streakUi.stepGoal,
+                )
+            }
             item {
                 GeneratedInsightCard(
                     title = "Recovery readiness",
@@ -207,26 +227,13 @@ fun BodyRecoveryContent(
 
 @Composable
 private fun ScreenHeader(state: TodayUiState) {
-    val appColors = LocalAppColors.current
     val dateStr = remember(state.date) {
         state.date.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Text(
-            text = "Body",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = appColors.textPrimary,
-            letterSpacing = (-0.8).sp,
-        )
-        Text(text = dateStr, fontSize = 12.sp, color = appColors.textMuted)
-    }
+    com.zack.recomptracker.ui.component.ScreenHeader(
+        title = "Body",
+        subtitle = dateStr,
+    )
 }
 
 // ── Metrics Hero Card ─────────────────────────────────────────────────────────
@@ -242,8 +249,9 @@ private fun MetricsHeroCard(state: TodayUiState) {
     FrostedCard {
         Text(
             text = checkInLabel,
-            fontSize = 9.sp, fontWeight = FontWeight.Bold,
-            color = accent.inkLight.copy(alpha = 0.80f), letterSpacing = 0.13.sp,
+            style = AppType.metaLabel,
+            color = accent.inkLight.copy(alpha = 0.80f),
+            letterSpacing = 0.13.sp,
         )
         Spacer(Modifier.height(14.dp))
 
@@ -291,19 +299,30 @@ private fun MetricColumn(
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 text = value,
-                fontSize = 36.sp, fontWeight = FontWeight.Black,
-                color = appColors.textPrimary, letterSpacing = (-1.5).sp, lineHeight = 36.sp,
+                style = AppType.displayLarge.copy(fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp),
+                color = appColors.textPrimary,
+                lineHeight = 36.sp,
             )
             if (value != "—") {
                 Text(
-                    text = unit, fontSize = 13.sp,
-                    color = appColors.textMuted, modifier = Modifier.padding(bottom = 4.dp),
+                    text = unit,
+                    style = AppType.body,
+                    color = appColors.textMuted,
+                    modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
         }
-        Text(text = label, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = appColors.textMuted, letterSpacing = 0.10.sp)
+        Text(
+            text = label,
+            style = AppType.metaLabel.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.10.sp),
+            color = appColors.textMuted,
+        )
         if (trend.isNotEmpty()) {
-            Text(text = trend, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = accent.inkLight)
+            Text(
+                text = trend,
+                style = AppType.label.copy(fontWeight = FontWeight.Bold),
+                color = accent.inkLight,
+            )
         }
         if (showSparklineSlot) {
             Spacer(Modifier.height(10.dp))
@@ -315,9 +334,9 @@ private fun MetricColumn(
                 SparklineChart(values = sparklineValues, height = 64.dp, showGlowDot = true)
                 Spacer(Modifier.height(3.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("%.1f".format(minVal), fontSize = 8.sp, color = appColors.textFaint)
-                    Text("14 days", fontSize = 8.sp, color = appColors.textFaint)
-                    Text("%.1f".format(maxVal), fontSize = 8.sp, color = appColors.textFaint)
+                    Text("%.1f".format(minVal), style = AppType.metaLabel, color = appColors.textFaint)
+                    Text("14 days", style = AppType.metaLabel, color = appColors.textFaint)
+                    Text("%.1f".format(maxVal), style = AppType.metaLabel, color = appColors.textFaint)
                 }
             } else {
                 Spacer(Modifier.height(77.dp))
@@ -379,7 +398,11 @@ private fun MetricTile(
             .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(text = label, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = appColors.textMuted, letterSpacing = 0.10.sp)
+        Text(
+            text = label,
+            style = AppType.metaLabel.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.10.sp),
+            color = appColors.textMuted,
+        )
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = value ?: "—",
@@ -390,7 +413,12 @@ private fun MetricTile(
                 lineHeight = 20.sp,
             )
             if (unit.isNotEmpty() && !empty) {
-                Text(text = unit, fontSize = 8.sp, color = appColors.textMuted, modifier = Modifier.padding(bottom = 2.dp))
+                Text(
+                    text = unit,
+                    style = AppType.metaLabel,
+                    color = appColors.textMuted,
+                    modifier = Modifier.padding(bottom = 2.dp),
+                )
             }
         }
     }
@@ -413,7 +441,11 @@ private fun RecoveryBandCard(state: BodyCheckInFormState, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SectionLabel("Recovery")
-            Text(text = "tap to edit →", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
+            Text(
+                text = "tap to edit →",
+                style = AppType.metaLabel,
+                color = LocalAppColors.current.textFaint,
+            )
         }
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -440,8 +472,10 @@ private fun ScoreBar(label: String, score: Int) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-            color = appColors.textDim, modifier = Modifier.width(58.dp),
+            text = label,
+            style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
+            color = appColors.textDim,
+            modifier = Modifier.width(58.dp),
         )
         Box(
             modifier = Modifier
@@ -461,8 +495,10 @@ private fun ScoreBar(label: String, score: Int) {
             )
         }
         Text(
-            text = "$score", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
-            color = numColor, modifier = Modifier.width(18.dp),
+            text = "$score",
+            style = AppType.cardSubtitle.copy(fontWeight = FontWeight.ExtraBold),
+            color = numColor,
+            modifier = Modifier.width(18.dp),
         )
     }
 }
@@ -488,9 +524,14 @@ private fun HistoryButton(daysLogged: Int, onClick: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Check-in history",
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = appColors.textDim,
+                    style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                    color = appColors.textDim,
                 )
-                Text(text = "$daysLogged days logged · tap to view all", fontSize = 10.sp, color = appColors.textMuted)
+                Text(
+                    text = "$daysLogged days logged · tap to view all",
+                    style = AppType.label,
+                    color = appColors.textMuted,
+                )
             }
             Text("→", fontSize = 16.sp, color = accent.inkBase.copy(alpha = 0.70f))
         }

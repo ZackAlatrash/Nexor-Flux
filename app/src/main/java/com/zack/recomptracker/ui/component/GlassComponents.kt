@@ -1,8 +1,10 @@
 package com.zack.recomptracker.ui.component
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +17,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,8 +32,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -52,6 +56,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.RoundedRectangle
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -133,6 +138,68 @@ fun FrostedCard(
     )
 }
 
+// ── Frosted Speech Bubble (a FrostedCard with an integrated glass tail) ───────
+
+/**
+ * A [FrostedCard] shaped like a speech bubble: the same frosted-glass material plus a small
+ * glass "tail" poking up from the top edge that points back at whatever opened it. The tail is a
+ * rotated frosted square built from the SAME `drawBackdrop` material (blur + overlay + border),
+ * so it reads as part of the glass card rather than a separate solid arrow.
+ *
+ * @param tailSize       size of the (square, rotated) tail
+ * @param tailEndPadding how far the tail's centre sits from the card's right edge — line it up
+ *                       under whatever anchor opened the bubble
+ */
+@Composable
+fun GlassSpeechBubble(
+    modifier: Modifier = Modifier,
+    contentPadding: androidx.compose.ui.unit.Dp = 18.dp,
+    tailSize: androidx.compose.ui.unit.Dp = 16.dp,
+    tailEndPadding: androidx.compose.ui.unit.Dp = 26.dp,
+    surfaceTint: Color = Color.Unspecified,
+    borderColor: Color = Color.Unspecified,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val backdrop = LocalBackdrop.current
+    val appColors = LocalAppColors.current
+    val resolvedBorder = if (borderColor != Color.Unspecified) borderColor else appColors.frostedBorder
+    val tailShape = RoundedCornerShape(3.dp)
+    Box(modifier = modifier) {
+        // Glass tail FIRST (drawn below): a rotated frosted square. Same material as the card.
+        // The card is drawn on top of it and hides its lower half, so only the top half — a
+        // triangle pointing up — pokes out above the card's top edge.
+        Box(
+            modifier = Modifier
+                .align(BiasAlignment(horizontalBias = 1f, verticalBias = -1f))
+                .padding(end = tailEndPadding)
+                .size(tailSize)
+                .rotate(45f)
+                .clip(tailShape)
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { RoundedRectangle(3.dp) },
+                    effects = {
+                        vibrancy()
+                        blur(12f.dp.toPx())
+                    },
+                    onDrawSurface = {
+                        drawRect(appColors.glassOverlay)
+                        if (surfaceTint != Color.Unspecified) drawRect(surfaceTint)
+                    },
+                )
+                .border(1.dp, resolvedBorder, tailShape),
+        )
+        // Card body ON TOP, offset down so the tail's lower half is hidden behind it.
+        FrostedCard(
+            modifier = Modifier.padding(top = tailSize / 2),
+            contentPadding = contentPadding,
+            surfaceTint = surfaceTint,
+            borderColor = borderColor,
+            content = content,
+        )
+    }
+}
+
 // ── Tinted Card (reserved — AI features only, zero call sites) ────────────────
 
 @Composable
@@ -185,10 +252,8 @@ fun TintedCard(
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text.uppercase(),
-        fontSize = 9.sp,
-        fontWeight = FontWeight.Bold,
+        style = AppType.sectionLabel,
         color = LocalAppColors.current.textFaint,
-        letterSpacing = 0.14.sp,
         modifier = modifier,
     )
 }
@@ -432,6 +497,7 @@ fun VioletToggle(
     modifier: Modifier = Modifier,
 ) {
     val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -443,17 +509,35 @@ fun VioletToggle(
             fontWeight = FontWeight.SemiBold,
             color = appColors.textPrimary,
         )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = LocalAppAccent.current.accent,
-                uncheckedThumbColor = appColors.textPrimary.copy(alpha = 0.50f),
-                uncheckedTrackColor = appColors.textPrimary.copy(alpha = 0.10f),
-                uncheckedBorderColor = appColors.textPrimary.copy(alpha = 0.15f),
-            ),
-        )
+        // Tap-only toggle (looks like a switch, but NO drag gesture). A Material `Switch` carries
+        // an internal draggable that fights a ModalBottomSheet's drag and makes the sheet twitch;
+        // a clickable track avoids that conflict while keeping the switch look everywhere.
+        val thumbBias by animateFloatAsState(if (checked) 1f else -1f, label = "toggleThumb")
+        Box(
+            modifier = Modifier
+                .size(width = 46.dp, height = 26.dp)
+                .clip(RoundedCornerShape(100))
+                .background(if (checked) accent.accent else appColors.textPrimary.copy(alpha = 0.10f))
+                .border(
+                    1.dp,
+                    if (checked) Color.Transparent else appColors.textPrimary.copy(alpha = 0.15f),
+                    RoundedCornerShape(100),
+                )
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    role = Role.Switch,
+                ) { onCheckedChange(!checked) }
+                .padding(horizontal = 3.dp),
+            contentAlignment = BiasAlignment(horizontalBias = thumbBias, verticalBias = 0f),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(if (checked) Color.White else appColors.textPrimary.copy(alpha = 0.50f)),
+            )
+        }
     }
 }
 

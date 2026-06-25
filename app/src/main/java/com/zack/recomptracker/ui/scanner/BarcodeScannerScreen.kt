@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -36,11 +35,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -65,8 +59,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
+import com.zack.recomptracker.ui.component.AmountPreviewStat
+import com.zack.recomptracker.ui.component.BackButton
+import com.zack.recomptracker.ui.component.GlassBottomSheet
+import com.zack.recomptracker.ui.component.GlassInputField
+import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
+import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -164,21 +165,19 @@ fun BarcodeScannerScreen(
                     Text(
                         "Point at a barcode",
                         color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                     )
                 }
             }
         }
 
-        IconButton(
+        BackButton(
             onClick = onBack,
             enabled = state.scanState !is ScanState.ShowingSuccess,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(8.dp),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-        }
+        )
 
         when (val scanState = state.scanState) {
             is ScanState.Loading -> {
@@ -210,8 +209,8 @@ fun BarcodeScannerScreen(
                 )
             }
             is ScanState.ProductFound -> {
-                ModalBottomSheet(
-                    onDismissRequest = viewModel::resetScan,
+                GlassBottomSheet(
+                    onDismiss = viewModel::resetScan,
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 ) {
                     ProductFoundSheet(
@@ -247,8 +246,7 @@ fun BarcodeScannerScreen(
                         Text(
                             scanState.message,
                             color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
+                            style = AppType.cardTitle,
                         )
                     }
                 }
@@ -271,7 +269,11 @@ private fun ScanErrorOverlay(message: String, onRetry: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(24.dp),
         ) {
-            Text(message, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text(
+                message,
+                color = Color.White,
+                style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+            )
             LiquidPrimaryButton(text = "Scan Again", onClick = onRetry)
         }
     }
@@ -290,56 +292,51 @@ private fun ProductFoundSheet(
     onCancel: () -> Unit,
 ) {
     val product = state.product
+    val appColors = LocalAppColors.current
     Column(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(product.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(product.name, style = AppType.screenTitleCompact, color = appColors.textPrimary)
+        Text("Per 100 g", style = AppType.cardSubtitle, color = appColors.textMuted)
         if (!product.hasCompleteData) {
             Text(
                 "Warning: some nutritional data is missing — check values before logging.",
                 color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
+                style = AppType.cardSubtitle,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            MacroChip("Kcal", product.caloriesPer100g.toString())
-            MacroChip("Protein", "${product.proteinPer100g}g")
-            MacroChip("Carbs", "${product.carbsPer100g}g")
-            MacroChip("Fat", "${product.fatPer100g}g")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AmountPreviewStat("kcal", product.caloriesPer100g.toString(), Modifier.weight(1f))
+            AmountPreviewStat("P", "${product.proteinPer100g}", Modifier.weight(1f))
+            AmountPreviewStat("C", "${product.carbsPer100g}", Modifier.weight(1f))
+            AmountPreviewStat("F", "${product.fatPer100g}", Modifier.weight(1f))
         }
-        Text("per 100g", fontSize = 11.sp, color = Color(0xFF6b7280))
+        val servingMode = state.logMode == LogMode.SERVING && product.servingGrams != null
         if (product.servingGrams != null) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = state.logMode == LogMode.GRAMS,
-                    onClick = { onLogModeChanged(LogMode.GRAMS) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    label = { Text("Grams") },
-                )
-                SegmentedButton(
-                    selected = state.logMode == LogMode.SERVING,
-                    onClick = { onLogModeChanged(LogMode.SERVING) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    label = { Text("Serving") },
-                )
-            }
+            GlassSegmentedToggle(
+                options = listOf("Grams", "Serving"),
+                selectedIndex = if (state.logMode == LogMode.GRAMS) 0 else 1,
+                onSelect = { onLogModeChanged(if (it == 0) LogMode.GRAMS else LogMode.SERVING) },
+            )
         }
-        val fieldLabel = if (state.logMode == LogMode.SERVING && product.servingGrams != null) {
-            val gramsInt = product.servingGrams.toInt()
-            if (product.servingName != null) "Servings (1 serving = ${gramsInt}g · ${product.servingName})"
-            else "Servings (1 serving = ${gramsInt}g)"
-        } else {
-            "Amount (grams)"
-        }
-        OutlinedTextField(
+        GlassInputField(
+            label = if (servingMode) "Servings" else "Amount",
             value = state.amountInput,
             onValueChange = onAmountChanged,
-            label = { Text(fieldLabel) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
+            unit = if (servingMode) null else "g",
+            keyboardType = KeyboardType.Number,
         )
+        if (servingMode) {
+            val gramsInt = product.servingGrams.toInt()
+            Text(
+                "1 serving = ${gramsInt}g" + (product.servingName?.let { " · $it" } ?: ""),
+                style = AppType.metaLabel,
+                color = appColors.textMuted,
+            )
+        }
         MessageText(message, MessageKind.ERROR)
         if (pickerMode) {
             LiquidPrimaryButton(text = "Add to Recipe", onClick = onLogOnly)
@@ -350,14 +347,6 @@ private fun ProductFoundSheet(
             if (!pickerMode) LiquidSecondaryButton(text = "Log Only", onClick = onLogOnly, modifier = Modifier.weight(1f))
             LiquidSecondaryButton(text = "Cancel", onClick = onCancel, modifier = Modifier.weight(1f))
         }
-    }
-}
-
-@Composable
-private fun MacroChip(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        Text(label, fontSize = 11.sp, color = Color(0xFF6b7280))
     }
 }
 

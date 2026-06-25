@@ -21,19 +21,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,8 +49,13 @@ import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.ui.component.AmountMode
 import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
+import com.zack.recomptracker.ui.component.GlassBottomSheet
+import com.zack.recomptracker.ui.component.GlassInputField
+import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.MessageText
+import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -96,55 +97,31 @@ fun RecipeBuilderScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ── Top Bar ───────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(appColors.cardSurface)
-                    .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
-                    .clickable(remember { MutableInteractionSource() }, null, onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = appColors.textPrimary.copy(alpha = 0xBF / 255f),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Text(
-                if (state.recipeId == null) "New Recipe" else "Edit Recipe",
-                fontSize = 17.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = appColors.textPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            if (state.recipeId != null) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(appColors.cardSurface)
-                        .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
-                        .clickable(remember { MutableInteractionSource() }, null, onClick = viewModel::delete),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete recipe",
-                        tint = Color(0xBFFF4444),
-                        modifier = Modifier.size(18.dp),
-                    )
+        SubScreenHeader(
+            title = if (state.recipeId == null) "New recipe" else "Edit recipe",
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = 16.dp),
+            trailing = {
+                if (state.recipeId != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(appColors.cardSurface)
+                            .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
+                            .clickable(remember { MutableInteractionSource() }, null, onClick = viewModel::delete),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete recipe",
+                            tint = Color(0xBFFF4444),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
-            }
-        }
+            },
+        )
 
         LazyColumn(
             modifier = Modifier
@@ -210,7 +187,7 @@ fun RecipeBuilderScreen(
                             .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("No ingredients yet. Tap below to add some.", color = appColors.textMuted, fontSize = 13.sp)
+                        Text("No ingredients yet. Tap below to add some.", color = appColors.textMuted, style = AppType.body)
                     }
                 }
             } else {
@@ -256,7 +233,7 @@ fun RecipeBuilderScreen(
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ Add ingredient", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = accent.inkLighter)
+                    Text("+ Add ingredient", style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = accent.inkLighter)
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -294,7 +271,7 @@ private fun IngredientRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -306,8 +283,7 @@ private fun IngredientRow(
         ) {
             Text(
                 ingredient.name,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
+                style = AppType.cardTitle,
                 color = appColors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -315,7 +291,7 @@ private fun IngredientRow(
             val amountText = ingredient.amountGrams?.let { "${it.toInt()}g" } ?: ""
             Text(
                 "$amountText · ${ingredient.calories} kcal  P${ingredient.proteinG.toInt()}g  C${ingredient.carbsG.toInt()}g  F${ingredient.fatG.toInt()}g",
-                fontSize = 11.sp,
+                style = AppType.label,
                 color = appColors.textMuted,
             )
         }
@@ -328,7 +304,12 @@ private fun IngredientRow(
                 .clickable(remember { MutableInteractionSource() }, null, onClick = onRemove),
             contentAlignment = Alignment.Center,
         ) {
-            Text("✕", fontSize = 13.sp, color = Color(0xBFFF4444))
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Remove",
+                tint = Color(0xBFFF4444),
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }
@@ -340,11 +321,7 @@ private fun IngredientAmountSheet(
     viewModel: RecipeBuilderViewModel,
 ) {
     val appColors = LocalAppColors.current
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = viewModel::cancelIngredientEdit,
-        sheetState = sheetState,
-    ) {
+    GlassBottomSheet(onDismiss = viewModel::cancelIngredientEdit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -352,22 +329,15 @@ private fun IngredientAmountSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(editor.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = appColors.textPrimary)
+            Text(editor.name, style = AppType.cardTitle.copy(fontWeight = FontWeight.Bold), color = appColors.textPrimary)
 
             if (editor.scalable) {
                 if (editor.hasServings) {
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = editor.mode == AmountMode.SERVINGS,
-                            onClick = { viewModel.onEditorAmountModeChanged(AmountMode.SERVINGS) },
-                            shape = SegmentedButtonDefaults.itemShape(0, 2),
-                        ) { Text("Servings") }
-                        SegmentedButton(
-                            selected = editor.mode == AmountMode.GRAMS,
-                            onClick = { viewModel.onEditorAmountModeChanged(AmountMode.GRAMS) },
-                            shape = SegmentedButtonDefaults.itemShape(1, 2),
-                        ) { Text("Grams") }
-                    }
+                    GlassSegmentedToggle(
+                        options = listOf("Servings", "Grams"),
+                        selectedIndex = if (editor.mode == AmountMode.SERVINGS) 0 else 1,
+                        onSelect = { viewModel.onEditorAmountModeChanged(if (it == 0) AmountMode.SERVINGS else AmountMode.GRAMS) },
+                    )
                 }
                 if (editor.mode == AmountMode.SERVINGS) {
                     AmountStepper(
@@ -389,11 +359,11 @@ private fun IngredientAmountSheet(
                     )
                 }
                 val preview = editor.preview
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—")
-                    AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—")
-                    AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—")
-                    AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—", Modifier.weight(1f))
+                    AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                    AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
+                    AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
                 }
             } else {
                 MacroEditField("Calories (kcal)", editor.caloriesInput, viewModel::onEditorCaloriesChanged)
@@ -409,12 +379,10 @@ private fun IngredientAmountSheet(
 
 @Composable
 private fun MacroEditField(label: String, value: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
+    GlassInputField(
+        label = label,
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = Modifier.fillMaxWidth(),
     )
 }

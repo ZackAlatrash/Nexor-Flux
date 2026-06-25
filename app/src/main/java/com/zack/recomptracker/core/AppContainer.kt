@@ -72,6 +72,7 @@ import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.profile.ProfileViewModel
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
 import com.zack.recomptracker.ui.today.FoodLogViewModel
@@ -87,11 +88,13 @@ import com.zack.recomptracker.ui.train.component.MuscleArt
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.RecipeRepository
+import com.zack.recomptracker.data.repository.StreakRepository
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import com.zack.recomptracker.ai.WeeklyBriefingGenerator
 import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
 import com.zack.recomptracker.domain.review.WeeklyReviewComputer
+import com.zack.recomptracker.domain.streak.StreakCalculator
 import com.zack.recomptracker.domain.review.WeeklyReviewData
 import com.zack.recomptracker.ui.review.WeeklyReviewConfig
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
@@ -143,7 +146,19 @@ class AppContainer(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
     val workoutRepository = WorkoutRepository(database.workoutDao())
-    val workoutSessionRepository = WorkoutSessionRepository(database.workoutSessionDao())
+    val workoutSessionRepository = WorkoutSessionRepository(
+        database.workoutSessionDao(),
+        dailyLogDao = database.dailyLogDao(),
+    )
+    val streakCalculator = StreakCalculator()
+    val streakRepository = StreakRepository(
+        logRepository = logRepository,
+        workoutSessionRepository = workoutSessionRepository,
+        planRepository = planRepository,
+        userProfileStore = userProfilePreferencesStore,
+        dateProvider = dateProvider,
+        calculator = streakCalculator,
+    )
 
     init {
         appScope.launch {
@@ -418,6 +433,10 @@ private class AppViewModelFactory(
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+            )
+            StreakViewModel::class.java -> StreakViewModel(
+                streakRepository = container.streakRepository,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             OnboardingViewModel::class.java -> OnboardingViewModel(
                 userProfileStore = container.userProfilePreferencesStore,

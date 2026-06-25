@@ -14,6 +14,7 @@ data class UserProfilePreferences(
     val activityLevel: ActivityLevel? = null,
     val weeklyGymSessions: Int? = null,
     val goal: FitnessGoal? = null,
+    val dailyStepGoal: Int? = null,
 )
 
 @Serializable

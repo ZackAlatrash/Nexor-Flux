@@ -78,6 +78,8 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.streak.StreakViewModel
+import com.zack.recomptracker.ui.streak.StreakRow
+import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
@@ -587,26 +589,11 @@ private fun StreaksCard(streaks: Streaks, onClick: () -> Unit) {
             )
         }
         Spacer(Modifier.height(10.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            StreakSummaryItem("🏋️", "Workout", streaks.workout.current, Modifier.weight(1f))
-            StreakSummaryItem("🔥", "Calorie", streaks.calorie.current, Modifier.weight(1f))
-            StreakSummaryItem("👟", "Steps", streaks.steps.current, Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            StreakRow(result = streaks.workout, type = StreakType.WORKOUT)
+            StreakRow(result = streaks.calorie, type = StreakType.CALORIE)
+            StreakRow(result = streaks.steps, type = StreakType.STEPS)
         }
-    }
-}
-
-@Composable
-private fun StreakSummaryItem(emoji: String, label: String, days: Int, modifier: Modifier = Modifier) {
-    val appColors = LocalAppColors.current
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(text = emoji, style = AppType.statValueSmall, color = appColors.textPrimary)
-        Text(text = "$days", style = AppType.statValue, color = appColors.textPrimary)
-        Text(text = if (days == 1) "day" else "days", style = AppType.metaLabel, color = appColors.textMuted)
-        Text(text = label, style = AppType.metaLabel, color = appColors.textVeryMuted)
     }
 }
 

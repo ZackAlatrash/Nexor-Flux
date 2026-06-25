@@ -87,6 +87,7 @@ fun ProfileScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val nameInput by viewModel.nameInput.collectAsStateWithLifecycle()
     val heightInput by viewModel.heightInput.collectAsStateWithLifecycle()
+    val stepGoalInput by viewModel.stepGoalInput.collectAsStateWithLifecycle()
     val currentWeightKg by viewModel.currentWeightKg.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val accent = LocalAppAccent.current
@@ -227,6 +228,15 @@ fun ProfileScreen(
                         value = profile.weeklyGymSessions ?: 0,
                         onValueChange = { viewModel.update(profile.copy(weeklyGymSessions = it)) },
                         range = 0..7,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    GlassInputField(
+                        label = "Daily step goal",
+                        value = stepGoalInput,
+                        onValueChange = viewModel::setDailyStepGoal,
+                        unit = "steps",
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }

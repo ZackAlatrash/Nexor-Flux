@@ -87,11 +87,13 @@ import com.zack.recomptracker.ui.train.component.MuscleArt
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.RecipeRepository
+import com.zack.recomptracker.data.repository.StreakRepository
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import com.zack.recomptracker.ai.WeeklyBriefingGenerator
 import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
 import com.zack.recomptracker.domain.review.WeeklyReviewComputer
+import com.zack.recomptracker.domain.streak.StreakCalculator
 import com.zack.recomptracker.domain.review.WeeklyReviewData
 import com.zack.recomptracker.ui.review.WeeklyReviewConfig
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
@@ -146,6 +148,15 @@ class AppContainer(context: Context) {
     val workoutSessionRepository = WorkoutSessionRepository(
         database.workoutSessionDao(),
         dailyLogDao = database.dailyLogDao(),
+    )
+    val streakCalculator = StreakCalculator()
+    val streakRepository = StreakRepository(
+        logRepository = logRepository,
+        workoutSessionRepository = workoutSessionRepository,
+        planRepository = planRepository,
+        userProfileStore = userProfilePreferencesStore,
+        dateProvider = dateProvider,
+        calculator = streakCalculator,
     )
 
     init {

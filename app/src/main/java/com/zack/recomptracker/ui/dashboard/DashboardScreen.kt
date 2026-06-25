@@ -87,6 +87,8 @@ fun HomeDashboardScreen(
     weeklyReviewViewModel: WeeklyReviewViewModel,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenFoodLog: () -> Unit,
+    onOpenBody: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
@@ -117,6 +119,8 @@ fun HomeDashboardScreen(
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = { weeklyReviewViewModel.open() },
         onOpenSettings = onOpenSettings,
+        onOpenFoodLog = onOpenFoodLog,
+        onOpenBody = onOpenBody,
         patternInsightState = patternInsightState,
         onRetryPatternInsight = viewModel::retryPatternInsight,
         targetChangeInsightState = targetChangeInsightState,
@@ -156,6 +160,8 @@ fun HomeDashboardContent(
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    onOpenFoodLog: (() -> Unit)? = null,
+    onOpenBody: (() -> Unit)? = null,
     patternInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryPatternInsight: () -> Unit = {},
     targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
@@ -254,8 +260,14 @@ fun HomeDashboardContent(
                     }
                 }
                 item { MotivationalCard(state.motivationalMessage) }
-                item { TodayCard(state) }
-                item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }
+                item { TodayCard(state, onClick = onOpenFoodLog) }
+                item {
+                    StatTilesRow(
+                        state.adherencePercent,
+                        state.weightTrendKgPerWeek,
+                        onTrendClick = onOpenBody,
+                    )
+                }
                 item { SevenDayChartCard(state) }
             }
         }
@@ -372,7 +384,7 @@ private fun HeaderProfileButton(
 // ── Card 1: TODAY ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun TodayCard(state: DashboardUiState) {
+private fun TodayCard(state: DashboardUiState, onClick: (() -> Unit)? = null) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val prefs    = state.preferences
@@ -399,7 +411,9 @@ private fun TodayCard(state: DashboardUiState) {
     val carbsFrac   = safeFrac(state.todayTotals.carbsG,   prefs.targetCarbsG)
     val fatFrac     = safeFrac(state.todayTotals.fatG,     prefs.targetFatG)
 
-    FrostedCard {
+    FrostedCard(
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
         // Header row
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -549,7 +563,12 @@ private fun SevenDayChartCard(state: DashboardUiState) {
     val inZone = state.inZoneDays7
 
     FrostedCard {
-        var scrubCalories by remember { mutableStateOf<Float?>(null) }
+        val days = state.last7DaysCalories
+        var scrubIndex by remember { mutableStateOf<Int?>(null) }
+        // Selected day drives the header kcal + the macro row. Defaults to today (the last
+        // point, under the glow dot) when not actively scrubbing the chart.
+        val selectedDay = scrubIndex?.let { days.getOrNull(it) } ?: days.lastOrNull()
+        val isScrubbing = scrubIndex != null
 
         // Header
         Row(
@@ -557,9 +576,9 @@ private fun SevenDayChartCard(state: DashboardUiState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (scrubCalories != null) {
+            if (isScrubbing && selectedDay != null) {
                 Text(
-                    text = String.format(java.util.Locale.US, "%,d kcal", scrubCalories!!.toInt()),
+                    text = String.format(java.util.Locale.US, "%s · %,d kcal", selectedDay.label, selectedDay.calories),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = appColors.textPrimary,
@@ -597,29 +616,30 @@ private fun SevenDayChartCard(state: DashboardUiState) {
         Spacer(Modifier.height(10.dp))
 
         SparklineChart(
-            values       = state.last7DaysCalories.map { it.calories.toFloat() },
+            values       = days.map { it.calories.toFloat() },
             height       = 90.dp,
             showGlowDot  = true,
             showScrubber = true,
             zoneLow      = state.preferences.calorieZoneLowerBound.toFloat(),
             zoneHigh     = state.preferences.calorieZoneUpperBound.toFloat(),
-            onScrubValue = { scrubCalories = it },
+            onScrubIndex = { scrubIndex = it },
         )
 
-        // Day labels
-        if (state.last7DaysCalories.isNotEmpty()) {
+        // Day labels — the scrubbed day (or today by default) is emphasised.
+        if (days.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 5.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                state.last7DaysCalories.forEach { day ->
+                days.forEachIndexed { index, day ->
+                    val highlighted = if (isScrubbing) index == scrubIndex else day.isToday
                     Text(
                         text = day.label,
                         fontSize = 9.sp,
-                        fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
-                        color = if (day.isToday) accent.accentLighter else appColors.textVeryMuted,
+                        fontWeight = if (highlighted) FontWeight.Bold else FontWeight.Medium,
+                        color = if (highlighted) accent.accentLighter else appColors.textVeryMuted,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -636,12 +656,13 @@ private fun SevenDayChartCard(state: DashboardUiState) {
         )
         Spacer(Modifier.height(10.dp))
 
-        // Stats row
+        // Macro row — mirrors the scrubbed day's calories. Tracks the chart scrubber so
+        // protein / carbs / fat update in lockstep with the kcal in the header above.
         Row(modifier = Modifier.fillMaxWidth()) {
-            ChartStat(
-                value = "${state.weightTrendKgPerWeek.formatSignedOneDecimal()} kg",
-                label = "Trend/wk",
-                valueColor = ErrorRed,
+            MacroChartStat(
+                grams = selectedDay?.proteinG ?: 0,
+                label = "Protein",
+                dotColor = accent.accent,
                 modifier = Modifier.weight(1f),
             )
             Box(
@@ -651,10 +672,10 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .align(Alignment.CenterVertically)
                     .background(appColors.cardBorder),
             )
-            ChartStat(
-                value = state.adherencePercent.formatPercent(),
-                label = "Adherence",
-                valueColor = accent.accentLight,
+            MacroChartStat(
+                grams = selectedDay?.carbsG ?: 0,
+                label = "Carbs",
+                dotColor = accent.accentLight,
                 modifier = Modifier.weight(1f),
             )
             Box(
@@ -664,10 +685,10 @@ private fun SevenDayChartCard(state: DashboardUiState) {
                     .align(Alignment.CenterVertically)
                     .background(appColors.cardBorder),
             )
-            ChartStat(
-                value = "${state.loggedDaysInWindow} / 14",
-                label = "Days logged",
-                valueColor = appColors.textPrimary,
+            MacroChartStat(
+                grams = selectedDay?.fatG ?: 0,
+                label = "Fat",
+                dotColor = accent.accentLighter,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -676,23 +697,34 @@ private fun SevenDayChartCard(state: DashboardUiState) {
 
 
 @Composable
-private fun ChartStat(
-    value: String,
+private fun MacroChartStat(
+    grams: Int,
     label: String,
-    valueColor: Color,
+    dotColor: Color,
     modifier: Modifier = Modifier,
 ) {
     val appColors = LocalAppColors.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(
-            text = value,
-            style = AppType.statValueSmall,
-            color = valueColor,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(dotColor),
+            )
+            Text(
+                text = "${grams}g",
+                style = AppType.statValueSmall,
+                color = appColors.textPrimary,
+            )
+        }
         Text(
             text = label,
             style = AppType.metaLabel,
@@ -736,6 +768,7 @@ private fun MotivationalCard(message: String) {
 private fun StatTilesRow(
     adherencePercent: Double,
     weightTrendKgPerWeek: Double,
+    onTrendClick: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
     Row(
@@ -753,6 +786,7 @@ private fun StatTilesRow(
             label = "Trend / week",
             valueColor = if (weightTrendKgPerWeek <= 0.0) ErrorRed else Color(0xFF4ADE80),
             modifier = Modifier.weight(1f),
+            onClick = onTrendClick,
         )
     }
 }
@@ -763,11 +797,13 @@ private fun StatTile(
     label: String,
     valueColor: Color,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val appColors = LocalAppColors.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(appColors.cardSurface)
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 11.dp),

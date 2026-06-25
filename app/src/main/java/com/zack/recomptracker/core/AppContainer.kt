@@ -143,7 +143,10 @@ class AppContainer(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
     val workoutRepository = WorkoutRepository(database.workoutDao())
-    val workoutSessionRepository = WorkoutSessionRepository(database.workoutSessionDao())
+    val workoutSessionRepository = WorkoutSessionRepository(
+        database.workoutSessionDao(),
+        dailyLogDao = database.dailyLogDao(),
+    )
 
     init {
         appScope.launch {

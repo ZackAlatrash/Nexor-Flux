@@ -175,6 +175,20 @@ fun AppNavGraph(
                     }
                 },
                 onOpenStreaks = { navController.navigate(Routes.StreakStats) },
+                onOpenFoodLog = {
+                    navController.navigate(Routes.Food) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onOpenBody = {
+                    navController.navigate(TopLevelDestination.Body.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
         composable(

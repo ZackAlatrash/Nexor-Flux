@@ -51,6 +51,7 @@ fun SparklineChart(
     zoneLow: Float? = null,
     zoneHigh: Float? = null,
     onScrubValue: ((Float?) -> Unit)? = null,
+    onScrubIndex: ((Int?) -> Unit)? = null,
 ) {
     if (values.isEmpty()) {
         Spacer(modifier = modifier.height(height))
@@ -68,6 +69,7 @@ fun SparklineChart(
     LaunchedEffect(values) {
         scrubIndex = null
         onScrubValue?.invoke(null)
+        onScrubIndex?.invoke(null)
     }
 
     val gestureModifier = if (showScrubber && values.size >= 2) {
@@ -84,18 +86,22 @@ fun SparklineChart(
                 onDragStart = { offset ->
                     scrubIndex = nearestPointIndex(offset.x, pts)
                     onScrubValue?.invoke(values[scrubIndex!!])
+                    onScrubIndex?.invoke(scrubIndex)
                 },
                 onDragCancel = {
                     scrubIndex = null
                     onScrubValue?.invoke(null)
+                    onScrubIndex?.invoke(null)
                 },
                 onDragEnd = {
                     scrubIndex = null
                     onScrubValue?.invoke(null)
+                    onScrubIndex?.invoke(null)
                 },
                 onDrag = { change, _ ->
                     scrubIndex = nearestPointIndex(change.position.x, pts)
                     onScrubValue?.invoke(values[scrubIndex!!])
+                    onScrubIndex?.invoke(scrubIndex)
                 },
             )
         }

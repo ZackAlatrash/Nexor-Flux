@@ -44,6 +44,7 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -62,6 +63,9 @@ import kotlinx.coroutines.launch
 data class DayCalories(
     val label: String,
     val calories: Int,
+    val proteinG: Int,
+    val carbsG: Int,
+    val fatG: Int,
     val isToday: Boolean,
 )
 
@@ -299,9 +303,13 @@ class DashboardViewModel(
 
         val last7DaysCalories = (0..6).map { offset ->
             val date = last7Start.plusDays(offset.toLong())
+            val dayTotals = mealsByDate[date].orEmpty().macroTotals()
             DayCalories(
                 label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-                calories = mealsByDate[date].orEmpty().macroTotals().calories,
+                calories = dayTotals.calories,
+                proteinG = dayTotals.proteinG.roundToInt(),
+                carbsG = dayTotals.carbsG.roundToInt(),
+                fatG = dayTotals.fatG.roundToInt(),
                 isToday = date == today,
             )
         }.toImmutableList()

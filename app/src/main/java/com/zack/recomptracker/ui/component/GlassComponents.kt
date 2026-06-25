@@ -165,16 +165,9 @@ fun GlassSpeechBubble(
     val resolvedBorder = if (borderColor != Color.Unspecified) borderColor else appColors.frostedBorder
     val tailShape = RoundedCornerShape(3.dp)
     Box(modifier = modifier) {
-        // Card body, leaving room above for the tail to peek out.
-        FrostedCard(
-            modifier = Modifier.padding(top = tailSize / 2),
-            contentPadding = contentPadding,
-            surfaceTint = surfaceTint,
-            borderColor = borderColor,
-            content = content,
-        )
-        // Glass tail — same material as the card, on top of the card's top edge so the outline
-        // flows from the card up to the tip; its lower half overlaps (and hides) the card border.
+        // Glass tail FIRST (drawn below): a rotated frosted square. Same material as the card.
+        // The card is drawn on top of it and hides its lower half, so only the top half — a
+        // triangle pointing up — pokes out above the card's top edge.
         Box(
             modifier = Modifier
                 .align(BiasAlignment(horizontalBias = 1f, verticalBias = -1f))
@@ -195,6 +188,14 @@ fun GlassSpeechBubble(
                     },
                 )
                 .border(1.dp, resolvedBorder, tailShape),
+        )
+        // Card body ON TOP, offset down so the tail's lower half is hidden behind it.
+        FrostedCard(
+            modifier = Modifier.padding(top = tailSize / 2),
+            contentPadding = contentPadding,
+            surfaceTint = surfaceTint,
+            borderColor = borderColor,
+            content = content,
         )
     }
 }

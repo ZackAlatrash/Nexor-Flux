@@ -41,6 +41,7 @@ private object Keys {
     val ActivityLevel = stringPreferencesKey("activity_level")
     val WeeklyGymSessions = intPreferencesKey("weekly_gym_sessions")
     val Goal = stringPreferencesKey("goal")
+    val DailyStepGoal = intPreferencesKey("daily_step_goal")
 
     /** Legacy key — read-only, migrated into [BirthDate]. Never written. */
     val LegacyAgeYears = intPreferencesKey("age_years")
@@ -75,6 +76,7 @@ internal fun Preferences.toUserProfilePreferences(): UserProfilePreferences {
         this@toUserProfilePreferences[Keys.ActivityLevel]?.let { put("activityLevel", JsonPrimitive(it)) }
         this@toUserProfilePreferences[Keys.WeeklyGymSessions]?.let { put("weeklyGymSessions", JsonPrimitive(it)) }
         this@toUserProfilePreferences[Keys.Goal]?.let { put("goal", JsonPrimitive(it)) }
+        this@toUserProfilePreferences[Keys.DailyStepGoal]?.let { put("dailyStepGoal", JsonPrimitive(it)) }
         // Legacy: surface as `ageYears` so the JSON migration converts it to a birthDate.
         if (this@toUserProfilePreferences[Keys.BirthDate] == null) {
             this@toUserProfilePreferences[Keys.LegacyAgeYears]?.let { put("ageYears", JsonPrimitive(it)) }
@@ -93,6 +95,7 @@ internal fun MutablePreferences.writeUserProfilePreferences(profile: UserProfile
     putOrRemove(Keys.ActivityLevel, profile.activityLevel?.name)
     putOrRemove(Keys.WeeklyGymSessions, profile.weeklyGymSessions)
     putOrRemove(Keys.Goal, profile.goal?.name)
+    putOrRemove(Keys.DailyStepGoal, profile.dailyStepGoal)
     // Drop the legacy age key on any save so migrated profiles don't re-trigger migration.
     remove(Keys.LegacyAgeYears)
 }

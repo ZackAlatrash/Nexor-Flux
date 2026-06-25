@@ -21,7 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -86,7 +86,7 @@ val StreakGoalMetColor: Color = Color(0xFF4ADE80)
 /** Material icon that identifies a streak's modality (shown inside the coin tile). */
 fun streakIcon(type: StreakType): ImageVector = when (type) {
     StreakType.WORKOUT -> Icons.Filled.FitnessCenter
-    StreakType.CALORIE -> Icons.Filled.LocalFireDepartment
+    StreakType.CALORIE -> Icons.Filled.Restaurant
     StreakType.STEPS -> Icons.AutoMirrored.Filled.DirectionsWalk
 }
 

@@ -41,7 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.domain.streak.StreakType
+import com.zack.recomptracker.ui.LocalAppContainer
+import com.zack.recomptracker.ui.streak.StreakGoalRing
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
@@ -112,6 +117,12 @@ fun BodyRecoveryContent(
     onRetryRecoveryInsight: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val streakVm: StreakViewModel =
+        viewModel(factory = LocalAppContainer.current.viewModelFactory)
+    val streakUi by streakVm.uiState.collectAsStateWithLifecycle()
+    val stepsStreak = streakUi.streaks.steps
+    val todaySteps = state.steps.toIntOrNull() ?: 0
+
     val accent = LocalAppAccent.current
     val bodyRecoveryOrbBrush = remember(accent.accent) {
         Brush.radialGradient(listOf(accent.accent.copy(alpha = 0.18f), Color.Transparent))
@@ -156,6 +167,14 @@ fun BodyRecoveryContent(
         ) {
             item { ScreenHeader(state) }
             item { MetricsHeroCard(state) }
+            item {
+                StreakGoalRing(
+                    result = stepsStreak,
+                    type = StreakType.STEPS,
+                    todayValue = todaySteps,
+                    goalValue = streakUi.stepGoal,
+                )
+            }
             item {
                 GeneratedInsightCard(
                     title = "Recovery readiness",

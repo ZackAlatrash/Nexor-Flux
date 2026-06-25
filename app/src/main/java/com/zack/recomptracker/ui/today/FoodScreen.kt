@@ -37,8 +37,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -79,7 +83,7 @@ import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.streak.CalorieStreakBadge
-import com.zack.recomptracker.ui.streak.StreakDetailPopup
+import com.zack.recomptracker.ui.streak.StreakDetailContent
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -240,11 +244,31 @@ fun FoodContent(
 
                 // Nutrition strip
                 item {
-                    NutritionStrip(
-                        state = state,
-                        calorieStreak = calorieStreak,
-                        onStreakClick = { showCalorieStreak = true },
-                    )
+                    Column {
+                        NutritionStrip(
+                            state = state,
+                            calorieStreak = calorieStreak,
+                            onStreakClick = { showCalorieStreak = !showCalorieStreak },
+                        )
+                        // Calorie-streak detail expands inline beneath the day's card.
+                        AnimatedVisibility(
+                            visible = showCalorieStreak,
+                            enter = expandVertically(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow,
+                                ),
+                            ) + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            StreakDetailContent(
+                                result = calorieStreak,
+                                type = com.zack.recomptracker.domain.streak.StreakType.CALORIE,
+                                onCollapse = { showCalorieStreak = false },
+                                modifier = Modifier.padding(top = 10.dp),
+                            )
+                        }
+                    }
                 }
 
                 // Reconcile banner — past day with unconfirmed plans
@@ -360,13 +384,6 @@ fun FoodContent(
         )
     }
 
-    if (showCalorieStreak) {
-        StreakDetailPopup(
-            result = calorieStreak,
-            type = com.zack.recomptracker.domain.streak.StreakType.CALORIE,
-            onDismiss = { showCalorieStreak = false },
-        )
-    }
 }
 
 @Composable

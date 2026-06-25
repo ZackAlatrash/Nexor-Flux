@@ -1,9 +1,5 @@
 package com.zack.recomptracker.ui.streak
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,7 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Whatshot
@@ -47,8 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.zack.recomptracker.domain.streak.StreakDayMark
 import com.zack.recomptracker.domain.streak.StreakResult
@@ -73,10 +67,6 @@ val StreakFlameColor: Color = Color(0xFFFB923C)
 
 /** Intentional fixed accent: the goal-met green, theme-independent. */
 val StreakGoalMetColor: Color = Color(0xFF4ADE80)
-
-/** Fixed dark modal dim for the popup scrim — NOT the background-image scrim token
- *  (appColors.scrim is a near-white veil in light mode and would wash the screen white). */
-private val StreakModalScrim = Color(0x8C000000)
 
 /** Material icon that identifies a streak's modality (shown inside the coin tile). */
 fun streakIcon(type: StreakType): ImageVector = when (type) {
@@ -242,7 +232,7 @@ fun StreakRow(
 
 private val WeekdayLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 
-/** Big tinted-glass hero for a single streak (the prominent dashboard/training card). */
+/** Compact tinted-glass banner for a single streak (the Training hero). */
 @Composable
 fun StreakHeroBanner(
     result: StreakResult,
@@ -253,50 +243,37 @@ fun StreakHeroBanner(
     val accent = LocalAppAccent.current
     FrostedCard(
         modifier = modifier,
+        contentPadding = 14.dp,
         surfaceTint = accent.accent.copy(alpha = 0.10f),
         borderColor = accent.tintedBorder,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            StreakCoin(type = type, size = 46.dp)
+            StreakCoin(type = type, size = 38.dp)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
-                StreakCountFlame(count = result.current, numberStyle = AppType.statValue)
+                StreakCountFlame(count = result.current, numberStyle = AppType.statValueSmall)
                 Text(
                     text = "${streakLabel(type)} streak",
                     style = AppType.metaLabel,
                     color = appColors.textMuted,
                 )
             }
+            if (result.last7Marks.isNotEmpty()) {
+                StreakWeekStrip(marks = result.last7Marks, dotSize = 8.dp)
+            }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = result.longest.toString(),
-                    style = AppType.statValue,
+                    style = AppType.statValueSmall,
                     color = accent.accentLighter,
                 )
                 Text(text = "BEST", style = AppType.metaLabel, color = appColors.textMuted)
-            }
-        }
-        if (result.last7Marks.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            StreakWeekStrip(marks = result.last7Marks, dotSize = 11.dp)
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val count = result.last7Marks.size
-                WeekdayLetters.takeLast(count).forEach { letter ->
-                    Box(modifier = Modifier.size(11.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = letter,
-                            style = AppType.metaLabel,
-                            color = appColors.textVeryMuted,
-                        )
-                    }
-                }
             }
         }
     }
@@ -459,125 +436,94 @@ private fun streakFooter(type: StreakType, current: Int): String = when (type) {
 }
 
 /**
- * Full-screen modal popup with a centered glass streak card that animates in
- * (fade + scale). Tap the scrim or the close button to dismiss.
+ * The streak detail card body. Designed to expand INLINE as part of a screen (e.g. under the
+ * day's calorie card) — not a floating modal. Wrap it in an `AnimatedVisibility` at the call
+ * site for the expand/collapse animation. Pass [onCollapse] to show a collapse chevron.
  */
 @Composable
-fun StreakDetailPopup(
+fun StreakDetailContent(
     result: StreakResult,
     type: StreakType,
-    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    onCollapse: (() -> Unit)? = null,
 ) {
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
-    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(StreakModalScrim)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss,
-                ),
-            contentAlignment = Alignment.Center,
+    FrostedCard(modifier = modifier, contentPadding = 18.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            AnimatedVisibility(
-                visibleState = visibleState,
-                enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            StreakCoin(type = type, size = 44.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                // Absorb taps on the card itself so they don't dismiss.
+                StreakCountFlame(count = result.current, numberStyle = AppType.statValue)
+                Text(
+                    text = "${streakLabel(type)} streak",
+                    style = AppType.metaLabel,
+                    color = appColors.textMuted,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = result.longest.toString(),
+                        style = AppType.statValueSmall,
+                        color = accent.accentLighter,
+                    )
+                    Text(text = "/ BEST", style = AppType.metaLabel, color = appColors.textMuted)
+                }
+            }
+            if (onCollapse != null) {
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 28.dp)
+                        .size(28.dp)
+                        .clip(CircleShape)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = {},
+                            role = Role.Button,
+                            onClick = onCollapse,
                         ),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    FrostedCard(contentPadding = 20.dp) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        ) {
-                            StreakCoin(type = type, size = 46.dp)
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                StreakCountFlame(count = result.current, numberStyle = AppType.statValue)
-                                Text(
-                                    text = "${streakLabel(type)} streak",
-                                    style = AppType.metaLabel,
-                                    color = appColors.textMuted,
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Text(
-                                        text = result.longest.toString(),
-                                        style = AppType.statValueSmall,
-                                        color = accent.accentLighter,
-                                    )
-                                    Text(text = "/ BEST", style = AppType.metaLabel, color = appColors.textMuted)
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        role = Role.Button,
-                                        onClick = onDismiss,
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = appColors.textMuted,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                        if (result.last7Marks.isNotEmpty()) {
-                            Spacer(Modifier.height(16.dp))
-                            StreakWeekStrip(marks = result.last7Marks, dotSize = 13.dp)
-                            Spacer(Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                val count = result.last7Marks.size
-                                WeekdayLetters.takeLast(count).forEach { letter ->
-                                    Box(modifier = Modifier.size(13.dp), contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = letter,
-                                            style = AppType.metaLabel,
-                                            color = appColors.textVeryMuted,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(16.dp))
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Collapse",
+                        tint = appColors.textMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
+        if (result.last7Marks.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            StreakWeekStrip(marks = result.last7Marks, dotSize = 13.dp)
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                val count = result.last7Marks.size
+                WeekdayLetters.takeLast(count).forEach { letter ->
+                    Box(modifier = Modifier.size(13.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            text = streakFooter(type, result.current),
-                            style = AppType.body,
-                            color = appColors.textSecondary,
+                            text = letter,
+                            style = AppType.metaLabel,
+                            color = appColors.textVeryMuted,
                         )
                     }
                 }
             }
         }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = streakFooter(type, result.current),
+            style = AppType.body,
+            color = appColors.textSecondary,
+        )
     }
 }

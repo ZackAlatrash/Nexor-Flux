@@ -50,6 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.domain.streak.StreakType
+import com.zack.recomptracker.ui.LocalAppContainer
+import com.zack.recomptracker.ui.streak.StreakHeroBanner
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
@@ -87,6 +91,12 @@ fun TrainHomeScreen(
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
+
+    val streakVm: StreakViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = LocalAppContainer.current.viewModelFactory,
+    )
+    val streakUi by streakVm.uiState.collectAsStateWithLifecycle()
+    val workoutStreak = streakUi.streaks.workout
 
     // History grouped by month (newest first). Computed once per history change rather than
     // on every recomposition — the sort + per-row date parse/format is otherwise re-run each pass.
@@ -129,6 +139,19 @@ fun TrainHomeScreen(
                     }
                 },
             )
+        }
+
+        // ── Workout-streak hero banner (only with some history) ────────────────
+        if (workoutStreak.longest > 0) {
+            item {
+                StreakHeroBanner(
+                    result = workoutStreak,
+                    type = StreakType.WORKOUT,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                )
+            }
         }
 
         // ── Routines / History segmented pill ──────────────────────────────────

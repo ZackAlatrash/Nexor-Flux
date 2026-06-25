@@ -78,6 +78,8 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.streak.CalorieStreakBadge
+import com.zack.recomptracker.ui.streak.StreakDetailPopup
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -104,6 +106,10 @@ fun FoodScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val restOfDayInsightState by viewModel.restOfDayInsightState.collectAsStateWithLifecycle()
+    val streakVm: com.zack.recomptracker.ui.streak.StreakViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel(factory = com.zack.recomptracker.ui.LocalAppContainer.current.viewModelFactory)
+    val streakUi by streakVm.uiState.collectAsStateWithLifecycle()
+    val calorieStreak = streakUi.streaks.calorie
     val actions = remember {
         FoodActions(
             onToggleEditMode = viewModel::toggleEditMode,
@@ -121,6 +127,7 @@ fun FoodScreen(
     FoodContent(
         state   = state,
         actions = actions,
+        calorieStreak     = calorieStreak,
         onAddToSlot       = { slotId, slotName -> onAddToSlot(slotId, slotName, state.selectedDate) },
         onBrowseLibrary   = onBrowseLibrary,
         onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
@@ -161,6 +168,8 @@ fun FoodContent(
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long) -> Unit,
     onSelectDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    calorieStreak: com.zack.recomptracker.domain.streak.StreakResult =
+        com.zack.recomptracker.domain.streak.StreakResult.ZERO,
     restOfDayInsightState: AiInsightState = AiInsightState.Disabled,
     restOfDayAvailable: Boolean = false,
     onRevealRestOfDay: () -> Unit = {},
@@ -176,6 +185,7 @@ fun FoodContent(
     }
     var showAddSlotDialog by remember { mutableStateOf(false) }
     var newSlotName by remember { mutableStateOf("") }
+    var showCalorieStreak by remember { mutableStateOf(false) }
 
     val currentSlots by rememberUpdatedState(state.slots)
     val currentOnReorderSlots by rememberUpdatedState(actions.onReorderSlots)
@@ -229,7 +239,13 @@ fun FoodContent(
                 }
 
                 // Nutrition strip
-                item { NutritionStrip(state) }
+                item {
+                    NutritionStrip(
+                        state = state,
+                        calorieStreak = calorieStreak,
+                        onStreakClick = { showCalorieStreak = true },
+                    )
+                }
 
                 // Reconcile banner — past day with unconfirmed plans
                 if (state.isPast && state.hasPlannedEntries) {
@@ -341,6 +357,14 @@ fun FoodContent(
             dismissButton = {
                 TextButton(onClick = { showAddSlotDialog = false; newSlotName = "" }) { Text("Cancel") }
             },
+        )
+    }
+
+    if (showCalorieStreak) {
+        StreakDetailPopup(
+            result = calorieStreak,
+            type = com.zack.recomptracker.domain.streak.StreakType.CALORIE,
+            onDismiss = { showCalorieStreak = false },
         )
     }
 }
@@ -517,7 +541,12 @@ internal fun calorieStatus(
 // ── Nutrition Strip ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NutritionStrip(state: FoodLogUiState) {
+private fun NutritionStrip(
+    state: FoodLogUiState,
+    calorieStreak: com.zack.recomptracker.domain.streak.StreakResult =
+        com.zack.recomptracker.domain.streak.StreakResult.ZERO,
+    onStreakClick: () -> Unit = {},
+) {
     val cal         = state.totals.calories
     val target      = state.target
     val zoneLow     = target.calorieZoneLowerBound
@@ -640,16 +669,27 @@ private fun NutritionStrip(state: FoodLogUiState) {
                         color = mutedText,
                     )
                 }
-                AnimatedContent(
-                    targetState = status,
-                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-                    label = "badge",
-                ) { s ->
-                    when (s) {
-                        CalorieDayStatus.GoalHit   -> VioletBadge(PillStatus.GOOD,      "Goal hit!")
-                        CalorieDayStatus.Missed    -> VioletBadge(PillStatus.OFF_TRACK, "Missed")
-                        CalorieDayStatus.Over      -> VioletBadge(text = "Over")
-                        CalorieDayStatus.BelowZone -> VioletBadge(text = "Below")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (calorieStreak.current > 0) {
+                        CalorieStreakBadge(
+                            current = calorieStreak.current,
+                            onClick = onStreakClick,
+                        )
+                    }
+                    AnimatedContent(
+                        targetState = status,
+                        transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                        label = "badge",
+                    ) { s ->
+                        when (s) {
+                            CalorieDayStatus.GoalHit   -> VioletBadge(PillStatus.GOOD,      "Goal hit!")
+                            CalorieDayStatus.Missed    -> VioletBadge(PillStatus.OFF_TRACK, "Missed")
+                            CalorieDayStatus.Over      -> VioletBadge(text = "Over")
+                            CalorieDayStatus.BelowZone -> VioletBadge(text = "Below")
+                        }
                     }
                 }
             }

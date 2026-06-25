@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -83,7 +84,8 @@ import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.streak.CalorieStreakBadge
-import com.zack.recomptracker.ui.streak.StreakDetailContent
+import com.zack.recomptracker.ui.streak.StreakSpeechBubble
+import androidx.compose.ui.graphics.TransformOrigin
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -250,22 +252,30 @@ fun FoodContent(
                             calorieStreak = calorieStreak,
                             onStreakClick = { showCalorieStreak = !showCalorieStreak },
                         )
-                        // Calorie-streak detail expands inline beneath the day's card.
+                        // Calorie-streak detail pops out as a comic speech bubble from the
+                        // flame badge — part of the screen, scaling from the top-right corner.
                         AnimatedVisibility(
                             visible = showCalorieStreak,
                             enter = expandVertically(
                                 animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
                                 ),
-                            ) + fadeIn(),
+                            ) + fadeIn() + scaleIn(
+                                initialScale = 0.7f,
+                                transformOrigin = TransformOrigin(0.92f, 0f),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            ),
                             exit = shrinkVertically() + fadeOut(),
                         ) {
-                            StreakDetailContent(
+                            StreakSpeechBubble(
                                 result = calorieStreak,
                                 type = com.zack.recomptracker.domain.streak.StreakType.CALORIE,
                                 onCollapse = { showCalorieStreak = false },
-                                modifier = Modifier.padding(top = 10.dp),
+                                modifier = Modifier.padding(top = 6.dp),
                             )
                         }
                     }

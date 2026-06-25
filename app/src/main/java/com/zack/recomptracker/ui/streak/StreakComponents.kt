@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -524,6 +526,46 @@ fun StreakDetailContent(
             text = streakFooter(type, result.current),
             style = AppType.body,
             color = appColors.textSecondary,
+        )
+    }
+}
+
+// ── Speech bubble ─────────────────────────────────────────────────────────────
+
+/**
+ * Comic-style speech bubble: a small tail pointing up toward the streak badge, with the
+ * [StreakDetailContent] card below it. Wrap it in an `AnimatedVisibility` whose enter
+ * scales from the top-right (the badge) for a "pop" effect.
+ */
+@Composable
+fun StreakSpeechBubble(
+    result: StreakResult,
+    type: StreakType,
+    onCollapse: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val appColors = LocalAppColors.current
+    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+        // Tail pointing up at the badge that opened the bubble.
+        Canvas(
+            modifier = Modifier
+                .padding(end = 20.dp)
+                .size(width = 20.dp, height = 10.dp),
+        ) {
+            val tail = Path().apply {
+                moveTo(size.width / 2f, 0f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(tail, color = appColors.frostedSurfaceFallback)
+        }
+        StreakDetailContent(
+            result = result,
+            type = type,
+            onCollapse = onCollapse,
+            // Overlap the tail base by 1dp so there's no seam between tail and card.
+            modifier = Modifier.offset(y = (-1).dp),
         )
     }
 }

@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -135,6 +136,67 @@ fun FrostedCard(
             .padding(contentPadding),
         content = content,
     )
+}
+
+// ── Frosted Speech Bubble (a FrostedCard with an integrated glass tail) ───────
+
+/**
+ * A [FrostedCard] shaped like a speech bubble: the same frosted-glass material plus a small
+ * glass "tail" poking up from the top edge that points back at whatever opened it. The tail is a
+ * rotated frosted square built from the SAME `drawBackdrop` material (blur + overlay + border),
+ * so it reads as part of the glass card rather than a separate solid arrow.
+ *
+ * @param tailSize       size of the (square, rotated) tail
+ * @param tailEndPadding how far the tail's centre sits from the card's right edge — line it up
+ *                       under whatever anchor opened the bubble
+ */
+@Composable
+fun GlassSpeechBubble(
+    modifier: Modifier = Modifier,
+    contentPadding: androidx.compose.ui.unit.Dp = 18.dp,
+    tailSize: androidx.compose.ui.unit.Dp = 16.dp,
+    tailEndPadding: androidx.compose.ui.unit.Dp = 26.dp,
+    surfaceTint: Color = Color.Unspecified,
+    borderColor: Color = Color.Unspecified,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val backdrop = LocalBackdrop.current
+    val appColors = LocalAppColors.current
+    val resolvedBorder = if (borderColor != Color.Unspecified) borderColor else appColors.frostedBorder
+    val tailShape = RoundedCornerShape(3.dp)
+    Box(modifier = modifier) {
+        // Card body, leaving room above for the tail to peek out.
+        FrostedCard(
+            modifier = Modifier.padding(top = tailSize / 2),
+            contentPadding = contentPadding,
+            surfaceTint = surfaceTint,
+            borderColor = borderColor,
+            content = content,
+        )
+        // Glass tail — same material as the card, on top of the card's top edge so the outline
+        // flows from the card up to the tip; its lower half overlaps (and hides) the card border.
+        Box(
+            modifier = Modifier
+                .align(BiasAlignment(horizontalBias = 1f, verticalBias = -1f))
+                .padding(end = tailEndPadding)
+                .size(tailSize)
+                .rotate(45f)
+                .clip(tailShape)
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { RoundedRectangle(3.dp) },
+                    effects = {
+                        vibrancy()
+                        blur(12f.dp.toPx())
+                    },
+                    onDrawSurface = {
+                        drawRect(appColors.glassOverlay)
+                        if (surfaceTint != Color.Unspecified) drawRect(surfaceTint)
+                    },
+                )
+                .border(1.dp, resolvedBorder, tailShape),
+        )
+    }
 }
 
 // ── Tinted Card (reserved — AI features only, zero call sites) ────────────────

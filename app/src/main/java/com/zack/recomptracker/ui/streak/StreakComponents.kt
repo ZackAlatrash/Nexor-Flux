@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -64,6 +62,7 @@ import com.zack.recomptracker.domain.streak.StreakDayMark
 import com.zack.recomptracker.domain.streak.StreakResult
 import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassSpeechBubble
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerPill
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -451,105 +450,98 @@ private fun streakFooter(type: StreakType, current: Int): String = when (type) {
     StreakType.STEPS -> "You've hit your step goal $current days running."
 }
 
-/**
- * The streak detail card body. Designed to expand INLINE as part of a screen (e.g. under the
- * day's calorie card) — not a floating modal. Wrap it in an `AnimatedVisibility` at the call
- * site for the expand/collapse animation. Pass [onCollapse] to show a collapse chevron.
- */
+/** The streak detail body (no card) — rendered inside [StreakSpeechBubble]'s glass bubble. */
 @Composable
-fun StreakDetailContent(
+private fun StreakDetailBody(
     result: StreakResult,
     type: StreakType,
-    modifier: Modifier = Modifier,
     onCollapse: (() -> Unit)? = null,
 ) {
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
-    FrostedCard(modifier = modifier, contentPadding = 18.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        StreakCoin(type = type, size = 44.dp)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            StreakCoin(type = type, size = 44.dp)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+            StreakCountFlame(count = result.current, numberStyle = AppType.statValue)
+            Text(
+                text = "${streakLabel(type)} streak",
+                style = AppType.metaLabel,
+                color = appColors.textMuted,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                StreakCountFlame(count = result.current, numberStyle = AppType.statValue)
                 Text(
-                    text = "${streakLabel(type)} streak",
-                    style = AppType.metaLabel,
-                    color = appColors.textMuted,
+                    text = result.longest.toString(),
+                    style = AppType.statValueSmall,
+                    color = accent.accentLighter,
+                )
+                Text(text = "/ BEST", style = AppType.metaLabel, color = appColors.textMuted)
+            }
+        }
+        if (onCollapse != null) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Button,
+                        onClick = onCollapse,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Collapse",
+                    tint = appColors.textMuted,
+                    modifier = Modifier.size(20.dp),
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = result.longest.toString(),
-                        style = AppType.statValueSmall,
-                        color = accent.accentLighter,
-                    )
-                    Text(text = "/ BEST", style = AppType.metaLabel, color = appColors.textMuted)
-                }
-            }
-            if (onCollapse != null) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            role = Role.Button,
-                            onClick = onCollapse,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowUp,
-                        contentDescription = "Collapse",
-                        tint = appColors.textMuted,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
         }
-        if (result.last7Marks.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
-            StreakWeekStrip(marks = result.last7Marks, dotSize = 13.dp)
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val count = result.last7Marks.size
-                WeekdayLetters.takeLast(count).forEach { letter ->
-                    Box(modifier = Modifier.size(13.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = letter,
-                            style = AppType.metaLabel,
-                            color = appColors.textVeryMuted,
-                        )
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = streakFooter(type, result.current),
-            style = AppType.body,
-            color = appColors.textSecondary,
-        )
     }
+    if (result.last7Marks.isNotEmpty()) {
+        Spacer(Modifier.height(16.dp))
+        StreakWeekStrip(marks = result.last7Marks, dotSize = 13.dp)
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val count = result.last7Marks.size
+            WeekdayLetters.takeLast(count).forEach { letter ->
+                Box(modifier = Modifier.size(13.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = letter,
+                        style = AppType.metaLabel,
+                        color = appColors.textVeryMuted,
+                    )
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    Text(
+        text = streakFooter(type, result.current),
+        style = AppType.body,
+        color = appColors.textSecondary,
+    )
 }
 
 // ── Speech bubble ─────────────────────────────────────────────────────────────
 
 /**
- * Comic-style speech bubble: a small tail pointing up toward the streak badge, with the
- * [StreakDetailContent] card below it. Wrap it in an `AnimatedVisibility` whose enter
- * scales from the top-right (the badge) for a "pop" effect.
+ * A streak detail rendered in a [GlassSpeechBubble] — a glass card with an integrated glass
+ * tail. Wrap it in an `AnimatedVisibility` whose enter scales from the top-right so it appears
+ * to pop out of the badge.
  */
 @Composable
 fun StreakSpeechBubble(
@@ -558,30 +550,8 @@ fun StreakSpeechBubble(
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val appColors = LocalAppColors.current
-    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
-        // Tail pointing up at the badge that opened the bubble (filled + hairline outline so it reads).
-        Canvas(
-            modifier = Modifier
-                .padding(end = 22.dp)
-                .size(width = 20.dp, height = 11.dp),
-        ) {
-            val tail = Path().apply {
-                moveTo(size.width / 2f, 0f)
-                lineTo(size.width, size.height)
-                lineTo(0f, size.height)
-                close()
-            }
-            drawPath(tail, color = appColors.frostedSurfaceFallback)
-            drawPath(tail, color = appColors.frostedBorder, style = Stroke(width = 1.dp.toPx()))
-        }
-        StreakDetailContent(
-            result = result,
-            type = type,
-            onCollapse = onCollapse,
-            // Overlap the tail base by 1dp so there's no seam between tail and card.
-            modifier = Modifier.offset(y = (-1).dp),
-        )
+    GlassSpeechBubble(modifier = modifier) {
+        StreakDetailBody(result = result, type = type, onCollapse = onCollapse)
     }
 }
 
@@ -609,12 +579,13 @@ fun CalorieStreakChip(result: StreakResult, modifier: Modifier = Modifier) {
                 val visible = remember { MutableTransitionState(false).apply { targetState = true } }
                 AnimatedVisibility(
                     visibleState = visible,
+                    // Gentle "liquid" settle — pops a little, then eases in (less overshoot).
                     enter = fadeIn() + scaleIn(
-                        initialScale = 0.5f,
+                        initialScale = 0.85f,
                         transformOrigin = TransformOrigin(1f, 0f),
                         animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow,
+                            dampingRatio = 0.68f,
+                            stiffness = Spring.StiffnessMediumLow,
                         ),
                     ),
                 ) {

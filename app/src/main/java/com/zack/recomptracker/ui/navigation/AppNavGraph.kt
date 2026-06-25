@@ -159,6 +159,7 @@ fun AppNavGraph(
             HomeDashboardScreen(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
                 weeklyReviewViewModel = viewModel<WeeklyReviewViewModel>(factory = factory),
+                streakViewModel = viewModel<StreakViewModel>(factory = factory),
                 onOpenCoach = {
                     navController.navigate(TopLevelDestination.Coach.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
@@ -173,6 +174,7 @@ fun AppNavGraph(
                         restoreState = true
                     }
                 },
+                onOpenStreaks = { navController.navigate(Routes.StreakStats) },
             )
         }
         composable(

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Icon
@@ -76,6 +77,8 @@ import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
+import com.zack.recomptracker.ui.streak.StreakViewModel
+import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -85,8 +88,10 @@ import java.util.Locale
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
     weeklyReviewViewModel: WeeklyReviewViewModel,
+    streakViewModel: StreakViewModel,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenStreaks: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
@@ -97,6 +102,7 @@ fun HomeDashboardScreen(
     val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
     val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
+    val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.patternInsightContext?.key()) {
         viewModel.onPatternInsightVisible()
     }
@@ -125,6 +131,8 @@ fun HomeDashboardScreen(
         onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
         crossMetricInsightState = crossMetricInsightState,
         onRetryCrossMetric = viewModel::retryCrossMetric,
+        streaks = streakState.streaks,
+        onOpenStreaks = onOpenStreaks,
     )
 
     WeeklyBriefingOverlay(
@@ -164,6 +172,8 @@ fun HomeDashboardContent(
     onRetryNoiseDefuser: () -> Unit = {},
     crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryCrossMetric: () -> Unit = {},
+    streaks: Streaks = Streaks.EMPTY,
+    onOpenStreaks: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -257,6 +267,9 @@ fun HomeDashboardContent(
                 item { TodayCard(state) }
                 item { StatTilesRow(state.adherencePercent, state.weightTrendKgPerWeek) }
                 item { SevenDayChartCard(state) }
+                if (onOpenStreaks != null) {
+                    item { StreaksCard(streaks = streaks, onClick = onOpenStreaks) }
+                }
             }
         }
 
@@ -537,6 +550,49 @@ private fun MacroBarItem(
                     ),
             )
         }
+    }
+}
+
+// ── Card: STREAKS SUMMARY ─────────────────────────────────────────────────────
+
+@Composable
+private fun StreaksCard(streaks: Streaks, onClick: () -> Unit) {
+    val appColors = LocalAppColors.current
+    FrostedCard(modifier = Modifier.clickable(role = Role.Button, onClick = onClick)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionLabel("Streaks")
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = appColors.textVeryMuted,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            StreakSummaryItem("🏋️", "Workout", streaks.workout.current, Modifier.weight(1f))
+            StreakSummaryItem("🔥", "Calorie", streaks.calorie.current, Modifier.weight(1f))
+            StreakSummaryItem("👟", "Steps", streaks.steps.current, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun StreakSummaryItem(emoji: String, label: String, days: Int, modifier: Modifier = Modifier) {
+    val appColors = LocalAppColors.current
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(text = emoji, style = AppType.statValueSmall, color = appColors.textPrimary)
+        Text(text = "$days", style = AppType.statValue, color = appColors.textPrimary)
+        Text(text = if (days == 1) "day" else "days", style = AppType.metaLabel, color = appColors.textMuted)
+        Text(text = label, style = AppType.metaLabel, color = appColors.textVeryMuted)
     }
 }
 

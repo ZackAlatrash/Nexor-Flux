@@ -50,6 +50,8 @@ import com.zack.recomptracker.ui.recipes.RecipeBuilderScreen
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerScreen
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ui.streak.StreakStatsScreen
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.train.ActiveSessionScreen
 import com.zack.recomptracker.ui.train.ActiveSessionViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerScreen
@@ -82,6 +84,7 @@ object Routes {
     const val Onboarding = "onboarding"
     const val CalorieDecision = "calorie_decision"
     const val Trends    = "trends"
+    const val StreakStats = "streak_stats"
     const val Plan      = "plan"
     const val FoodLibrary = "food_library"
     const val Foods     = "foods"
@@ -600,6 +603,16 @@ fun AppNavGraph(
                 onNavigateToFoodPicker = {
                     navController.navigate(Routes.foodLibraryPicker())
                 },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.StreakStats,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            StreakStatsScreen(
+                viewModel = viewModel<StreakViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

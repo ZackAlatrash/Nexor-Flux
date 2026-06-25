@@ -2,6 +2,9 @@ package com.zack.recomptracker.domain.streak
 
 enum class StreakType { WORKOUT, CALORIE, STEPS }
 
+/** Per-day status for the last-7 strip. REST only occurs when a streak tolerates rest days. */
+enum class StreakDayMark { HIT, REST, MISS }
+
 /**
  * Result of a streak computation.
  *
@@ -14,6 +17,7 @@ data class StreakResult(
     val current: Int,
     val longest: Int,
     val last7: List<Boolean> = emptyList(),
+    val last7Marks: List<StreakDayMark> = emptyList(),
 ) {
     companion object {
         val ZERO = StreakResult(current = 0, longest = 0)

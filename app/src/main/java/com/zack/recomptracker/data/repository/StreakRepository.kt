@@ -5,6 +5,7 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.domain.streak.StreakCalculator
+import com.zack.recomptracker.domain.streak.StreakDayMark
 import com.zack.recomptracker.domain.streak.StreakResult
 import com.zack.recomptracker.domain.streak.Streaks
 import java.time.LocalDate
@@ -87,7 +88,11 @@ internal fun buildStreaks(
     }
 
     fun result(days: Set<LocalDate>, restDays: Int): StreakResult =
-        calculator.compute(days, today, restDays).copy(last7 = recentFlags(days, today))
+        calculator.compute(days, today, restDays)
+            .copy(
+                last7 = recentFlags(days, today),
+                last7Marks = recentMarks(days, today, restDays),
+            )
 
     return Streaks(
         workout = result(workoutDays, restDays = 2),
@@ -99,3 +104,18 @@ internal fun buildStreaks(
 /** Met/missed flags for the last 7 calendar days ending at [today], oldest -> newest. */
 private fun recentFlags(days: Set<LocalDate>, today: LocalDate, window: Int = 7): List<Boolean> =
     (window - 1 downTo 0).map { offset -> today.minusDays(offset.toLong()) in days }
+
+/** HIT/REST/MISS for the last 7 calendar days ending at [today], oldest -> newest. A non-hit
+ *  day is REST only when the streak tolerates rest days (restDays>0) and it is bridged by a
+ *  qualifying day within [restDays] on BOTH sides (an interior rest gap); otherwise MISS. */
+private fun recentMarks(days: Set<LocalDate>, today: LocalDate, restDays: Int, window: Int = 7): List<StreakDayMark> =
+    (window - 1 downTo 0).map { offset ->
+        val d = today.minusDays(offset.toLong())
+        when {
+            d in days -> StreakDayMark.HIT
+            restDays > 0 &&
+                (1..restDays).any { d.minusDays(it.toLong()) in days } &&
+                (1..restDays).any { d.plusDays(it.toLong()) in days } -> StreakDayMark.REST
+            else -> StreakDayMark.MISS
+        }
+    }

@@ -73,6 +73,34 @@ class StreakBuilderTest {
         assertEquals(2, s.workout.current)
     }
 
+    @Test fun workoutRestDaysMarkedAsRestInStrip() {
+        // Mon workout, Tue/Wed rest, Thu workout. With restDays=2 the gaps are REST, not MISS.
+        val mon = LocalDate.of(2026, 6, 22)
+        val thu = mon.plusDays(3)
+        val s = buildStreaks(
+            dailyLogs = emptyList(),
+            eatenCaloriesByDate = emptyMap(),
+            completedSessionDates = listOf(mon, thu),
+            prefs = prefs,
+            dailyStepGoal = null,
+            today = thu,
+            calculator = calc,
+        )
+        // last 7 ending Thu(06-25): Fri,Sat,Sun,Mon,Tue,Wed,Thu
+        assertEquals(
+            listOf(
+                com.zack.recomptracker.domain.streak.StreakDayMark.MISS,
+                com.zack.recomptracker.domain.streak.StreakDayMark.MISS,
+                com.zack.recomptracker.domain.streak.StreakDayMark.MISS,
+                com.zack.recomptracker.domain.streak.StreakDayMark.HIT,
+                com.zack.recomptracker.domain.streak.StreakDayMark.REST,
+                com.zack.recomptracker.domain.streak.StreakDayMark.REST,
+                com.zack.recomptracker.domain.streak.StreakDayMark.HIT,
+            ),
+            s.workout.last7Marks,
+        )
+    }
+
     @Test fun last7HasSevenFlags() {
         val s = buildStreaks(
             dailyLogs = emptyList(),

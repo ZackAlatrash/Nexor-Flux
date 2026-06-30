@@ -82,6 +82,7 @@ import com.zack.recomptracker.ui.streak.StreakRow
 import com.zack.recomptracker.ui.streak.StreakGoalRing
 import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.domain.streak.Streaks
+import com.zack.recomptracker.domain.activity.ActivityMetrics
 import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -140,6 +141,7 @@ fun HomeDashboardScreen(
         onRetryCrossMetric = viewModel::retryCrossMetric,
         streaks = streakState.streaks,
         stepGoal = streakState.stepGoal,
+        activity = streakState.activity,
         onOpenStreaks = onOpenStreaks,
     )
 
@@ -184,6 +186,7 @@ fun HomeDashboardContent(
     onRetryCrossMetric: () -> Unit = {},
     streaks: Streaks = Streaks.EMPTY,
     stepGoal: Int? = null,
+    activity: ActivityMetrics = ActivityMetrics(),
     onOpenStreaks: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
@@ -291,6 +294,9 @@ fun HomeDashboardContent(
                         todayValue = state.todaySteps,
                         goalValue = stepGoal,
                     )
+                }
+                if (activity.weeklyGymSessionsTarget != null || activity.weeklyTrainingFrequency > 0.0) {
+                    item { TrainingFrequencyTile(activity) }
                 }
                 if (onOpenStreaks != null) {
                     item { StreaksCard(streaks = streaks, onClick = onOpenStreaks) }
@@ -575,6 +581,36 @@ private fun MacroBarItem(
                         Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
                         RoundedCornerShape(3.dp),
                     ),
+            )
+        }
+    }
+}
+
+// ── Card: TRAINING FREQUENCY ──────────────────────────────────────────────────
+
+@Composable
+private fun TrainingFrequencyTile(activity: ActivityMetrics) {
+    val appColors = LocalAppColors.current
+    FrostedCard {
+        SectionLabel("Training")
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = String.format(java.util.Locale.US, "%.1f×", activity.weeklyTrainingFrequency),
+                style = AppType.statValue,
+                color = appColors.textPrimary,
+            )
+            val caption = activity.weeklyGymSessionsTarget
+                ?.let { "/ wk · target $it" }
+                ?: "/ wk · last 4 weeks"
+            Text(
+                text = caption,
+                style = AppType.cardSubtitle,
+                color = appColors.textSecondary,
+                modifier = Modifier.padding(bottom = 2.dp),
             )
         }
     }

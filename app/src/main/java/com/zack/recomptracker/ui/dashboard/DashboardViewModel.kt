@@ -13,6 +13,7 @@ import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ai.CrossMetricContext
@@ -25,6 +26,8 @@ import com.zack.recomptracker.ai.PatternInsightContext
 import com.zack.recomptracker.ai.TargetChangeContext
 import com.zack.recomptracker.domain.insight.CrossMetricDetector
 import com.zack.recomptracker.domain.insight.DayNutrition
+import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -245,7 +248,7 @@ class DashboardViewModel(
         allMeals: List<MealEntryEntity>,
         performances: List<LiftPerformanceEntity>,
         preferences: PlanPreferences,
-        versions: List<com.zack.recomptracker.domain.plan.PlanVersion>,
+        versions: List<PlanVersion>,
     ): DashboardUiState {
         val today = dateProvider.today()
         // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
@@ -257,7 +260,7 @@ class DashboardViewModel(
         val logsLast28  = logs.filter { it.localDate() in last28Start..today }
         val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
         val mealsByDate = mealsLast14.groupBy { it.localDate() }
-        val dayTargets = com.zack.recomptracker.domain.plan.PlanHistory.resolve(
+        val dayTargets = PlanHistory.resolve(
             versions,
             (0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) },
         )
@@ -325,10 +328,9 @@ class DashboardViewModel(
         }.toImmutableList()
         val inZoneDays7 = (0..6).count { offset ->
             val date = last7Start.plusDays(offset.toLong())
-            val z = dayTargets[date]
+            val z = dayTargets[date] ?: preferences.toPlanTargets()
             val cals = mealsByDate[date].orEmpty().macroTotals().calories
-            z != null && z.zoneLowerBound > 0 && cals > 0 &&
-                cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
+            z.zoneLowerBound > 0 && cals > 0 && cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
         }
 
         val patternDays = (0..13).map { offset ->

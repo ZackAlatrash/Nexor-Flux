@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanHistoryInitializer
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
@@ -317,7 +318,7 @@ class AppContainer(context: Context) {
         )
         val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
-        val weekEndTarget = PlanHistory.planOn(versions, today).calories
+        val weekEndTarget = PlanHistory.planOnOrFallback(versions, today, prefs.toPlanTargets()).calories
         return weeklyReviewComputer.build(weekStart, input, result, weekEndTarget)
     }
 

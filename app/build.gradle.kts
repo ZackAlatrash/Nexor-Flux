@@ -83,6 +83,8 @@ android {
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            // Robolectric (RecompDatabaseMigrationTest) needs the merged Android resources.
+            isIncludeAndroidResources = true
         }
     }
 
@@ -150,6 +152,9 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.kotlin)
+    // Robolectric-backed JVM tests (Room migration verification).
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)

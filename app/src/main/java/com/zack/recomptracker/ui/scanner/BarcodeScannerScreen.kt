@@ -77,10 +77,15 @@ fun BarcodeScannerScreen(
     slotId: Long?,
     slotName: String,
     pickerMode: Boolean = false,
+    logDate: String = "",
     onFoodPicked: (String) -> Unit = {},
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(slotId, slotName, pickerMode) { viewModel.init(slotId, slotName, pickerMode) }
+    LaunchedEffect(slotId, slotName, pickerMode, logDate) {
+        val date = logDate.takeIf { it.isNotEmpty() }
+            ?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+        viewModel.init(slotId, slotName, pickerMode, date)
+    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.scanState) {

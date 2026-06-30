@@ -112,9 +112,9 @@ object Routes {
     const val BodyEdit  = "body_edit/{date}"
     fun bodyEdit(date: LocalDate) = "body_edit/$date"
 
-    const val BarcodeScanner = "barcode_scanner?slotId={slotId}&slotName={slotName}&pickerMode={pickerMode}"
-    fun barcodeScanner(slotId: Long?, slotName: String, pickerMode: Boolean = false) =
-        "barcode_scanner?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&pickerMode=$pickerMode"
+    const val BarcodeScanner = "barcode_scanner?slotId={slotId}&slotName={slotName}&pickerMode={pickerMode}&date={date}"
+    fun barcodeScanner(slotId: Long?, slotName: String, pickerMode: Boolean = false, date: String = "") =
+        "barcode_scanner?slotId=${slotId ?: -1L}&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&pickerMode=$pickerMode&date=$date"
 
     const val RecipeBuilder = "recipe_builder?recipeId={recipeId}&seedIngredients={seedIngredients}"
     fun recipeBuilder(recipeId: Long? = null, seedIngredients: String? = null): String {
@@ -537,7 +537,7 @@ fun AppNavGraph(
                 editEntryId = editEntryId,
                 logDate     = logDate,
                 onScanBarcode = {
-                    navController.navigate(Routes.barcodeScanner(slotId, slotName, pickerMode = pickerMode))
+                    navController.navigate(Routes.barcodeScanner(slotId, slotName, pickerMode = pickerMode, date = logDate))
                 },
                 pickerMode        = pickerMode,
                 scannedFoodJson   = scannedFoodJson,
@@ -570,6 +570,10 @@ fun AppNavGraph(
                     type = androidx.navigation.NavType.BoolType
                     defaultValue = false
                 },
+                androidx.navigation.navArgument("date") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = ""
+                },
             ),
             enterTransition = { screenEnter },
             exitTransition  = { screenExit },
@@ -579,11 +583,13 @@ fun AppNavGraph(
                 backStackEntry.arguments?.getString("slotName").orEmpty(), "UTF-8"
             )
             val pickerMode = backStackEntry.arguments?.getBoolean("pickerMode") ?: false
+            val logDate = backStackEntry.arguments?.getString("date").orEmpty()
             BarcodeScannerScreen(
                 viewModel = viewModel<BarcodeScannerViewModel>(factory = factory),
                 slotId = slotId,
                 slotName = slotName,
                 pickerMode = pickerMode,
+                logDate = logDate,
                 onFoodPicked = { foodJson ->
                     navController.previousBackStackEntry?.savedStateHandle?.set("scanned_food", foodJson)
                 },

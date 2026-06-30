@@ -11,6 +11,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.ui.component.MessageKind
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,10 +56,17 @@ class BarcodeScannerViewModel(
     private var lastScannedBarcode: String? = null
     private var pickerMode = false
 
-    fun init(slotId: Long?, slotName: String, pickerMode: Boolean = false) {
+    /** Day the scanned entry is logged onto. A future date plans the meal instead of logging it eaten. */
+    private var logDate: LocalDate = dateProvider.today()
+
+    fun init(slotId: Long?, slotName: String, pickerMode: Boolean = false, logDate: LocalDate? = null) {
         this.pickerMode = pickerMode
+        this.logDate = logDate ?: dateProvider.today()
         _uiState.update { it.copy(slotId = slotId, slotName = slotName) }
     }
+
+    /** Adding food onto a future day creates plans, not eaten entries. */
+    private fun isPlannedDate(): Boolean = logDate.isAfter(dateProvider.today())
 
     fun onBarcodeDetected(barcode: String) {
         if (barcode == lastScannedBarcode) return
@@ -153,7 +161,7 @@ class BarcodeScannerViewModel(
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
-                    date = dateProvider.today(),
+                    date = logDate,
                     mealType = MealEntryTypes.FOOD_LIBRARY,
                     name = product.name,
                     calories = (product.caloriesPer100g * scale).toInt(),
@@ -168,11 +176,12 @@ class BarcodeScannerViewModel(
                     entryServingName = product.servingName,
                     entryServingGrams = product.servingGrams,
                     loggedByServings = productState.logMode == LogMode.SERVING,
+                    planned = isPlannedDate(),
                 ),
                 slotId = state.slotId,
             )
             val slotLabel = state.slotName.ifBlank { "log" }
-            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Added to $slotLabel")) }
+            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess(scanSuccessMessage(slotLabel))) }
             delay(SUCCESS_OVERLAY_MS)
             _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
@@ -191,7 +200,7 @@ class BarcodeScannerViewModel(
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
-                    date = dateProvider.today(),
+                    date = logDate,
                     mealType = MealEntryTypes.FOOD_LIBRARY,
                     name = product.name,
                     calories = (product.caloriesPer100g * scale).toInt(),
@@ -206,6 +215,7 @@ class BarcodeScannerViewModel(
                     entryServingName = product.servingName,
                     entryServingGrams = product.servingGrams,
                     loggedByServings = productState.logMode == LogMode.SERVING,
+                    planned = isPlannedDate(),
                 ),
                 slotId = state.slotId,
             )
@@ -222,11 +232,19 @@ class BarcodeScannerViewModel(
                 ),
             )
             val slotLabel = state.slotName.ifBlank { "log" }
-            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Saved & added to $slotLabel")) }
+            val msg = if (isPlannedDate()) "Saved & planned for ${dayLabel()}" else "Saved & added to $slotLabel"
+            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess(msg)) }
             delay(SUCCESS_OVERLAY_MS)
             _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
     }
+
+    private fun dayLabel(): String =
+        logDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d"))
+
+    /** Success toast wording that reflects whether the entry was logged (eaten) or planned ahead. */
+    private fun scanSuccessMessage(slotLabel: String): String =
+        if (isPlannedDate()) "Planned for ${dayLabel()}" else "Added to $slotLabel"
 
     fun saveToLibrary() {
         val productState = _uiState.value.scanState as? ScanState.ProductFound ?: return

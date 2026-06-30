@@ -34,6 +34,7 @@ class BackupRepository(
             recipes = database.recipeDao().getAllWithIngredients().map {
                 RecipeBackup(recipe = it.recipe, ingredients = it.ingredients)
             },
+            planVersions = database.planVersionDao().getAll(),
         )
         return json.encodeToString(BackupPayload.serializer(), payload)
     }
@@ -64,6 +65,9 @@ class BackupRepository(
                     )
                 }
             }
+            // Restore the plan-version ledger (cleared by clearAllTables above).
+            database.planVersionDao().deleteAll()
+            payload.planVersions.forEach { database.planVersionDao().upsert(it) }
         }
         planRepository.save(payload.preferences)
     }
@@ -71,6 +75,8 @@ class BackupRepository(
     suspend fun resetEverything(defaultPreferences: PlanPreferences = PlanPreferences()) {
         database.withTransaction {
             database.clearAllTables()
+            // Clear the plan-version ledger; PlanHistoryInitializer reseeds a baseline on next start.
+            database.planVersionDao().deleteAll()
             // Re-seed default meal slots so Today screen isn't empty after reset
             listOf("Meal 1", "Lunch", "Dinner").forEachIndexed { i, name ->
                 database.mealSlotDao().insert(MealSlotEntity(name = name, sortOrder = i))

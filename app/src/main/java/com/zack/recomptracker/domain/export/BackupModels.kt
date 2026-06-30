@@ -4,6 +4,7 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
+import com.zack.recomptracker.data.local.entity.PlanVersionEntity
 import com.zack.recomptracker.data.local.entity.RecipeEntity
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
@@ -25,6 +26,7 @@ data class BackupPayload(
     val weeklyReviews: List<WeeklyReviewEntity>,
     val mealSlots: List<MealSlotEntity> = emptyList(),
     val recipes: List<RecipeBackup> = emptyList(),
+    val planVersions: List<PlanVersionEntity> = emptyList(),
 )
 
 /** A recipe plus its ingredients, for backup export/restore. */

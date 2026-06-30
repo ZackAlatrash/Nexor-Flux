@@ -3,8 +3,8 @@ package com.zack.recomptracker.data.repository
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.dao.PlanVersionDao
 import com.zack.recomptracker.data.local.entity.PlanVersionEntity
-import com.zack.recomptracker.data.preferences.AppPreferences
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.PlanPreferencesSource
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
@@ -51,7 +51,7 @@ private fun PlanVersionEntity.toPlanVersion(): PlanVersion = PlanVersion(
 )
 
 class PlanRepository(
-    private val appPreferences: AppPreferences,
+    private val appPreferences: PlanPreferencesSource,
     private val planVersionDao: PlanVersionDao,
     private val dateProvider: DateProvider,
 ) {

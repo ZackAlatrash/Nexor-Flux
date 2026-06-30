@@ -17,8 +17,8 @@ private val Context.planDataStore by preferencesDataStore(name = "plan_preferenc
 
 class AppPreferences(
     private val context: Context,
-) {
-    val preferences: Flow<PlanPreferences> = context.planDataStore.data.map { prefs ->
+) : PlanPreferencesSource {
+    override val preferences: Flow<PlanPreferences> = context.planDataStore.data.map { prefs ->
         PlanPreferences(
             targetCalories = prefs[Keys.TargetCalories] ?: 2550,
             targetProteinG = prefs[Keys.TargetProteinG] ?: 165,
@@ -36,7 +36,7 @@ class AppPreferences(
         )
     }
 
-    suspend fun save(preferences: PlanPreferences) {
+    override suspend fun save(preferences: PlanPreferences) {
         context.planDataStore.edit { prefs ->
             prefs[Keys.TargetCalories] = preferences.targetCalories
             prefs[Keys.TargetProteinG] = preferences.targetProteinG
@@ -58,7 +58,7 @@ class AppPreferences(
         }
     }
 
-    suspend fun resetDefaults() {
+    override suspend fun resetDefaults() {
         context.planDataStore.edit { it.clear() }
     }
 

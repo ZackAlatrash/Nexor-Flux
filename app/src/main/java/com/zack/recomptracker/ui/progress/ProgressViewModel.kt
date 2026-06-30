@@ -15,6 +15,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
+import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,11 +78,12 @@ class ProgressViewModel(
                 logRepository.observeDailyLogs(),
                 logRepository.observeMealEntries(),
                 logRepository.observePerformances(),
-                planRepository.preferences,
+                planRepository.observeVersions(),
                 rangeDays,
-            ) { logs, meals, performances, preferences, range ->
+            ) { logs, meals, performances, versions, range ->
                 val today = dateProvider.today()
                 val dates = (range - 1 downTo 0).map { today.minusDays(it.toLong()) }
+                val targetsByDate = PlanHistory.resolve(versions, dates)
                 // Exclude planned (not-yet-eaten) entries from progress charts.
                 val mealsByDate = meals.filterNot { it.planned }.groupBy { LocalDate.parse(it.date) }
                 val logsByDate = logs.associateBy { LocalDate.parse(it.date) }
@@ -97,7 +99,7 @@ class ProgressViewModel(
                 val adherenceValues = dates.map {
                     adherenceCalculator.dailyAdherencePercent(
                         calories = mealsByDate[it].orEmpty().macroTotals().calories,
-                        targetCalories = preferences.targetCalories,
+                        targetCalories = targetsByDate[it]?.calories ?: 0,
                     ).toFloat()
                 }
                 val liftValues = dates.mapNotNull { liftByDate[it] }

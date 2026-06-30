@@ -79,6 +79,7 @@ import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.streak.StreakRow
+import com.zack.recomptracker.ui.streak.StreakGoalRing
 import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.ui.theme.AppType
@@ -138,6 +139,7 @@ fun HomeDashboardScreen(
         crossMetricInsightState = crossMetricInsightState,
         onRetryCrossMetric = viewModel::retryCrossMetric,
         streaks = streakState.streaks,
+        stepGoal = streakState.stepGoal,
         onOpenStreaks = onOpenStreaks,
     )
 
@@ -181,6 +183,7 @@ fun HomeDashboardContent(
     crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryCrossMetric: () -> Unit = {},
     streaks: Streaks = Streaks.EMPTY,
+    stepGoal: Int? = null,
     onOpenStreaks: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
@@ -281,6 +284,14 @@ fun HomeDashboardContent(
                     )
                 }
                 item { SevenDayChartCard(state) }
+                item {
+                    StreakGoalRing(
+                        result = streaks.steps,
+                        type = StreakType.STEPS,
+                        todayValue = state.todaySteps,
+                        goalValue = stepGoal,
+                    )
+                }
                 if (onOpenStreaks != null) {
                     item { StreaksCard(streaks = streaks, onClick = onOpenStreaks) }
                 }

@@ -75,6 +75,7 @@ data class DayCalories(
 data class DashboardUiState(
     val preferences: PlanPreferences = PlanPreferences(),
     val todayTotals: MacroTotals = MacroTotals(),
+    val todaySteps: Int = 0,
     val sevenDayWeightAverage: Double? = null,
     val weightTrendKgPerWeek: Double = 0.0,
     val waistTrendCmPerWeek: Double = 0.0,
@@ -254,6 +255,7 @@ class DashboardViewModel(
         // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
         val meals = allMeals.filterNot { it.planned }
         val todayTotals = meals.filter { it.date == today.toString() }.macroTotals()
+        val todaySteps = logs.lastOrNull { it.localDate() == today }?.steps ?: 0
         val last14Start = today.minusDays(13)
         val last28Start = today.minusDays(27)
         val last7Start  = today.minusDays(6)
@@ -400,6 +402,7 @@ class DashboardViewModel(
         return DashboardUiState(
             preferences = preferences,
             todayTotals = todayTotals,
+            todaySteps = todaySteps,
             sevenDayWeightAverage = logs
                 .filter { it.localDate() in today.minusDays(6)..today }
                 .mapNotNull { it.bodyWeightKg }

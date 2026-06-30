@@ -41,7 +41,7 @@ changing any screen. Never hardcode `fontSize`/`fontWeight`: use `AppType`. Use 
 
 ## Source of Truth
 
-- **Room** (schema v8) — all logs, meals, food library, body entries, weekly reviews, recipes.
+- **Room** (schema v13) — all logs, meals, food library, body entries, weekly reviews, recipes.
   Meal entries carry a `planned` flag: planned (not-yet-eaten) entries are excluded from eaten
   totals, adherence, and trend until confirmed. See `docs/superpowers/specs/2026-06-10-planned-meals-design.md`.
 - **DataStore** — plan targets (`PlanPreferences`), app prefs (`AppPreferences`), user profile (`UserProfilePreferences`)

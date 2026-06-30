@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
+import com.zack.recomptracker.data.local.entity.StepsSource
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.repository.LogRepository
 import java.time.LocalDate
@@ -48,16 +49,18 @@ class LogRepositorySyncTest {
 
         val saved = dao.logs[date.toString()]!!
         assertEquals(8_000, saved.steps)
+        assertEquals(StepsSource.HEALTH_CONNECT, saved.stepsSource)
         assertEquals(75.5, saved.bodyWeightKg)
         assertEquals(7.5, saved.sleepHours)
     }
 
     @Test
-    fun `sync does not overwrite fields already set by the user`() = runTest {
+    fun `sync keeps manually-entered steps but still fills other null fields`() = runTest {
         val dao = FakeDailyLogDao()
         dao.logs[date.toString()] = DailyLogEntity(
             date = date.toString(),
             steps = 10_000,
+            stepsSource = StepsSource.MANUAL,
             bodyWeightKg = 80.0,
             sleepHours = null,
         )
@@ -67,9 +70,43 @@ class LogRepositorySyncTest {
         repo.applyHealthConnectSync(date, result)
 
         val saved = dao.logs[date.toString()]!!
-        assertEquals(10_000, saved.steps)        // kept original
-        assertEquals(80.0, saved.bodyWeightKg)   // kept original
-        assertEquals(6.0, saved.sleepHours)      // filled from HC (was null)
+        assertEquals(10_000, saved.steps)            // manual entry wins
+        assertEquals(StepsSource.MANUAL, saved.stepsSource)
+        assertEquals(80.0, saved.bodyWeightKg)       // existing weight kept
+        assertEquals(6.0, saved.sleepHours)          // filled from HC (was null)
+    }
+
+    @Test
+    fun `sync refreshes a non-manual steps value from health connect (B1 regression)`() = runTest {
+        // The bug: once any value was in the row, HC could never refresh it (a morning 2,000
+        // stayed stuck instead of becoming the real evening total).
+        val dao = FakeDailyLogDao()
+        dao.logs[date.toString()] = DailyLogEntity(
+            date = date.toString(),
+            steps = 2_000,
+            stepsSource = StepsSource.HEALTH_CONNECT,
+        )
+        val repo = buildRepository(dao)
+
+        repo.applyHealthConnectSync(date, HealthConnectReadResult(steps = 11_000))
+
+        val saved = dao.logs[date.toString()]!!
+        assertEquals(11_000, saved.steps)            // refreshed, not stuck at 2,000
+        assertEquals(StepsSource.HEALTH_CONNECT, saved.stepsSource)
+    }
+
+    @Test
+    fun `sync refreshes a legacy null-source steps value from health connect`() = runTest {
+        // Rows written before steps provenance existed have a null source and must be refreshable.
+        val dao = FakeDailyLogDao()
+        dao.logs[date.toString()] = DailyLogEntity(date = date.toString(), steps = 2_000)
+        val repo = buildRepository(dao)
+
+        repo.applyHealthConnectSync(date, HealthConnectReadResult(steps = 11_000))
+
+        val saved = dao.logs[date.toString()]!!
+        assertEquals(11_000, saved.steps)
+        assertEquals(StepsSource.HEALTH_CONNECT, saved.stepsSource)
     }
 
     @Test
@@ -90,11 +127,13 @@ class LogRepositorySyncTest {
         dao.logs[date.toString()] = DailyLogEntity(
             date = date.toString(),
             steps = 9_000,
+            stepsSource = StepsSource.HEALTH_CONNECT,
             bodyWeightKg = 78.0,
             sleepHours = 8.0,
         )
         val repo = buildRepository(dao)
-        val result = HealthConnectReadResult(steps = 1_000, weightKg = 60.0, sleepHours = 5.0)
+        // HC re-reads the same steps; weight/sleep are already set so they stay. Net: no change.
+        val result = HealthConnectReadResult(steps = 9_000, weightKg = 60.0, sleepHours = 5.0)
 
         val upsertCountBefore = dao.upsertCount
         repo.applyHealthConnectSync(date, result)

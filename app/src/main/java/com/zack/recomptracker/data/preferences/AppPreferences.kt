@@ -33,6 +33,7 @@ class AppPreferences(
             calorieZoneLowerBound = prefs[Keys.CalorieZoneLowerBound] ?: 2400,
             calorieZoneUpperBound = prefs[Keys.CalorieZoneUpperBound] ?: 2600,
             healthConnectEnabled = prefs[Keys.HealthConnectEnabled] ?: false,
+            healthConnectLastSyncEpochMs = prefs[Keys.HealthConnectLastSyncEpochMs],
         )
     }
 
@@ -55,6 +56,11 @@ class AppPreferences(
             prefs[Keys.CalorieZoneLowerBound] = preferences.calorieZoneLowerBound
             prefs[Keys.CalorieZoneUpperBound] = preferences.calorieZoneUpperBound
             prefs[Keys.HealthConnectEnabled] = preferences.healthConnectEnabled
+            if (preferences.healthConnectLastSyncEpochMs == null) {
+                prefs.remove(Keys.HealthConnectLastSyncEpochMs)
+            } else {
+                prefs[Keys.HealthConnectLastSyncEpochMs] = preferences.healthConnectLastSyncEpochMs
+            }
         }
     }
 
@@ -76,6 +82,7 @@ class AppPreferences(
         val CalorieZoneLowerBound = intPreferencesKey("calorie_zone_lower_bound")
         val CalorieZoneUpperBound = intPreferencesKey("calorie_zone_upper_bound")
         val HealthConnectEnabled = booleanPreferencesKey("health_connect_enabled")
+        val HealthConnectLastSyncEpochMs = longPreferencesKey("health_connect_last_sync_epoch_ms")
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
     }

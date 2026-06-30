@@ -17,6 +17,8 @@ data class PlanPreferences(
     val calorieZoneLowerBound: Int = 2400,
     val calorieZoneUpperBound: Int = 2600,
     val healthConnectEnabled: Boolean = false,
+    /** Epoch millis of the last successful Health Connect sync; null if never synced. */
+    val healthConnectLastSyncEpochMs: Long? = null,
 ) {
     /**
      * Returns a copy with the calorie target set and the calorie zone re-centred to

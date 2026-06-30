@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
+import com.zack.recomptracker.data.repository.PlanHistoryInitializer
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
@@ -163,8 +164,10 @@ class AppContainer(context: Context) {
         dateProvider = dateProvider,
         calculator = streakCalculator,
     )
+    val planHistoryInitializer = PlanHistoryInitializer.from(database.planVersionDao(), planRepository)
 
     init {
+        appScope.launch { planHistoryInitializer.seedIfEmpty() }
         appScope.launch {
             runCatching {
                 exerciseLibraryRepository.seedIfEmpty(ExerciseLibraryRepository.VERSION) {

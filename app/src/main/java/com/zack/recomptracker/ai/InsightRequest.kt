@@ -8,6 +8,7 @@ enum class InsightKind {
     TARGET_CHANGE,
     NOISE_DEFUSER,
     CROSS_METRIC,
+    ACTIVITY_NEAT,
 }
 
 sealed interface InsightRequest {
@@ -53,6 +54,12 @@ sealed interface InsightRequest {
 
     data class CrossMetric(val context: CrossMetricContext) : InsightRequest {
         override val kind = InsightKind.CROSS_METRIC
+        override val hasSufficientData get() = context.hasSufficientData
+        override fun dedupKey() = context.key()
+    }
+
+    data class Activity(val context: ActivityInsightContext) : InsightRequest {
+        override val kind = InsightKind.ACTIVITY_NEAT
         override val hasSufficientData get() = context.hasSufficientData
         override fun dedupKey() = context.key()
     }

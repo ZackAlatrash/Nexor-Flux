@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
@@ -14,6 +15,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.ai.ActivityInsightContext
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ai.CrossMetricContext
@@ -146,6 +148,31 @@ class DashboardViewModel(
         aiInsightCoordinator.generationState(InsightKind.NOISE_DEFUSER)
     val crossMetricInsightState: StateFlow<AiInsightState> =
         aiInsightCoordinator.generationState(InsightKind.CROSS_METRIC)
+    val activityInsightState: StateFlow<AiInsightState> =
+        aiInsightCoordinator.generationState(InsightKind.ACTIVITY_NEAT)
+
+    /** Pre-computed activity (NEAT) context: today's steps vs goal + 7-day average. */
+    val activityInsightContext: StateFlow<ActivityInsightContext?> =
+        combine(logRepository.observeDailyLogs(), userProfileStore.preferences) { logs, profile ->
+            val today = dateProvider.today()
+            val stepsByDate = logs.mapNotNull { log ->
+                log.steps?.let { LocalDate.parse(log.date) to it }
+            }.toMap()
+            ActivityInsightContext(
+                steps = logs.lastOrNull { it.localDate() == today }?.steps,
+                stepGoal = profile.dailyStepGoal,
+                averageDailySteps7 = ActivitySummary.averageDailySteps(stepsByDate, today),
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun onActivityInsightVisible() {
+        val ctx = activityInsightContext.value ?: return
+        aiInsightCoordinator.onInsightVisible(InsightRequest.Activity(ctx))
+    }
+    fun retryActivityInsight() {
+        val ctx = activityInsightContext.value ?: return
+        aiInsightCoordinator.retryInsight(InsightRequest.Activity(ctx))
+    }
 
     fun onPatternInsightVisible() {
         val ctx = _uiState.value.patternInsightContext ?: return

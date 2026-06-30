@@ -274,6 +274,7 @@ class GemmaInsightCoordinator(
                 is InsightRequest.WeeklyPattern,
                 is InsightRequest.TargetChange,
                 is InsightRequest.NoiseDefuser,
+                is InsightRequest.Activity,
                 is InsightRequest.CrossMetric -> error("${request.kind} is cloud-only; handled in onInsightVisible")
             }
 
@@ -398,6 +399,7 @@ class GemmaInsightCoordinator(
             InsightKind.TARGET_CHANGE,
             InsightKind.NOISE_DEFUSER,
             InsightKind.CROSS_METRIC,
+            InsightKind.ACTIVITY_NEAT,
         )
     }
 }

@@ -107,6 +107,8 @@ fun HomeDashboardScreen(
     val targetChangeInsightState by viewModel.targetChangeInsightState.collectAsStateWithLifecycle()
     val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
     val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
+    val activityInsightState by viewModel.activityInsightState.collectAsStateWithLifecycle()
+    val activityInsightContext by viewModel.activityInsightContext.collectAsStateWithLifecycle()
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
     val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.patternInsightContext?.key()) {
@@ -120,6 +122,9 @@ fun HomeDashboardScreen(
     }
     LaunchedEffect(state.crossMetricContext?.key()) {
         viewModel.onCrossMetricVisible()
+    }
+    LaunchedEffect(activityInsightContext?.key()) {
+        viewModel.onActivityInsightVisible()
     }
 
     HomeDashboardContent(
@@ -139,6 +144,8 @@ fun HomeDashboardScreen(
         onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
         crossMetricInsightState = crossMetricInsightState,
         onRetryCrossMetric = viewModel::retryCrossMetric,
+        activityInsightState = activityInsightState,
+        onRetryActivityInsight = viewModel::retryActivityInsight,
         streaks = streakState.streaks,
         stepGoal = streakState.stepGoal,
         activity = streakState.activity,
@@ -184,6 +191,8 @@ fun HomeDashboardContent(
     onRetryNoiseDefuser: () -> Unit = {},
     crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryCrossMetric: () -> Unit = {},
+    activityInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryActivityInsight: () -> Unit = {},
     streaks: Streaks = Streaks.EMPTY,
     stepGoal: Int? = null,
     activity: ActivityMetrics = ActivityMetrics(),
@@ -294,6 +303,19 @@ fun HomeDashboardContent(
                         todayValue = state.todaySteps,
                         goalValue = stepGoal,
                     )
+                }
+                if (activityInsightState is AiInsightState.Generating ||
+                    activityInsightState is AiInsightState.Ready ||
+                    activityInsightState is AiInsightState.Error
+                ) {
+                    item {
+                        GeneratedInsightCard(
+                            title = "Activity",
+                            state = activityInsightState,
+                            onRetry = onRetryActivityInsight,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
+                        )
+                    }
                 }
                 if (activity.weeklyGymSessionsTarget != null || activity.weeklyTrainingFrequency > 0.0) {
                     item { TrainingFrequencyTile(activity) }

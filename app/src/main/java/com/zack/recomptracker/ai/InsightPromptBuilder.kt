@@ -214,6 +214,21 @@ class InsightPromptBuilder {
         appendLine("Now reply with ONLY the coaching sentence(s). Do not print any label or echo this prompt.")
     }
 
+    fun buildActivityNeatPrompt(context: ActivityInsightContext): String = buildString {
+        appendLine("You are a body-recomposition coach commenting on the athlete's daily step activity (NEAT — non-exercise activity, which drives a big share of daily energy burn).")
+        appendLine("Write exactly 1–2 short sentences. If they are short of their step goal, give ONE concrete, encouraging nudge to close the gap (e.g. a brisk 15–20 minute walk). If they have hit or beaten the goal, acknowledge it briefly and tie it to recomposition. Lead with the numbers; use only the figures given and do not invent or calculate new ones.")
+        appendLine()
+        appendLine("Example output (style only — do not reuse these numbers):")
+        appendLine("\"You're at 6,200 of your 10,000 goal — a 20-minute walk would close most of the gap and keep your daily burn up.\"")
+        appendLine()
+        appendLine("Today's activity:")
+        appendLine("- Steps so far today: ${context.steps ?: 0}")
+        context.stepGoal?.let { appendLine("- Daily step goal: $it") }
+        context.averageDailySteps7?.let { appendLine("- 7-day average steps: $it") }
+        appendLine()
+        appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
+    }
+
     private fun verdictLabel(verdict: AdjustmentVerdict): String = when (verdict) {
         AdjustmentVerdict.HOLD -> "Hold — no change to calories"
         AdjustmentVerdict.INCREASE_CALORIES -> "Increase calories"

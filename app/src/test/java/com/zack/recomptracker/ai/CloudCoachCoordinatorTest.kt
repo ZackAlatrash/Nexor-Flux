@@ -129,6 +129,52 @@ class CloudCoachCoordinatorTest {
         scope.cancel()
     }
 
+    @Test
+    fun `blank completion nudges once then answers instead of faking Done`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val responses = ArrayDeque(
+            listOf(
+                // Model returns nothing usable (no tool call, blank text) — the failure mode that
+                // used to surface as the bogus "Done." placeholder.
+                ParsedChatResponse("", emptyList()),
+                ParsedChatResponse("Logged 200g grilled chicken.", emptyList()),
+            ),
+        )
+        val client = ScriptedClient(responses)
+        val coach = CloudCoachCoordinator(flowOf(true), config(), client, FakeExecutor(), scope)
+        advanceUntilIdle()
+        coach.sendMessage("log 200g grilled chicken")
+        advanceUntilIdle()
+        val state = coach.state.value
+        assertTrue(state is CoachState.Idle)
+        val last = (state as CoachState.Idle).history.last().text
+        assertEquals("Logged 200g grilled chicken.", last)
+        // The nudge was actually sent on the retry.
+        assertTrue(client.lastMessages.any { it.role == "user" && it.content?.contains("returned nothing") == true })
+        scope.cancel()
+    }
+
+    @Test
+    fun `repeated blank completions surface an error not a fake success`() = runTest {
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val responses = ArrayDeque(
+            listOf(
+                ParsedChatResponse("", emptyList()),
+                ParsedChatResponse("", emptyList()),
+            ),
+        )
+        val client = ScriptedClient(responses)
+        val coach = CloudCoachCoordinator(flowOf(true), config(), client, FakeExecutor(), scope)
+        advanceUntilIdle()
+        coach.sendMessage("log 200g grilled chicken")
+        advanceUntilIdle()
+        val state = coach.state.value
+        assertTrue("expected an error, not a fabricated success", state is CoachState.Error)
+        // Never invent a "Done." assistant message.
+        assertTrue(coach.state.value.let { it !is CoachState.Idle })
+        scope.cancel()
+    }
+
     private class FixedInjector(private val block: String) : KnowledgeInjector {
         override fun referenceBlock(query: String): String = block
     }

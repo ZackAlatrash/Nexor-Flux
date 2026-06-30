@@ -125,6 +125,7 @@ class CloudCoachCoordinator(
                 requestMessages.add(ChatRequestMessage(role = "user", content = userText))
 
                 var rounds = 0
+                var nudged = false
                 while (true) {
                     if (rounds++ >= MAX_TOOL_ROUNDS) {
                         requestMessages.clear()
@@ -140,7 +141,26 @@ class CloudCoachCoordinator(
                     }
 
                     if (response.toolCalls.isEmpty()) {
-                        val text = response.text.ifBlank { "Done." }
+                        // A blank completion with no tool call means the model produced nothing
+                        // usable — e.g. a route that "reasons" about a tool call but never emits the
+                        // structured call. Do NOT fabricate a success ("Done."): nudge once to make
+                        // it act or answer, then surface an honest error if it still returns nothing.
+                        if (response.text.isBlank()) {
+                            if (!nudged) {
+                                nudged = true
+                                requestMessages.add(ChatRequestMessage(role = "user", content = EMPTY_RESPONSE_NUDGE))
+                                continue
+                            }
+                            requestMessages.clear()
+                            systemSeeded = false
+                            lastReferenceMessage = null
+                            _state.value = CoachState.Error(
+                                history.toList(),
+                                "The AI didn't complete that action — please try again.",
+                            )
+                            break
+                        }
+                        val text = response.text
                         requestMessages.add(ChatRequestMessage(role = "assistant", content = text))
                         _state.value = CoachState.Responding(history.toList(), partial = text)
                         history.add(ChatMessage(Role.Assistant, text))
@@ -271,5 +291,10 @@ class CloudCoachCoordinator(
     private companion object {
         private const val MAX_TOOL_ROUNDS = 12
         private const val TURN_TIMEOUT_MS = 180_000L
+
+        /** One-shot prompt sent when a completion returns no tool call and no text, to recover the turn. */
+        private const val EMPTY_RESPONSE_NUDGE =
+            "You returned nothing. If you intended to log food, save a metric, or update a target, " +
+                "call the matching tool now. Otherwise, reply to the user's last message in one or two sentences."
     }
 }

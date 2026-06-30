@@ -110,7 +110,17 @@ class UiPreferences(private val context: Context) {
         context.uiDataStore.data.map { it[Keys.CloudBaseUrl] ?: "" }
 
     val cloudModelId: kotlinx.coroutines.flow.Flow<String> =
-        context.uiDataStore.data.map { it[Keys.CloudModelId] ?: "" }
+        context.uiDataStore.data.map {
+            when (val stored = it[Keys.CloudModelId] ?: "") {
+                // The free OpenRouter gpt-oss-20b route regressed: it stopped emitting OpenAI
+                // tool_calls (it only "reasons" about the call), silently breaking food logging for
+                // every user with no app change. Remap that exact id to a single-provider (Nvidia)
+                // free model that tool-calls reliably. Users on any other model are left untouched.
+                // See memory: project_cloud_coach_tool_calling.
+                DEPRECATED_TOOL_BROKEN_MODEL -> DEFAULT_CLOUD_MODEL
+                else -> stored
+            }
+        }
 
     /** True when base URL and model id are both set (API-key presence is tracked by SecureKeyStore). */
     val cloudConfigPresent: kotlinx.coroutines.flow.Flow<Boolean> =
@@ -201,5 +211,13 @@ class UiPreferences(private val context: Context) {
         val CloudBaseUrl = stringPreferencesKey("cloud_base_url")
         val CloudModelId = stringPreferencesKey("cloud_model_id")
         val LastSeenBriefingSignature = stringPreferencesKey("last_seen_briefing_signature")
+    }
+
+    companion object {
+        /** Free OpenRouter model that regressed to reasoning-only and no longer emits tool_calls. */
+        const val DEPRECATED_TOOL_BROKEN_MODEL = "openai/gpt-oss-20b:free"
+
+        /** Replacement default: single-provider (Nvidia) free model with reliable tool calling. */
+        const val DEFAULT_CLOUD_MODEL = "nvidia/nemotron-nano-9b-v2:free"
     }
 }

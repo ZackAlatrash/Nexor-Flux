@@ -76,6 +76,7 @@ import com.zack.recomptracker.ui.component.GlassBottomSheet
 import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
+import com.zack.recomptracker.ui.component.FoodAmountPanel
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -844,57 +845,31 @@ private fun FoodCategory.label() = when (this) {
 @Composable
 private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewModel) {
     val food = state.pendingFood ?: return
-    val appColors = LocalAppColors.current
+    val servingLabel = food.householdServingName ?: "serving"
+    val servingGrams = food.householdServingGrams?.toInt() ?: 100
+    val servingMode = state.amountMode == AmountMode.SERVINGS
     GlassBottomSheet(onDismiss = viewModel::dismissAmountSheet) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(food.name, style = AppType.screenTitleCompact, color = appColors.textPrimary)
-            val servingLabel = food.householdServingName ?: "serving"
-            val servingGrams = food.householdServingGrams?.toInt() ?: 100
-            Text(
-                "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g",
-                style = AppType.cardSubtitle,
-                color = appColors.textMuted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            GlassSegmentedToggle(
-                options = listOf("Servings", "Grams"),
-                selectedIndex = if (state.amountMode == AmountMode.SERVINGS) 0 else 1,
-                onSelect = { viewModel.onAmountModeChanged(if (it == 0) AmountMode.SERVINGS else AmountMode.GRAMS) },
-            )
-            if (state.amountMode == AmountMode.SERVINGS) {
-                AmountStepper(
-                    value = state.servingsValue,
-                    onValueChange = viewModel::onServingsChanged,
-                    onMinus = { viewModel.stepServings(-FoodScaling.SERVING_STEP) },
-                    onPlus = { viewModel.stepServings(FoodScaling.SERVING_STEP) },
-                    caption = "",
-                    suffix = state.resolvedGrams?.let { "servings · ${it.toInt()} g" } ?: "servings",
-                )
+        FoodAmountPanel(
+            title = food.name,
+            subtitle = "1 $servingLabel = $servingGrams g · ${food.calories} kcal / 100 g",
+            showServingToggle = true,
+            servingsSelected = servingMode,
+            onModeSelected = { servings ->
+                viewModel.onAmountModeChanged(if (servings) AmountMode.SERVINGS else AmountMode.GRAMS)
+            },
+            amountValue = if (servingMode) state.servingsValue else state.gramsValue,
+            onAmountChange = if (servingMode) viewModel::onServingsChanged else viewModel::onGramsChanged,
+            onMinus = { if (servingMode) viewModel.stepServings(-FoodScaling.SERVING_STEP) else viewModel.stepGrams(-10) },
+            onPlus = { if (servingMode) viewModel.stepServings(FoodScaling.SERVING_STEP) else viewModel.stepGrams(10) },
+            amountSuffix = if (servingMode) {
+                state.resolvedGrams?.let { "servings · ${it.toInt()} g" } ?: "servings"
             } else {
-                AmountStepper(
-                    value = state.gramsValue,
-                    onValueChange = viewModel::onGramsChanged,
-                    onMinus = { viewModel.stepGrams(-10) },
-                    onPlus = { viewModel.stepGrams(10) },
-                    caption = "",
-                    suffix = "g",
-                )
-            }
-            val preview = state.previewMacros
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AmountPreviewStat("kcal", preview?.calories?.toString() ?: "—", Modifier.weight(1f))
-                AmountPreviewStat("P", preview?.proteinG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
-                AmountPreviewStat("C", preview?.carbsG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
-                AmountPreviewStat("F", preview?.fatG?.toInt()?.toString() ?: "—", Modifier.weight(1f))
-            }
-            MessageText(state.message, state.messageKind)
+                "g"
+            },
+            preview = state.previewMacros,
+            message = state.message,
+            messageKind = state.messageKind,
+        ) {
             LiquidPrimaryButton(
                 text = when {
                     state.pickerMode -> "Add to Recipe"

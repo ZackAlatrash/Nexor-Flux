@@ -242,7 +242,7 @@ fun ProfileScreen(
                     averageDailySteps7?.let { avg ->
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "7-day average: ${"%,d".format(avg)} steps",
+                            text = "7-day average: ${String.format(java.util.Locale.US, "%,d", avg)} steps",
                             style = AppType.metaLabel,
                             color = appColors.textMuted,
                         )

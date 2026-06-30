@@ -2,9 +2,12 @@ package com.zack.recomptracker.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.domain.activity.ActivitySummary
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 class ProfileViewModel(
     private val userProfileStore: UserProfilePreferencesStore,
     private val logRepository: LogRepository,
+    private val dateProvider: DateProvider,
 ) : ViewModel() {
 
     val profile: StateFlow<UserProfilePreferences> =
@@ -60,6 +64,22 @@ class ProfileViewModel(
                 logs.filter { it.bodyWeightKg != null }
                     .maxByOrNull { it.date }
                     ?.bodyWeightKg
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = null,
+            )
+
+    /** Mean steps over the last 7 days (rounded), or null if none logged. Backs the goal-sanity
+     *  chip next to the step-goal field so the user can tell whether the goal they set is realistic. */
+    val averageDailySteps7: StateFlow<Int?> =
+        logRepository.observeDailyLogs()
+            .map { logs ->
+                val stepsByDate = logs.mapNotNull { log ->
+                    log.steps?.let { LocalDate.parse(log.date) to it }
+                }.toMap()
+                ActivitySummary.averageDailySteps(stepsByDate, dateProvider.today(), days = 7)
             }
             .stateIn(
                 scope = viewModelScope,

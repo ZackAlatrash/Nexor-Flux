@@ -453,6 +453,7 @@ private class AppViewModelFactory(
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+                dateProvider = container.dateProvider,
             )
             StreakViewModel::class.java -> StreakViewModel(
                 streakRepository = container.streakRepository,

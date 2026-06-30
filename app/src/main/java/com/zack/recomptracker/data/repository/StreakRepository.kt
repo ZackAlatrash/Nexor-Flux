@@ -3,6 +3,7 @@ package com.zack.recomptracker.data.repository
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.streak.StreakCalculator
@@ -65,10 +66,10 @@ internal fun buildStreaks(
     today: LocalDate,
     calculator: StreakCalculator,
 ): Streaks {
-    val workoutDays: Set<LocalDate> = (
-        completedSessionDates +
-            dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) }
-        ).toSet()
+    val workoutDays: Set<LocalDate> = ActivitySummary.workoutDays(
+        completedSessionDates = completedSessionDates,
+        trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
+    )
 
     val calorieDays: Set<LocalDate> = if (versions.isEmpty()) {
         emptySet()

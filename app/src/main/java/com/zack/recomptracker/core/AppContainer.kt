@@ -167,7 +167,13 @@ class AppContainer(context: Context) {
     val planHistoryInitializer = PlanHistoryInitializer.from(database.planVersionDao(), planRepository)
 
     init {
-        appScope.launch { planHistoryInitializer.seedIfEmpty() }
+        appScope.launch {
+            runCatching {
+                planHistoryInitializer.seedIfEmpty()
+            }.onFailure {
+                Log.w("RecompPlan", "Plan history baseline seed failed", it)
+            }
+        }
         appScope.launch {
             runCatching {
                 exerciseLibraryRepository.seedIfEmpty(ExerciseLibraryRepository.VERSION) {

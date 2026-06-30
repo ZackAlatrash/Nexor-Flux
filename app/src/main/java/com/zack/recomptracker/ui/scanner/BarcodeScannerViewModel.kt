@@ -9,6 +9,8 @@ import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.BarcodeResult
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
+import com.zack.recomptracker.domain.food.FoodMacros
+import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.ui.component.MessageKind
 import java.time.LocalDate
@@ -27,7 +29,34 @@ sealed class ScanState {
         val product: BarcodeProduct,
         val logMode: LogMode = LogMode.GRAMS,
         val amountInput: String = "100",
-    ) : ScanState()
+    ) : ScanState() {
+        /** Whether this product carries enough serving data to log by servings. */
+        val canUseServings: Boolean get() = (product.servingGrams ?: 0.0) >= 1.0
+
+        /** Grams represented by [amountInput] under the current [logMode]. Null if invalid. */
+        val resolvedGrams: Double?
+            get() = when (logMode) {
+                LogMode.GRAMS -> amountInput.toDoubleOrNull()?.takeIf { it >= FoodScaling.MIN_GRAMS }
+                LogMode.SERVING -> {
+                    val servings = amountInput.toDoubleOrNull()
+                    val servingGrams = product.servingGrams
+                    if (servings != null && servings >= FoodScaling.MIN_SERVINGS && servingGrams != null) {
+                        servings * servingGrams
+                    } else {
+                        null
+                    }
+                }
+            }
+
+        /** Per-100g macros scaled to [resolvedGrams], for the live preview. Null if amount invalid. */
+        val previewMacros: FoodMacros?
+            get() = resolvedGrams?.let { grams ->
+                FoodScaling.scale(
+                    FoodMacros(product.caloriesPer100g, product.proteinPer100g, product.carbsPer100g, product.fatPer100g),
+                    grams,
+                )
+            }
+    }
     object NotFound : ScanState()
     object NetworkError : ScanState()
     data class ShowingSuccess(val message: String) : ScanState()
@@ -98,6 +127,23 @@ class BarcodeScannerViewModel(
     fun onAmountChanged(grams: String) {
         val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
         _uiState.update { it.copy(scanState = current.copy(amountInput = grams)) }
+    }
+
+    /** +/- stepper for grams mode (whole grams), matching the food-library amount sheet. */
+    fun stepGrams(delta: Int) {
+        val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
+        val value = current.amountInput.toDoubleOrNull() ?: FoodScaling.DEFAULT_SERVING_GRAMS
+        val next = (value + delta).coerceAtLeast(FoodScaling.MIN_GRAMS).toInt().toString()
+        _uiState.update { it.copy(scanState = current.copy(amountInput = next)) }
+    }
+
+    /** +/- stepper for serving mode (half-serving steps), matching the food-library amount sheet. */
+    fun stepServings(delta: Double) {
+        val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
+        val value = current.amountInput.toDoubleOrNull() ?: 1.0
+        val next = (value + delta).coerceAtLeast(FoodScaling.MIN_SERVINGS)
+        val text = "%.2f".format(java.util.Locale.US, next).trimEnd('0').trimEnd('.')
+        _uiState.update { it.copy(scanState = current.copy(amountInput = text)) }
     }
 
     fun onLogModeChanged(mode: LogMode) {

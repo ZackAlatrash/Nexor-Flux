@@ -70,6 +70,16 @@ class WeeklyReviewComputerTest {
     }
 
     @Test
+    fun `signature changes when the week target changes`() {
+        // Proves currentTargetCalories participates in the signature: this is why
+        // Task 7 passing the week-end HISTORICAL target (not the current plan) keeps
+        // a past week's signature stable across later plan changes.
+        val a = computer.signature(computer.build("2026-06-22", input(), result(), 2500))
+        val b = computer.signature(computer.build("2026-06-22", input(), result(), 2600))
+        assertNotEquals(a, b)
+    }
+
+    @Test
     fun `signature changes when verdict changes`() {
         val a = computer.signature(computer.build("2026-06-08", input(), result(AdjustmentVerdict.HOLD, 0), 2550))
         val b = computer.signature(computer.build("2026-06-08", input(), result(AdjustmentVerdict.REDUCE_CALORIES, -100), 2550))

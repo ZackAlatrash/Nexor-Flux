@@ -15,6 +15,7 @@ import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
+import com.zack.recomptracker.data.local.entity.StepsSource
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.domain.food.RecentFoods
 import java.time.LocalDate
@@ -107,6 +108,7 @@ class LogRepository(
                 waistCm = input.waistCm,
                 waistSkinfoldMm = input.waistSkinfoldMm,
                 steps = input.steps,
+                stepsSource = if (input.steps != null) StepsSource.MANUAL else null,
                 sleepHours = input.sleepHours,
                 energyScore = input.energyScore?.coerceIn(1, 10),
                 hungerScore = input.hungerScore?.coerceIn(1, 10),
@@ -337,12 +339,30 @@ class LogRepository(
     suspend fun applyHealthConnectSync(date: LocalDate, result: HealthConnectReadResult) {
         if (result.steps == null && result.weightKg == null && result.sleepHours == null) return
         val existing = dailyLogDao.getByDate(date.toString())
-        val updated = (existing ?: DailyLogEntity(date = date.toString())).copy(
-            steps = existing?.steps ?: result.steps,
+        val base = existing ?: DailyLogEntity(date = date.toString())
+        val steps = reconcileSteps(base.steps, base.stepsSource, result.steps)
+        val updated = base.copy(
+            steps = steps.steps,
+            stepsSource = steps.source,
             bodyWeightKg = existing?.bodyWeightKg ?: result.weightKg,
             sleepHours = existing?.sleepHours ?: result.sleepHours,
         )
         if (updated != existing) dailyLogDao.upsert(updated)
+    }
+
+    /**
+     * Backfills steps for many past days from a Health Connect history read. Each day is reconciled
+     * by provenance ([reconcileSteps]) so a manually-entered day is never overwritten. Only changed
+     * rows are written.
+     */
+    suspend fun applyHealthConnectStepsHistory(stepsByDate: Map<LocalDate, Int>) {
+        stepsByDate.forEach { (date, steps) ->
+            val existing = dailyLogDao.getByDate(date.toString())
+            val base = existing ?: DailyLogEntity(date = date.toString())
+            val reconciled = reconcileSteps(base.steps, base.stepsSource, steps)
+            val updated = base.copy(steps = reconciled.steps, stepsSource = reconciled.source)
+            if (updated != existing) dailyLogDao.upsert(updated)
+        }
     }
 }
 

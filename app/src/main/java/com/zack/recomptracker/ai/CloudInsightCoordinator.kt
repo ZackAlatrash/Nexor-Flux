@@ -111,6 +111,7 @@ class CloudInsightCoordinator(
             is InsightRequest.TargetChange -> promptBuilder.buildTargetChangePrompt(request.context)
             is InsightRequest.NoiseDefuser -> promptBuilder.buildNoiseDefuserPrompt(request.context)
             is InsightRequest.CrossMetric -> promptBuilder.buildCrossMetricPrompt(request.context)
+            is InsightRequest.Activity -> promptBuilder.buildActivityNeatPrompt(request.context)
         }
         scope.launch { streamInto(flow, prompt) }
     }

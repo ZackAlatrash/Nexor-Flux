@@ -1,6 +1,9 @@
 package com.zack.recomptracker
 
 import android.app.Application
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
@@ -10,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class RecompTrackerApp : Application(), ImageLoaderFactory {
@@ -30,6 +34,23 @@ class RecompTrackerApp : Application(), ImageLoaderFactory {
         appScope.launch {
             container.database
             _dbReady.value = true
+        }
+        // Foreground auto-sync: when Health Connect is enabled + permitted, refresh today's
+        // steps/weight/sleep each time the app comes to the foreground (debounced inside the
+        // coordinator), so streaks stay live without the user opening Settings to "Sync now".
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    container.healthSyncCoordinator.syncIfDue()
+                }
+            },
+        )
+        // Ensure periodic background sync is scheduled for users who enabled Health Connect
+        // before this build (enqueue is idempotent — KEEP policy).
+        appScope.launch {
+            if (container.planRepository.preferences.first().healthConnectEnabled) {
+                container.healthSyncCoordinator.enableBackgroundSync()
+            }
         }
     }
 

@@ -95,4 +95,47 @@ class RecompDatabaseMigrationTest {
             helper.close()
         }
     }
+
+    @Test
+    fun `migration 13 to 14 adds nullable stepsSource column to daily_logs`() {
+        val helper = openEmptyDatabase()
+        try {
+            val db = helper.writableDatabase
+            // A pre-v14 daily_logs (no stepsSource), with one legacy row.
+            db.execSQL(
+                "CREATE TABLE daily_logs (" +
+                    "date TEXT PRIMARY KEY NOT NULL, bodyWeightKg REAL, waistCm REAL, " +
+                    "waistSkinfoldMm REAL, steps INTEGER, sleepHours REAL, energyScore INTEGER, " +
+                    "hungerScore INTEGER, sorenessScore INTEGER, trained INTEGER NOT NULL DEFAULT 0, " +
+                    "notes TEXT NOT NULL DEFAULT '')",
+            )
+            db.execSQL("INSERT INTO daily_logs (date, steps) VALUES ('2026-06-20', 5000)")
+
+            RecompDatabase.MIGRATION_13_14.migrate(db)
+
+            // Column now exists and is nullable (legacy rows get NULL = unknown source).
+            var hasStepsSource = false
+            var stepsSourceNotNull = true
+            db.query("PRAGMA table_info(daily_logs)").use { c ->
+                val nameIdx = c.getColumnIndexOrThrow("name")
+                val notNullIdx = c.getColumnIndexOrThrow("notnull")
+                while (c.moveToNext()) {
+                    if (c.getString(nameIdx) == "stepsSource") {
+                        hasStepsSource = true
+                        stepsSourceNotNull = c.getInt(notNullIdx) == 1
+                    }
+                }
+            }
+            assertTrue("stepsSource column should exist after MIGRATION_13_14", hasStepsSource)
+            assertTrue("stepsSource should be nullable", !stepsSourceNotNull)
+
+            // The legacy row survives with a NULL stepsSource.
+            db.query("SELECT stepsSource FROM daily_logs WHERE date='2026-06-20'").use {
+                assertTrue(it.moveToFirst())
+                assertTrue("legacy row has null stepsSource", it.isNull(0))
+            }
+        } finally {
+            helper.close()
+        }
+    }
 }

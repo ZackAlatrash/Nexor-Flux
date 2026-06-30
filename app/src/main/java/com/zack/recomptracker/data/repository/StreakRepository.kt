@@ -3,6 +3,8 @@ package com.zack.recomptracker.data.repository
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.domain.activity.ActivityMetrics
+import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.streak.StreakCalculator
@@ -46,6 +48,31 @@ class StreakRepository(
             calculator = calculator,
         )
     }
+
+    /**
+     * Derived activity figures (training frequency vs target, 7-day average steps) for the
+     * Dashboard/Train activity surfaces. Shares the [ActivitySummary] derivations with the
+     * streak build so the numbers never disagree.
+     */
+    fun activity(): Flow<ActivityMetrics> = combine(
+        logRepository.observeDailyLogs(),
+        workoutSessionRepository.observeCompletedSessions(),
+        userProfileStore.preferences,
+    ) { dailyLogs, sessions, profile ->
+        val today = dateProvider.today()
+        val workoutDays = ActivitySummary.workoutDays(
+            completedSessionDates = sessions.map { LocalDate.parse(it.date) },
+            trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
+        )
+        val stepsByDate = dailyLogs.mapNotNull { log ->
+            log.steps?.let { LocalDate.parse(log.date) to it }
+        }.toMap()
+        ActivityMetrics(
+            weeklyTrainingFrequency = ActivitySummary.weeklyTrainingFrequency(workoutDays, today),
+            weeklyGymSessionsTarget = profile.weeklyGymSessions,
+            averageDailySteps7 = ActivitySummary.averageDailySteps(stepsByDate, today),
+        )
+    }
 }
 
 /**
@@ -65,10 +92,10 @@ internal fun buildStreaks(
     today: LocalDate,
     calculator: StreakCalculator,
 ): Streaks {
-    val workoutDays: Set<LocalDate> = (
-        completedSessionDates +
-            dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) }
-        ).toSet()
+    val workoutDays: Set<LocalDate> = ActivitySummary.workoutDays(
+        completedSessionDates = completedSessionDates,
+        trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
+    )
 
     val calorieDays: Set<LocalDate> = if (versions.isEmpty()) {
         emptySet()

@@ -11,7 +11,8 @@ import com.zack.recomptracker.ai.RecoveryInsightContext
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.util.toNullableDouble
-import com.zack.recomptracker.core.util.toNullableInt
+import com.zack.recomptracker.domain.body.StepsValidation
+import com.zack.recomptracker.domain.body.validateStepsInput
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
@@ -260,10 +261,12 @@ class TodayViewModel(
 
     fun saveMetrics() {
         val s = _uiState.value
-        val steps = s.steps.toNullableInt()
-        if (s.steps.isNotBlank() && steps == null) {
-            _uiState.update { it.copy(message = "Steps must be a whole number.") }
-            return
+        val steps = when (val v = validateStepsInput(s.steps)) {
+            is StepsValidation.Invalid -> {
+                _uiState.update { it.copy(message = v.message) }
+                return
+            }
+            is StepsValidation.Valid -> v.steps
         }
         viewModelScope.launch {
             logRepository.saveDailyMetrics(

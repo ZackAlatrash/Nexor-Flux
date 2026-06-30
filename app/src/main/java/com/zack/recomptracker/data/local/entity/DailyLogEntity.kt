@@ -12,6 +12,8 @@ data class DailyLogEntity(
     val waistCm: Double? = null,
     val waistSkinfoldMm: Double? = null,
     val steps: Int? = null,
+    /** Provenance of [steps]: one of [StepsSource], or null when unknown/legacy. */
+    val stepsSource: String? = null,
     val sleepHours: Double? = null,
     val energyScore: Int? = null,
     val hungerScore: Int? = null,

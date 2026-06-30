@@ -79,8 +79,10 @@ import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.streak.StreakRow
+import com.zack.recomptracker.ui.streak.StreakGoalRing
 import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.domain.streak.Streaks
+import com.zack.recomptracker.domain.activity.ActivityMetrics
 import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -105,6 +107,8 @@ fun HomeDashboardScreen(
     val targetChangeInsightState by viewModel.targetChangeInsightState.collectAsStateWithLifecycle()
     val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
     val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
+    val activityInsightState by viewModel.activityInsightState.collectAsStateWithLifecycle()
+    val activityInsightContext by viewModel.activityInsightContext.collectAsStateWithLifecycle()
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
     val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.patternInsightContext?.key()) {
@@ -118,6 +122,9 @@ fun HomeDashboardScreen(
     }
     LaunchedEffect(state.crossMetricContext?.key()) {
         viewModel.onCrossMetricVisible()
+    }
+    LaunchedEffect(activityInsightContext?.key()) {
+        viewModel.onActivityInsightVisible()
     }
 
     HomeDashboardContent(
@@ -137,7 +144,11 @@ fun HomeDashboardScreen(
         onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
         crossMetricInsightState = crossMetricInsightState,
         onRetryCrossMetric = viewModel::retryCrossMetric,
+        activityInsightState = activityInsightState,
+        onRetryActivityInsight = viewModel::retryActivityInsight,
         streaks = streakState.streaks,
+        stepGoal = streakState.stepGoal,
+        activity = streakState.activity,
         onOpenStreaks = onOpenStreaks,
     )
 
@@ -180,7 +191,11 @@ fun HomeDashboardContent(
     onRetryNoiseDefuser: () -> Unit = {},
     crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryCrossMetric: () -> Unit = {},
+    activityInsightState: AiInsightState = AiInsightState.Disabled,
+    onRetryActivityInsight: () -> Unit = {},
     streaks: Streaks = Streaks.EMPTY,
+    stepGoal: Int? = null,
+    activity: ActivityMetrics = ActivityMetrics(),
     onOpenStreaks: (() -> Unit)? = null,
 ) {
     val accent = LocalAppAccent.current
@@ -281,6 +296,30 @@ fun HomeDashboardContent(
                     )
                 }
                 item { SevenDayChartCard(state) }
+                item {
+                    StreakGoalRing(
+                        result = streaks.steps,
+                        type = StreakType.STEPS,
+                        todayValue = state.todaySteps,
+                        goalValue = stepGoal,
+                    )
+                }
+                if (activityInsightState is AiInsightState.Generating ||
+                    activityInsightState is AiInsightState.Ready ||
+                    activityInsightState is AiInsightState.Error
+                ) {
+                    item {
+                        GeneratedInsightCard(
+                            title = "Activity",
+                            state = activityInsightState,
+                            onRetry = onRetryActivityInsight,
+                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
+                        )
+                    }
+                }
+                if (activity.weeklyGymSessionsTarget != null || activity.weeklyTrainingFrequency > 0.0) {
+                    item { TrainingFrequencyTile(activity) }
+                }
                 if (onOpenStreaks != null) {
                     item { StreaksCard(streaks = streaks, onClick = onOpenStreaks) }
                 }
@@ -564,6 +603,36 @@ private fun MacroBarItem(
                         Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
                         RoundedCornerShape(3.dp),
                     ),
+            )
+        }
+    }
+}
+
+// ── Card: TRAINING FREQUENCY ──────────────────────────────────────────────────
+
+@Composable
+private fun TrainingFrequencyTile(activity: ActivityMetrics) {
+    val appColors = LocalAppColors.current
+    FrostedCard {
+        SectionLabel("Training")
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = String.format(java.util.Locale.US, "%.1f×", activity.weeklyTrainingFrequency),
+                style = AppType.statValue,
+                color = appColors.textPrimary,
+            )
+            val caption = activity.weeklyGymSessionsTarget
+                ?.let { "/ wk · target $it" }
+                ?: "/ wk · last 4 weeks"
+            Text(
+                text = caption,
+                style = AppType.cardSubtitle,
+                color = appColors.textSecondary,
+                modifier = Modifier.padding(bottom = 2.dp),
             )
         }
     }

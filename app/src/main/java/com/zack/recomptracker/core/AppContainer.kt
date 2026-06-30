@@ -123,7 +123,11 @@ class AppContainer(context: Context) {
     private val appPreferences = AppPreferences(context.applicationContext)
     val uiPreferences = UiPreferences(context.applicationContext)
     val userProfilePreferencesStore = UserProfilePreferencesStore(context.applicationContext)
-    val planRepository = PlanRepository(appPreferences)
+    val planRepository = PlanRepository(
+        appPreferences = appPreferences,
+        planVersionDao = database.planVersionDao(),
+        dateProvider = dateProvider,
+    )
     val logRepository = LogRepository(
         dailyLogDao = database.dailyLogDao(),
         mealEntryDao = database.mealEntryDao(),

@@ -12,6 +12,7 @@ import com.zack.recomptracker.data.local.dao.ExerciseDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
 import com.zack.recomptracker.data.local.dao.PerformanceDao
+import com.zack.recomptracker.data.local.dao.PlanVersionDao
 import com.zack.recomptracker.data.local.dao.RecipeDao
 import com.zack.recomptracker.data.local.dao.SavedFoodDao
 import com.zack.recomptracker.data.local.dao.SavedMealDao
@@ -24,6 +25,7 @@ import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
+import com.zack.recomptracker.data.local.entity.PlanVersionEntity
 import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.RecipeEntity
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
@@ -55,8 +57,9 @@ import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
         WorkoutSessionEntity::class,
         SessionExerciseEntity::class,
         SessionSetEntity::class,
+        PlanVersionEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -72,6 +75,7 @@ abstract class RecompDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutSessionDao(): WorkoutSessionDao
+    abstract fun planVersionDao(): PlanVersionDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -265,6 +269,22 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS plan_versions (" +
+                        "effectiveFrom TEXT PRIMARY KEY NOT NULL, " +
+                        "targetCalories INTEGER NOT NULL, " +
+                        "targetProteinG INTEGER NOT NULL, " +
+                        "targetCarbsG INTEGER NOT NULL, " +
+                        "targetFatG INTEGER NOT NULL, " +
+                        "calorieZoneLowerBound INTEGER NOT NULL, " +
+                        "calorieZoneUpperBound INTEGER NOT NULL, " +
+                        "createdAt TEXT NOT NULL)",
+                )
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -295,7 +315,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
             .build()
     }
 }

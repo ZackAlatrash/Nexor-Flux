@@ -8,6 +8,10 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.domain.plan.PlanTargets
+import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +60,9 @@ class FoodLogViewModelTest {
         whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
         whenever(logRepo.observeStalePlannedCount(any(), any())).thenReturn(flowOf(0))
         whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
+        // No plan history by default → every day resolves to the current preferences.
+        whenever(planRepo.observeVersions()).thenReturn(flowOf(emptyList()))
+        whenever(planRepo.observePlanOn(any())).thenReturn(flowOf(PlanPreferences().toPlanTargets()))
     }
 
     @After
@@ -149,6 +156,61 @@ class FoodLogViewModelTest {
 
         assertEquals(300, vm.uiState.value.plannedTotals.calories)
         assertTrue(vm.uiState.value.hasPlannedEntries)
+    }
+
+    @Test
+    fun `past day target reflects the plan in effect on that day, not current prefs`() = runTest {
+        val yesterday = today.minusDays(1)
+        // Current prefs differ from the historical plan that was in effect yesterday.
+        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 3000)))
+        val historicalPlan = PlanTargets(
+            calories = 2000, proteinG = 150, carbsG = 200, fatG = 60,
+            zoneLowerBound = 1900, zoneUpperBound = 2100,
+        )
+        whenever(planRepo.observePlanOn(yesterday)).thenReturn(flowOf(historicalPlan))
+        whenever(logRepo.observeDay(yesterday)).thenReturn(flowOf(emptyDayLog(yesterday)))
+
+        val vm = buildVm()
+        advanceUntilIdle()
+        vm.selectDate(yesterday)
+        advanceUntilIdle()
+
+        val target = vm.uiState.value.target
+        assertEquals(2000, target.targetCalories)
+        assertEquals(150, target.targetProteinG)
+        assertEquals(1900, target.calorieZoneLowerBound)
+        assertEquals(2100, target.calorieZoneUpperBound)
+    }
+
+    @Test
+    fun `week strip resolves each day's historical target from plan versions`() = runTest {
+        val olderPlan = PlanTargets(
+            calories = 2000, proteinG = 150, carbsG = 200, fatG = 60,
+            zoneLowerBound = 1900, zoneUpperBound = 2100,
+        )
+        val newerPlan = PlanTargets(
+            calories = 2600, proteinG = 180, carbsG = 260, fatG = 80,
+            zoneLowerBound = 2500, zoneUpperBound = 2700,
+        )
+        // Newer plan takes effect today; earlier week days fall under the older plan.
+        val versions = listOf(
+            PlanVersion(effectiveFrom = PlanHistory.BASELINE_DATE, targets = olderPlan),
+            PlanVersion(effectiveFrom = today, targets = newerPlan),
+        )
+        whenever(planRepo.observeVersions()).thenReturn(flowOf(versions))
+        whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
+
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        val week = vm.uiState.value.weekSummary
+        assertEquals(7, week.size)
+        val todaySummary = week.first { it.date == today }
+        val pastSummary = week.first { it.date == today.minusDays(6) }
+        assertEquals(2600, todaySummary.targetCalories)
+        assertEquals(2700, todaySummary.zoneUpperBound)
+        assertEquals(2000, pastSummary.targetCalories)
+        assertEquals(1900, pastSummary.zoneLowerBound)
     }
 
     @Test

@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.repository.DayCalorieSummary
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -28,6 +29,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 data class FoodLogUiState(
     val selectedDate: LocalDate,
@@ -83,13 +86,24 @@ class FoodLogViewModel(
 
     init {
         viewModelScope.launch {
-            combine(
-                _selectedDate.flatMapLatest { date -> logRepository.observeDay(date) },
-                planRepository.preferences,
-                logRepository.observeSlots(),
-            ) { day, prefs, slots ->
-                Triple(day, prefs, slots)
-            }.collect { (day, prefs, slots) ->
+            _selectedDate.flatMapLatest { date ->
+                combine(
+                    logRepository.observeDay(date),
+                    planRepository.preferences,
+                    planRepository.observePlanOn(date),
+                    logRepository.observeSlots(),
+                ) { day, prefs, dayPlan, slots ->
+                    Quadruple(day, prefs, dayPlan, slots)
+                }
+            }.collect { (day, prefs, dayPlan, slots) ->
+                val dayTarget = prefs.copy(
+                    targetCalories = dayPlan.calories,
+                    targetProteinG = dayPlan.proteinG,
+                    targetCarbsG = dayPlan.carbsG,
+                    targetFatG = dayPlan.fatG,
+                    calorieZoneLowerBound = dayPlan.zoneLowerBound,
+                    calorieZoneUpperBound = dayPlan.zoneUpperBound,
+                )
                 val slotMap = day.meals.groupBy { it.slotId }
                 val slottedEntries = slots.map { slot ->
                     val entries = slotMap[slot.id].orEmpty()
@@ -98,13 +112,13 @@ class FoodLogViewModel(
                 _uiState.update {
                     it.copy(
                         selectedDate = day.date,
-                        target = prefs,
+                        target = dayTarget,
                         totals = day.totals,
                         plannedTotals = day.plannedTotals,
                         hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
                         restOfDayInsightContext = if (day.date == today) {
-                            buildRestOfDayInsightContext(day.totals, prefs, day.meals.size)
+                            buildRestOfDayInsightContext(day.totals, dayTarget, day.meals.size)
                         } else null,
                     )
                 }
@@ -119,13 +133,22 @@ class FoodLogViewModel(
         }
 
         viewModelScope.launch {
-            logRepository.observeWeekCalories(today.minusDays(6), today).collect { weekMap ->
-                val summaries = (0..6).map { i ->
-                    val d = today.minusDays((6 - i).toLong())
-                    DayCalorieSummary(date = d, calories = weekMap[d] ?: 0)
+            val weekDates = (0..6).map { today.minusDays((6 - it).toLong()) }
+            combine(
+                logRepository.observeWeekCalories(today.minusDays(6), today),
+                planRepository.observeVersions(),
+            ) { weekMap, versions ->
+                val byDate = PlanHistory.resolve(versions, weekDates)
+                weekDates.map { d ->
+                    DayCalorieSummary(
+                        date = d,
+                        calories = weekMap[d] ?: 0,
+                        targetCalories = byDate[d]?.calories ?: 0,
+                        zoneLowerBound = byDate[d]?.zoneLowerBound ?: 0,
+                        zoneUpperBound = byDate[d]?.zoneUpperBound ?: 0,
+                    )
                 }.toImmutableList()
-                _uiState.update { it.copy(weekSummary = summaries) }
-            }
+            }.collect { summaries -> _uiState.update { it.copy(weekSummary = summaries) } }
         }
     }
 

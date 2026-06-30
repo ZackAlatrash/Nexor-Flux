@@ -52,9 +52,6 @@ fun WeekCalorieStrip(
     weekData: List<DayCalorieSummary>,
     selectedDate: LocalDate,
     today: LocalDate,
-    targetCalories: Int,
-    targetLow: Int,
-    targetHigh: Int,
     onDaySelected: (LocalDate) -> Unit,
     onTodayClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -63,10 +60,18 @@ fun WeekCalorieStrip(
 
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    val scaleMax = (targetHigh * 1.3f).toInt().coerceAtLeast(1)
-    val zoneLowFrac   = (targetLow.toFloat()     / scaleMax).coerceIn(0f, 1f)
-    val zoneHighFrac  = (targetHigh.toFloat()    / scaleMax).coerceIn(0f, 1f)
-    val targetFrac    = (targetCalories.toFloat() / scaleMax).coerceIn(0f, 1f)
+
+    // Shared vertical scale so bars stay visually comparable across the week,
+    // derived from the highest zone upper bound resolved for any day.
+    val maxZoneHigh = weekData.maxOf { it.zoneUpperBound }
+    val scaleMax = (maxZoneHigh * 1.3f).toInt().coerceAtLeast(1)
+
+    // The dashed target line + zone band overlay follow the currently-viewed day's plan.
+    val viewed = weekData.firstOrNull { it.date == selectedDate } ?: weekData.last()
+    val hasZone = viewed.zoneLowerBound > 0
+    val zoneLowFrac   = (viewed.zoneLowerBound.toFloat()  / scaleMax).coerceIn(0f, 1f)
+    val zoneHighFrac  = (viewed.zoneUpperBound.toFloat()  / scaleMax).coerceIn(0f, 1f)
+    val targetFrac    = (viewed.targetCalories.toFloat()  / scaleMax).coerceIn(0f, 1f)
 
     val yTargetDp = STRIP_BAR_HEIGHT * (1f - targetFrac)
 
@@ -89,6 +94,7 @@ fun WeekCalorieStrip(
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .drawBehind {
+                        if (!hasZone) return@drawBehind
                         val dash = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
                         val labelGap = 32.dp.toPx()
                         val yHigh   = size.height * (1f - zoneHighFrac)
@@ -119,8 +125,6 @@ fun WeekCalorieStrip(
                         summary    = summary,
                         isSelected = summary.date == selectedDate,
                         scaleMax   = scaleMax,
-                        targetLow  = targetLow,
-                        targetHigh = targetHigh,
                         today      = today,
                         onSelected = { onDaySelected(summary.date) },
                         modifier   = Modifier.weight(1f),
@@ -129,16 +133,18 @@ fun WeekCalorieStrip(
             }
 
             // Single calorie target label, pinned to the right edge of the target line
-            Text(
-                text = "$targetCalories",
-                fontSize = 7.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = accent.inkBase.copy(alpha = 0.50f),
-                textAlign = TextAlign.End,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(y = yTargetDp - 9.dp),
-            )
+            if (hasZone) {
+                Text(
+                    text = "${viewed.targetCalories}",
+                    fontSize = 7.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = accent.inkBase.copy(alpha = 0.50f),
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(y = yTargetDp - 9.dp),
+                )
+            }
         }
 
         // Day-of-week labels
@@ -199,8 +205,6 @@ private fun WeekBarItem(
     summary: DayCalorieSummary,
     isSelected: Boolean,
     scaleMax: Int,
-    targetLow: Int,
-    targetHigh: Int,
     today: LocalDate,
     onSelected: () -> Unit,
     modifier: Modifier = Modifier,
@@ -211,11 +215,16 @@ private fun WeekBarItem(
     val targetFrac = if (empty) 0.04f else (summary.calories.toFloat() / scaleMax).coerceIn(0f, 1f)
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
-    val isPastMissed = !empty && summary.date < today && summary.calories < targetLow
+    // Per-day zone — judge each bar against the plan that was in effect on its own date.
+    val hasZone = summary.zoneLowerBound > 0
+    val targetLow = summary.zoneLowerBound
+    val targetHigh = summary.zoneUpperBound
+    val isPastMissed = !empty && hasZone && summary.date < today && summary.calories < targetLow
 
     val barColor = when {
         empty           -> if (isSelected) appColors.textPrimary.copy(alpha = 0.18f)
                           else appColors.textPrimary.copy(alpha = 0.10f)
+        !hasZone        -> accent.accentLighter.copy(alpha = 0.75f)
         summary.calories in targetLow..targetHigh -> accent.accentLight
         summary.calories > targetHigh             -> Color(0xFFF97316)
         isPastMissed    -> if (appColors.isDark) Color(0xFF7F1D1D)

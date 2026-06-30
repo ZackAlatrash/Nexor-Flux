@@ -228,9 +228,6 @@ fun FoodContent(
                         weekData       = state.weekSummary,
                         selectedDate   = state.selectedDate,
                         today          = state.today,
-                        targetCalories = state.target.targetCalories,
-                        targetLow      = state.target.calorieZoneLowerBound,
-                        targetHigh     = state.target.calorieZoneUpperBound,
                         onDaySelected  = onSelectDate,
                         onTodayClick   = { onSelectDate(state.today) },
                     )

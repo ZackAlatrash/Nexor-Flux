@@ -51,4 +51,10 @@ data class MealEntryInput(
 )
 
 @Immutable
-data class DayCalorieSummary(val date: LocalDate, val calories: Int)
+data class DayCalorieSummary(
+    val date: LocalDate,
+    val calories: Int,
+    val targetCalories: Int = 0,
+    val zoneLowerBound: Int = 0,
+    val zoneUpperBound: Int = 0,
+)

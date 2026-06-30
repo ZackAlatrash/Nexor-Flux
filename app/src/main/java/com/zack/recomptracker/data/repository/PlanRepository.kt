@@ -11,6 +11,7 @@ import com.zack.recomptracker.domain.plan.PlanVersion
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -60,17 +61,27 @@ class PlanRepository(
     fun observeVersions(): Flow<List<PlanVersion>> =
         planVersionDao.observeAll().map { rows -> rows.map { it.toPlanVersion() } }
 
-    /** The plan in effect on [date] as a Flow (re-emits when history changes). */
+    /** The plan in effect on [date] as a Flow. Falls back to current prefs when no history yet. */
     fun observePlanOn(date: LocalDate): Flow<PlanTargets> =
-        observeVersions().map { versions -> PlanHistory.planOn(versions, date) }
+        combine(observeVersions(), preferences) { versions, prefs ->
+            PlanHistory.planOnOrFallback(versions, date, prefs.toPlanTargets())
+        }
 
-    /** The plan in effect on [date] (one-shot read). */
-    suspend fun planOn(date: LocalDate): PlanTargets =
-        PlanHistory.planOn(planVersionDao.getAll().map { it.toPlanVersion() }, date)
+    /** The plan in effect on [date] (one-shot). Falls back to current prefs when no history yet. */
+    suspend fun planOn(date: LocalDate): PlanTargets {
+        val versions = planVersionDao.getAll().map { it.toPlanVersion() }
+        return PlanHistory.planOnOrFallback(versions, date, appPreferences.preferences.first().toPlanTargets())
+    }
 
-    /** Resolve many dates at once (one DAO read). */
-    suspend fun targetsByDate(dates: List<LocalDate>): Map<LocalDate, PlanTargets> =
-        PlanHistory.resolve(planVersionDao.getAll().map { it.toPlanVersion() }, dates)
+    /** Resolve many dates at once. Falls back to current prefs for every date when no history yet. */
+    suspend fun targetsByDate(dates: List<LocalDate>): Map<LocalDate, PlanTargets> {
+        val versions = planVersionDao.getAll().map { it.toPlanVersion() }
+        if (versions.isEmpty()) {
+            val fallback = appPreferences.preferences.first().toPlanTargets()
+            return dates.associateWith { fallback }
+        }
+        return PlanHistory.resolve(versions, dates)
+    }
 
     /**
      * Persist the plan and, if the day-judging targets changed, record a history version for

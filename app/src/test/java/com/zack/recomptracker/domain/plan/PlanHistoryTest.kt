@@ -38,6 +38,13 @@ class PlanHistoryTest {
         assertEquals(2200, map.getValue(dates[1]).calories)
     }
 
+    @Test fun `planOnOrFallback returns fallback when history empty, else resolves`() {
+        val fb = targets(1999)
+        assertEquals(1999, PlanHistory.planOnOrFallback(emptyList(), LocalDate.parse("2026-06-01"), fb).calories)
+        val versions = listOf(version("2026-01-01", 2500))
+        assertEquals(2500, PlanHistory.planOnOrFallback(versions, LocalDate.parse("2026-06-01"), fb).calories)
+    }
+
     @Test fun `targetsChanged detects calorie, macro and zone differences only`() {
         val a = targets(2500)
         assertFalse(PlanHistory.targetsChanged(a, a.copy()))

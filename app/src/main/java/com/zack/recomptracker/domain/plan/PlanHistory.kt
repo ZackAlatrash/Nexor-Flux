@@ -24,6 +24,14 @@ object PlanHistory {
         return match.targets
     }
 
+    /**
+     * Like [planOn], but returns [fallback] when there is no history yet (empty [versions]),
+     * instead of throwing. Used by the read path so a not-yet-seeded ledger can never crash a
+     * consumer — the current plan is the right answer when no history exists.
+     */
+    fun planOnOrFallback(versions: List<PlanVersion>, date: LocalDate, fallback: PlanTargets): PlanTargets =
+        if (versions.isEmpty()) fallback else planOn(versions, date)
+
     /** Resolve many dates at once (sorts versions once). */
     fun resolve(versions: List<PlanVersion>, dates: List<LocalDate>): Map<LocalDate, PlanTargets> {
         if (versions.isEmpty()) return emptyMap()

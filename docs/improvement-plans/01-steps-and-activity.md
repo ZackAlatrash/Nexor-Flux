@@ -2,7 +2,10 @@
 
 **Section:** Steps & Activity (the weakest, highest-potential pillar)
 **App:** Personal Dietitian — `com.zack.recomptracker` · Kotlin / Compose · single-module
-**Status:** Planning only. No code in this document is to be implemented as part of writing it.
+**Status:** ✅ ALL PHASES IMPLEMENTED (2026-07-01) on branch `audit/section-improvement-plan`.
+Phases 0–7 are committed with unit tests; the debug APK assembles and 757 unit tests pass
+(only the live-network `InsightHarnessTest` fails, unrelated). Items needing on-device visual
+verification are listed at the very bottom under "Verification still needed".
 
 This plan was written **after verifying every claim against the source tree** (paths + line numbers
 below are real as of the audit). Where the original audit brief was wrong, the correction is called
@@ -385,6 +388,27 @@ time and verify it in-app before the next (per project working agreement).
       coach tool calls are introduced.
 
 ---
+
+## Verification still needed (on-device, by Zack)
+
+The logic compiles + is unit-tested, but these UI/runtime behaviours can only be confirmed in the
+running app (I couldn't drive the emulator overnight):
+
+- **Dashboard steps ring** (Phase 0) fills toward goal / shows "set a goal" hint when unset.
+- **Steps validation** (Phase 0) rejects `999999999` / `-5` with the range message; blank still allowed.
+- **HC sync reconciliation** (Phase 1): enter steps manually → sync → manual kept; with no manual
+  entry, a populated HC day now refreshes (the B1 bug is gone). Migration 13→14 applies on a real
+  upgrade without data loss.
+- **Profile 7-day avg chip** (Phase 2) shows under the step-goal field.
+- **Foreground auto-sync** (Phase 3): connect HC, background the app, reopen → steps refresh without
+  visiting Settings.
+- **History backfill** (Phase 4): on a fresh connect with HC history, the Steps streak/strip reflect
+  prior days immediately.
+- **Training-frequency tile** (Phase 5) shows actual ×/wk vs the gym-sessions target.
+- **Background sync** (Phase 6): WorkManager job runs (~4h); verify with
+  `adb shell dumpsys jobscheduler | grep recomp` or leave overnight.
+- **ACTIVITY_NEAT card** (Phase 7) renders on the Dashboard **with a cloud backend selected + a step
+  goal set** (it's cloud-only and hidden on the local Gemma backend by design).
 
 ### Cross-references (real files this plan touches)
 - `data/local/entity/DailyLogEntity.kt:14,19` · `data/local/RecompDatabase.kt:62` · `data/local/dao/DailyLogDao.kt:25`

@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class RecompTrackerApp : Application(), ImageLoaderFactory {
@@ -44,6 +45,13 @@ class RecompTrackerApp : Application(), ImageLoaderFactory {
                 }
             },
         )
+        // Ensure periodic background sync is scheduled for users who enabled Health Connect
+        // before this build (enqueue is idempotent — KEEP policy).
+        appScope.launch {
+            if (container.planRepository.preferences.first().healthConnectEnabled) {
+                container.healthSyncCoordinator.enableBackgroundSync()
+            }
+        }
     }
 
     /**

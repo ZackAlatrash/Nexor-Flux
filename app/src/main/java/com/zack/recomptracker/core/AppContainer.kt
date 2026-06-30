@@ -10,6 +10,7 @@ import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.AppPreferences
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.health.HealthSyncCoordinator
+import com.zack.recomptracker.data.health.WorkManagerBackgroundSyncScheduler
 import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
@@ -175,6 +176,7 @@ class AppContainer(context: Context) {
         planRepository = planRepository,
         dateProvider = dateProvider,
         appScope = appScope,
+        backgroundScheduler = WorkManagerBackgroundSyncScheduler(context.applicationContext),
     )
 
     init {

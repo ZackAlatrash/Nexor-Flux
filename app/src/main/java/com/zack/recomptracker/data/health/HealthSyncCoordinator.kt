@@ -23,6 +23,7 @@ class HealthSyncCoordinator(
     private val dateProvider: DateProvider,
     private val appScope: CoroutineScope,
     private val now: () -> Long = { System.currentTimeMillis() },
+    private val backgroundScheduler: BackgroundSyncScheduler = NoopBackgroundSyncScheduler,
 ) {
     private val mutex = Mutex()
 
@@ -75,6 +76,25 @@ class HealthSyncCoordinator(
             }.onFailure { Log.w(TAG, "Auto-sync failed", it) }
         }
     }
+
+    /**
+     * Suspending guarded sync for background work (WorkManager): syncs only if Health Connect is
+     * enabled and permitted. Returns true if a sync ran. Unlike [syncIfDue] this awaits completion
+     * so the Worker can report a result.
+     */
+    suspend fun syncIfEnabledAndPermitted(): Boolean {
+        val prefs = planRepository.preferences.first()
+        if (!prefs.healthConnectEnabled) return false
+        if (!hcRepository.hasPermissions()) return false
+        syncToday()
+        return true
+    }
+
+    /** Schedule periodic background sync (idempotent). Call when Health Connect becomes enabled. */
+    fun enableBackgroundSync() = backgroundScheduler.enable()
+
+    /** Cancel periodic background sync. Call when Health Connect is disabled. */
+    fun disableBackgroundSync() = backgroundScheduler.disable()
 
     companion object {
         private const val TAG = "HealthSyncCoordinator"

@@ -234,6 +234,7 @@ class SettingsViewModel(
             viewModelScope.launch {
                 val prefs = planRepository.preferences.first()
                 planRepository.save(prefs.copy(healthConnectEnabled = false))
+                healthSyncCoordinator.disableBackgroundSync()
                 _uiState.update { it.copy(healthConnectEnabled = false, healthConnectMessage = "Disconnected.", healthConnectMessageKind = MessageKind.SUCCESS) }
             }
         }
@@ -389,6 +390,8 @@ class SettingsViewModel(
                     syncNow()
                     // First connect: backfill recent step history so streaks/trends aren't empty.
                     healthSyncCoordinator.backfillStepsHistoryInBackground()
+                    // Keep streaks fresh even when the app isn't opened.
+                    healthSyncCoordinator.enableBackgroundSync()
                 }.onFailure { e ->
                     Log.e(TAG, "Failed to persist healthConnectEnabled", e)
                     _uiState.update { it.copy(healthConnectMessage = "Couldn't save the setting: ${e.message}", healthConnectMessageKind = MessageKind.ERROR) }

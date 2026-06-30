@@ -9,6 +9,7 @@ import com.zack.recomptracker.core.time.SystemDateProvider
 import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.AppPreferences
 import com.zack.recomptracker.data.health.HealthConnectRepository
+import com.zack.recomptracker.data.health.HealthSyncCoordinator
 import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
@@ -168,6 +169,13 @@ class AppContainer(context: Context) {
         calculator = streakCalculator,
     )
     val planHistoryInitializer = PlanHistoryInitializer.from(database.planVersionDao(), planRepository)
+    val healthSyncCoordinator = HealthSyncCoordinator(
+        hcRepository = healthConnectRepository,
+        logRepository = logRepository,
+        planRepository = planRepository,
+        dateProvider = dateProvider,
+        appScope = appScope,
+    )
 
     init {
         appScope.launch {
@@ -478,6 +486,7 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 hcRepository = container.healthConnectRepository,
+                healthSyncCoordinator = container.healthSyncCoordinator,
                 foodCatalogRepository = container.foodCatalogRepository,
                 personalFoodRepository = container.personalFoodRepository,
                 userProfileStore = container.userProfilePreferencesStore,

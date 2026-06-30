@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.data.health.HealthConnectRepository
+import com.zack.recomptracker.data.health.HealthSyncCoordinator
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
@@ -24,7 +25,6 @@ import com.zack.recomptracker.domain.foodimport.HistoricalFoodImporter
 import com.zack.recomptracker.domain.foodimport.SamsungHealthFoodCsvParser
 import com.zack.recomptracker.domain.foodimport.identity
 import java.io.InputStream
-import java.time.LocalDate
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +60,7 @@ class SettingsViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     private val hcRepository: HealthConnectRepository,
+    private val healthSyncCoordinator: HealthSyncCoordinator,
     private val foodCatalogRepository: FoodCatalogRepository,
     private val personalFoodRepository: PersonalFoodRepository,
     private val userProfileStore: UserProfilePreferencesStore,
@@ -403,11 +404,8 @@ class SettingsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(healthConnectSyncing = true) }
             runCatching {
-                val date = LocalDate.now()
-                val result = hcRepository.readToday(date)
-                Log.d(TAG, "syncNow: read steps=${result.steps} weightKg=${result.weightKg} sleepHours=${result.sleepHours}")
-                logRepository.applyHealthConnectSync(date, result)
-                result
+                // Shared read+apply+timestamp path (also used by foreground/background auto-sync).
+                healthSyncCoordinator.syncToday()
             }.onSuccess { result ->
                 val any = result.steps != null || result.weightKg != null || result.sleepHours != null
                 _uiState.update {

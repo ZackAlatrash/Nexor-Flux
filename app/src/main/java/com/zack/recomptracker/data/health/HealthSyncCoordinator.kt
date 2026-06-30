@@ -42,6 +42,24 @@ class HealthSyncCoordinator(
     }
 
     /**
+     * Backfills the last [days] days of steps from Health Connect history (manual days preserved).
+     * Run once on first connect so streaks/trends reflect existing history. Serialized with
+     * [syncToday] via the same mutex.
+     */
+    suspend fun backfillStepsHistory(days: Long = 30) = mutex.withLock {
+        val history = hcRepository.readStepsHistory(days)
+        if (history.isNotEmpty()) logRepository.applyHealthConnectStepsHistory(history)
+    }
+
+    /** Fire-and-forget [backfillStepsHistory]; failures are logged, never surfaced. */
+    fun backfillStepsHistoryInBackground(days: Long = 30) {
+        appScope.launch {
+            runCatching { backfillStepsHistory(days) }
+                .onFailure { Log.w(TAG, "Steps history backfill failed", it) }
+        }
+    }
+
+    /**
      * Fire-and-forget auto-sync, safe to call on every app foreground. Runs only when Health
      * Connect is enabled, the debounce window has elapsed, and permissions are granted. Failures
      * are logged, never surfaced.

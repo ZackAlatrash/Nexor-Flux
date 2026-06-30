@@ -105,6 +105,24 @@ class HealthConnectRepository(context: Context) {
         foods
     }
 
+    /**
+     * Total steps per calendar day over the trailing [days] days (inclusive of today), grouped by
+     * the device's local date. Used to backfill streaks/trends on first connect so they reflect
+     * existing Health Connect history instead of starting from a single data point. Days with no
+     * records are simply absent from the map. Returns an empty map on any failure.
+     */
+    suspend fun readStepsHistory(days: Long = 30): Map<LocalDate, Int> = runCatching {
+        val zone = ZoneId.systemDefault()
+        val end: Instant = Instant.now()
+        val start: Instant = LocalDate.now(zone).minusDays(days - 1).atStartOfDay(zone).toInstant()
+        val response = client.readRecords(
+            ReadRecordsRequest(StepsRecord::class, TimeRangeFilter.between(start, end)),
+        )
+        response.records
+            .groupBy { it.startTime.atZone(zone).toLocalDate() }
+            .mapValues { (_, records) -> records.sumOf { it.count }.toInt() }
+    }.getOrDefault(emptyMap())
+
     private suspend fun readSteps(start: Instant, end: Instant): Int? {
         val response = client.readRecords(
             ReadRecordsRequest(StepsRecord::class, TimeRangeFilter.between(start, end))

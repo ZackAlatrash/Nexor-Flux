@@ -349,6 +349,21 @@ class LogRepository(
         )
         if (updated != existing) dailyLogDao.upsert(updated)
     }
+
+    /**
+     * Backfills steps for many past days from a Health Connect history read. Each day is reconciled
+     * by provenance ([reconcileSteps]) so a manually-entered day is never overwritten. Only changed
+     * rows are written.
+     */
+    suspend fun applyHealthConnectStepsHistory(stepsByDate: Map<LocalDate, Int>) {
+        stepsByDate.forEach { (date, steps) ->
+            val existing = dailyLogDao.getByDate(date.toString())
+            val base = existing ?: DailyLogEntity(date = date.toString())
+            val reconciled = reconcileSteps(base.steps, base.stepsSource, steps)
+            val updated = base.copy(steps = reconciled.steps, stepsSource = reconciled.source)
+            if (updated != existing) dailyLogDao.upsert(updated)
+        }
+    }
 }
 
 fun List<MealEntryEntity>.macroTotals(): MacroTotals = fold(MacroTotals()) { total, meal ->

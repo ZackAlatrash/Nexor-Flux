@@ -387,6 +387,8 @@ class SettingsViewModel(
                         )
                     }
                     syncNow()
+                    // First connect: backfill recent step history so streaks/trends aren't empty.
+                    healthSyncCoordinator.backfillStepsHistoryInBackground()
                 }.onFailure { e ->
                     Log.e(TAG, "Failed to persist healthConnectEnabled", e)
                     _uiState.update { it.copy(healthConnectMessage = "Couldn't save the setting: ${e.message}", healthConnectMessageKind = MessageKind.ERROR) }

@@ -65,7 +65,6 @@ class CoachToolExecutor(
         val today = dateProvider.today()
         val start = today.minusDays(6)
         val macroMap = logRepository.getWeekMacros(start, today)
-        val targetCalories = planRepository.preferences.first().targetCalories
         val dailyEntries = (0..6).joinToString(separator = ",") { offset ->
             val date = start.plusDays(offset.toLong())
             val m = macroMap[date]
@@ -75,13 +74,18 @@ class CoachToolExecutor(
             val fat = m?.fatG ?: 0.0
             """{"date":"$date","calories":$cals,"protein_g":$prot,"carbs_g":$carbs,"fat_g":$fat}"""
         }
-        val nutritionDays = (0..6).map { offset ->
-            val date = start.plusDays(offset.toLong())
-            NutritionDay(date, macroMap[date]?.calories ?: 0)
+        val weekDates = (0..6).map { start.plusDays(it.toLong()) }
+        val targetsByDate = planRepository.targetsByDate(weekDates)
+        val nutritionDays = weekDates.map { date ->
+            NutritionDay(
+                date = date,
+                calories = macroMap[date]?.calories ?: 0,
+                targetCalories = targetsByDate[date]?.calories ?: 0,
+            )
         }
         // adherence_percent = graded closeness on logged days; days_logged = the separate
         // logging-consistency signal. A logged-but-over-target day no longer reads as 100%.
-        val adherencePercent = adherenceCalculator.calculate(nutritionDays, targetCalories).toInt()
+        val adherencePercent = adherenceCalculator.calculate(nutritionDays).toInt()
         val daysLogged = macroMap.values.count { it.calories > 0 }
         return """{"week_start":"$start","week_end":"$today","daily_macros":[$dailyEntries],"adherence_percent":$adherencePercent,"days_logged":$daysLogged}"""
     }

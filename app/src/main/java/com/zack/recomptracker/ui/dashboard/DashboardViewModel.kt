@@ -228,8 +228,9 @@ class DashboardViewModel(
                 logRepository.observeMealEntriesSince(windowStart),
                 logRepository.observePerformances(),
                 planRepository.preferences,
-            ) { logs, meals, performances, preferences ->
-                buildState(logs, meals, performances, preferences)
+                planRepository.observeVersions(),
+            ) { logs, meals, performances, preferences, versions ->
+                buildState(logs, meals, performances, preferences, versions)
             }
             .debounce(300L)
             .collect { state ->
@@ -244,6 +245,7 @@ class DashboardViewModel(
         allMeals: List<MealEntryEntity>,
         performances: List<LiftPerformanceEntity>,
         preferences: PlanPreferences,
+        versions: List<com.zack.recomptracker.domain.plan.PlanVersion>,
     ): DashboardUiState {
         val today = dateProvider.today()
         // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
@@ -255,10 +257,18 @@ class DashboardViewModel(
         val logsLast28  = logs.filter { it.localDate() in last28Start..today }
         val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
         val mealsByDate = mealsLast14.groupBy { it.localDate() }
+        val dayTargets = com.zack.recomptracker.domain.plan.PlanHistory.resolve(
+            versions,
+            (0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) },
+        )
 
         val nutritionDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())
-            NutritionDay(date, mealsByDate[date].orEmpty().macroTotals().calories)
+            NutritionDay(
+                date = date,
+                calories = mealsByDate[date].orEmpty().macroTotals().calories,
+                targetCalories = dayTargets[date]?.calories ?: preferences.targetCalories,
+            )
         }
         val loggedDates = logsLast28.map { it.date }.toSet() + mealsLast14.map { it.date }.toSet()
         val weightPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.bodyWeightKg) }
@@ -272,7 +282,7 @@ class DashboardViewModel(
 
         val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
         val waistTrend   = trendCalculator.trendPerWeek(waistPoints)
-        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories)
+        val adherence    = adherenceCalculator.calculate(nutritionDays)
         val loggedDaysInWindow = nutritionDays.count { it.calories > 0 }
         val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
@@ -313,13 +323,13 @@ class DashboardViewModel(
                 isToday = date == today,
             )
         }.toImmutableList()
-        val inZoneDays7 = if (preferences.calorieZoneLowerBound > 0) {
-            last7DaysCalories.count {
-                it.calories > 0 &&
-                it.calories >= preferences.calorieZoneLowerBound &&
-                it.calories <= preferences.calorieZoneUpperBound
-            }
-        } else 0
+        val inZoneDays7 = (0..6).count { offset ->
+            val date = last7Start.plusDays(offset.toLong())
+            val z = dayTargets[date]
+            val cals = mealsByDate[date].orEmpty().macroTotals().calories
+            z != null && z.zoneLowerBound > 0 && cals > 0 &&
+                cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
+        }
 
         val patternDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())

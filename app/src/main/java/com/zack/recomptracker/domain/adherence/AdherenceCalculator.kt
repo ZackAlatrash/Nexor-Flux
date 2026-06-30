@@ -6,6 +6,7 @@ import kotlin.math.abs
 data class NutritionDay(
     val date: LocalDate,
     val calories: Int,
+    val targetCalories: Int,
 )
 
 class AdherenceCalculator {
@@ -22,17 +23,14 @@ class AdherenceCalculator {
     }
 
     /**
-     * Adherence QUALITY: the average graded daily score across LOGGED days only.
-     * Days with no intake (calories <= 0) are excluded from both numerator and denominator,
-     * so this answers "how close to target on the days you tracked" — independent of how often
-     * you tracked (that is [loggingConsistency]). Returns 0 if there are no logged days or the
-     * target is invalid.
+     * Adherence QUALITY across LOGGED days only, each graded against ITS OWN day target
+     * (see [NutritionDay.targetCalories]). Days with no intake are excluded. Returns 0 if there
+     * are no logged days.
      */
-    fun calculate(days: List<NutritionDay>, targetCalories: Int): Double {
-        if (targetCalories <= 0) return 0.0
-        val logged = days.distinctBy { it.date }.filter { it.calories > 0 }
+    fun calculate(days: List<NutritionDay>): Double {
+        val logged = days.distinctBy { it.date }.filter { it.calories > 0 && it.targetCalories > 0 }
         if (logged.isEmpty()) return 0.0
-        val sum = logged.sumOf { dailyAdherencePercent(it.calories, targetCalories) }
+        val sum = logged.sumOf { dailyAdherencePercent(it.calories, it.targetCalories) }
         return sum / logged.size.toDouble()
     }
 

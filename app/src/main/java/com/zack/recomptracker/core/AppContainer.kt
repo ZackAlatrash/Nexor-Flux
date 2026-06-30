@@ -105,6 +105,8 @@ import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.domain.adherence.NutritionDay
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
+import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.PerformancePoint
 import com.zack.recomptracker.domain.trend.RecoveryPoint
@@ -259,8 +261,9 @@ class AppContainer(context: Context) {
         logRepository.observeMealEntriesSince(dateProvider.today().minusDays(27)),
         logRepository.observePerformances(),
         planRepository.preferences,
-    ) { logs, meals, performances, prefs ->
-        computeWeeklyReviewData(logs, meals, performances, prefs)
+        planRepository.observeVersions(),
+    ) { logs, meals, performances, prefs, versions ->
+        computeWeeklyReviewData(logs, meals, performances, prefs, versions)
     }
 
     fun cloudConfigForBriefing(): CloudConfig? = cloudConfigFlow.value
@@ -270,6 +273,7 @@ class AppContainer(context: Context) {
         allMeals: List<MealEntryEntity>,
         performances: List<LiftPerformanceEntity>,
         prefs: PlanPreferences,
+        versions: List<PlanVersion>,
     ): WeeklyReviewData? {
         val today = dateProvider.today()
         val meals = allMeals.filterNot { it.planned }
@@ -278,9 +282,10 @@ class AppContainer(context: Context) {
         val logs28 = logs.filter { LocalDate.parse(it.date) in last28Start..today }
         val meals14 = meals.filter { LocalDate.parse(it.date) in last14Start..today }
         val mealsByDate = meals14.groupBy { LocalDate.parse(it.date) }
+        val weekTargets = PlanHistory.resolve(versions, (0..13).map { last14Start.plusDays(it.toLong()) })
         val nutritionDays = (0..13).map { off ->
             val d = last14Start.plusDays(off.toLong())
-            NutritionDay(d, mealsByDate[d].orEmpty().macroTotals().calories)
+            NutritionDay(d, mealsByDate[d].orEmpty().macroTotals().calories, weekTargets[d]?.calories ?: prefs.targetCalories)
         }
         val loggedDates = logs28.map { it.date }.toSet() + meals14.map { it.date }.toSet()
         val daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today }
@@ -298,7 +303,7 @@ class AppContainer(context: Context) {
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }?.toInt() ?: 4
         val input = AdjustmentInput(
             daysLogged = daysLogged,
-            adherencePercent = adherenceCalculator.calculate(nutritionDays, prefs.targetCalories),
+            adherencePercent = adherenceCalculator.calculate(nutritionDays),
             weeksSincePhaseStart = weeksSincePhase,
             weightTrendKgPerWeek = trendCalculator.trendPerWeek(weightPoints),
             waistTrendCmPerWeek = trendCalculator.trendPerWeek(waistPoints),
@@ -312,7 +317,8 @@ class AppContainer(context: Context) {
         )
         val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
-        return weeklyReviewComputer.build(weekStart, input, result, prefs.targetCalories)
+        val weekEndTarget = PlanHistory.planOn(versions, today).calories
+        return weeklyReviewComputer.build(weekStart, input, result, weekEndTarget)
     }
 
     // ── Cloud coordinators ─────────────────────────────────────────────────────────

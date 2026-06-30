@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
 import java.time.LocalDate
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -452,10 +453,16 @@ class CoachToolExecutorTest {
             LocalDate.of(2026, 6, 4) to MacroTotals(calories = 2600),
             LocalDate.of(2026, 6, 5) to MacroTotals(calories = 2450),
         )
+        val prefs = PlanPreferences(targetCalories = 2550)
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
         whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
-        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 2550)))
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.targetsByDate(any())).thenAnswer { inv ->
+            @Suppress("UNCHECKED_CAST")
+            val dates = inv.arguments[0] as List<LocalDate>
+            dates.associateWith { prefs.toPlanTargets() }
+        }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("get_weekly_trends", emptyMap())
@@ -474,10 +481,16 @@ class CoachToolExecutorTest {
         val start = today.minusDays(6)
         // Single logged day, far over target → graded score must be well below 100.
         val macroMap = mapOf(LocalDate.of(2026, 6, 5) to MacroTotals(calories = 4000))
+        val prefs = PlanPreferences(targetCalories = 2550)
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
         whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
-        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 2550)))
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.targetsByDate(any())).thenAnswer { inv ->
+            @Suppress("UNCHECKED_CAST")
+            val dates = inv.arguments[0] as List<LocalDate>
+            dates.associateWith { prefs.toPlanTargets() }
+        }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("get_weekly_trends", emptyMap())

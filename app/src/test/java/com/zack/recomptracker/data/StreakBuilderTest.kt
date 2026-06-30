@@ -1,8 +1,9 @@
 package com.zack.recomptracker.data
 
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
-import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.buildStreaks
+import com.zack.recomptracker.domain.plan.PlanTargets
+import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
@@ -10,7 +11,10 @@ import org.junit.Test
 
 class StreakBuilderTest {
     private val calc = StreakCalculator()
-    private val prefs = PlanPreferences() // zone defaults 2400..2600
+    // One baseline version covering all test dates, zone 2400..2600 (the old single-zone default).
+    private val versions = listOf(
+        PlanVersion(LocalDate.parse("1970-01-01"), PlanTargets(2500, 1, 1, 1, 2400, 2600)),
+    )
     private val mon = LocalDate.of(2026, 6, 22)
     private val tue = mon.plusDays(1)
 
@@ -22,7 +26,7 @@ class StreakBuilderTest {
             dailyLogs = emptyList(),
             eatenCaloriesByDate = mapOf(mon to 2500, tue to 3000), // mon in zone, tue over
             completedSessionDates = emptyList(),
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = null,
             today = tue,
             calculator = calc,
@@ -36,7 +40,7 @@ class StreakBuilderTest {
             dailyLogs = listOf(log(mon, steps = 12000), log(tue, steps = 8000)),
             eatenCaloriesByDate = emptyMap(),
             completedSessionDates = emptyList(),
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = 10000,
             today = tue,
             calculator = calc,
@@ -50,7 +54,7 @@ class StreakBuilderTest {
             dailyLogs = listOf(log(mon, steps = 12000)),
             eatenCaloriesByDate = emptyMap(),
             completedSessionDates = emptyList(),
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = null,
             today = mon,
             calculator = calc,
@@ -64,7 +68,7 @@ class StreakBuilderTest {
             dailyLogs = listOf(log(tue, trained = true)), // Tue via trained flag
             eatenCaloriesByDate = emptyMap(),
             completedSessionDates = listOf(mon),          // Mon via completed session
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = null,
             today = tue,
             calculator = calc,
@@ -81,7 +85,7 @@ class StreakBuilderTest {
             dailyLogs = emptyList(),
             eatenCaloriesByDate = emptyMap(),
             completedSessionDates = listOf(mon, thu),
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = null,
             today = thu,
             calculator = calc,
@@ -106,7 +110,7 @@ class StreakBuilderTest {
             dailyLogs = emptyList(),
             eatenCaloriesByDate = mapOf(mon to 2500),
             completedSessionDates = emptyList(),
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = null,
             today = mon,
             calculator = calc,

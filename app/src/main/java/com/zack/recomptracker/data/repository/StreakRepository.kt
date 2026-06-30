@@ -2,8 +2,9 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
-import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import com.zack.recomptracker.domain.streak.StreakDayMark
 import com.zack.recomptracker.domain.streak.StreakResult
@@ -28,9 +29,9 @@ class StreakRepository(
         logRepository.observeDailyLogs(),
         logRepository.observeMealEntries(),
         workoutSessionRepository.observeCompletedSessions(),
-        planRepository.preferences,
+        planRepository.observeVersions(),
         userProfileStore.preferences,
-    ) { dailyLogs, meals, sessions, prefs, profile ->
+    ) { dailyLogs, meals, sessions, versions, profile ->
         val eatenByDate = meals
             .filterNot { it.planned }
             .groupBy { LocalDate.parse(it.date) }
@@ -39,7 +40,7 @@ class StreakRepository(
             dailyLogs = dailyLogs,
             eatenCaloriesByDate = eatenByDate,
             completedSessionDates = sessions.map { LocalDate.parse(it.date) },
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = profile.dailyStepGoal,
             today = dateProvider.today(),
             calculator = calculator,
@@ -59,7 +60,7 @@ internal fun buildStreaks(
     dailyLogs: List<DailyLogEntity>,
     eatenCaloriesByDate: Map<LocalDate, Int>,
     completedSessionDates: List<LocalDate>,
-    prefs: PlanPreferences,
+    versions: List<PlanVersion>,
     dailyStepGoal: Int?,
     today: LocalDate,
     calculator: StreakCalculator,
@@ -69,14 +70,16 @@ internal fun buildStreaks(
             dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) }
         ).toSet()
 
-    val calorieDays: Set<LocalDate> = eatenCaloriesByDate
-        .filterValues { cals ->
-            cals > 0 &&
-                prefs.calorieZoneLowerBound > 0 &&
-                cals >= prefs.calorieZoneLowerBound &&
-                cals <= prefs.calorieZoneUpperBound
-        }
-        .keys
+    val calorieDays: Set<LocalDate> = if (versions.isEmpty()) {
+        emptySet()
+    } else {
+        eatenCaloriesByDate
+            .filter { (date, cals) ->
+                val z = PlanHistory.planOn(versions, date)
+                cals > 0 && z.zoneLowerBound > 0 && cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
+            }
+            .keys
+    }
 
     val stepDays: Set<LocalDate> = if (dailyStepGoal != null && dailyStepGoal > 0) {
         dailyLogs

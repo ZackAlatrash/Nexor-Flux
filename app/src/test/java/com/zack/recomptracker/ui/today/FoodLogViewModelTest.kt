@@ -214,6 +214,29 @@ class FoodLogViewModelTest {
     }
 
     @Test
+    fun `week strip falls back to current prefs when plan ledger is not yet seeded`() = runTest {
+        // Unseeded ledger (empty versions, the default) + non-default current prefs.
+        val prefs = PlanPreferences(
+            targetCalories = 2400,
+            calorieZoneLowerBound = 2300,
+            calorieZoneUpperBound = 2500,
+        )
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.observeVersions()).thenReturn(flowOf(emptyList()))
+
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        val week = vm.uiState.value.weekSummary
+        assertEquals(7, week.size)
+        val todaySummary = week.first { it.date == today }
+        // Falls back to current prefs' zone rather than collapsing to 0.
+        assertEquals(2400, todaySummary.targetCalories)
+        assertEquals(2300, todaySummary.zoneLowerBound)
+        assertEquals(2500, todaySummary.zoneUpperBound)
+    }
+
+    @Test
     fun `confirmMeal delegates to repository`() = runTest {
         val vm = buildVm()
         advanceUntilIdle()

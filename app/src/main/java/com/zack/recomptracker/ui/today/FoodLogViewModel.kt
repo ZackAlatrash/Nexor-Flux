@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.repository.DayCalorieSummary
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
 import kotlinx.collections.immutable.ImmutableList
@@ -137,15 +138,17 @@ class FoodLogViewModel(
             combine(
                 logRepository.observeWeekCalories(today.minusDays(6), today),
                 planRepository.observeVersions(),
-            ) { weekMap, versions ->
-                val byDate = PlanHistory.resolve(versions, weekDates)
+                planRepository.preferences,
+            ) { weekMap, versions, prefs ->
+                val fallback = prefs.toPlanTargets()
                 weekDates.map { d ->
+                    val z = PlanHistory.planOnOrFallback(versions, d, fallback)
                     DayCalorieSummary(
                         date = d,
                         calories = weekMap[d] ?: 0,
-                        targetCalories = byDate[d]?.calories ?: 0,
-                        zoneLowerBound = byDate[d]?.zoneLowerBound ?: 0,
-                        zoneUpperBound = byDate[d]?.zoneUpperBound ?: 0,
+                        targetCalories = z.calories,
+                        zoneLowerBound = z.zoneLowerBound,
+                        zoneUpperBound = z.zoneUpperBound,
                     )
                 }.toImmutableList()
             }.collect { summaries -> _uiState.update { it.copy(weekSummary = summaries) } }

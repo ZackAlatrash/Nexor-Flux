@@ -91,8 +91,8 @@ class ExercisePickerViewModel(
 
     fun selectedExercises(): List<Long> = _selected.value.toList()
 
-    suspend fun createCustom(name: String): Long {
-        val id = repository.addCustomExercise(name)
+    suspend fun createCustom(name: String, primaryMuscles: List<String> = emptyList()): Long {
+        val id = repository.addCustomExercise(name, primaryMuscles = primaryMuscles)
         _selected.value = _selected.value + id
         return id
     }

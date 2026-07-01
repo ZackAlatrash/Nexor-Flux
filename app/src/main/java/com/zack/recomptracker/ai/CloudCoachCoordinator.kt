@@ -343,7 +343,7 @@ internal fun mealEditActionSummary(toolName: String, args: Map<String, String>):
     "edit_meal" -> buildString {
         append("Change \"${args["name"].orEmpty()}\"")
         args["grams"]?.toDoubleOrNull()?.let { append(" to ${it.toInt()} g") }
-        args["calories"]?.let { append(" (${it} kcal)") }
+        args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }?.let { append(" ($it kcal)") }
     }
     else -> toolName
 }

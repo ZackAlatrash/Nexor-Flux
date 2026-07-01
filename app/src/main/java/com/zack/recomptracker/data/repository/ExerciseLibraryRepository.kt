@@ -19,7 +19,11 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
 
     open suspend fun getById(id: Long): Exercise? = exerciseDao.getById(id)?.toDomain()
 
-    open suspend fun addCustomExercise(name: String): Long {
+    open suspend fun addCustomExercise(
+        name: String,
+        primaryMuscles: List<String> = emptyList(),
+        secondaryMuscles: List<String> = emptyList(),
+    ): Long {
         val entity = ExerciseEntity(
             source = "user",
             sourceVersion = "1",
@@ -30,8 +34,8 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
             level = null,
             mechanic = null,
             equipment = null,
-            primaryMuscles = "[]",
-            secondaryMuscles = "[]",
+            primaryMuscles = ExerciseLibraryJson.encodeList(primaryMuscles),
+            secondaryMuscles = ExerciseLibraryJson.encodeList(secondaryMuscles),
             instructions = "[]",
             images = "[]",
             userCreated = true,

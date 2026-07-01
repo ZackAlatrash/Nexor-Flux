@@ -2,11 +2,13 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.data.local.dao.ExerciseDao
 import com.zack.recomptracker.data.local.entity.ExerciseEntity
+import com.zack.recomptracker.domain.workout.ExerciseLibraryJson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.mockito.kotlin.mock
 
 class ExerciseLibraryRepositoryTest {
 
@@ -86,5 +88,42 @@ class ExerciseLibraryRepositoryTest {
 
         assertEquals(1, results.size)
         assertEquals(listOf("quadriceps"), results.first().primaryMuscles)
+    }
+
+    /** Fake DAO that captures the inserted entity and returns a fixed id. */
+    private class CapturingExerciseDao : ExerciseDao by mock() {
+        var inserted: ExerciseEntity? = null
+        override suspend fun insertReturningId(entity: ExerciseEntity): Long {
+            inserted = entity
+            return 42L
+        }
+    }
+
+    @Test
+    fun `addCustomExercise persists specified primary and secondary muscles as json`() = runTest {
+        val dao = CapturingExerciseDao()
+        val repo = ExerciseLibraryRepository(dao)
+
+        val id = repo.addCustomExercise(
+            name = "Cable Y-Raise",
+            primaryMuscles = listOf("Shoulders"),
+            secondaryMuscles = listOf("Back"),
+        )
+
+        assertEquals(42L, id)
+        assertEquals(ExerciseLibraryJson.encodeList(listOf("Shoulders")), dao.inserted!!.primaryMuscles)
+        assertEquals(ExerciseLibraryJson.encodeList(listOf("Back")), dao.inserted!!.secondaryMuscles)
+        assertEquals("Cable Y-Raise", dao.inserted!!.name)
+        assertEquals(true, dao.inserted!!.userCreated)
+    }
+
+    @Test
+    fun `addCustomExercise defaults to empty muscles when none provided`() = runTest {
+        val dao = CapturingExerciseDao()
+        val repo = ExerciseLibraryRepository(dao)
+
+        repo.addCustomExercise("Sled Push")
+
+        assertEquals(ExerciseLibraryJson.encodeList(emptyList()), dao.inserted!!.primaryMuscles)
     }
 }

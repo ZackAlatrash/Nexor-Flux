@@ -191,6 +191,13 @@ fun AppNavGraph(
                         restoreState = true
                     }
                 },
+                onOpenTraining = {
+                    navController.navigate(Routes.Train) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
         composable(

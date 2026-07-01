@@ -96,6 +96,7 @@ private val SUPPORTED_COACH_ACTIONS = setOf(
     com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS,
     com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
     com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG,
+    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_TRAINING,
 )
 
 @Composable
@@ -109,6 +110,7 @@ fun HomeDashboardScreen(
     onOpenStreaks: () -> Unit,
     onOpenFoodLog: () -> Unit,
     onOpenBody: () -> Unit,
+    onOpenTraining: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val coachTodayState by coachTodayViewModel.uiState.collectAsStateWithLifecycle()
@@ -159,6 +161,7 @@ fun HomeDashboardScreen(
                 com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS -> onOpenBody()
                 com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
                 com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG -> onOpenFoodLog()
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_TRAINING -> onOpenTraining()
                 else -> Unit // unmapped action → no navigation (button not shown for these)
             }
         },

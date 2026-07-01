@@ -18,6 +18,7 @@ removed. All planning assumes a cloud model.
 | 5 | [05-market-research.md](05-market-research.md) | How 17 leading apps use AI; what works, what users love/ignore, market gaps, our opportunities (cited). |
 | 6 | [06-ai-product-vision.md](06-ai-product-vision.md) | The redesigned AI: purpose, principles, one-brain-three-surfaces model, when to speak/stay silent. |
 | 7 | [07-roadmap.md](07-roadmap.md) | Prioritized, phased plan (subtract first, then build the proactive spine). |
+| 8 | [08-technical-architecture.md](08-technical-architecture.md) | **The source-of-truth technical architecture** every implementation follows: pipeline, deterministic engine, cloud responsibilities, prompts, service layer, data flow, caching, scheduling, proactive engine, memory, notifications. |
 
 ## The thesis in five lines
 

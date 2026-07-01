@@ -93,6 +93,7 @@ fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
     weeklyReviewViewModel: WeeklyReviewViewModel,
     streakViewModel: StreakViewModel,
+    coachTodayViewModel: CoachTodayViewModel,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStreaks: () -> Unit,
@@ -100,6 +101,8 @@ fun HomeDashboardScreen(
     onOpenBody: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val coachTodayState by coachTodayViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { coachTodayViewModel.onShown() }
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
@@ -136,6 +139,18 @@ fun HomeDashboardScreen(
         onOpenSettings = onOpenSettings,
         onOpenFoodLog = onOpenFoodLog,
         onOpenBody = onOpenBody,
+        coachTodaySignal = coachTodayState.signal,
+        coachTodayText = coachTodayState.displayText,
+        onCoachAction = { type ->
+            when (type) {
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW -> weeklyReviewViewModel.open()
+                com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT -> onOpenBody()
+                com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG -> onOpenFoodLog()
+                else -> Unit // unmapped action → no navigation (button not shown for these)
+            }
+        },
+        onDismissCoach = coachTodayViewModel::dismiss,
         patternInsightState = patternInsightState,
         onRetryPatternInsight = viewModel::retryPatternInsight,
         targetChangeInsightState = targetChangeInsightState,
@@ -197,6 +212,10 @@ fun HomeDashboardContent(
     stepGoal: Int? = null,
     activity: ActivityMetrics = ActivityMetrics(),
     onOpenStreaks: (() -> Unit)? = null,
+    coachTodaySignal: com.zack.recomptracker.domain.coach.CoachSignal? = null,
+    coachTodayText: String = "",
+    onCoachAction: (com.zack.recomptracker.domain.coach.CoachActionType) -> Unit = {},
+    onDismissCoach: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -238,6 +257,18 @@ fun HomeDashboardContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                // Today's Coaching — the single staged winner from the proactive spine. Silent
+                // (renders nothing) when no signal clears the bar; CoachTodaySlot early-returns.
+                if (coachTodaySignal != null) {
+                    item {
+                        CoachTodaySlot(
+                            signal = coachTodaySignal,
+                            displayText = coachTodayText,
+                            onAction = onCoachAction,
+                            onDismiss = onDismissCoach,
+                        )
+                    }
+                }
                 if (state.patternInsightContext != null &&
                     (patternInsightState is AiInsightState.Generating ||
                         patternInsightState is AiInsightState.Ready ||

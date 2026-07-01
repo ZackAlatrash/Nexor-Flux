@@ -19,8 +19,17 @@ private val Context.coachInboxDataStore by preferencesDataStore(name = "coach_in
  * concrete DataStore class. [CoachInboxRepository] is the production implementation.
  */
 interface CoachInbox {
+    /**
+     * The currently staged winner as an observable stream, or `null` when nothing is staged. The
+     * Today's Coaching slot collects this: `null` → the slot renders nothing (silence).
+     */
+    val current: Flow<CoachSignal?>
+
     /** Persist [signal] as the featured winner, or clear the slot when `null`. */
     suspend fun stage(signal: CoachSignal?)
+
+    /** Clear the current signal (user acted on / dismissed it). */
+    suspend fun dismissCurrent()
 
     /** Record that [dedupKey] was surfaced on [date] (feeds the cooldown ledger). */
     suspend fun markSeen(dedupKey: String, date: LocalDate)
@@ -55,7 +64,7 @@ class CoachInboxRepository(
      * The currently staged winner, or `null` when nothing is staged or the persisted value fails to
      * deserialize (logged, not thrown — a corrupt payload must never crash the surface).
      */
-    val current: Flow<CoachSignal?> = context.coachInboxDataStore.data.map { prefs ->
+    override val current: Flow<CoachSignal?> = context.coachInboxDataStore.data.map { prefs ->
         val raw = prefs[Keys.CurrentSignal]
         val decoded = CoachInboxSerialization.decodeSignal(raw)
         if (decoded == null && !raw.isNullOrBlank()) {
@@ -76,7 +85,7 @@ class CoachInboxRepository(
     }
 
     /** Clear the current signal (user acted on / dismissed it). */
-    suspend fun dismissCurrent() {
+    override suspend fun dismissCurrent() {
         context.coachInboxDataStore.edit { it.remove(Keys.CurrentSignal) }
     }
 

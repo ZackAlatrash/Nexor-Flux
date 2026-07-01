@@ -14,6 +14,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.zack.recomptracker.ui.LocalAppContainer
+import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardScreen
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.dashboard.HomeDashboardScreen
@@ -160,6 +161,7 @@ fun AppNavGraph(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
                 weeklyReviewViewModel = viewModel<WeeklyReviewViewModel>(factory = factory),
                 streakViewModel = viewModel<StreakViewModel>(factory = factory),
+                coachTodayViewModel = viewModel<CoachTodayViewModel>(factory = factory),
                 onOpenCoach = {
                     navController.navigate(TopLevelDestination.Coach.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }

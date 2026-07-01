@@ -44,10 +44,19 @@ class CoachDigestCoordinatorTest {
         var staged: CoachSignal? = null
         var stageCalls = 0
         val seen = seed.toMutableMap()
+        private val currentFlow = MutableStateFlow<CoachSignal?>(null)
+
+        override val current = currentFlow
 
         override suspend fun stage(signal: CoachSignal?) {
             staged = signal
+            currentFlow.value = signal
             stageCalls++
+        }
+
+        override suspend fun dismissCurrent() {
+            staged = null
+            currentFlow.value = null
         }
 
         override suspend fun markSeen(dedupKey: String, date: LocalDate) {

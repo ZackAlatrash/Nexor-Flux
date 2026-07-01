@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
+import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
@@ -504,6 +505,11 @@ private class AppViewModelFactory(
             StreakViewModel::class.java -> StreakViewModel(
                 streakRepository = container.streakRepository,
                 userProfileStore = container.userProfilePreferencesStore,
+            )
+            CoachTodayViewModel::class.java -> CoachTodayViewModel(
+                inbox = container.coachInboxRepository,
+                phrase = container.coachPhrasingService::phrase,
+                onVisibleRefresh = container.coachDigestCoordinator::runIfDue,
             )
             OnboardingViewModel::class.java -> OnboardingViewModel(
                 userProfileStore = container.userProfilePreferencesStore,

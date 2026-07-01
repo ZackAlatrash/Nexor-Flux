@@ -250,4 +250,23 @@ class CoachPushEmitterTest {
         assertTrue(shown)
         assertTrue("celebration flagged on the recorded event", history.recorded.single().isCelebration)
     }
+
+    @Test
+    fun `a weekly check-in celebration is recorded as a non-celebration`() = runTest {
+        val notifier = FakeNotifier()
+        val history = FakeHistory()
+        val emitter = emitter(notifier, history, FakePrefs(weekly = true, ambient = false))
+
+        // A RECOMP_WIN weekly winner is a celebration signal, but the weekly-report channel must not
+        // consume the ambient celebration budget — record it with isCelebration = false.
+        val shown = emitter.emit(
+            signal(kind = SignalKind.RECOMP_WIN, tier = SignalTier.P0,
+                action = CoachAction(CoachActionType.OPEN_WEEKLY_REVIEW, "Open review")),
+            isWeeklyCheckIn = true,
+        )
+
+        assertTrue(shown)
+        assertEquals(CoachPushChannel.WEEKLY_CHECK_IN, notifier.shown.single().channel)
+        assertFalse("weekly push must not burn the celebration slot", history.recorded.single().isCelebration)
+    }
 }

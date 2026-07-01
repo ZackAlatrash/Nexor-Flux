@@ -75,9 +75,12 @@ class CoachPushEmitter(
         val channel = if (isWeeklyCheckIn) CoachPushChannel.WEEKLY_CHECK_IN else CoachPushChannel.COACHING
         val payload = CoachPushPayload.from(signal, channel) ?: return false
 
-        // 5. Show, then record only what actually went out.
+        // 5. Show, then record only what actually went out. A weekly check-in is the weekly-report
+        // channel, not an ambient celebration, so it never burns the celebration budget even when its
+        // winner is a RECOMP_WIN — record it as a non-celebration.
         if (!notifier.show(payload)) return false
-        pushHistory.record(PushEvent(timestamp = at, isCelebration = candidate.isCelebration))
+        val recordedCelebration = candidate.isCelebration && !isWeeklyCheckIn
+        pushHistory.record(PushEvent(timestamp = at, isCelebration = recordedCelebration))
         return true
     }
 

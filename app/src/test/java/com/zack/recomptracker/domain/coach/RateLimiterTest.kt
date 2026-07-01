@@ -120,6 +120,23 @@ class RateLimiterTest {
         assertEquals(PushRejectionReason.ELIGIBLE, decision.reason)
     }
 
+    @Test
+    fun `a push earlier today blocks a second push the same day`() {
+        // A daily P0 already fired this morning; a later push (e.g. the weekly one) must not stack.
+        val decision = limiter.decide(p0(), now, recentPushes = listOf(event(daysAgo = 0, hour = 9)))
+        assertFalse(decision.allowed)
+        assertEquals(PushRejectionReason.CONSECUTIVE_DAY, decision.reason)
+    }
+
+    @Test
+    fun `the same-day rule also blocks a weekly check-in when a push already fired today`() {
+        // The weekly push is deferred (not stamped) so it retries next run; today it must stay silent.
+        val weekly = PushCandidate(SignalTier.P0, isCelebration = true, isWeeklyCheckIn = true)
+        val decision = limiter.decide(weekly, now, recentPushes = listOf(event(daysAgo = 0, hour = 9)))
+        assertFalse(decision.allowed)
+        assertEquals(PushRejectionReason.CONSECUTIVE_DAY, decision.reason)
+    }
+
     // ── Cap 4: ≤1 celebration per rolling 7-day window ───────────────────────────
 
     @Test
@@ -142,6 +159,17 @@ class RateLimiterTest {
     fun `a celebration older than the window does not block a new celebration`() {
         val history = listOf(event(daysAgo = 9, isCelebration = true))
         val decision = limiter.decide(p0(isCelebration = true), now, recentPushes = history)
+        assertTrue(decision.allowed)
+        assertEquals(PushRejectionReason.ELIGIBLE, decision.reason)
+    }
+
+    @Test
+    fun `a weekly check-in celebration is exempt from the celebration cap`() {
+        // The weekly report is the guaranteed spine push — a prior ambient celebration this week
+        // must NOT block it (a RECOMP_WIN weekly winner is a celebration).
+        val history = listOf(event(daysAgo = 3, isCelebration = true))
+        val weekly = PushCandidate(SignalTier.P0, isCelebration = true, isWeeklyCheckIn = true)
+        val decision = limiter.decide(weekly, now, recentPushes = history)
         assertTrue(decision.allowed)
         assertEquals(PushRejectionReason.ELIGIBLE, decision.reason)
     }

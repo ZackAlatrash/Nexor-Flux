@@ -10,6 +10,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The proactive-coaching *spine*: it runs the deterministic pipeline once and stages the single
@@ -53,14 +55,25 @@ class CoachDigestCoordinator(
 ) {
 
     /**
+     * Serialises [run] so the WorkManager worker ([CoachDigestWorker]) and the foreground [runIfDue]
+     * path can never evaluate the pipeline concurrently. Without it two overlapping runs could both
+     * clear the RateLimiter's cooldown before either records a push, double-pushing the same winner
+     * and briefly breaking the caps. Mirrors [com.zack.recomptracker.data.health.HealthSyncCoordinator].
+     */
+    private val runLock = Mutex()
+
+    /**
      * Runs the full deterministic pipeline once and stages the outcome. Suspends until complete so
-     * background work ([CoachDigestWorker]) can report a result.
+     * background work ([CoachDigestWorker]) can report a result. Serialised by [runLock]: a second
+     * concurrent caller waits for the first to finish (and thus sees its recorded push).
      *
      * - AI disabled → stage `null` and return (no build, no evaluate — the coach is fully off).
      * - otherwise → build the snapshot, evaluate detectors, select one winner, stage it (or `null`
      *   for silence), mark a real winner's dedupKey seen, and stamp today's run for the debounce.
      */
-    suspend fun run() {
+    suspend fun run() = runLock.withLock { runUnlocked() }
+
+    private suspend fun runUnlocked() {
         if (!aiEnabledFlow.first()) {
             inbox.stage(null)
             return

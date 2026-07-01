@@ -15,8 +15,10 @@ import kotlinx.serialization.Serializable
  * 1. **Quiet hours** — reject if `now`'s time-of-day falls inside [QuietHours] (default 22:00–07:00,
  *    wrapping midnight). Checked first so a nudge never fires while the user is asleep, whatever else.
  * 2. **Tier gate** — only a P0 signal *or* the weekly check-in may push; any other candidate is rejected.
- * 3. **Consecutive-day rule** — reject if a push was already emitted yesterday (calendar-day adjacency).
- * 4. **Celebration cap** — ≤1 celebration push per rolling 7-day window.
+ * 3. **One-push-a-day rule** — reject if a push was already emitted today (no same-day doubles) or
+ *    yesterday (never on consecutive days). Net effect: ≤1 push/day and never on adjacent days.
+ * 4. **Celebration cap** — ≤1 *ambient* celebration push per rolling 7-day window; the weekly
+ *    check-in is exempt (it's the guaranteed spine push and doesn't consume the celebration budget).
  * 5. **Weekly cap** — ≤2 pushes per rolling 7-day window.
  *
  * The rolling window is "within the last 7 days of `now`": a [PushEvent] counts when its timestamp is
@@ -43,9 +45,12 @@ class RateLimiter {
             return PushDecision(false, PushRejectionReason.NOT_ELIGIBLE_TIER)
         }
 
-        // 3. Consecutive-day rule — nothing the day after a push.
-        val yesterday = now.toLocalDate().minusDays(1)
-        if (recentPushes.any { it.date == yesterday }) {
+        // 3. One-push-a-day rule — reject if a push already landed today (no same-day doubles, e.g. a
+        // daily P0 then the weekly push in one run) or yesterday (never on consecutive days). A weekly
+        // push deferred by this rule isn't stamped, so it simply retries on the next eligible run.
+        val today = now.toLocalDate()
+        val yesterday = today.minusDays(1)
+        if (recentPushes.any { it.date == today || it.date == yesterday }) {
             return PushDecision(false, PushRejectionReason.CONSECUTIVE_DAY)
         }
 
@@ -53,8 +58,12 @@ class RateLimiter {
         val windowStart = now.minusDays(WINDOW_DAYS)
         val inWindow = recentPushes.filter { !it.timestamp.isBefore(windowStart) }
 
-        // 4. Celebration cap — at most one celebration push per rolling week.
-        if (candidate.isCelebration && inWindow.count { it.isCelebration } >= MAX_CELEBRATIONS_PER_WINDOW) {
+        // 4. Celebration cap — at most one *ambient* celebration push per rolling week. The weekly
+        // check-in is exempt: it's the guaranteed spine push (a RECOMP_WIN weekly winner is a
+        // celebration), so it may fire even when an ambient celebration already went out this week.
+        if (candidate.isCelebration && !candidate.isWeeklyCheckIn &&
+            inWindow.count { it.isCelebration } >= MAX_CELEBRATIONS_PER_WINDOW
+        ) {
             return PushDecision(false, PushRejectionReason.CELEBRATION_CAP_REACHED)
         }
 

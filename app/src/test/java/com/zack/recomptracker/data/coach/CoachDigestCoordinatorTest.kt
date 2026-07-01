@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -204,6 +205,35 @@ class CoachDigestCoordinatorTest {
         assertEquals(1, notifier.shown.size)
         assertEquals(CoachPushChannel.COACHING, notifier.shown.first().channel)
         assertEquals(1, history.recorded.size)
+    }
+
+    @Test
+    fun `two concurrent run calls push and record only once`() = runTest {
+        // The WorkManager worker and the foreground path can call run() concurrently. runLock must
+        // serialise them so the same P0 winner isn't double-pushed before either records.
+        val inbox = FakeInbox()
+        val notifier = FakeNotifier()
+        val history = FakeHistory()
+        val prefs = FakeNotifPrefs(ambient = true)
+        val emitter = CoachPushEmitter(notifier, history, prefs) { nowInstant }
+        val p0 = signal(
+            kind = SignalKind.FAT_GAIN_WARNING, tier = SignalTier.P0, dedupKey = "FGW|w27",
+        ).copy(action = com.zack.recomptracker.domain.coach.CoachAction(
+            com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT, "Log weight"))
+        val coordinator = CoachDigestCoordinator(
+            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            engine = engineWith(p0), selector = SignalSelector(), inbox = inbox,
+            aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
+            appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
+        )
+
+        val a = launch { coordinator.run() }
+        val b = launch { coordinator.run() }
+        a.join()
+        b.join()
+
+        assertEquals("winner pushed exactly once despite two concurrent runs", 1, notifier.shown.size)
+        assertEquals("exactly one push recorded", 1, history.recorded.size)
     }
 
     @Test

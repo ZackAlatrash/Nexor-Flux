@@ -610,6 +610,7 @@ private class AppViewModelFactory(
                 coachNotificationPreferences = container.coachNotificationPreferences,
                 coachInbox = container.coachInboxRepository,
                 coachNotifier = container.coachNotifier,
+                coachJourney = container.coachJourneyStore,
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,

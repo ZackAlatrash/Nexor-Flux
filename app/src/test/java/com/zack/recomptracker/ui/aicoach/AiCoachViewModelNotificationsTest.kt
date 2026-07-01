@@ -106,6 +106,7 @@ class AiCoachViewModelNotificationsTest {
             coachNotificationPreferences = notifierPrefs,
             coachInbox = mock<com.zack.recomptracker.data.coach.CoachInbox>(),
             coachNotifier = mock<com.zack.recomptracker.data.coach.CoachNotifier>(),
+            coachJourney = mock<com.zack.recomptracker.data.coach.CoachJourney>(),
         )
     }
 

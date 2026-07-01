@@ -59,6 +59,7 @@ class CoachToolExecutor(
         "edit_routine" -> editRoutine(args)
         "create_exercise" -> createExercise(args)
         "delete_meal" -> deleteMeal(args)
+        "edit_meal" -> editMeal(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -671,6 +672,59 @@ class CoachToolExecutor(
                 """{"success":true,"deleted":"${entry.name.esc()}","calories":${entry.calories}}"""
             }
         }
+    }
+
+    private suspend fun editMeal(args: Map<String, String>): String {
+        val name = args["name"]?.trim().orEmpty()
+        if (name.isBlank()) return """{"error":"edit_meal requires 'name'"}"""
+        val date = args["date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: dateProvider.today()
+        val matches = scoredMealMatches(name, logRepository.getDay(date).meals)
+        if (matches.isEmpty()) return """{"error":"no logged meal matching '${name.esc()}' on $date"}"""
+        if (matches.size > 1) return """{"needs_disambiguation":true,"matches":[${matches.take(5).joinToString(",") { mealMatchJson(it) }}]}"""
+        val entry = matches.first()
+
+        var cal = entry.calories
+        var p = entry.proteinG
+        var c = entry.carbsG
+        var f = entry.fatG
+        var amt = entry.amountGrams
+
+        val grams = args["grams"]?.toDoubleOrNull()
+        if (grams != null && grams > 0) {
+            val base = entry.basePer100Calories
+            if (base != null) {
+                cal = (base * grams / 100.0).toInt()
+                p = (entry.basePer100ProteinG ?: 0.0) * grams / 100.0
+                c = (entry.basePer100CarbsG ?: 0.0) * grams / 100.0
+                f = (entry.basePer100FatG ?: 0.0) * grams / 100.0
+                amt = grams
+            } else if (entry.amountGrams != null && entry.amountGrams > 0) {
+                val scale = grams / entry.amountGrams
+                cal = (entry.calories * scale).toInt()
+                p = entry.proteinG * scale
+                c = entry.carbsG * scale
+                f = entry.fatG * scale
+                amt = grams
+            }
+            // else: no gram basis — fall through; require explicit macros below.
+        }
+
+        // Explicit macro args override any rescale (integer-as-double tolerated, matching log_meal).
+        args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }?.let { cal = it }
+        args["protein_g"]?.toDoubleOrNull()?.let { p = it }
+        args["carbs_g"]?.toDoubleOrNull()?.let { c = it }
+        args["fat_g"]?.toDoubleOrNull()?.let { f = it }
+
+        val nothingChanged = cal == entry.calories && p == entry.proteinG && c == entry.carbsG &&
+            f == entry.fatG && amt == entry.amountGrams
+        if (nothingChanged) {
+            return """{"error":"nothing to change — provide grams or calories/macros (this entry has no gram basis to rescale)"}"""
+        }
+
+        logRepository.updateMealEntry(
+            entry.copy(calories = cal, proteinG = p, carbsG = c, fatG = f, amountGrams = amt),
+        )
+        return """{"success":true,"updated":"${entry.name.esc()}","calories":$cal}"""
     }
 
     private companion object {

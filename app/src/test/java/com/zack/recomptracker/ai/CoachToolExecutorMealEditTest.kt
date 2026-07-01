@@ -74,4 +74,56 @@ class CoachToolExecutorMealEditTest {
         assertTrue(json.contains("error"))
         verify(log, org.mockito.kotlin.never()).deleteMeal(org.mockito.kotlin.any())
     }
+
+    @Test
+    fun `edit_meal rescales a library-food entry by grams using basePer100`() = runTest {
+        val log = mock<LogRepository>()
+        // 100 g base = 165 kcal / 31 P / 0 C / 4 F ; currently logged at 100 g.
+        whenever(log.getDay(fixedDate)).thenReturn(dayLog(fixedDate, listOf(
+            meal(1, "Chicken breast", calories = 165, grams = 100.0, protein = 31.0, carbs = 0.0, fat = 4.0,
+                basePer100Cal = 165, basePer100P = 31.0, basePer100C = 0.0, basePer100F = 4.0),
+        )))
+        val json = executor(log).execute("edit_meal", mapOf("name" to "chicken breast", "grams" to "200"))
+        assertTrue(json.contains("\"success\":true"))
+        val captor = org.mockito.kotlin.argumentCaptor<MealEntryEntity>()
+        verify(log).updateMealEntry(captor.capture())
+        val saved = captor.firstValue
+        assertTrue(saved.amountGrams == 200.0)
+        assertTrue(saved.calories == 330)      // 165 * 200/100
+        assertTrue(saved.proteinG == 62.0)     // 31 * 2
+    }
+
+    @Test
+    fun `edit_meal rescales a non-library entry proportionally from amountGrams`() = runTest {
+        val log = mock<LogRepository>()
+        whenever(log.getDay(fixedDate)).thenReturn(dayLog(fixedDate, listOf(
+            meal(1, "Leftover curry", calories = 400, grams = 200.0, protein = 20.0, carbs = 40.0, fat = 15.0),
+        )))
+        executor(log).execute("edit_meal", mapOf("name" to "curry", "grams" to "100"))
+        val captor = org.mockito.kotlin.argumentCaptor<MealEntryEntity>()
+        verify(log).updateMealEntry(captor.capture())
+        assertTrue(captor.firstValue.calories == 200)   // 400 * 100/200
+        assertTrue(captor.firstValue.amountGrams == 100.0)
+    }
+
+    @Test
+    fun `edit_meal applies explicit macro overrides`() = runTest {
+        val log = mock<LogRepository>()
+        whenever(log.getDay(fixedDate)).thenReturn(dayLog(fixedDate, listOf(meal(1, "Protein shake", calories = 200))))
+        executor(log).execute("edit_meal", mapOf("name" to "shake", "calories" to "150", "protein_g" to "30"))
+        val captor = org.mockito.kotlin.argumentCaptor<MealEntryEntity>()
+        verify(log).updateMealEntry(captor.capture())
+        assertTrue(captor.firstValue.calories == 150)
+        assertTrue(captor.firstValue.proteinG == 30.0)
+    }
+
+    @Test
+    fun `edit_meal resolves against a past date when provided`() = runTest {
+        val past = LocalDate.of(2026, 6, 1)
+        val log = mock<LogRepository>()
+        whenever(log.getDay(past)).thenReturn(dayLog(past, listOf(meal(9, "Bagel", calories = 250, date = past))))
+        val json = executor(log).execute("edit_meal", mapOf("name" to "bagel", "calories" to "300", "date" to "2026-06-01"))
+        assertTrue(json.contains("\"success\":true"))
+        verify(log).updateMealEntry(org.mockito.kotlin.any())
+    }
 }

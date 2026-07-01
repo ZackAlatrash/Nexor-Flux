@@ -412,6 +412,7 @@ class AppContainer(context: Context) {
             dateProvider = dateProvider,
             handoffStore = coachHandoffStore,
             journey = coachJourneyStore,
+            coachMemory = coachMemoryStore,
         ),
         scope = appScope,
         knowledgeInjector = knowledgeInjector,

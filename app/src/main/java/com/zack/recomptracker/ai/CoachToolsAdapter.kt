@@ -32,6 +32,7 @@ internal const val COACH_PROMPT_GUIDELINES: String =
         "- Reuse existing library exercises whenever search returns a match, even if the wording differs (e.g. 'incline dumbbell press' matches 'Dumbbell Incline Bench Press'). Only call create_exercise when search_exercises returns NO matches at all.\n" +
         "- To change a routine: call get_routines first, then edit_routine with ONLY the changes (add/remove/retarget/new_name). Existing exercises are preserved.\n" +
         "- When you must create a new exercise (search found nothing), ask for the muscle group(s) if the user didn't say.\n" +
+        "- You have a memory of facts about the user (diet, injuries, preferences). Use remember when they ask you to remember something and forget when they ask you to drop it. Respect these facts in your advice, and don't store the same fact twice.\n" +
         "- Stay on topic: nutrition, body composition, training, and recovery."
 
 /**
@@ -47,6 +48,7 @@ class CoachToolsAdapter(
     private val dateProvider: DateProvider,
     private val handoffStore: CoachHandoffStore,
     private val journey: CoachJourney = NoopCoachJourney,
+    private val coachMemory: com.zack.recomptracker.data.coach.CoachMemory = com.zack.recomptracker.data.coach.NoopCoachMemory,
 ) : CoachReadTools {
 
     override suspend fun execute(name: String, args: Map<String, String>): String =
@@ -58,7 +60,11 @@ class CoachToolsAdapter(
         val today = dateProvider.today()
         val todaySummary = withContext(Dispatchers.IO) { toolExecutor.execute("get_today_summary", emptyMap()) }
         val journeyNarrative = journey.journeyNarrative()
-        val base = buildPrompt(prefs, profile, today, todaySummary, journeyNarrative)
+        val memoryBlock = coachMemory.all()
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString("\n") { "- ${it.text}" }
+            .orEmpty()
+        val base = buildPrompt(prefs, profile, today, todaySummary, journeyNarrative, memoryBlock)
         val handoff = handoffStore.consume()
         return if (handoff.isNullOrBlank()) base else base + "\n\n" + handoff
     }
@@ -69,6 +75,7 @@ class CoachToolsAdapter(
         today: java.time.LocalDate,
         todaySummary: String,
         journeyNarrative: String,
+        memoryBlock: String,
     ): String = buildString {
         val yesterday = today.minusDays(1)
         val dayName = today.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercaseChar() }
@@ -99,6 +106,12 @@ class CoachToolsAdapter(
             appendLine("=== YOUR JOURNEY SO FAR ===")
             appendLine(journeyNarrative)
             appendLine("=== END JOURNEY ===")
+        }
+        if (memoryBlock.isNotBlank()) {
+            appendLine()
+            appendLine("=== WHAT I KNOW ABOUT YOU ===")
+            appendLine(memoryBlock)
+            appendLine("=== END ===")
         }
         appendLine()
         appendLine("Guidelines:")

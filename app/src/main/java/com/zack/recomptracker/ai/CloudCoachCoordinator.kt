@@ -278,6 +278,8 @@ class CloudCoachCoordinator(
         "create_exercise" -> "Creating exercise…"
         "delete_meal" -> "Removing meal…"
         "edit_meal" -> "Updating meal…"
+        "remember" -> "Updating memory…"
+        "forget" -> "Updating memory…"
         else -> "Running tool…"
     }
 

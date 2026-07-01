@@ -53,6 +53,7 @@ class CoachToolExecutor(
         "search_web" -> searchWeb(args)
         "get_routines" -> getRoutines()
         "search_exercises" -> searchExercises(args)
+        "create_routine" -> createRoutine(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -432,6 +433,44 @@ class CoachToolExecutor(
         return """{"matches":[$matches]}"""
     }
 
+    /** Resolve an exercise name to a library id (best fuzzy match), or null if none. */
+    private suspend fun resolveExerciseId(name: String): Long? {
+        val lib = exerciseLibraryRepository ?: return null
+        val hits = lib.search(name)
+        return hits.firstOrNull { it.name.equals(name, ignoreCase = true) }?.id
+            ?: hits.firstOrNull { it.name.startsWith(name, ignoreCase = true) }?.id
+            ?: hits.firstOrNull()?.id
+    }
+
+    /** Build `sets` uniform planned-set drafts carrying the same optional reps/weight target. */
+    private fun uniformSets(sets: Int, reps: Int?, weightKg: Double?): List<PlannedSetDraft> =
+        (1..sets.coerceIn(1, 20)).map { PlannedSetDraft(targetReps = reps, targetWeightKg = weightKg) }
+
+    private suspend fun createRoutine(args: Map<String, String>): String {
+        val repo = workoutRepository ?: return """{"error":"routines unavailable"}"""
+        val name = args["name"]?.trim().orEmpty()
+        if (name.isBlank()) return """{"error":"create_routine requires 'name'"}"""
+        val parsed = runCatching {
+            toolJson.decodeFromString<List<RoutineExerciseArg>>(args["exercises"] ?: "[]")
+        }.getOrElse { return """{"error":"could not parse 'exercises' list"}""" }
+        if (parsed.isEmpty()) return """{"error":"a routine needs at least one exercise"}"""
+
+        val lines = mutableListOf<NewWorkoutLine>()
+        val unresolved = mutableListOf<String>()
+        for (e in parsed) {
+            val id = resolveExerciseId(e.name)
+            if (id == null) { unresolved += e.name; continue }
+            lines += NewWorkoutLine(exerciseId = id, plannedSets = uniformSets(e.sets, e.reps, e.weight_kg))
+        }
+        if (unresolved.isNotEmpty()) {
+            return """{"error":"not found in library: ${unresolved.joinToString(", ") { it.esc() }}. Use create_exercise or pick another name."}"""
+        }
+        return runCatching {
+            repo.saveWorkout(name, null, lines)
+            """{"success":true,"routine":"${name.esc()}","exercises":${lines.size}}"""
+        }.getOrElse { """{"error":"${(it.message ?: "could not save routine").esc()}"}""" }
+    }
+
     // ── Training / body-trend helpers ────────────────────────────────────────────
 
     private fun parseDate(raw: String): LocalDate? = runCatching { LocalDate.parse(raw) }.getOrNull()
@@ -483,3 +522,19 @@ class CoachToolExecutor(
         .replace("\r", "\\r")
         .replace("\t", "\\t")
 }
+
+@kotlinx.serialization.Serializable
+private data class RoutineExerciseArg(
+    val name: String,
+    val sets: Int,
+    val reps: Int? = null,
+    val weight_kg: Double? = null,
+)
+
+@kotlinx.serialization.Serializable
+private data class RetargetArg(
+    val name: String,
+    val sets: Int? = null,
+    val reps: Int? = null,
+    val weight_kg: Double? = null,
+)

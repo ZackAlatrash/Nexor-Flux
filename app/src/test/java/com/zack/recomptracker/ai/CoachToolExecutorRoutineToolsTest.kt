@@ -92,4 +92,54 @@ class CoachToolExecutorRoutineToolsTest {
         val json = executor(FakeWorkoutRepo(), lib).execute("search_exercises", mapOf("query" to "bench"))
         assertTrue(json.contains("Barbell Bench Press"))
     }
+
+    @Test
+    fun `create_routine resolves exercises and saves with correct set counts`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(1, "Barbell Bench Press")))
+        val repo = FakeWorkoutRepo()
+        val json = executor(repo, lib).execute(
+            "create_routine",
+            mapOf("name" to "Push Day", "exercises" to """[{"name":"bench press","sets":4,"reps":8}]"""),
+        )
+        assertTrue(json.contains("\"success\":true"))
+        val saved = repo.lastSaved!!
+        assertTrue(saved.first == "Push Day")
+        assertTrue(saved.third.size == 1)
+        assertTrue(saved.third[0].plannedSets.size == 4)
+        assertTrue(saved.third[0].plannedSets.all { it.targetReps == 8 })
+    }
+
+    @Test
+    fun `create_routine allows an exercise with only a set count and no reps`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(1, "Barbell Bench Press")))
+        val repo = FakeWorkoutRepo()
+        executor(repo, lib).execute(
+            "create_routine",
+            mapOf("name" to "Push Day", "exercises" to """[{"name":"bench press","sets":3}]"""),
+        )
+        val line = repo.lastSaved!!.third[0]
+        assertTrue(line.plannedSets.size == 3)
+        assertTrue(line.plannedSets.all { it.targetReps == null })
+    }
+
+    @Test
+    fun `create_routine reports unresolved exercises without saving`() = runTest {
+        val repo = FakeWorkoutRepo()
+        val json = executor(repo, FakeExerciseLibrary(emptyList())).execute(
+            "create_routine",
+            mapOf("name" to "Push Day", "exercises" to """[{"name":"Zercher Thruster","sets":3}]"""),
+        )
+        assertTrue(json.contains("error"))
+        assertTrue(json.contains("Zercher Thruster"))
+        assertTrue(repo.lastSaved == null)
+    }
+
+    @Test
+    fun `create_routine surfaces validation errors from the repository`() = runTest {
+        val json = executor(FakeWorkoutRepo(), FakeExerciseLibrary(emptyList())).execute(
+            "create_routine",
+            mapOf("name" to "Empty", "exercises" to "[]"),
+        )
+        assertTrue(json.contains("error"))
+    }
 }

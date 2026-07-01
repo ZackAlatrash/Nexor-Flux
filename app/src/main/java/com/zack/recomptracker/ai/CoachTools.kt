@@ -48,5 +48,12 @@ val MEAL_EDIT_TOOL_SCHEMAS: List<String> = listOf(
     """{"name":"edit_meal","description":"Change a meal the user already logged. Pass 'grams' to rescale its macros, or pass calories/macros directly to override. Identified by name; pass 'date' if not today.","parameters":{"type":"object","properties":{"name":{"type":"string"},"grams":{"type":"number"},"calories":{"type":"integer"},"protein_g":{"type":"number"},"carbs_g":{"type":"number"},"fat_g":{"type":"number"},"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":["name"]}}""",
 )
 
+/** Cloud-coach memory tools. Deliberately NOT in COACH_WRITE_TOOLS — low-stakes, reversible in the
+ *  Coach memory screen, so they run without a confirmation dialog. */
+val MEMORY_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"remember","description":"Save a fact about the user to your memory (diet, injuries, preferences, context) when they ask you to remember something. It will show in the user's Coach memory screen.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"The fact to remember, e.g. 'Vegetarian' or 'Bad left knee — no barbell squats'"}},"required":["text"]}}""",
+    """{"name":"forget","description":"Remove a fact from your memory when the user asks you to forget it. Matches the closest stored fact.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"The fact to forget"}},"required":["text"]}}""",
+)
+
 /** The cloud coach's full tool list: shared tools + web search + routine management + meal edits. */
-val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS + MEAL_EDIT_TOOL_SCHEMAS
+val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS + MEAL_EDIT_TOOL_SCHEMAS + MEMORY_TOOL_SCHEMAS

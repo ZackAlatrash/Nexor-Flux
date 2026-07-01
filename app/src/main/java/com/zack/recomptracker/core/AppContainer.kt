@@ -103,6 +103,7 @@ import com.zack.recomptracker.data.coach.CoachContextCache
 import com.zack.recomptracker.data.coach.CoachDigestCoordinator
 import com.zack.recomptracker.data.coach.CoachInboxRepository
 import com.zack.recomptracker.data.coach.CoachJourneyStore
+import com.zack.recomptracker.data.coach.CoachMemoryStore
 import com.zack.recomptracker.data.coach.AndroidCoachNotifier
 import com.zack.recomptracker.data.coach.CoachNotificationPreferences
 import com.zack.recomptracker.data.coach.CoachPushEmitter
@@ -251,6 +252,11 @@ class AppContainer(context: Context) {
     private val webSearchProvider = TavilyWebSearchProvider(
         keyProvider = { secureKeyStore.getWebSearchKey() },
     )
+    // Coach freeform memory: user-editable facts the coach reads into its chat prompt and can
+    // write via remember/forget. Constructed once here; also wired into the adapter (below) and
+    // the CoachMemoryViewModel factory.
+    val coachMemoryStore = CoachMemoryStore(context.applicationContext, dateProvider)
+
     private val coachToolExecutor = CoachToolExecutor(
         logRepository = logRepository,
         planRepository = planRepository,
@@ -259,6 +265,7 @@ class AppContainer(context: Context) {
         workoutSessionRepository = workoutSessionRepository,
         workoutRepository = workoutRepository,
         exerciseLibraryRepository = exerciseLibraryRepository,
+        coachMemory = coachMemoryStore,
     )
     private val gemmaCoachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
         serviceHolder = gemmaServiceHolder,

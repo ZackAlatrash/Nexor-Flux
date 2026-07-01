@@ -2,6 +2,7 @@ package com.zack.recomptracker.ai
 
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.coach.CoachMemory
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
@@ -38,6 +39,7 @@ class CoachToolExecutor(
     private val workoutSessionRepository: WorkoutSessionRepository? = null,
     private val workoutRepository: WorkoutRepository? = null,
     private val exerciseLibraryRepository: ExerciseLibraryRepository? = null,
+    private val coachMemory: CoachMemory? = null,
 ) {
     private val adherenceCalculator = AdherenceCalculator()
     private val trendCalculator = TrendCalculator()
@@ -60,6 +62,8 @@ class CoachToolExecutor(
         "create_exercise" -> createExercise(args)
         "delete_meal" -> deleteMeal(args)
         "edit_meal" -> editMeal(args)
+        "remember" -> remember(args)
+        "forget" -> forget(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -725,6 +729,22 @@ class CoachToolExecutor(
             entry.copy(calories = cal, proteinG = p, carbsG = c, fatG = f, amountGrams = amt),
         )
         return """{"success":true,"updated":"${entry.name.esc()}","calories":$cal}"""
+    }
+
+    private suspend fun remember(args: Map<String, String>): String {
+        val text = args["text"]?.trim().orEmpty()
+        if (text.isBlank()) return """{"error":"remember requires 'text'"}"""
+        val mem = coachMemory ?: return """{"error":"memory unavailable"}"""
+        val entry = mem.add(text) ?: return """{"error":"could not remember that"}"""
+        return """{"success":true,"remembered":"${entry.text.esc()}"}"""
+    }
+
+    private suspend fun forget(args: Map<String, String>): String {
+        val text = args["text"]?.trim().orEmpty()
+        if (text.isBlank()) return """{"error":"forget requires 'text'"}"""
+        val mem = coachMemory ?: return """{"error":"memory unavailable"}"""
+        val removed = mem.removeMatching(text) ?: return """{"error":"nothing in memory matching '${text.esc()}'"}"""
+        return """{"success":true,"forgot":"${removed.text.esc()}"}"""
     }
 
     private companion object {

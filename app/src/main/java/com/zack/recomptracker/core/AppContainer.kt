@@ -103,7 +103,11 @@ import com.zack.recomptracker.data.coach.CoachContextCache
 import com.zack.recomptracker.data.coach.CoachDigestCoordinator
 import com.zack.recomptracker.data.coach.CoachInboxRepository
 import com.zack.recomptracker.data.coach.CoachJourneyStore
+import com.zack.recomptracker.data.coach.AndroidCoachNotifier
+import com.zack.recomptracker.data.coach.CoachNotificationPreferences
+import com.zack.recomptracker.data.coach.CoachPushEmitter
 import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
+import com.zack.recomptracker.domain.coach.RateLimiter
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
 import com.zack.recomptracker.domain.coach.SignalSelector
 import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
@@ -422,6 +426,20 @@ class AppContainer(context: Context) {
     /** Stage-2 phrasing decoration for the featured signal, on demand when a surface opens. */
     val coachPhrasingService = CoachPhrasingService(openAiCompatClient) { cloudConfigFlow.value }
 
+    // ── Phase-5 push layer ───────────────────────────────────────────────────────────
+    val pushHistoryStore = com.zack.recomptracker.data.coach.PushHistoryStore(
+        context.applicationContext, dateProvider,
+    )
+    val coachNotificationPreferences = CoachNotificationPreferences(context.applicationContext)
+    val coachNotifier = AndroidCoachNotifier(context.applicationContext)
+    val coachPushEmitter = CoachPushEmitter(
+        notifier = coachNotifier,
+        pushHistory = pushHistoryStore,
+        preferences = coachNotificationPreferences,
+        rateLimiter = RateLimiter(),
+        now = { java.time.LocalDateTime.now() },
+    )
+
     val coachDigestCoordinator = CoachDigestCoordinator(
         contextProvider = { coachContextCache.get() },
         engine = coachSignalEngine,
@@ -432,6 +450,8 @@ class AppContainer(context: Context) {
         appScope = appScope,
         journey = coachJourneyStore,
         scheduler = WorkManagerCoachDigestScheduler(context.applicationContext),
+        pushEmitter = coachPushEmitter,
+        notificationPreferences = coachNotificationPreferences,
     )
 
     // ── Routers (handed out to ViewModels) ──────────────────────────────────────────

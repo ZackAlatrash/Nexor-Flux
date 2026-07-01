@@ -48,6 +48,8 @@ class CoachDigestCoordinator(
     private val journey: CoachJourney = NoopCoachJourney,
     private val scheduler: CoachDigestScheduler = NoopCoachDigestScheduler,
     private val cooldownDays: Int = SignalSelector.DEFAULT_COOLDOWN_DAYS,
+    private val pushEmitter: CoachPushEmitter? = null,
+    private val notificationPreferences: CoachNotifierPreferences? = null,
 ) {
 
     /**
@@ -84,8 +86,35 @@ class CoachDigestCoordinator(
             // with the weekly rhythm. Reuse the latest weekly-review signature the snapshot already
             // built (no new heavy computation); fall back to today's ISO date when no review exists.
             journey.recordFiredSignal(winner, currentWeekSignature(ctx, today))
+            // Event/daily push: only a P0 winner ever clears the RateLimiter's tier gate; the emitter
+            // is a no-op for anything else. Injected + fully gated, so this is safe on every run.
+            pushEmitter?.emit(winner, isWeeklyCheckIn = false)
         }
+        emitWeeklyCheckInPush(signals, ctx, today)
         inbox.setLastRunDate(today)
+    }
+
+    /**
+     * Fire the single weekly check-in push at most once per new week. Gated on the latest weekly-review
+     * signature differing from the last one we pushed for (reusing the §9 `lastSeen*` chain), so a daily
+     * digest run re-firing the same week is a no-op. The pushed signal is the WEEKLY-surface winner from
+     * this run's catalog; the emitter still applies prefs + RateLimiter + the decision-attached gate.
+     */
+    private suspend fun emitWeeklyCheckInPush(
+        signals: List<com.zack.recomptracker.domain.coach.CoachSignal>,
+        ctx: CoachContext,
+        today: java.time.LocalDate,
+    ) {
+        val emitter = pushEmitter ?: return
+        val prefs = notificationPreferences ?: return
+        val signature = ctx.history.weeklyReviews.lastOrNull()?.signature ?: return
+        if (signature == prefs.lastPushedWeeklySignature()) return
+        val weeklyWinner = selector.selectForSurface(
+            CoachSurface.WEEKLY, signals, inbox.seenLedger(), today, cooldownDays,
+        ).winner ?: return
+        if (emitter.emit(weeklyWinner, isWeeklyCheckIn = true)) {
+            prefs.setLastPushedWeeklySignature(signature)
+        }
     }
 
     /** The week signature history is keyed by: the latest stored weekly review's, or today's date. */

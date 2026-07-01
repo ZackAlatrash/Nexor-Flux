@@ -147,6 +147,122 @@ class CoachDigestCoordinatorTest {
         )
     }
 
+    // ── push fakes (Phase 5) ─────────────────────────────────────────────────────────
+
+    private class FakeNotifier(private val shows: Boolean = true) : CoachNotifier {
+        val shown = mutableListOf<CoachPushPayload>()
+        override fun ensureChannels() = Unit
+        override fun show(payload: CoachPushPayload): Boolean { shown += payload; return shows }
+    }
+
+    private class FakeHistory : PushHistory {
+        val recorded = mutableListOf<com.zack.recomptracker.domain.coach.PushEvent>()
+        override suspend fun record(event: com.zack.recomptracker.domain.coach.PushEvent) { recorded += event }
+        override suspend fun recentPushes() = recorded.toList()
+    }
+
+    private class FakeNotifPrefs(
+        private val weekly: Boolean = true,
+        private val ambient: Boolean = true,
+        var lastWeeklySig: String = "",
+    ) : CoachNotifierPreferences {
+        override val weeklyCheckInPushEnabled = MutableStateFlow(weekly)
+        override val ambientNudgesEnabled = MutableStateFlow(ambient)
+        override suspend fun quietHours() = com.zack.recomptracker.domain.coach.QuietHours()
+        override suspend fun setWeeklyCheckInPushEnabled(enabled: Boolean) = Unit
+        override suspend fun setAmbientNudgesEnabled(enabled: Boolean) = Unit
+        override suspend fun setQuietHours(startHour: Int, endHour: Int) = Unit
+        override suspend fun lastPushedWeeklySignature() = lastWeeklySig
+        override suspend fun setLastPushedWeeklySignature(signature: String) { lastWeeklySig = signature }
+    }
+
+    // Mid-day mid-week so quiet-hours/consecutive-day gates pass by default.
+    private val nowInstant = java.time.LocalDateTime.of(2026, 7, 1, 13, 0)
+
+    // ── push wiring ──────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a P0 today winner is pushed via the ambient channel`() = runTest {
+        val inbox = FakeInbox()
+        val notifier = FakeNotifier()
+        val history = FakeHistory()
+        val prefs = FakeNotifPrefs(ambient = true)
+        val emitter = CoachPushEmitter(notifier, history, prefs) { nowInstant }
+        val p0 = signal(
+            kind = SignalKind.FAT_GAIN_WARNING, tier = SignalTier.P0, dedupKey = "FGW|w27",
+        ).copy(action = com.zack.recomptracker.domain.coach.CoachAction(
+            com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT, "Log weight"))
+        val coordinator = CoachDigestCoordinator(
+            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            engine = engineWith(p0), selector = SignalSelector(), inbox = inbox,
+            aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
+            appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
+        )
+
+        coordinator.run()
+
+        assertEquals(1, notifier.shown.size)
+        assertEquals(CoachPushChannel.COACHING, notifier.shown.first().channel)
+        assertEquals(1, history.recorded.size)
+    }
+
+    @Test
+    fun `a non-P0 today winner is not pushed`() = runTest {
+        val inbox = FakeInbox()
+        val notifier = FakeNotifier()
+        val history = FakeHistory()
+        val prefs = FakeNotifPrefs(ambient = true)
+        val emitter = CoachPushEmitter(notifier, history, prefs) { nowInstant }
+        val coordinator = CoachDigestCoordinator(
+            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            engine = engineWith(signal(tier = SignalTier.P2)), selector = SignalSelector(), inbox = inbox,
+            aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
+            appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
+        )
+
+        coordinator.run()
+
+        assertTrue("P2 does not clear the tier gate", notifier.shown.isEmpty())
+    }
+
+    @Test
+    fun `weekly check-in fires once for a new signature and not again`() = runTest {
+        val notifier = FakeNotifier()
+        val history = FakeHistory()
+        val prefs = FakeNotifPrefs(weekly = true)
+        val emitter = CoachPushEmitter(notifier, history, prefs) { nowInstant }
+        val weeklySignal = signal(
+            kind = SignalKind.WEEKLY_VERDICT, tier = SignalTier.P2, dedupKey = "WV|w25",
+            surface = CoachSurface.WEEKLY,
+        ).copy(action = com.zack.recomptracker.domain.coach.CoachAction(
+            com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW, "Open review"))
+        fun makeCoordinator(inbox: CoachInbox) = CoachDigestCoordinator(
+            contextProvider = contextWithReview(signature = "2026-06-22|2400|HOLD"),
+            engine = engineWith(weeklySignal), selector = SignalSelector(), inbox = inbox,
+            aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
+            appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
+        )
+
+        makeCoordinator(FakeInbox()).run()
+        assertEquals("weekly push fired for the new signature", 1, notifier.shown.size)
+        assertEquals(CoachPushChannel.WEEKLY_CHECK_IN, notifier.shown.first().channel)
+        assertEquals("2026-06-22|2400|HOLD", prefs.lastWeeklySig)
+
+        // Re-run same week -> no second weekly push (idempotent per signature).
+        makeCoordinator(FakeInbox()).run()
+        assertEquals("same signature -> no second weekly push", 1, notifier.shown.size)
+    }
+
+    @Test
+    fun `no push emitter injected leaves the digest a pure stager`() = runTest {
+        val inbox = FakeInbox()
+        val coordinator = coordinator(inbox = inbox, engine = engineWith(signal(tier = SignalTier.P0)), scope = this)
+
+        coordinator.run() // must not throw with no emitter/prefs
+
+        assertEquals(1, inbox.stageCalls)
+    }
+
     // ── run() ────────────────────────────────────────────────────────────────────
 
     @Test

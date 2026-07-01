@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -55,6 +57,7 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
 fun AiCoachScreen(
     viewModel: AiCoachViewModel,
     onBack: () -> Unit,
+    onOpenCoachMemory: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
@@ -137,6 +140,53 @@ fun AiCoachScreen(
             }
 
             if (state.aiInsightsEnabled) {
+                // ── Coach memory ──────────────────────────────────────────────
+                item { SectionLabel("Memory") }
+                item {
+                    TintedCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onOpenCoachMemory),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(accent.tintedSurface),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Psychology,
+                                    contentDescription = null,
+                                    tint = accent.inkBase,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "What the coach knows about you",
+                                    style = AppType.cardTitle,
+                                    color = appColors.textPrimary,
+                                )
+                                Text(
+                                    text = "Facts it remembers and uses in chat",
+                                    style = AppType.label,
+                                    color = appColors.textMuted,
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = appColors.textVeryMuted,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+
                 // ── Engine selection (radio cards) ────────────────────────────
                 item { SectionLabel("Engine") }
                 item {

@@ -68,6 +68,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
+import com.zack.recomptracker.ui.aicoach.CoachMemoryViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
@@ -625,6 +626,7 @@ private class AppViewModelFactory(
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,
             )
+            CoachMemoryViewModel::class.java -> CoachMemoryViewModel(container.coachMemoryStore)
             WeeklyReviewViewModel::class.java -> WeeklyReviewViewModel(
                 WeeklyReviewConfig(
                     cloudActiveFlow = container.cloudBriefingActive,

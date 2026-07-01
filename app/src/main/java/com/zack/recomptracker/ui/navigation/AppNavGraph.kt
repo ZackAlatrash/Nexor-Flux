@@ -33,6 +33,8 @@ import com.zack.recomptracker.ui.profile.ProfileScreen
 import com.zack.recomptracker.ui.profile.ProfileViewModel
 import com.zack.recomptracker.ui.aicoach.AiCoachScreen
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
+import com.zack.recomptracker.ui.aicoach.CoachMemoryScreen
+import com.zack.recomptracker.ui.aicoach.CoachMemoryViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceScreen
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.integrations.IntegrationsScreen
@@ -92,6 +94,7 @@ object Routes {
     const val Profile      = "profile"
     const val Appearance   = "appearance"
     const val AiCoach      = "ai_coach"
+    const val CoachMemory  = "coach_memory"
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
     const val Train          = "train"
@@ -675,6 +678,17 @@ fun AppNavGraph(
         ) {
             AiCoachScreen(
                 viewModel = viewModel<AiCoachViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+                onOpenCoachMemory = { navController.navigate(Routes.CoachMemory) },
+            )
+        }
+        composable(
+            route = Routes.CoachMemory,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            CoachMemoryScreen(
+                viewModel = viewModel<CoachMemoryViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

@@ -23,6 +23,11 @@ import com.zack.recomptracker.domain.adherence.NutritionDay
 import com.zack.recomptracker.domain.coach.TrainingDerivations
 import com.zack.recomptracker.domain.coach.TrendDirection
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import com.zack.recomptracker.domain.food.MealSuggester
+import com.zack.recomptracker.domain.food.SuggestMacros
+import com.zack.recomptracker.domain.food.SuggestionFocus
+import com.zack.recomptracker.domain.food.SuggestionFood
+import com.zack.recomptracker.domain.food.SuggestionResult
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.Exercise
@@ -51,6 +56,7 @@ class CoachToolExecutor(
         "get_training_summary" -> getTrainingSummary()
         "get_body_trends" -> getBodyTrends()
         "search_food_library" -> searchFoodLibrary(args)
+        "suggest_meals" -> suggestMeals(args)
         "log_meal" -> logMeal(args)
         "log_metric" -> logMetric(args)
         "update_calorie_target" -> updateCalorieTarget(args)
@@ -745,6 +751,45 @@ class CoachToolExecutor(
         val mem = coachMemory ?: return """{"error":"memory unavailable"}"""
         val removed = mem.removeMatching(text) ?: return """{"error":"nothing in memory matching '${text.esc()}'"}"""
         return """{"success":true,"forgot":"${removed.text.esc()}"}"""
+    }
+
+    private suspend fun suggestMeals(args: Map<String, String>): String {
+        val date = args["date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: dateProvider.today()
+        val prefs = planRepository.preferences.first()
+        val eaten = logRepository.getDay(date).totals
+        val remaining = SuggestMacros(
+            calories = (prefs.targetCalories - eaten.calories).coerceAtLeast(0),
+            proteinG = (prefs.targetProteinG - eaten.proteinG).coerceAtLeast(0.0),
+            carbsG = (prefs.targetCarbsG - eaten.carbsG).coerceAtLeast(0.0),
+            fatG = (prefs.targetFatG - eaten.fatG).coerceAtLeast(0.0),
+        )
+        val proteinMetRatio = if (prefs.targetProteinG > 0) eaten.proteinG / prefs.targetProteinG else 1.0
+        val library = logRepository.getSavedFoods().map {
+            SuggestionFood(
+                name = it.name, servingLabel = it.servingName, gramsPerServing = it.householdServingGrams,
+                calories = it.calories, proteinG = it.proteinG, carbsG = it.carbsG, fatG = it.fatG,
+            )
+        }
+        return serializeSuggestions(MealSuggester.suggest(remaining, proteinMetRatio, library))
+    }
+
+    private fun serializeSuggestions(r: SuggestionResult): String {
+        val focus = when (r.focus) {
+            SuggestionFocus.PROTEIN -> "protein"; SuggestionFocus.CARBS -> "carbs"
+            SuggestionFocus.CALORIES -> "calories"; SuggestionFocus.NONE -> "none"
+        }
+        val rem = """{"calories":${r.remaining.calories},"protein_g":${r.remaining.proteinG},"carbs_g":${r.remaining.carbsG},"fat_g":${r.remaining.fatG}}"""
+        if (r.focus == SuggestionFocus.NONE) {
+            return """{"remaining":$rem,"focus":"none","message":"on target"}"""
+        }
+        val sugg = r.suggestions.joinToString(",") { s ->
+            """{"name":"${s.name.esc()}","amount":"${s.amountLabel.esc()}","calories":${s.calories},"protein_g":${s.proteinG},"carbs_g":${s.carbsG},"fat_g":${s.fatG},"exact":true}"""
+        }
+        val combos = r.combos.joinToString(",") { c ->
+            val items = c.items.joinToString(",") { """{"name":"${it.name.esc()}","amount":"${it.amountLabel.esc()}"}""" }
+            """{"items":[$items],"calories":${c.calories},"protein_g":${c.proteinG},"carbs_g":${c.carbsG},"fat_g":${c.fatG}}"""
+        }
+        return """{"remaining":$rem,"focus":"$focus","suggestions":[$sugg],"combos":[$combos],"library_thin":${r.libraryThin}}"""
     }
 
     private companion object {

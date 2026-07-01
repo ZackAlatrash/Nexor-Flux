@@ -55,5 +55,10 @@ val MEMORY_TOOL_SCHEMAS: List<String> = listOf(
     """{"name":"forget","description":"Remove a fact from your memory when the user asks you to forget it. Matches the closest stored fact.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"The fact to forget"}},"required":["text"]}}""",
 )
 
+/** Cloud-coach meal-suggestion tool. Read-only — not in COACH_WRITE_TOOLS. */
+val SUGGESTION_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"suggest_meals","description":"Get what the user could eat to hit their remaining macros for the day. Returns remaining calories/macros, the focus macro (protein until it's ~met, then carbs), portioned suggestions from their food library (exact macros), and combos. Use for 'what should I eat', 'how do I hit my protein', 'I have calories left'.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":[]}}""",
+)
+
 /** The cloud coach's full tool list: shared tools + web search + routine management + meal edits. */
-val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS + MEAL_EDIT_TOOL_SCHEMAS + MEMORY_TOOL_SCHEMAS
+val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS + MEAL_EDIT_TOOL_SCHEMAS + MEMORY_TOOL_SCHEMAS + SUGGESTION_TOOL_SCHEMAS

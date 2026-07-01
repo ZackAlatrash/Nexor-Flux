@@ -1,5 +1,6 @@
 package com.zack.recomptracker.domain.food
 
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 enum class SuggestionFocus { PROTEIN, CARBS, CALORIES, NONE }
@@ -82,12 +83,16 @@ object MealSuggester {
         if (perServingFocus <= 0.0 || food.calories <= 0) return null
         var servings = (FILL_FRACTION * remainingFocus) / perServingFocus
         if (remainingCalories > 0) servings = minOf(servings, remainingCalories.toDouble() / food.calories)
-        servings = (servings * 2.0).roundToInt() / 2.0
+        // Floor to the nearest 0.5 (never round UP past the calorie cap), with a 0.5 minimum.
+        servings = floor(servings * 2.0) / 2.0
         if (servings < 0.5) servings = 0.5
+        val calories = (food.calories * servings).roundToInt()
+        // If even the 0.5 minimum blows the remaining calories, this food doesn't fit — drop it.
+        if (remainingCalories > 0 && calories > remainingCalories) return null
         return MealSuggestion(
             name = food.name,
             amountLabel = amountLabel(food, servings),
-            calories = (food.calories * servings).roundToInt(),
+            calories = calories,
             proteinG = round1(food.proteinG * servings),
             carbsG = round1(food.carbsG * servings),
             fatG = round1(food.fatG * servings),

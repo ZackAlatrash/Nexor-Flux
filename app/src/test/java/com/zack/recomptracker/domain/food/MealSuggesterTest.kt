@@ -58,6 +58,15 @@ class MealSuggesterTest {
         assertTrue(r.suggestions.all { it.calories <= 100 })
     }
 
+    @Test fun `drops a food whose smallest half-serving exceeds remaining calories`() {
+        val r = MealSuggester.suggest(
+            SuggestMacros(100, 40.0, 0.0, 20.0), proteinMetRatio = 0.5,
+            library = listOf(food("Steak", 300, 30.0, 0.0, 20.0)),  // 0.5 serving = 150 kcal > 100 left
+        )
+        assertTrue(r.suggestions.none { it.name == "Steak" })
+        assertTrue(r.suggestions.all { it.calories <= 100 })
+    }
+
     @Test fun `builds a protein-plus-carb combo when both are short, within calories`() {
         val r = MealSuggester.suggest(
             SuggestMacros(900, 50.0, 80.0, 20.0), proteinMetRatio = 0.3,

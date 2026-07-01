@@ -165,7 +165,10 @@ class CoachToolExecutorRoutineToolsTest {
             "edit_routine",
             mapOf("name" to "Push Day", "retarget" to """[{"name":"Bench Press","sets":5}]"""),
         )
-        assertTrue(repo.lastUpdated!!.third[0].plannedSets.size == 5)
+        val sets = repo.lastUpdated!!.third[0].plannedSets
+        assertTrue(sets.size == 5)
+        // Reps target (8 from the template) must survive a sets-only retarget — not reset to null.
+        assertTrue(sets.all { it.targetReps == 8 })
     }
 
     @Test

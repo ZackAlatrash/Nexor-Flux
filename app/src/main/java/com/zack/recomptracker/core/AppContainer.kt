@@ -608,6 +608,8 @@ private class AppViewModelFactory(
                 openAiCompatClient = container.openAiCompatClient,
                 coachDigestCoordinator = container.coachDigestCoordinator,
                 coachNotificationPreferences = container.coachNotificationPreferences,
+                coachInbox = container.coachInboxRepository,
+                coachNotifier = container.coachNotifier,
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,

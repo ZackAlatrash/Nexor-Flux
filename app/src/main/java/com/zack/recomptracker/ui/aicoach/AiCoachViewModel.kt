@@ -51,6 +51,9 @@ class AiCoachViewModel(
     private val openAiCompatClient: OpenAiCompatClient,
     private val coachDigestCoordinator: com.zack.recomptracker.data.coach.CoachDigestCoordinator,
     private val coachNotificationPreferences: com.zack.recomptracker.data.coach.CoachNotifierPreferences,
+    // DEBUG ONLY (temporary — remove with triggerDebugCelebrationAndPush before merge).
+    private val coachInbox: com.zack.recomptracker.data.coach.CoachInbox,
+    private val coachNotifier: com.zack.recomptracker.data.coach.CoachNotifier,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AiCoachUiState())
     val uiState: StateFlow<AiCoachUiState> = _uiState.asStateFlow()
@@ -195,6 +198,51 @@ class AiCoachViewModel(
     fun setModel(variant: ModelVariant) = aiInsightCoordinator.setSelectedModel(variant)
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
+
+    /**
+     * DEBUG ONLY (temporary — remove before merge, along with the constructor params and the
+     * BuildConfig.DEBUG button in AiCoachScreen). Stages a fake PR-win celebration into the Today
+     * slot (so the warm gold card shows on Home) and fires a real test push through the notifier,
+     * bypassing the RateLimiter/caps, so both surfaces can be verified on-device.
+     */
+    fun triggerDebugCelebrationAndPush() {
+        viewModelScope.launch {
+            val signal = com.zack.recomptracker.domain.coach.CoachSignal(
+                kind = com.zack.recomptracker.domain.coach.SignalKind.NEW_PR,
+                tier = com.zack.recomptracker.domain.coach.SignalTier.P0,
+                category = com.zack.recomptracker.domain.coach.SignalCategory.TRAINING,
+                severity = 90,
+                facts = com.zack.recomptracker.domain.coach.SignalFacts(
+                    mapOf("lift" to "Bench press", "e1rm_kg" to "95"),
+                ),
+                verdict = "New bench press PR — 82.5 kg for 5, your best yet.",
+                action = com.zack.recomptracker.domain.coach.CoachAction(
+                    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_TRAINING,
+                    "See your lifts",
+                ),
+                rationale = com.zack.recomptracker.domain.coach.SignalRationale(
+                    confidence = com.zack.recomptracker.domain.coach.Confidence.HIGH,
+                ),
+                dedupKey = "DEBUG_NEW_PR",
+                surface = com.zack.recomptracker.domain.coach.CoachSurface.TODAY,
+                fallbackText = "New bench press PR — 82.5 kg for 5. Nice work.",
+            )
+            coachInbox.stage(signal)
+            coachNotifier.ensureChannels()
+            val shown = com.zack.recomptracker.data.coach.CoachPushPayload
+                .from(signal, com.zack.recomptracker.data.coach.CoachPushChannel.COACHING)
+                ?.let { coachNotifier.show(it) } ?: false
+            _uiState.update {
+                it.copy(
+                    message = if (shown) {
+                        "Debug: celebration staged on Home + push sent."
+                    } else {
+                        "Debug: celebration staged on Home. Push blocked — grant notification permission."
+                    },
+                )
+            }
+        }
+    }
 
     /**
      * Format a [QuietHours] window for the read-only settings row, e.g. `10 PM – 7 AM`. Uses a

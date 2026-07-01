@@ -329,6 +329,19 @@ fun AiCoachScreen(
                         )
                     }
                 }
+                // DEBUG ONLY (temporary — remove before merge). Fires a fake PR celebration into
+                // the Home Today slot + a real test push so both can be verified on-device.
+                if (com.zack.recomptracker.BuildConfig.DEBUG) {
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = viewModel::triggerDebugCelebrationAndPush,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("DEBUG: fire celebration + push")
+                        }
+                    }
+                }
             }
         }
     }

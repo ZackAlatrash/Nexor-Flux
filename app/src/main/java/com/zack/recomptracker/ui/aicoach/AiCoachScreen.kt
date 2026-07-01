@@ -304,6 +304,31 @@ fun AiCoachScreen(
                         }
                     }
                 }
+
+                // ── Notifications (quiet-by-default opt-out) ──────────────────
+                item { SectionLabel("Notifications") }
+                item {
+                    TintedCard {
+                        NotificationSettingRow(
+                            title = "Weekly check-in",
+                            subtitle = "One push a week when your review is ready",
+                            checked = state.weeklyCheckInPushEnabled,
+                            onCheckedChange = viewModel::setWeeklyCheckInPush,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        NotificationSettingRow(
+                            title = "Ambient nudges",
+                            subtitle = "Rare P0 alerts and celebrations. Off by default",
+                            checked = state.ambientNudgesEnabled,
+                            onCheckedChange = viewModel::setAmbientNudges,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        QuietHoursRow(
+                            subtitle = "No pushes during these hours",
+                            windowDisplay = state.quietHoursDisplay,
+                        )
+                    }
+                }
             }
         }
     }

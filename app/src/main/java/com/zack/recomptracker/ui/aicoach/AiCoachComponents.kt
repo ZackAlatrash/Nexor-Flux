@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,8 @@ import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.VioletToggle
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
@@ -406,6 +409,63 @@ internal fun CloudStatusLine(
     ) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
         Text(label, fontSize = 12.sp, color = dot.copy(alpha = 0.95f), lineHeight = 16.sp)
+    }
+}
+
+// ── Notification setting rows (Phase 5 — quiet-by-default opt-out) ────────────────
+
+/**
+ * A labelled toggle row for a single notification preference, styled to match the "Enable AI"
+ * master toggle: a title + supporting subtitle on the left, a [VioletToggle] on the right.
+ * Rendered inside a [TintedCard] by the caller (AI-feature surface).
+ */
+@Composable
+internal fun NotificationSettingRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val appColors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = AppType.cardTitle, color = appColors.textPrimary)
+            Text(text = subtitle, style = AppType.label, color = appColors.textMuted)
+        }
+        VioletToggle(
+            label = "",
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.width(64.dp),
+        )
+    }
+}
+
+/**
+ * The read-only quiet-hours row: title + subtitle + the configured window on the trailing edge.
+ * Read-only for now — there is no existing in-app time-range picker pattern to reuse, and the
+ * window is editable via the data layer / defaults. See the task note.
+ */
+@Composable
+internal fun QuietHoursRow(
+    subtitle: String,
+    windowDisplay: String,
+) {
+    val appColors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = "Quiet hours", style = AppType.cardTitle, color = appColors.textPrimary)
+            Text(text = subtitle, style = AppType.label, color = appColors.textMuted)
+        }
+        Text(text = windowDisplay, style = AppType.cardTitle, color = appColors.textSecondary)
     }
 }
 

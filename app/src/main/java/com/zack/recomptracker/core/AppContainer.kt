@@ -607,6 +607,7 @@ private class AppViewModelFactory(
                 secureKeyStore = container.secureKeyStore,
                 openAiCompatClient = container.openAiCompatClient,
                 coachDigestCoordinator = container.coachDigestCoordinator,
+                coachNotificationPreferences = container.coachNotificationPreferences,
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,

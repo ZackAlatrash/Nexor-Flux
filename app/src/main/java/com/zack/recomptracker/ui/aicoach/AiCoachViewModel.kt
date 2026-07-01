@@ -37,6 +37,11 @@ data class AiCoachUiState(
     val cloudHasWebSearchKey: Boolean = false,
     val testConnectionResult: String? = null,
     val testingConnection: Boolean = false,
+    // ── Phase-5 notification prefs (quiet-by-default opt-out surface) ──────────
+    val weeklyCheckInPushEnabled: Boolean = true,
+    val ambientNudgesEnabled: Boolean = false,
+    /** The configured quiet window, pre-formatted for display (e.g. "10 PM – 7 AM"). */
+    val quietHoursDisplay: String = "",
 )
 
 class AiCoachViewModel(
@@ -45,6 +50,7 @@ class AiCoachViewModel(
     private val secureKeyStore: SecureKeyStore,
     private val openAiCompatClient: OpenAiCompatClient,
     private val coachDigestCoordinator: com.zack.recomptracker.data.coach.CoachDigestCoordinator,
+    private val coachNotificationPreferences: com.zack.recomptracker.data.coach.CoachNotifierPreferences,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AiCoachUiState())
     val uiState: StateFlow<AiCoachUiState> = _uiState.asStateFlow()
@@ -90,6 +96,24 @@ class AiCoachViewModel(
                 _uiState.update { it.copy(cloudHasWebSearchKey = hasWebKey) }
             }
         }
+        // Phase-5 notification toggles: reactive, like the AI/backend toggles above.
+        viewModelScope.launch {
+            combine(
+                coachNotificationPreferences.weeklyCheckInPushEnabled,
+                coachNotificationPreferences.ambientNudgesEnabled,
+            ) { weekly, ambient -> weekly to ambient }
+                .collect { (weekly, ambient) ->
+                    _uiState.update {
+                        it.copy(weeklyCheckInPushEnabled = weekly, ambientNudgesEnabled = ambient)
+                    }
+                }
+        }
+        // Quiet hours is a suspend read (not a flow); seed the display once at startup. It is only
+        // editable via the data layer today, so a one-shot read is sufficient for the read-only row.
+        viewModelScope.launch {
+            val quiet = coachNotificationPreferences.quietHours()
+            _uiState.update { it.copy(quietHoursDisplay = formatQuietHours(quiet)) }
+        }
     }
 
     fun setAiInsights(enabled: Boolean) {
@@ -102,6 +126,16 @@ class AiCoachViewModel(
 
     fun setAiBackend(backend: AiBackend) {
         viewModelScope.launch { uiPreferences.setAiBackend(backend) }
+    }
+
+    /** Toggle the single weekly check-in push (on by default). Mirrors [setAiInsights]. */
+    fun setWeeklyCheckInPush(enabled: Boolean) {
+        viewModelScope.launch { coachNotificationPreferences.setWeeklyCheckInPushEnabled(enabled) }
+    }
+
+    /** Toggle rare P0/celebration ambient nudges (off by default). Mirrors [setAiInsights]. */
+    fun setAmbientNudges(enabled: Boolean) {
+        viewModelScope.launch { coachNotificationPreferences.setAmbientNudgesEnabled(enabled) }
     }
 
     fun setCloudBaseUrl(url: String) {
@@ -161,4 +195,18 @@ class AiCoachViewModel(
     fun setModel(variant: ModelVariant) = aiInsightCoordinator.setSelectedModel(variant)
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
+
+    /**
+     * Format a [QuietHours] window for the read-only settings row, e.g. `10 PM – 7 AM`. Uses a
+     * fixed 12-hour clock with an en-dash separator; hours only (the window is whole-hour by design).
+     */
+    private fun formatQuietHours(quiet: com.zack.recomptracker.domain.coach.QuietHours): String {
+        fun label(time: java.time.LocalTime): String {
+            val hour = time.hour
+            val period = if (hour < 12) "AM" else "PM"
+            val display = when (hour % 12) { 0 -> 12; else -> hour % 12 }
+            return "$display $period"
+        }
+        return "${label(quiet.start)} – ${label(quiet.end)}"
+    }
 }

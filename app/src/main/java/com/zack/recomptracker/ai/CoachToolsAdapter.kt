@@ -27,6 +27,7 @@ internal const val COACH_PROMPT_GUIDELINES: String =
         "- When you use a web result, cite the source URL in your answer. Answer only from logged data, tool results, REFERENCE KNOWLEDGE, and web results you cite; never invent numbers.\n" +
         "- Use markdown when it improves clarity (short lists, bold key numbers).\n" +
         "- To log food, call log_meal(...); the tool checks the food library automatically. To record a metric, call log_metric(...). These actions are confirmed by the user before they run.\n" +
+        "- To fix a logged meal, use delete_meal or edit_meal, identifying it by name; pass a past 'date' if it wasn't today. If the tool returns needs_disambiguation, ask the user which one.\n" +
         "- To build a routine: for EACH exercise, call search_exercises and USE the closest existing match's exact name; then build the ENTIRE routine in ONE create_routine call so the user confirms only once. 'sets' is the number of sets; reps/weight are optional.\n" +
         "- Reuse existing library exercises whenever search returns a match, even if the wording differs (e.g. 'incline dumbbell press' matches 'Dumbbell Incline Bench Press'). Only call create_exercise when search_exercises returns NO matches at all.\n" +
         "- To change a routine: call get_routines first, then edit_routine with ONLY the changes (add/remove/retarget/new_name). Existing exercises are preserved.\n" +

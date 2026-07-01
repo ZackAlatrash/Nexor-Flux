@@ -57,6 +57,20 @@ the 5 links whose data already exists — recomposition signal, e1RM plateau, de
 rest-day nutrition, sleep↔performance (`04-data-utilization.md`).
 - **Verify:** each link fires only on its real signal and drives a concrete action.
 
+**Status (2026-07-01): DONE at the detector layer.** All 5 links are `CoachSignalEngine`
+detectors, each computing every number deterministically and firing only on its real signal
+(verified by review). deload-due (`OPEN_TRAINING`) and sleep↔hunger (informational — no
+sleep-logging action type exists, honest `NONE`) are new `TODAY`-surface detectors reaching the
+"Today's Coaching" slot; recomp / e1RM-plateau / training-day-protein shipped in Phase 2.
+
+**Deferred follow-up — weekly-signal surfacing / engine convergence.** The three Phase-2 links
+are `WEEKLY`-surface, but the only live consumer of engine signals (the digest) filters to
+`TODAY`, so they currently reach no screen. Their intended surface (the weekly check-in) is served
+by the *older* `WeeklyReviewComputer`, not `CoachSignalEngine`. Closing this means either flipping
+those detectors to `TODAY` or making the weekly check-in consume the engine's `WEEKLY` winner
+(the doc-faithful "one engine → both surfaces" convergence, which must de-dupe against
+`WeeklyReviewComputer`'s existing body/training/nutrition verdicts). Tracked as a distinct task.
+
 ## Phase 5 — Journey memory, celebration & respectful push *(the "coach that remembers")*
 - **`CoachJourneyStore`** ledger feeding multi-week narrative into prompts ("3 weeks ago you…").
 - Greenfield **push notifications** (none exist today) built to a decision-attached, opt-outable spec;

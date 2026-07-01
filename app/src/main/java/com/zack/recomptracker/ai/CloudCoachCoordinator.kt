@@ -276,6 +276,8 @@ class CloudCoachCoordinator(
         "create_routine" -> "Creating routine…"
         "edit_routine" -> "Updating routine…"
         "create_exercise" -> "Creating exercise…"
+        "delete_meal" -> "Removing meal…"
+        "edit_meal" -> "Updating meal…"
         else -> "Running tool…"
     }
 
@@ -294,6 +296,7 @@ class CloudCoachCoordinator(
             "log_metric" -> "Save ${args["metric"]} = ${args["value"]}"
             "update_calorie_target" -> "Update daily calorie target to ${args["target_calories"]} kcal"
             "create_routine", "edit_routine", "create_exercise" -> routineActionSummary(toolName, args)
+            "delete_meal", "edit_meal" -> mealEditActionSummary(toolName, args)
             else -> toolName
         }
 
@@ -331,6 +334,16 @@ internal fun routineActionSummary(toolName: String, args: Map<String, String>): 
         val muscles = Regex("\"([^\"]+)\"").findAll(args["primary_muscles"].orEmpty())
             .map { it.groupValues[1] }.toList()
         "Create custom exercise \"${args["name"].orEmpty()}\"" + if (muscles.isNotEmpty()) " (${muscles.joinToString(", ")})" else ""
+    }
+    else -> toolName
+}
+
+internal fun mealEditActionSummary(toolName: String, args: Map<String, String>): String = when (toolName) {
+    "delete_meal" -> "Delete \"${args["name"].orEmpty()}\" from ${args["date"] ?: "today"}'s log"
+    "edit_meal" -> buildString {
+        append("Change \"${args["name"].orEmpty()}\"")
+        args["grams"]?.toDoubleOrNull()?.let { append(" to ${it.toInt()} g") }
+        args["calories"]?.let { append(" (${it} kcal)") }
     }
     else -> toolName
 }

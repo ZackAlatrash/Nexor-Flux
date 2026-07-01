@@ -15,7 +15,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +71,7 @@ fun CoachTodaySlot(
     if (signal.isCelebration) {
         FrostedCard(
             modifier = modifier,
+            contentPadding = 14.dp,
             surfaceTint = appColors.celebrationSurface,
             borderColor = appColors.celebrationBorder,
         ) {
@@ -116,14 +116,14 @@ private fun CoachSlotBody(
 ) {
     val appColors = LocalAppColors.current
     header()
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(6.dp))
     Text(
         text = displayText,
         style = AppType.body,
         color = appColors.textPrimary,
     )
     if (showButton) {
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
         LiquidActionButton(
             text = action.label,
             onClick = { onAction(action.type) },
@@ -163,9 +163,11 @@ private fun CelebrationHeader(onDismiss: () -> Unit) {
 @Composable
 private fun DismissButton(onDismiss: () -> Unit) {
     val appColors = LocalAppColors.current
+    // Compact 32dp target (not the 48dp min) so the header row stays tight — this is a low-stakes,
+    // reversible dismiss affordance, so the smaller touch area is an acceptable trade for density.
     Box(
         modifier = Modifier
-            .minimumInteractiveComponentSize()
+            .size(32.dp)
             .clip(CircleShape)
             .clickable(role = Role.Button, onClick = onDismiss)
             .semantics { contentDescription = "Dismiss coaching" },

@@ -44,6 +44,7 @@ class AiCoachViewModel(
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val secureKeyStore: SecureKeyStore,
     private val openAiCompatClient: OpenAiCompatClient,
+    private val coachDigestCoordinator: com.zack.recomptracker.data.coach.CoachDigestCoordinator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AiCoachUiState())
     val uiState: StateFlow<AiCoachUiState> = _uiState.asStateFlow()
@@ -93,6 +94,10 @@ class AiCoachViewModel(
 
     fun setAiInsights(enabled: Boolean) {
         viewModelScope.launch { uiPreferences.setAiInsights(enabled) }
+        // Schedule/cancel the periodic proactive-coach digest with the toggle (mirrors the Health
+        // Connect sync pattern). run() also self-gates on the preference, so this is belt-and-braces.
+        if (enabled) coachDigestCoordinator.enableBackgroundDigest()
+        else coachDigestCoordinator.disableBackgroundDigest()
     }
 
     fun setAiBackend(backend: AiBackend) {

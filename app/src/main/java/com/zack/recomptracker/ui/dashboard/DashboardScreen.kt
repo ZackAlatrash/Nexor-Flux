@@ -88,6 +88,16 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Coach action types the dashboard can navigate for — a Today's-Coaching button shows only for these
+ *  (mirrors the `onCoachAction` mapping), so a signal never renders a dead button. */
+private val SUPPORTED_COACH_ACTIONS = setOf(
+    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW,
+    com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT,
+    com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS,
+    com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
+    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG,
+)
+
 @Composable
 fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
@@ -144,7 +154,9 @@ fun HomeDashboardScreen(
         onCoachAction = { type ->
             when (type) {
                 com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW -> weeklyReviewViewModel.open()
-                com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT -> onOpenBody()
+                // Weight and steps are both logged in the body check-in.
+                com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT,
+                com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS -> onOpenBody()
                 com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
                 com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG -> onOpenFoodLog()
                 else -> Unit // unmapped action → no navigation (button not shown for these)
@@ -266,6 +278,7 @@ fun HomeDashboardContent(
                             displayText = coachTodayText,
                             onAction = onCoachAction,
                             onDismiss = onDismissCoach,
+                            isActionSupported = { it in SUPPORTED_COACH_ACTIONS },
                         )
                     }
                 }

@@ -4,6 +4,7 @@ import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.domain.coach.CoachContext
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
+import com.zack.recomptracker.domain.coach.CoachSurface
 import com.zack.recomptracker.domain.coach.SignalSelector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -61,7 +62,10 @@ class CoachDigestCoordinator(
         val today = dateProvider.today()
         val ctx = contextProvider()
         val signals = engine.evaluate(ctx)
-        val winner = selector.select(signals, inbox.seenLedger(), today, cooldownDays).winner
+        // The digest feeds the "Today's Coaching" slot, so only TODAY-surface signals are eligible.
+        // WEEKLY-surface signals (e.g. the recomp verdict) belong to the weekly check-in surface and
+        // must not leak into the daily slot.
+        val winner = selector.selectForSurface(CoachSurface.TODAY, signals, inbox.seenLedger(), today, cooldownDays).winner
         inbox.stage(winner)
         if (winner != null) inbox.markSeen(winner.dedupKey, today)
         inbox.setLastRunDate(today)

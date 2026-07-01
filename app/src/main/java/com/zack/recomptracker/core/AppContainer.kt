@@ -562,6 +562,7 @@ private class AppViewModelFactory(
                 aiInsightCoordinator = container.aiInsightCoordinator,
                 secureKeyStore = container.secureKeyStore,
                 openAiCompatClient = container.openAiCompatClient,
+                coachDigestCoordinator = container.coachDigestCoordinator,
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,

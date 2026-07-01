@@ -174,6 +174,37 @@ class CoachDigestCoordinatorTest {
         assertEquals(today, inbox.lastRunDate())
     }
 
+    @Test
+    fun `a WEEKLY-surface signal does not leak into the Today slot`() = runTest {
+        val inbox = FakeInbox()
+        // A high-priority P0 WEEKLY signal (e.g. the recomp verdict) must NOT be staged to Today —
+        // it belongs to the weekly check-in surface.
+        val weeklyOnly = signal(
+            kind = SignalKind.RECOMP_WIN,
+            tier = SignalTier.P0,
+            dedupKey = "RECOMP_WIN|w27",
+            surface = CoachSurface.WEEKLY,
+        )
+        val coordinator = coordinator(inbox = inbox, engine = engineWith(weeklyOnly), scope = this)
+
+        coordinator.run()
+
+        assertNull("WEEKLY signal must not reach the Today slot", inbox.staged)
+        assertEquals(today, inbox.lastRunDate())
+    }
+
+    @Test
+    fun `a TODAY signal is staged even when a higher-tier WEEKLY signal also fires`() = runTest {
+        val inbox = FakeInbox()
+        val weekly = signal(kind = SignalKind.RECOMP_WIN, tier = SignalTier.P0, dedupKey = "RECOMP_WIN|w27", surface = CoachSurface.WEEKLY)
+        val todaySignal = signal(kind = SignalKind.QUIET_WEIGH_INS, tier = SignalTier.P2, dedupKey = "QUIET|w27", surface = CoachSurface.TODAY)
+        val coordinator = coordinator(inbox = inbox, engine = engineWith(weekly, todaySignal), scope = this)
+
+        coordinator.run()
+
+        assertEquals("the TODAY signal wins the Today slot", todaySignal, inbox.staged)
+    }
+
     // ── runIfDue() ─────────────────────────────────────────────────────────────────
 
     @Test

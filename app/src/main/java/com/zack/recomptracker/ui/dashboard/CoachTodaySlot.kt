@@ -52,11 +52,16 @@ fun CoachTodaySlot(
     onAction: (CoachActionType) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Whether the host screen can navigate for this action type — no button is shown otherwise, so
+     *  a signal never renders a dead button. */
+    isActionSupported: (CoachActionType) -> Boolean = { true },
 ) {
     if (signal == null) return
     val appColors = LocalAppColors.current
     val action = signal.action
-    val showButton = action.type != CoachActionType.NONE && action.label.isNotBlank()
+    val showButton = action.type != CoachActionType.NONE &&
+        action.label.isNotBlank() &&
+        isActionSupported(action.type)
 
     TintedCard(modifier = modifier) {
         Row(

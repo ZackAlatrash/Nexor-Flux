@@ -33,6 +33,8 @@ class AiCoachBoundaryTest {
      * is not part of the new coach's phrasing path.
      */
     private val guardedRelativePaths = listOf(
+        "ai/CoachPhrasingService.kt",
+        "ai/CoachPhrasingPromptBuilder.kt",
         "ai/CoachTools.kt",
         "ai/CloudCoachCoordinator.kt",
         "ai/CoachToolExecutor.kt",

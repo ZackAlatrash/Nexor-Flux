@@ -7,9 +7,13 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.toToolJson
 import com.zack.recomptracker.data.repository.DailyMetricsInput
+import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
+import com.zack.recomptracker.data.repository.NewWorkoutLine
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.PlannedSetDraft
+import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
@@ -21,6 +25,7 @@ import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
 class CoachToolExecutor(
@@ -29,9 +34,12 @@ class CoachToolExecutor(
     private val dateProvider: DateProvider,
     private val webSearchProvider: WebSearchProvider? = null,
     private val workoutSessionRepository: WorkoutSessionRepository? = null,
+    private val workoutRepository: WorkoutRepository? = null,
+    private val exerciseLibraryRepository: ExerciseLibraryRepository? = null,
 ) {
     private val adherenceCalculator = AdherenceCalculator()
     private val trendCalculator = TrendCalculator()
+    private val toolJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
     suspend fun execute(name: String, args: Map<String, String>): String = when (name) {
         "get_today_summary" -> getTodaySummary(args)
@@ -43,6 +51,8 @@ class CoachToolExecutor(
         "log_metric" -> logMetric(args)
         "update_calorie_target" -> updateCalorieTarget(args)
         "search_web" -> searchWeb(args)
+        "get_routines" -> getRoutines()
+        "search_exercises" -> searchExercises(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -394,6 +404,32 @@ class CoachToolExecutor(
         val provider = webSearchProvider ?: return """{"error":"web search unavailable"}"""
         val result = provider.search(query) ?: return """{"error":"web search unavailable"}"""
         return result.toToolJson()
+    }
+
+    private suspend fun getRoutines(): String {
+        val repo = workoutRepository ?: return """{"error":"routines unavailable"}"""
+        val routines = repo.observeAll().first()
+        val items = routines.joinToString(",") { r ->
+            val ex = r.exercises.joinToString(",") { line ->
+                val first = line.plannedSets.firstOrNull()
+                """{"name":"${line.exercise.name.esc()}","sets":${line.plannedSets.size}""" +
+                    (first?.targetReps?.let { ""","reps":$it""" } ?: "") +
+                    (first?.targetWeightKg?.let { ""","weight_kg":$it""" } ?: "") + "}"
+            }
+            """{"name":"${r.name.esc()}","exercises":[$ex]}"""
+        }
+        return """{"routines":[$items]}"""
+    }
+
+    private suspend fun searchExercises(args: Map<String, String>): String {
+        val query = args["query"]?.trim().orEmpty()
+        if (query.isBlank()) return """{"error":"search_exercises requires 'query'"}"""
+        val lib = exerciseLibraryRepository ?: return """{"error":"exercise library unavailable"}"""
+        val matches = lib.search(query).take(8).joinToString(",") { e ->
+            """{"name":"${e.name.esc()}","primary_muscles":[${e.primaryMuscles.joinToString(",") { "\"${it.esc()}\"" }}]""" +
+                (e.equipment?.let { ""","equipment":"${it.esc()}"""" } ?: "") + "}"
+        }
+        return """{"matches":[$matches]}"""
     }
 
     // ── Training / body-trend helpers ────────────────────────────────────────────

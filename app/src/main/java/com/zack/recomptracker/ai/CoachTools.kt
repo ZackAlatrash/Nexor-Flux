@@ -22,7 +22,8 @@ val COACH_TOOL_SCHEMAS: List<String> = listOf(
 )
 
 /** Tool names that mutate user data and therefore require explicit confirmation. */
-val COACH_WRITE_TOOLS: Set<String> = setOf("log_meal", "log_metric", "update_calorie_target")
+val COACH_WRITE_TOOLS: Set<String> =
+    setOf("log_meal", "log_metric", "update_calorie_target", "create_routine", "edit_routine", "create_exercise")
 
 /**
  * Web-search tool schema. CLOUD COACH ONLY — never added to the local Gemma tool list (the 2B
@@ -32,5 +33,14 @@ val COACH_WRITE_TOOLS: Set<String> = setOf("log_meal", "log_metric", "update_cal
 val SEARCH_WEB_TOOL_SCHEMA: String =
     """{"name":"search_web","description":"Search the public web for a fact you don't already have — e.g. calories or macros for a restaurant or packaged food that isn't in the user's library, or a general nutrition, supplement, or training question. Returns a short answer plus source URLs. Always cite the source URL in your reply.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"A concise search query, e.g. \"McDonald's Big Mac calories\""}},"required":["query"]}}"""
 
-/** The cloud coach's full tool list: the shared tools plus web search. */
-val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA
+/** Cloud-coach routine-management tools (create/edit routines + custom exercises). */
+val ROUTINE_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"get_routines","description":"List the user's saved training routines with each exercise's name, number of sets, and target reps/weight. Call before editing a routine.","parameters":{"type":"object","properties":{},"required":[]}}""",
+    """{"name":"search_exercises","description":"Search the exercise library by name. Returns up to 8 matches with primary muscles. Use to find real exercises before adding them to a routine.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Exercise name to search for"}},"required":["query"]}}""",
+    """{"name":"create_routine","description":"Create a new training routine. 'sets' is the number of sets for that exercise; 'reps' and 'weight_kg' are optional targets.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Routine name, e.g. 'Push Day'"},"exercises":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"sets":{"type":"integer"},"reps":{"type":"integer"},"weight_kg":{"type":"number"}},"required":["name","sets"]}}},"required":["name","exercises"]}}""",
+    """{"name":"edit_routine","description":"Edit an existing routine by applying only the changes you specify (existing exercises are preserved). Use 'add' to append exercises, 'remove' to drop them by name, 'retarget' to change an exercise's sets/reps/weight, and 'new_name' to rename.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Name of the routine to edit"},"add":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"sets":{"type":"integer"},"reps":{"type":"integer"},"weight_kg":{"type":"number"}},"required":["name","sets"]}},"remove":{"type":"array","items":{"type":"string"}},"retarget":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"sets":{"type":"integer"},"reps":{"type":"integer"},"weight_kg":{"type":"number"}},"required":["name"]}},"new_name":{"type":"string"}},"required":["name"]}}""",
+    """{"name":"create_exercise","description":"Create a custom exercise in the library when the user names one that isn't found. Specify the muscle group(s) it works.","parameters":{"type":"object","properties":{"name":{"type":"string"},"primary_muscles":{"type":"array","items":{"type":"string"}},"secondary_muscles":{"type":"array","items":{"type":"string"}},"equipment":{"type":"string"}},"required":["name","primary_muscles"]}}""",
+)
+
+/** The cloud coach's full tool list: shared tools + web search + routine management. */
+val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS

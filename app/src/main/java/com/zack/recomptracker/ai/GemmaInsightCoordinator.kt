@@ -22,6 +22,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.security.MessageDigest
 
+@Deprecated(
+    "Legacy on-device (Gemma/LiteRT) AI path. Isolated in Phase 0; removed in Phase 6. Do not build " +
+        "the new AI coach on it — see docs/ai-redesign/08-technical-architecture.md §5.",
+)
 class GemmaInsightCoordinator(
     private val context: Context,
     private val aiEnabledFlow: Flow<Boolean>,

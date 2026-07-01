@@ -39,6 +39,10 @@ import kotlinx.coroutines.withContext
  * where each emission is a delta chunk. Text is extracted from each partial [Message]
  * and forwarded to the caller so the UI updates token-by-token as the model generates.
  */
+@Deprecated(
+    "Legacy on-device (Gemma/LiteRT) AI path. Isolated in Phase 0; removed in Phase 6. Do not build " +
+        "the new AI coach on it — see docs/ai-redesign/08-technical-architecture.md §5.",
+)
 class GemmaInsightService(
     private val modelPath: String,
     private val cacheDir: String,

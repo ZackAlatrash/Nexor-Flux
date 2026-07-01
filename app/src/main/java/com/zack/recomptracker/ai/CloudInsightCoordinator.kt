@@ -31,6 +31,11 @@ class CloudInsightCoordinator(
     private val _state = MutableStateFlow<AiInsightState>(AiInsightState.Disabled)
     override val state: StateFlow<AiInsightState> = _state.asStateFlow()
 
+    // LEGACY COUPLING (documented, inert): `selectedModel`/`setSelectedModel` are model-lifecycle
+    // members required by the shared AiInsightCoordinator interface, which only the on-device path
+    // uses. The cloud path has no model to select, so this is an inert stub. It is intentionally NOT
+    // relied on by the new AI coach system (boundary rule, invariant #7). Removed in Phase 6 when the
+    // interface is split and the local stack is deleted. See docs/ai-redesign/08-technical-architecture.md §5.
     private val _selectedModel = MutableStateFlow(ModelVariant.GEMMA_2B)
     override val selectedModel: StateFlow<ModelVariant> = _selectedModel.asStateFlow()
 

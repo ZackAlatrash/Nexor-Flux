@@ -53,13 +53,9 @@ class InsightPromptBuilder {
         appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or the word \"Verdict\"; do not echo this prompt.")
     }
 
-    fun buildProgressTrendPrompt(context: ProgressInsightContext, rich: Boolean = false): String = buildString {
+    fun buildProgressTrendPrompt(context: ProgressInsightContext): String = buildString {
         appendLine("You are a body-recomposition coach interpreting an athlete's progress trends.")
-        if (rich) {
-            appendLine("Write a thorough, cross-signal interpretation (4–6 sentences) of what the combination of trends means for body recomposition. Connect the signals to each other; call out tension or agreement between weight, waist, lifts, and adherence.")
-        } else {
-            appendLine("Write exactly 1–2 short sentences in plain English: name the key signals and what they mean together for recomposition. No preamble or filler.")
-        }
+        appendLine("Write exactly 1–2 short sentences in plain English: name the key signals and what they mean together for recomposition. No preamble or filler.")
         appendLine("Connect the signals to each other and name what they mean together for recomposition.")
         appendLine("Only describe fat loss when waist is trending down; a flat waist means fat is steady, not falling.")
         appendLine("Do NOT recommend changing calories or macros — that decision is made elsewhere. End with exactly ONE thing to keep doing or watch (not two).")
@@ -84,13 +80,9 @@ class InsightPromptBuilder {
         appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
     }
 
-    fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext, rich: Boolean = false): String = buildString {
+    fun buildRecoveryReadinessPrompt(context: RecoveryInsightContext): String = buildString {
         appendLine("You are a training-recovery coach.")
-        if (rich) {
-            appendLine("Write a thorough, cross-signal readiness assessment (4–6 sentences) for the athlete today. Relate sleep, energy, hunger, and soreness to each other and to whether they trained.")
-        } else {
-            appendLine("Write exactly 1–2 short sentences: assess readiness today and give one concrete suggestion. No preamble or filler.")
-        }
+        appendLine("Write exactly 1–2 short sentences: assess readiness today and give one concrete suggestion. No preamble or filler.")
         appendLine("Lead with the SINGLE most decisive signal (even if several point the same way), then give exactly ONE concrete suggestion. Do NOT give medical advice or diagnose anything.")
         appendLine("Frame that signal against the athlete's own recent average when one is given (e.g. \"5 h, below your usual 7.4\"); hedge single-day readings rather than overstating them.")
         appendLine("Respect the trained flag: on a rest day, frame the suggestion around recovery or light movement, not adding hard training.")
@@ -117,13 +109,9 @@ class InsightPromptBuilder {
         appendLine("Now reply with ONLY the coaching sentence(s). Do not print any field label or echo this prompt.")
     }
 
-    fun buildRestOfDayPrompt(context: RestOfDayInsightContext, rich: Boolean = false): String = buildString {
+    fun buildRestOfDayPrompt(context: RestOfDayInsightContext): String = buildString {
         appendLine("You are a nutrition coach advising an athlete on the rest of their day.")
-        if (rich) {
-            appendLine("Write a thorough, cross-signal plan (4–6 sentences): state where they stand, frame the remaining gap, and connect it to meal timing and protein distribution for the rest of the day.")
-        } else {
-            appendLine("Write exactly 1–2 short sentences: state where they stand and name one priority for remaining meals. No preamble or filler.")
-        }
+        appendLine("Write exactly 1–2 short sentences: state where they stand and name one priority for remaining meals. No preamble or filler.")
         appendLine("Open by stating where they stand against plan — calories consumed vs target (or the calorie zone) and, if a percent of the day is given, how much of the day is left — THEN name the single biggest gap (calories or protein) and exactly ONE concrete priority for the remaining meals.")
         appendLine("A NEGATIVE \"remaining\" means they are already OVER target — say \"over\" or \"past target\", never \"short\". When over on calories, steer the remaining meals toward protein-dense, lower-calorie choices.")
         appendLine("Do NOT invent specific foods, brands, or macro numbers beyond what is given. Frame the gap and give general guidance.")

@@ -11,6 +11,10 @@ import java.io.File
  * All methods use a coroutine [Mutex] (non-blocking, unlike @Synchronized) so callers
  * running on the IO dispatcher are never thread-blocked while waiting for the lock.
  */
+@Deprecated(
+    "Legacy on-device (Gemma/LiteRT) AI path. Isolated in Phase 0; removed in Phase 6. Do not build " +
+        "the new AI coach on it — see docs/ai-redesign/08-technical-architecture.md §5.",
+)
 class GemmaServiceHolder(context: Context) {
 
     // Always pin to applicationContext so an Activity context can never leak here.

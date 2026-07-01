@@ -28,6 +28,10 @@ fun interface NameGenerator {
 }
 
 /** On-device Gemma generator. Shares the engine's inferenceLock via [GemmaInsightService]. */
+@Deprecated(
+    "Legacy on-device (Gemma/LiteRT) AI path. Isolated in Phase 0; removed in Phase 6. Do not build " +
+        "the new AI coach on it — see docs/ai-redesign/08-technical-architecture.md §5.",
+)
 class LocalNameGenerator(
     private val serviceHolder: GemmaServiceHolder,
     private val variant: () -> ModelVariant,
@@ -60,6 +64,10 @@ class CloudNameGenerator(
  * Picks the local or cloud generator by [effectiveBackend] (same rule as
  * [RoutingInsightCoordinator]), wraps the call in a timeout, and sanitizes the output.
  */
+@Deprecated(
+    "Legacy local/cloud router — part of the on-device AI path. Isolated in Phase 0; removed in " +
+        "Phase 6 when CloudNameGenerator is used directly. See docs/ai-redesign/08-technical-architecture.md §5.",
+)
 class RoutingRecipeNamer(
     private val local: NameGenerator,
     private val cloud: NameGenerator,

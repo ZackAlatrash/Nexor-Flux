@@ -16,6 +16,10 @@ import kotlinx.coroutines.flow.stateIn
  * Model-lifecycle calls ([requestDownload], [cancelDownload], [deleteModel], [setSelectedModel])
  * always target the LOCAL delegate, since those manage the on-device Gemma model.
  */
+@Deprecated(
+    "Legacy local/cloud router — part of the on-device AI path. Isolated in Phase 0; removed in " +
+        "Phase 6 when the cloud coordinators are used directly. See docs/ai-redesign/08-technical-architecture.md §5.",
+)
 @OptIn(ExperimentalCoroutinesApi::class)
 class RoutingInsightCoordinator(
     private val local: AiInsightCoordinator,

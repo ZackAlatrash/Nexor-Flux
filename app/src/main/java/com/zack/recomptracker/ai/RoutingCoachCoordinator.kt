@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.stateIn
  * *effective* backend: CLOUD only when the preference is CLOUD and cloud config is complete;
  * otherwise LOCAL.
  */
+@Deprecated(
+    "Legacy local/cloud router — part of the on-device AI path. Isolated in Phase 0; removed in " +
+        "Phase 6 when the cloud coordinators are used directly. See docs/ai-redesign/08-technical-architecture.md §5.",
+)
 @OptIn(ExperimentalCoroutinesApi::class)
 class RoutingCoachCoordinator(
     private val local: CoachCoordinator,

@@ -5,8 +5,19 @@ in this folder (audit, vision, roadmap, proactive design, data utilization, mark
 extraction agents that verified each hook against the code on `develop`. **Planning only — nothing here
 is implemented.** Branch: `redesign/ai-coaching`.
 
-**Premise (decided): cloud-only.** One `OpenAiCompatClient`; the entire on-device Gemma/LiteRT stack is
-deleted (Phase 0). See §5 for the exact keep/delete map.
+**Premise (decided): cloud-first.** The new coaching system is built on one `OpenAiCompatClient` and is
+fully independent of the on-device stack. See §5 for the service map.
+
+> **⚠️ Architecture adjustment (2026-07-01): isolate the local stack, don't delete it yet.**
+> The on-device Gemma/LiteRT code is **kept and left functional** for now (avoid breaking the app and
+> avoid deleting risky code prematurely). Phase 0 changes from "delete the local stack" to
+> **"decouple + deprecate"**: move shared constants/utilities the cloud path needs *out* of local-model
+> files into neutral homes, add a hard boundary so the new coach system has **zero compile-time
+> dependency** on any Gemma/Routing/`AiBackend`/`ModelVariant` class, and mark the local path
+> `@Deprecated`/legacy. Actual deletion moves to a later phase (§"Build order", Phase 6) and must be a
+> clean removal that touches nothing in `domain/coach`, `data/coach`, or the cloud coordinators.
+> Wherever a section below says "delete" for the local stack, read it as **"isolate now, delete in
+> Phase 6"** — the target end-state is unchanged; only the timing moves.
 
 ---
 
@@ -133,7 +144,8 @@ The cloud LLM (`OpenAiCompatClient`, `data/remote/OpenAiCompatClient.kt`) has ex
 
 Honest-failure behavior stays (`EMPTY_RESPONSE_NUDGE`, never fabricate "Done."). The 2B-specific patches
 (`containsEchoPhrase`, empty-text nudge in the Gemma file, `MAX_TOOL_ITERATIONS=5`, `MAX_TURNS=20`
-reset) are deleted; the cloud coach's own guards stay.
+reset) stay confined to the now-deprecated Gemma files and are **never carried into** the cloud path; the
+cloud coach's own guards stay. (They get deleted with the rest of the local stack in Phase 6.)
 
 ---
 
@@ -159,33 +171,67 @@ reset) are deleted; the cloud coach's own guards stay.
 
 ---
 
-## 5. AI service architecture (post-cutover component map)
+## 5. AI service architecture (cloud-first; local isolated, not deleted)
 
-**Target runtime (what stays):** one `OpenAiCompatClient` → **one** `CloudInsightCoordinator` + **one**
-`CloudCoachCoordinator` + **one** `WeeklyBriefingGenerator` + **one** `CloudNameGenerator`, all sharing
-**one** `RetrievalKnowledgeInjector`; plus the new `CoachSignalEngine` + `CoachContextBuilder` +
-`CoachInboxRepository` + `CoachDigestWorker` (+ `CoachJourneyStore`, Phase 5). No routing, no capability
-flags, no model-lifecycle states.
+**Target end-state runtime (what the new system uses):** one `OpenAiCompatClient` → **one**
+`CloudInsightCoordinator` + **one** `CloudCoachCoordinator` + **one** `WeeklyBriefingGenerator` + **one**
+`CloudNameGenerator`, all sharing **one** `RetrievalKnowledgeInjector`; plus the new `CoachSignalEngine`
++ `CoachContextBuilder` + `CoachInboxRepository` + `CoachDigestWorker` (+ `CoachJourneyStore`, Phase 5).
+The new coach system references **none** of the routing/capability/model-lifecycle classes.
 
-**Delete in Phase 0** (`01-current-ai-audit.md` verified the list):
-`GemmaInsightCoordinator`, `GemmaCoachCoordinator`, `GemmaInsightService`, `GemmaServiceHolder`,
-`LocalNameGenerator`; the three `Routing*` coordinators; `AiBackend` + `AiCapabilities`; `ModelVariant`
-+ DownloadManager/StatFs/SHA-256 plumbing; `CLOUD_ONLY_KINDS` + its gating; the model-lifecycle
-`AiInsightState` members (`ModelMissing`, `Downloading`, `DownloadFailed`, `ModelVerifying`) and the
-`AiInsightCoordinator` lifecycle methods (`selectedModel`, `setSelectedModel`, `requestDownload`,
-`cancelDownload`, `deleteModel`); the model-variant selector UI; and the `AppContainer` wiring
-(`effectiveBackend`, `recipeNamerBackend`, `cloudConfigComplete`, `gemmaServiceHolder`, the two Gemma
-coordinators).
+**During the transition, the legacy stack stays wired and functional in parallel.** The existing routed
+insight cards + coach chat keep working through `Routing*` for now (untouched), so the app never breaks;
+the new coaching surfaces (weekly check-in spine, "Today's Coaching" slot, proactive engine) are built
+alongside and migrate those surfaces over before Phase 6 removes the legacy path.
 
-**Preserve these seams:** the `AiInsightCoordinator` **read side** (`state`, `generationState(kind)`,
-`onInsightVisible`, `retryInsight`, `onAiCardVisible`, `retryGeneration`) and the `CoachCoordinator` +
-`CoachState` interface — ViewModels now depend on the cloud coordinators directly (routing indirection
-gone). `CoachReadTools` stays as the coach test seam.
+### Phase 0 — decouple + deprecate (NO deletion)
+The old plan deleted the local stack here; per the 2026-07-01 adjustment we instead **isolate** it. Three
+actions, all low-risk:
 
-**⚠️ Phase 0 blocking gotcha:** the shared tool-schema constants (`COACH_TOOL_SCHEMAS`,
-`COACH_WRITE_TOOLS`, `SEARCH_WEB_TOOL_SCHEMA`, `CLOUD_COACH_TOOL_SCHEMAS`) currently live **inside**
-`GemmaCoachCoordinator.kt:42-63` but are used by the cloud path (`AppContainer.kt:373`). **Relocate them
-to a surviving file (e.g. `ai/CoachTools.kt`) before deleting the Gemma file**, or the build breaks.
+1. **Extract shared, backend-neutral code out of local-model files into neutral homes** so nothing the
+   cloud/new path needs lives inside a Gemma file:
+   - **Tool-schema constants** `COACH_TOOL_SCHEMAS`, `COACH_WRITE_TOOLS`, `SEARCH_WEB_TOOL_SCHEMA`,
+     `CLOUD_COACH_TOOL_SCHEMAS` — currently **inside** `GemmaCoachCoordinator.kt:42-63` but used by the
+     cloud path (`AppContainer.kt:373`). Move to a new neutral `ai/CoachTools.kt`; both the cloud path and
+     the (retained) Gemma file then import from there. **This was previously a "blocking gotcha for
+     deletion" — it is now the core Phase-0 decoupling task and stands on its own.**
+   - Any other shared helpers that happen to sit in a local file (verify: prompt/format helpers, tool
+     dispatch, `CoachReadTools`/executor wiring) → relocate to a neutral `ai/` file.
+2. **Add the boundary rule (below) and mark the local stack legacy.** Annotate the on-device classes
+   `@Deprecated("Local model path is legacy; slated for removal in Phase 6. Do not build on it.")` and/or
+   move them under an `ai/local/` (or `ai/legacy/`) subpackage so the boundary is visible at a glance.
+3. **Leave the local runtime otherwise untouched** — `Routing*`, `AiBackend`, `ModelVariant`,
+   download/verify plumbing, and the model-lifecycle `AiInsightState` members all **stay** and keep
+   compiling. Do **not** strip the `AiInsightCoordinator` lifecycle methods yet (the routers still
+   implement them); the new system simply doesn't call them.
+
+### The boundary rule (enforced from Phase 0 onward)
+The new coach system — everything in `domain/coach/`, `data/coach/`, and the new cloud phrasing path —
+must have **zero compile-time dependency** on any of: `Gemma*` (coordinators/service/holder),
+`Routing*`, `AiBackend`, `AiCapabilities`, `ModelVariant`, `LocalNameGenerator`, the download/verify
+plumbing, or the model-lifecycle `AiInsightState` members. It depends **only** on: `OpenAiCompatClient`,
+`CloudInsightCoordinator`, `CloudCoachCoordinator`, `WeeklyBriefingGenerator`, `CloudNameGenerator`, the
+knowledge injector, the relocated `ai/CoachTools.kt`, and its own `domain/coach` + `data/coach`. Make
+this checkable — a small unit/lint test asserting no `import ...Gemma`/`...Routing`/`AiBackend`/
+`ModelVariant` appears under `domain/coach`/`data/coach`, or an ArchUnit-style guard — so future edits
+can't silently recouple. When Phase 6 deletes the local stack, nothing in the new system should change.
+
+**Preserve these seams (unchanged):** the `AiInsightCoordinator` **read side** (`state`,
+`generationState(kind)`, `onInsightVisible`, `retryInsight`, `onAiCardVisible`, `retryGeneration`) and
+the `CoachCoordinator` + `CoachState` interface. New surfaces depend on the **cloud** coordinators
+directly (never the routers); `CoachReadTools` stays as the coach test seam. Because the new system talks
+to `CloudInsightCoordinator`/`CloudCoachCoordinator` directly, the routing indirection becomes dead for
+the new path immediately and dead for the old path once its surfaces migrate — then Phase 6 removes it.
+
+### Phase 6 — retire the legacy local stack (later, clean removal)
+Once the new coaching surfaces have replaced the routed insight cards + coach chat, delete (the list
+`01-current-ai-audit.md` verified): `GemmaInsightCoordinator`, `GemmaCoachCoordinator`,
+`GemmaInsightService`, `GemmaServiceHolder`, `LocalNameGenerator`; the three `Routing*` coordinators;
+`AiBackend` + `AiCapabilities`; `ModelVariant` + DownloadManager/StatFs/SHA-256 plumbing;
+`CLOUD_ONLY_KINDS`; the model-lifecycle `AiInsightState` members + the `AiInsightCoordinator` lifecycle
+methods; the model-variant selector UI; and the `AppContainer` wiring (`effectiveBackend`,
+`recipeNamerBackend`, `cloudConfigComplete`, `gemmaServiceHolder`, the two Gemma coordinators). If the
+boundary rule held, this touches **nothing** in `domain/coach`, `data/coach`, or the cloud coordinators.
 
 ---
 
@@ -330,14 +376,20 @@ the app or manifest), so it's built to the respectful spec from day one (Phase 5
 domain/coach/            CoachSignal, SignalKind/Tier, CoachSignalEngine, detectors, CoachContext (model) — PURE
 data/coach/              CoachContextBuilder, CoachInboxRepository, CoachJourneyStore, CoachDigestCoordinator
 data/coach/ (worker)     CoachDigestWorker + BackgroundSyncScheduler-style triad
-ai/                      CoachTools.kt (relocated schemas), CloudInsightCoordinator, CloudCoachCoordinator,
-                         WeeklyBriefingGenerator, InsightPromptBuilder (shared scaffold), knowledge/*
+ai/                      CoachTools.kt (relocated schemas — neutral), CloudInsightCoordinator,
+                         CloudCoachCoordinator, WeeklyBriefingGenerator, InsightPromptBuilder (shared
+                         scaffold), knowledge/*
+ai/local/ (legacy)       Gemma*, Routing*, AiBackend, AiCapabilities, ModelVariant, LocalNameGenerator,
+                         download/verify plumbing — @Deprecated, left functional, deleted in Phase 6.
+                         Nothing outside this subpackage may depend INTO it from the new coach system.
 ui/dashboard/            "Today's Coaching" slot; ui/review/ weekly check-in; ui/coach/ chat (training-aware)
 ```
 
 Dependency rule preserved: `domain/coach` is pure Kotlin (engine + detectors testable with no
 Android/network); `data/coach` does I/O + snapshotting; `ai` does cloud phrasing; `ui` renders and falls
-back to `signal.fallbackText`.
+back to `signal.fallbackText`. **Boundary rule:** nothing in `domain/coach`, `data/coach`, or the cloud
+coordinators imports from `ai/local/` (guard-tested) — so the legacy subpackage is deletable in Phase 6
+in one move.
 
 ---
 
@@ -345,12 +397,13 @@ back to `signal.fallbackText`.
 
 | Phase | Architecture deliverable | Prereqs |
 |---|---|---|
-| **0** | Cloud-only cutover; **relocate tool schemas first**; collapse to one client + one coord per role; simplify `AiInsightState`/`AppContainer` | — |
-| **1** | Cut paraphrase kinds + dead `rich`; collapse 3 verdict-narrators onto the briefing | 0 |
-| **2** | `CoachContext` + `CoachContextEngine` (rerouted detectors only) + `CoachInboxRepository` + Today slot; then `CoachDigestWorker` + `onStart` + rank/limiter (no push); feed briefing all 4 domains, fire proactively | 0,1 |
+| **0** | **Decouple + deprecate (NO deletion):** relocate shared tool schemas/helpers out of Gemma files into neutral `ai/CoachTools.kt`; mark the local stack `@Deprecated`/legacy; add the boundary rule + a guard test. Local runtime left functional. | — |
+| **1** | Cut paraphrase kinds + dead `rich`; collapse 3 verdict-narrators onto the briefing (cloud-side; doesn't touch the local stack) | 0 |
+| **2** | `CoachContext` + `CoachSignalEngine` (rerouted detectors only) + `CoachInboxRepository` + Today slot; then `CoachDigestWorker` + `onStart` + rank/limiter (no push); feed briefing all 4 domains, fire proactively — all cloud-first, obeying the boundary rule | 0,1 |
 | **3** | `get_training_summary` tool + body-measurement history in chat; **add batched all-sets DAO read**; knowledge in briefing | 2 |
 | **4** | New training/cross-domain detectors (5 links) surfaced through the engine | 2,3 |
 | **5** | `CoachJourneyStore` narrative + greenfield push notifications (2 channels, capped) + celebrations | all |
+| **6** | **Retire the legacy local stack** (the former Phase-0 deletion): remove Gemma/`Routing*`/`AiBackend`/`ModelVariant`/download plumbing/model-lifecycle states + selector UI + `AppContainer` wiring. Clean removal — touches nothing in `domain/coach`/`data/coach`/cloud coords if the boundary held. | 2–5 (new surfaces have replaced the routed ones) |
 
 ## Invariants every implementation must uphold
 1. The LLM never introduces a number absent from the engine payload.
@@ -359,3 +412,6 @@ back to `signal.fallbackText`.
 4. Smoothing happens in the engine before a number becomes a fact.
 5. Exactly one winner per slot; restraint caps are enforced code, not guidelines.
 6. Silence (`daysLogged < 14` / noisy / nothing crossed threshold) is a valid, first-class output.
+7. **The new coach system (`domain/coach`, `data/coach`, cloud phrasing path) has zero compile-time
+   dependency on any Gemma/`Routing*`/`AiBackend`/`ModelVariant`/local-lifecycle class** — enforced by a
+   guard test, so the local stack can be deleted in Phase 6 without touching the new system.

@@ -271,6 +271,11 @@ class CloudCoachCoordinator(
         "log_metric" -> "Saving metric…"
         "update_calorie_target" -> "Updating calorie target…"
         "search_web" -> "Searching the web…"
+        "get_routines" -> "Reading your routines…"
+        "search_exercises" -> "Searching exercises…"
+        "create_routine" -> "Creating routine…"
+        "edit_routine" -> "Updating routine…"
+        "create_exercise" -> "Creating exercise…"
         else -> "Running tool…"
     }
 
@@ -288,6 +293,7 @@ class CloudCoachCoordinator(
             }
             "log_metric" -> "Save ${args["metric"]} = ${args["value"]}"
             "update_calorie_target" -> "Update daily calorie target to ${args["target_calories"]} kcal"
+            "create_routine", "edit_routine", "create_exercise" -> routineActionSummary(toolName, args)
             else -> toolName
         }
 
@@ -300,4 +306,31 @@ class CloudCoachCoordinator(
             "You returned nothing. If you intended to log food, save a metric, or update a target, " +
                 "call the matching tool now. Otherwise, reply to the user's last message in one or two sentences."
     }
+}
+
+internal fun routineActionSummary(toolName: String, args: Map<String, String>): String = when (toolName) {
+    "create_routine" -> {
+        val name = args["name"].orEmpty()
+        val ex = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").findAll(args["exercises"].orEmpty())
+            .map { it.groupValues[1] }.toList()
+        "Create routine \"$name\"" + if (ex.isNotEmpty()) " — ${ex.joinToString(", ")}" else ""
+    }
+    "edit_routine" -> {
+        val parts = buildList {
+            Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").findAll(args["add"].orEmpty())
+                .map { it.groupValues[1] }.toList().takeIf { it.isNotEmpty() }?.let { add("add ${it.joinToString(", ")}") }
+            Regex("\"([^\"]+)\"").findAll(args["remove"].orEmpty())
+                .map { it.groupValues[1] }.toList().takeIf { it.isNotEmpty() }?.let { add("remove ${it.joinToString(", ")}") }
+            Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").findAll(args["retarget"].orEmpty())
+                .map { it.groupValues[1] }.toList().takeIf { it.isNotEmpty() }?.let { add("retarget ${it.joinToString(", ")}") }
+            args["new_name"]?.takeIf { it.isNotBlank() }?.let { add("rename to \"$it\"") }
+        }
+        "Edit \"${args["name"].orEmpty()}\"" + if (parts.isNotEmpty()) " — ${parts.joinToString("; ")}" else ""
+    }
+    "create_exercise" -> {
+        val muscles = Regex("\"([^\"]+)\"").findAll(args["primary_muscles"].orEmpty())
+            .map { it.groupValues[1] }.toList()
+        "Create custom exercise \"${args["name"].orEmpty()}\"" + if (muscles.isNotEmpty()) " (${muscles.joinToString(", ")})" else ""
+    }
+    else -> toolName
 }

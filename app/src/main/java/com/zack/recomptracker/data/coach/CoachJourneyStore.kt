@@ -14,6 +14,33 @@ import kotlinx.coroutines.flow.first
 private val Context.coachJourneyDataStore by preferencesDataStore(name = "coach_journey")
 
 /**
+ * The minimal record/read surface the coach depends on for its multi-week memory, extracted so
+ * callers ([CoachDigestCoordinator], the briefing generator, the chat prompt) can be unit-tested
+ * against a simple in-memory fake instead of the concrete DataStore class. [CoachJourneyStore] is
+ * the production implementation. Mirrors [CoachInbox] / [CoachInboxRepository].
+ */
+interface CoachJourney {
+    /** Append a fired [signal] under [weekSignature], stamped with today's date (capped, rolling). */
+    suspend fun recordFiredSignal(signal: CoachSignal, weekSignature: String)
+
+    /** Append a weekly [verdict] for [weekSignature] / [weekEndDateIso]. Idempotent per signature. */
+    suspend fun recordWeeklyVerdict(weekSignature: String, weekEndDateIso: String, verdict: String)
+
+    /**
+     * A compact, deterministic multi-week narrative for prompts, built ONLY from stored facts. Empty
+     * string when there isn't enough history. Decoration text — safe to drop.
+     */
+    suspend fun journeyNarrative(): String
+}
+
+/** Inert [CoachJourney] for tests / Context-free construction: records nothing, narrates nothing. */
+object NoopCoachJourney : CoachJourney {
+    override suspend fun recordFiredSignal(signal: CoachSignal, weekSignature: String) = Unit
+    override suspend fun recordWeeklyVerdict(weekSignature: String, weekEndDateIso: String, verdict: String) = Unit
+    override suspend fun journeyNarrative(): String = ""
+}
+
+/**
  * Append-only, offline-first local ledger giving the coach memory across weeks. Persists a rolling
  * fired-signal history (for recurrence detection) and a rolling list of the last few weekly verdicts
  * (for a multi-week narrative), so prompts can reference the journey — e.g. "3 weeks ago your bench
@@ -34,7 +61,7 @@ private val Context.coachJourneyDataStore by preferencesDataStore(name = "coach_
 class CoachJourneyStore(
     private val dataStore: DataStore<Preferences>,
     private val dateProvider: DateProvider,
-) {
+) : CoachJourney {
 
     /** Production constructor — binds to the app-scoped `coach_journey` DataStore. */
     constructor(context: Context, dateProvider: DateProvider) :
@@ -44,7 +71,7 @@ class CoachJourneyStore(
      * Append a fired [signal] under [weekSignature], stamped with today's date. Trimmed to the newest
      * [CoachJourneySerialization.FIRED_HISTORY_CAP] entries.
      */
-    suspend fun recordFiredSignal(signal: CoachSignal, weekSignature: String) {
+    override suspend fun recordFiredSignal(signal: CoachSignal, weekSignature: String) {
         val record = FiredSignalRecord(
             kind = signal.kind,
             dedupKey = signal.dedupKey,
@@ -70,7 +97,7 @@ class CoachJourneyStore(
      * (recording the same week twice yields one entry) and trimmed to the newest
      * [CoachJourneySerialization.VERDICT_CAP] entries.
      */
-    suspend fun recordWeeklyVerdict(weekSignature: String, weekEndDateIso: String, verdict: String) {
+    override suspend fun recordWeeklyVerdict(weekSignature: String, weekEndDateIso: String, verdict: String) {
         val record = WeeklyVerdictRecord(weekSignature, weekEndDateIso, verdict)
         dataStore.edit { prefs ->
             val existing = CoachJourneySerialization.decodeVerdicts(prefs[Keys.WeeklyVerdicts])
@@ -98,7 +125,7 @@ class CoachJourneyStore(
      * string when there isn't enough history (fewer than [CoachJourneySerialization.NARRATIVE_MIN_VERDICTS]
      * weekly verdicts). Decoration text — safe to drop.
      */
-    suspend fun journeyNarrative(): String {
+    override suspend fun journeyNarrative(): String {
         val prefs = dataStore.data.first()
         val verdicts = CoachJourneySerialization.decodeVerdicts(prefs[Keys.WeeklyVerdicts])
         val history = CoachJourneySerialization.decodeFired(prefs[Keys.FiredHistory])

@@ -32,6 +32,9 @@ import kotlinx.coroutines.launch
  * @param contextProvider builds the snapshot; injected as a suspend lambda (AppContainer passes
  *   `{ coachContextCache.get() }`) so [run] is testable without the repository graph.
  * @param aiEnabledFlow the master AI gate; when off the coach stays silent (stages `null`).
+ * @param journey the multi-week memory ledger; the digest records the fired winner and each week's
+ *   verdict into it so prompts can reference the journey. A no-op default keeps existing tests and
+ *   any Context-free construction working.
  * @param cooldownDays a dedupKey can't re-surface until this many days pass (default 7, §9).
  */
 class CoachDigestCoordinator(
@@ -42,6 +45,7 @@ class CoachDigestCoordinator(
     private val aiEnabledFlow: Flow<Boolean>,
     private val dateProvider: DateProvider,
     private val appScope: CoroutineScope,
+    private val journey: CoachJourney = NoopCoachJourney,
     private val scheduler: CoachDigestScheduler = NoopCoachDigestScheduler,
     private val cooldownDays: Int = SignalSelector.DEFAULT_COOLDOWN_DAYS,
 ) {
@@ -61,15 +65,32 @@ class CoachDigestCoordinator(
         }
         val today = dateProvider.today()
         val ctx = contextProvider()
+        // Journey memory: idempotently record every weekly-review verdict the snapshot carries so the
+        // multi-week narrative accretes over time. recordWeeklyVerdict dedups per signature, so
+        // re-recording the same weeks on each daily run is a no-op. The snapshot only carries a week
+        // start, so we stamp that as the week's date (no invented data).
+        ctx.history.weeklyReviews.forEach { review ->
+            journey.recordWeeklyVerdict(review.signature, review.weekStart.toString(), review.verdict)
+        }
         val signals = engine.evaluate(ctx)
         // The digest feeds the "Today's Coaching" slot, so only TODAY-surface signals are eligible.
         // WEEKLY-surface signals (e.g. the recomp verdict) belong to the weekly check-in surface and
         // must not leak into the daily slot.
         val winner = selector.selectForSurface(CoachSurface.TODAY, signals, inbox.seenLedger(), today, cooldownDays).winner
         inbox.stage(winner)
-        if (winner != null) inbox.markSeen(winner.dedupKey, today)
+        if (winner != null) {
+            inbox.markSeen(winner.dedupKey, today)
+            // Record the fired winner under the current week signature so recurrence detection aligns
+            // with the weekly rhythm. Reuse the latest weekly-review signature the snapshot already
+            // built (no new heavy computation); fall back to today's ISO date when no review exists.
+            journey.recordFiredSignal(winner, currentWeekSignature(ctx, today))
+        }
         inbox.setLastRunDate(today)
     }
+
+    /** The week signature history is keyed by: the latest stored weekly review's, or today's date. */
+    private fun currentWeekSignature(ctx: CoachContext, today: java.time.LocalDate): String =
+        ctx.history.weeklyReviews.lastOrNull()?.signature ?: today.toString()
 
     /**
      * Fire-and-forget daily digest, safe to call on every app foreground. Skips when it has already

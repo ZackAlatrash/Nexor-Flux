@@ -102,6 +102,7 @@ import com.zack.recomptracker.data.coach.CoachContextBuilder
 import com.zack.recomptracker.data.coach.CoachContextCache
 import com.zack.recomptracker.data.coach.CoachDigestCoordinator
 import com.zack.recomptracker.data.coach.CoachInboxRepository
+import com.zack.recomptracker.data.coach.CoachJourneyStore
 import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
 import com.zack.recomptracker.domain.coach.SignalSelector
@@ -280,8 +281,16 @@ class AppContainer(context: Context) {
         NoOpKnowledgeInjector
     }
 
+    // Multi-week coach memory: one shared journey ledger. The digest records fired signals + weekly
+    // verdicts into it; the briefing and chat prompts read its narrative. See Phase 5 / §10.
+    val coachJourneyStore = CoachJourneyStore(context.applicationContext, dateProvider)
+
     val weeklyReviewComputer = WeeklyReviewComputer()
-    val weeklyBriefingGenerator = WeeklyBriefingGenerator(openAiCompatClient, knowledgeInjector = knowledgeInjector)
+    val weeklyBriefingGenerator = WeeklyBriefingGenerator(
+        openAiCompatClient,
+        knowledgeInjector = knowledgeInjector,
+        journey = coachJourneyStore,
+    )
     val weeklyBriefingRepository = WeeklyBriefingRepository(database.weeklyReviewDao())
 
     /** Feature gate: cloud backend selected, config complete, AI enabled. */
@@ -389,6 +398,7 @@ class AppContainer(context: Context) {
             userProfileStore = userProfilePreferencesStore,
             dateProvider = dateProvider,
             handoffStore = coachHandoffStore,
+            journey = coachJourneyStore,
         ),
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
@@ -420,6 +430,7 @@ class AppContainer(context: Context) {
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         dateProvider = dateProvider,
         appScope = appScope,
+        journey = coachJourneyStore,
         scheduler = WorkManagerCoachDigestScheduler(context.applicationContext),
     )
 

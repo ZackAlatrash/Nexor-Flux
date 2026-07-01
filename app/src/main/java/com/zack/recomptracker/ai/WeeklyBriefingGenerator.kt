@@ -2,6 +2,8 @@ package com.zack.recomptracker.ai
 
 import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
 import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
+import com.zack.recomptracker.data.coach.CoachJourney
+import com.zack.recomptracker.data.coach.NoopCoachJourney
 import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
@@ -19,14 +21,24 @@ class WeeklyBriefingGenerator(
     private val client: OpenAiCompatClient,
     private val promptBuilder: WeeklyBriefingPromptBuilder = WeeklyBriefingPromptBuilder(),
     private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
+    private val journey: CoachJourney = NoopCoachJourney,
 ) {
     /** Returns the merged briefing. Uses AI prose when available, deterministic engine summary as fallback. */
     suspend fun generate(config: CloudConfig, data: WeeklyReviewData): WeeklyBriefing? {
         val reference = knowledgeInjector.referenceBlock(knowledgeQuery(data))
-        val prompt = if (reference.isNotBlank()) reference + "\n\n" + promptBuilder.build(data) else promptBuilder.build(data)
+        val journeyBlock = journeyBlock(journey.journeyNarrative())
+        val prompt = buildString {
+            if (reference.isNotBlank()) append(reference).append("\n\n")
+            if (journeyBlock.isNotBlank()) append(journeyBlock).append("\n\n")
+            append(promptBuilder.build(data))
+        }
         val narration = requestNarration(config, prompt) ?: requestNarration(config, prompt)
         return merge(data, narration)
     }
+
+    /** The multi-week narrative as a delimited grounding block, or "" when the store has none. */
+    private fun journeyBlock(narrative: String): String =
+        if (narrative.isBlank()) "" else "=== YOUR JOURNEY SO FAR ===\n$narrative\n=== END JOURNEY ==="
 
     /** Grounding query: the verdict plus each signal label, so retrieval matches the week's themes. */
     private fun knowledgeQuery(data: WeeklyReviewData): String =

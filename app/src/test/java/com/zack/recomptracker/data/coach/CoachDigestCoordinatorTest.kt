@@ -8,12 +8,14 @@ import com.zack.recomptracker.domain.coach.CoachSignal
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
 import com.zack.recomptracker.domain.coach.CoachSurface
 import com.zack.recomptracker.domain.coach.Confidence
+import com.zack.recomptracker.domain.coach.HistoryContext
 import com.zack.recomptracker.domain.coach.SignalCategory
 import com.zack.recomptracker.domain.coach.SignalFacts
 import com.zack.recomptracker.domain.coach.SignalKind
 import com.zack.recomptracker.domain.coach.SignalRationale
 import com.zack.recomptracker.domain.coach.SignalSelector
 import com.zack.recomptracker.domain.coach.SignalTier
+import com.zack.recomptracker.domain.coach.WeeklyReviewSnapshot
 import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +93,22 @@ class CoachDigestCoordinatorTest {
         fallbackText = "Adherence dipped — aim to log every meal.",
     )
 
+    /** In-memory [CoachJourney] fake — records every write so tests can assert the digest's memory. */
+    private class FakeJourney : CoachJourney {
+        val firedSignals = mutableListOf<Pair<CoachSignal, String>>()
+        val verdicts = mutableListOf<Triple<String, String, String>>()
+
+        override suspend fun recordFiredSignal(signal: CoachSignal, weekSignature: String) {
+            firedSignals += signal to weekSignature
+        }
+
+        override suspend fun recordWeeklyVerdict(weekSignature: String, weekEndDateIso: String, verdict: String) {
+            verdicts += Triple(weekSignature, weekEndDateIso, verdict)
+        }
+
+        override suspend fun journeyNarrative(): String = ""
+    }
+
     /** A detector that always fires [emit]; `null` = never fires. */
     private fun detectorOf(emit: CoachSignal?) = CoachDetector { emit }
 
@@ -103,6 +121,7 @@ class CoachDigestCoordinatorTest {
         aiEnabled: Boolean = true,
         dateProvider: DateProvider = MutableDateProvider(today),
         scope: CoroutineScope,
+        journey: CoachJourney = FakeJourney(),
         contextProvider: suspend () -> CoachContext = { CoachContextFixtures.context(asOf = dateProvider.today()) },
     ) = CoachDigestCoordinator(
         contextProvider = contextProvider,
@@ -112,7 +131,21 @@ class CoachDigestCoordinatorTest {
         aiEnabledFlow = MutableStateFlow(aiEnabled),
         dateProvider = dateProvider,
         appScope = scope,
+        journey = journey,
     )
+
+    private fun contextWithReview(
+        weekStart: LocalDate = LocalDate.of(2026, 6, 22),
+        verdict: String = "Hold calories",
+        signature: String = "2026-06-22|2400|HOLD",
+    ): suspend () -> CoachContext = {
+        CoachContextFixtures.context(
+            asOf = today,
+            history = HistoryContext(
+                weeklyReviews = listOf(WeeklyReviewSnapshot(weekStart, verdict, signature)),
+            ),
+        )
+    }
 
     // ── run() ────────────────────────────────────────────────────────────────────
 
@@ -147,6 +180,68 @@ class CoachDigestCoordinatorTest {
         assertEquals(winner, inbox.staged)
         assertEquals(today, inbox.seen["LOW_ADHERENCE|w27"])
         assertEquals(today, inbox.lastRunDate())
+    }
+
+    @Test
+    fun `a staged winner is recorded into the journey under the current week signature`() = runTest {
+        val inbox = FakeInbox()
+        val journey = FakeJourney()
+        val winner = signal(dedupKey = "LOW_ADHERENCE|w27")
+        val coordinator = coordinator(
+            inbox = inbox,
+            engine = engineWith(winner),
+            scope = this,
+            journey = journey,
+            contextProvider = contextWithReview(signature = "2026-06-22|2400|HOLD"),
+        )
+
+        coordinator.run()
+
+        assertEquals(1, journey.firedSignals.size)
+        assertEquals(winner, journey.firedSignals.first().first)
+        assertEquals("2026-06-22|2400|HOLD", journey.firedSignals.first().second)
+    }
+
+    @Test
+    fun `silence records no fired signal into the journey`() = runTest {
+        val inbox = FakeInbox()
+        val journey = FakeJourney()
+        val coordinator = coordinator(
+            inbox = inbox,
+            engine = engineWith(null, null),
+            scope = this,
+            journey = journey,
+            contextProvider = contextWithReview(),
+        )
+
+        coordinator.run()
+
+        assertTrue("no winner -> nothing fired-recorded", journey.firedSignals.isEmpty())
+    }
+
+    @Test
+    fun `each weekly review verdict in context is recorded into the journey`() = runTest {
+        val inbox = FakeInbox()
+        val journey = FakeJourney()
+        val coordinator = coordinator(
+            inbox = inbox,
+            engine = engineWith(null),
+            scope = this,
+            journey = journey,
+            contextProvider = contextWithReview(
+                weekStart = LocalDate.of(2026, 6, 22),
+                verdict = "Hold calories",
+                signature = "2026-06-22|2400|HOLD",
+            ),
+        )
+
+        coordinator.run()
+
+        assertEquals(1, journey.verdicts.size)
+        val (sig, weekEndIso, verdict) = journey.verdicts.first()
+        assertEquals("2026-06-22|2400|HOLD", sig)
+        assertEquals("Hold calories", verdict)
+        assertEquals("2026-06-22", weekEndIso)
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.zack.recomptracker.ai
 
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.coach.CoachJourney
+import com.zack.recomptracker.data.coach.NoopCoachJourney
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
@@ -39,6 +41,7 @@ class CoachToolsAdapter(
     private val userProfileStore: UserProfilePreferencesStore,
     private val dateProvider: DateProvider,
     private val handoffStore: CoachHandoffStore,
+    private val journey: CoachJourney = NoopCoachJourney,
 ) : CoachReadTools {
 
     override suspend fun execute(name: String, args: Map<String, String>): String =
@@ -49,7 +52,8 @@ class CoachToolsAdapter(
         val profile = userProfileStore.preferences.first()
         val today = dateProvider.today()
         val todaySummary = withContext(Dispatchers.IO) { toolExecutor.execute("get_today_summary", emptyMap()) }
-        val base = buildPrompt(prefs, profile, today, todaySummary)
+        val journeyNarrative = journey.journeyNarrative()
+        val base = buildPrompt(prefs, profile, today, todaySummary, journeyNarrative)
         val handoff = handoffStore.consume()
         return if (handoff.isNullOrBlank()) base else base + "\n\n" + handoff
     }
@@ -59,6 +63,7 @@ class CoachToolsAdapter(
         profile: UserProfilePreferences,
         today: java.time.LocalDate,
         todaySummary: String,
+        journeyNarrative: String,
     ): String = buildString {
         val yesterday = today.minusDays(1)
         val dayName = today.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercaseChar() }
@@ -84,6 +89,12 @@ class CoachToolsAdapter(
         appendLine("=== TODAY'S DATA SNAPSHOT (fetched at conversation start) ===")
         appendLine(todaySummary)
         appendLine("=== END SNAPSHOT ===")
+        if (journeyNarrative.isNotBlank()) {
+            appendLine()
+            appendLine("=== YOUR JOURNEY SO FAR ===")
+            appendLine(journeyNarrative)
+            appendLine("=== END JOURNEY ===")
+        }
         appendLine()
         appendLine("Guidelines:")
         append(COACH_PROMPT_GUIDELINES)

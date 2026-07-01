@@ -92,4 +92,50 @@ class WeeklyReviewComputerTest {
         assertEquals(BriefingPhase.EARLY, data.phase)
         assertNull(data.applyTargetCalories)
     }
+
+    // ── Activity / steps domain (the fourth domain in the weekly check-in) ──────────
+
+    @Test
+    fun `no steps signal when activity metrics are absent`() {
+        val data = computer.build("2026-06-08", input(), result(), 2550, activity = null)
+        assertEquals(5, data.signals.size)
+        assertNull(data.signals.firstOrNull { it.id == "steps" })
+    }
+
+    @Test
+    fun `steps signal is added when activity metrics are present`() {
+        val data = computer.build(
+            "2026-06-08", input(), result(), 2550,
+            activity = WeeklyActivity(avgSteps7 = 9200, avgStepsPrev7 = 7000),
+        )
+        assertEquals(6, data.signals.size)
+        val steps = data.signals.first { it.id == "steps" }
+        assertEquals("Steps", steps.label)
+        assertEquals(SignalDirection.UP, steps.direction) // 9.2k vs 7k last week
+    }
+
+    @Test
+    fun `steps signal is FLAT within the week-over-week deadband`() {
+        val data = computer.build(
+            "2026-06-08", input(), result(), 2550,
+            activity = WeeklyActivity(avgSteps7 = 8100, avgStepsPrev7 = 8000),
+        )
+        assertEquals(SignalDirection.FLAT, data.signals.first { it.id == "steps" }.direction)
+    }
+
+    @Test
+    fun `no steps signal when steps were never logged`() {
+        val data = computer.build(
+            "2026-06-08", input(), result(), 2550,
+            activity = WeeklyActivity(avgSteps7 = null, avgStepsPrev7 = null),
+        )
+        assertNull(data.signals.firstOrNull { it.id == "steps" })
+    }
+
+    @Test
+    fun `signature changes when the steps bucket changes`() {
+        val a = computer.signature(computer.build("2026-06-08", input(), result(), 2550, activity = WeeklyActivity(8000, 8000)))
+        val b = computer.signature(computer.build("2026-06-08", input(), result(), 2550, activity = WeeklyActivity(12000, 8000)))
+        assertNotEquals(a, b)
+    }
 }

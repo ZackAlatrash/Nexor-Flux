@@ -106,6 +106,8 @@ import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
 import com.zack.recomptracker.domain.coach.SignalSelector
 import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
+import com.zack.recomptracker.domain.activity.ActivitySummary
+import com.zack.recomptracker.domain.review.WeeklyActivity
 import com.zack.recomptracker.domain.review.WeeklyReviewComputer
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import com.zack.recomptracker.domain.review.WeeklyReviewData
@@ -338,7 +340,15 @@ class AppContainer(context: Context) {
         val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
         val weekEndTarget = PlanHistory.planOnOrFallback(versions, today, prefs.toPlanTargets()).calories
-        return weeklyReviewComputer.build(weekStart, input, result, weekEndTarget)
+        // Activity domain (steps) — the fourth domain fed into the weekly check-in. Derived from the
+        // step logs via the shared ActivitySummary (no duplicated math), this week vs last week.
+        val stepsByDate = logs28.mapNotNull { l -> l.steps?.let { LocalDate.parse(l.date) to it } }.toMap()
+        val activity = WeeklyActivity(
+            avgSteps7 = ActivitySummary.averageDailySteps(stepsByDate, today, 7),
+            avgStepsPrev7 = ActivitySummary.averageDailySteps(stepsByDate, today.minusDays(7), 7),
+            stepGoal = null,
+        )
+        return weeklyReviewComputer.build(weekStart, input, result, weekEndTarget, activity)
     }
 
     // ── Cloud coordinators ─────────────────────────────────────────────────────────

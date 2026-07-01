@@ -15,6 +15,7 @@ class WeeklyReviewComputer {
         input: AdjustmentInput,
         result: AdjustmentResult,
         currentTargetCalories: Int,
+        activity: WeeklyActivity? = null,
     ): WeeklyReviewData {
         val actionable = result.verdict == AdjustmentVerdict.INCREASE_CALORIES ||
             result.verdict == AdjustmentVerdict.REDUCE_CALORIES
@@ -35,9 +36,29 @@ class WeeklyReviewComputer {
             input = input,
             result = result,
             verdictLabel = verdictLabel(result.verdict),
-            signals = signals(input),
+            signals = signals(input) + stepsSignal(activity),
             currentTargetCalories = currentTargetCalories,
             applyTargetCalories = applyTarget,
+            activity = activity,
+        )
+    }
+
+    /** The steps/activity row — present only when steps were logged this window (week-over-week). */
+    private fun stepsSignal(activity: WeeklyActivity?): List<SignalSkeleton> {
+        val avg = activity?.avgSteps7 ?: return emptyList()
+        val prev = activity.avgStepsPrev7
+        val direction = when {
+            prev == null -> SignalDirection.FLAT
+            avg - prev > STEPS_DEADBAND -> SignalDirection.UP
+            avg - prev < -STEPS_DEADBAND -> SignalDirection.DOWN
+            else -> SignalDirection.FLAT
+        }
+        return listOf(
+            SignalSkeleton(
+                id = "steps", label = "Steps",
+                value = "${"%,d".format(avg)}/day",
+                direction = direction,
+            ),
         )
     }
 
@@ -55,6 +76,10 @@ class WeeklyReviewComputer {
             data.result.verdict.name,
             data.result.recommendedCalorieChange,
             data.phase.name,
+        ).plus(
+            // Steps participate only when logged, so a past week's signature stays stable if steps
+            // were never recorded. Bucketed to 1k/day so daily noise doesn't churn the badge.
+            data.activity?.avgSteps7?.let { listOf("steps${bucket(it.toDouble(), 1000.0)}") } ?: emptyList(),
         ).joinToString("|")
     }
 
@@ -102,6 +127,11 @@ class WeeklyReviewComputer {
             },
         ),
     )
+
+    private companion object {
+        /** Week-over-week step change (steps/day) below which activity reads as flat. */
+        const val STEPS_DEADBAND = 500
+    }
 
     private fun dir(value: Double, deadband: Double): SignalDirection = when {
         value > deadband -> SignalDirection.UP

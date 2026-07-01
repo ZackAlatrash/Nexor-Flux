@@ -264,6 +264,8 @@ class CloudCoachCoordinator(
     private fun toolStatusText(name: String): String = when (name) {
         "get_today_summary" -> "Reading your food log…"
         "get_weekly_trends" -> "Reading your weekly trends…"
+        "get_training_summary" -> "Reading your training…"
+        "get_body_trends" -> "Reading your body trends…"
         "log_meal" -> "Logging meal…"
         "log_metric" -> "Saving metric…"
         "update_calorie_target" -> "Updating calorie target…"

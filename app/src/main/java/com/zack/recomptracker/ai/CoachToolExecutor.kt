@@ -122,9 +122,12 @@ class CoachToolExecutor(
                 .filter { (date, _) -> !date.isBefore(windowStart) && !date.isAfter(today) }
                 .sortedBy { it.first }
 
+        // One read of the daily logs, reused for trained-day frequency and recent soreness below.
+        val dailyLogs = logRepository.observeDailyLogs().first()
+
         // Trained-day frequency uses the full union (session dates + `trained` daily-logs) over the
         // trailing 4 weeks — the single ActivitySummary definition used across the app.
-        val trainedLogDates = logRepository.observeDailyLogs().first()
+        val trainedLogDates = dailyLogs
             .filter { it.trained }
             .mapNotNull { parseDate(it.date) }
         val workoutDays = ActivitySummary.workoutDays(
@@ -149,7 +152,7 @@ class CoachToolExecutor(
 
         // Recent soreness: the last few non-null soreness scores from daily logs in the window,
         // newest first — a recovery-load signal alongside RIR.
-        val recentSoreness = logRepository.observeDailyLogs().first()
+        val recentSoreness = dailyLogs
             .mapNotNull { log -> parseDate(log.date)?.let { it to log } }
             .filter { (date, _) -> !date.isBefore(windowStart) && !date.isAfter(today) }
             .sortedByDescending { it.first }

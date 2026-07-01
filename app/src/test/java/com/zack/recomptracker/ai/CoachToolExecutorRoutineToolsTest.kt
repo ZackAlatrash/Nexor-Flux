@@ -30,6 +30,7 @@ class CoachToolExecutorRoutineToolsTest {
     /** Fake exercise library: search matches by case-insensitive substring. */
     class FakeExerciseLibrary(private val all: List<Exercise>) : ExerciseLibraryRepository(mock<ExerciseDao>()) {
         val created = mutableListOf<Triple<String, List<String>, List<String>>>()
+        override suspend fun all(): List<Exercise> = all
         override suspend fun search(query: String): List<Exercise> =
             all.filter { it.name.contains(query, ignoreCase = true) }
         override suspend fun getById(id: Long): Exercise? = all.firstOrNull { it.id == id }
@@ -202,6 +203,52 @@ class CoachToolExecutorRoutineToolsTest {
         assertTrue(json.contains("\"success\":true"))
         assertTrue(lib.created.single().first == "Cable Y-Raise")
         assertTrue(lib.created.single().second == listOf("Shoulders"))
+    }
+
+    @Test
+    fun `search_exercises matches on word overlap regardless of order`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(1, "Dumbbell Incline Bench Press", listOf("chest"))))
+        val json = executor(FakeWorkoutRepo(), lib)
+            .execute("search_exercises", mapOf("query" to "incline dumbbell press"))
+        assertTrue(json.contains("Dumbbell Incline Bench Press"))
+    }
+
+    @Test
+    fun `create_routine resolves an exercise whose library name has extra words in a different order`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(1, "Barbell Bench Press - Medium Grip")))
+        val repo = FakeWorkoutRepo()
+        val json = executor(repo, lib).execute(
+            "create_routine",
+            mapOf("name" to "Push Day", "exercises" to """[{"name":"bench press","sets":4,"reps":8}]"""),
+        )
+        assertTrue(json.contains("\"success\":true"))
+        val saved = repo.lastSaved!!
+        assertTrue(saved.third.size == 1)
+        assertTrue(saved.third[0].exerciseId == 1L)
+    }
+
+    @Test
+    fun `resolve does not match when a required word is absent`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(1, "Leg Extension")))
+        val repo = FakeWorkoutRepo()
+        val json = executor(repo, lib).execute(
+            "create_routine",
+            mapOf("name" to "Legs", "exercises" to """[{"name":"leg press","sets":3}]"""),
+        )
+        assertTrue(json.contains("error"))
+        assertTrue(repo.lastSaved == null)
+    }
+
+    @Test
+    fun `create_routine unresolved error suggests closest existing names`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(1, "Leg Extension")))
+        val repo = FakeWorkoutRepo()
+        val json = executor(repo, lib).execute(
+            "create_routine",
+            mapOf("name" to "Legs", "exercises" to """[{"name":"leg press","sets":3}]"""),
+        )
+        assertTrue(json.contains("error"))
+        assertTrue(json.contains("Leg Extension"))
     }
 
     @Test

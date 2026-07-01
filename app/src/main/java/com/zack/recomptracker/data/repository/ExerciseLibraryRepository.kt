@@ -7,12 +7,17 @@ import com.zack.recomptracker.domain.workout.ExerciseLibraryJson
 import com.zack.recomptracker.domain.workout.toEntity
 import java.io.InputStream
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
 
     open fun observeAll(): Flow<List<Exercise>> =
         exerciseDao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    /** The full library as a snapshot — used by the coach for word-based fuzzy matching. */
+    open suspend fun all(): List<Exercise> =
+        exerciseDao.observeAll().first().map { it.toDomain() }
 
     open suspend fun search(query: String): List<Exercise> =
         exerciseDao.search(query.trim()).map { it.toDomain() }

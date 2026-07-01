@@ -23,6 +23,7 @@ import com.zack.recomptracker.domain.coach.TrendDirection
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
+import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -424,24 +425,72 @@ class CoachToolExecutor(
         return """{"routines":[$items]}"""
     }
 
+    // Word-based exercise scoring, mirroring scoredFoodMatches. The user's library has
+    // non-standard names ("Dumbbell Incline Bench Press"), so a contiguous-substring match
+    // (ExerciseDao.search) misses "incline dumbbell press". Word-overlap reuses existing
+    // exercises instead of the coach creating duplicates.
+    //   4 = exact name match (case-insensitive)
+    //   3 = name starts with query
+    //   2 = name contains query
+    //   1 = every query word appears somewhere in name
+    //  -1 = no match → excluded
+    private fun scoredExerciseMatches(query: String, all: List<Exercise>): List<Pair<Exercise, Int>> {
+        val queryLower = query.lowercase().trim()
+        val queryWords = queryLower.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        fun score(name: String): Int {
+            val n = name.lowercase()
+            return when {
+                n == queryLower -> 4
+                n.startsWith(queryLower) -> 3
+                n.contains(queryLower) -> 2
+                queryWords.isNotEmpty() && queryWords.all { n.contains(it) } -> 1
+                else -> -1
+            }
+        }
+        return all.map { it to score(it.name) }.filter { (_, s) -> s >= 1 }.sortedByDescending { (_, s) -> s }
+    }
+
     private suspend fun searchExercises(args: Map<String, String>): String {
         val query = args["query"]?.trim().orEmpty()
         if (query.isBlank()) return """{"error":"search_exercises requires 'query'"}"""
         val lib = exerciseLibraryRepository ?: return """{"error":"exercise library unavailable"}"""
-        val matches = lib.search(query).take(8).joinToString(",") { e ->
+        val matches = scoredExerciseMatches(query, lib.all()).take(8).joinToString(",") { (e, _) ->
             """{"name":"${e.name.esc()}","primary_muscles":[${e.primaryMuscles.joinToString(",") { "\"${it.esc()}\"" }}]""" +
                 (e.equipment?.let { ""","equipment":"${it.esc()}"""" } ?: "") + "}"
         }
         return """{"matches":[$matches]}"""
     }
 
-    /** Resolve an exercise name to a library id (best fuzzy match), or null if none. */
-    private suspend fun resolveExerciseId(name: String): Long? {
-        val lib = exerciseLibraryRepository ?: return null
-        val hits = lib.search(name)
-        return hits.firstOrNull { it.name.equals(name, ignoreCase = true) }?.id
-            ?: hits.firstOrNull { it.name.startsWith(name, ignoreCase = true) }?.id
-            ?: hits.firstOrNull()?.id
+    /**
+     * Resolve an exercise name to a library id from the preloaded [all] list, using the word-based
+     * scorer with a confident bar: the top match must score >= 1 (all-words-or-better). Returns null
+     * when nothing clears the bar, so the caller can report it unresolved rather than mis-mapping
+     * (e.g. "leg press" must NOT silently resolve to "Leg Extension").
+     */
+    private fun resolveExerciseId(name: String, all: List<Exercise>): Long? =
+        scoredExerciseMatches(name, all).firstOrNull()?.first?.id
+
+    /**
+     * Up to [limit] closest existing names for an unresolved query, for the error suggestion.
+     * Uses the word scorer first (score >= 1); if nothing clears that bar, falls back to any
+     * exercise sharing at least one query word, so the user still gets a hint.
+     */
+    private fun closestExerciseNames(name: String, all: List<Exercise>, limit: Int = 3): List<String> {
+        val scored = scoredExerciseMatches(name, all)
+        if (scored.isNotEmpty()) return scored.take(limit).map { it.first.name }
+        val queryWords = name.lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        return all.filter { ex ->
+            val n = ex.name.lowercase()
+            queryWords.any { n.contains(it) }
+        }.take(limit).map { it.name }
+    }
+
+    private fun unresolvedError(unresolved: List<Pair<String, List<String>>>): String {
+        val parts = unresolved.joinToString("; ") { (name, suggestions) ->
+            val hint = if (suggestions.isEmpty()) "" else " (closest: ${suggestions.joinToString(", ") { it.esc() }})"
+            "'${name.esc()}'$hint"
+        }
+        return """{"error":"not found: $parts. Use create_exercise only if none fit."}"""
     }
 
     /** Build `sets` uniform planned-set drafts carrying the same optional reps/weight target. */
@@ -457,16 +506,15 @@ class CoachToolExecutor(
         }.getOrElse { return """{"error":"could not parse 'exercises' list"}""" }
         if (parsed.isEmpty()) return """{"error":"a routine needs at least one exercise"}"""
 
+        val allExercises = exerciseLibraryRepository?.all() ?: emptyList()
         val lines = mutableListOf<NewWorkoutLine>()
-        val unresolved = mutableListOf<String>()
+        val unresolved = mutableListOf<Pair<String, List<String>>>()
         for (e in parsed) {
-            val id = resolveExerciseId(e.name)
-            if (id == null) { unresolved += e.name; continue }
+            val id = resolveExerciseId(e.name, allExercises)
+            if (id == null) { unresolved += e.name to closestExerciseNames(e.name, allExercises); continue }
             lines += NewWorkoutLine(exerciseId = id, plannedSets = uniformSets(e.sets, e.reps, e.weight_kg))
         }
-        if (unresolved.isNotEmpty()) {
-            return """{"error":"not found in library: ${unresolved.joinToString(", ") { it.esc() }}. Use create_exercise or pick another name."}"""
-        }
+        if (unresolved.isNotEmpty()) return unresolvedError(unresolved)
         return runCatching {
             repo.saveWorkout(name, null, lines)
             """{"success":true,"routine":"${name.esc()}","exercises":${lines.size}}"""
@@ -515,15 +563,14 @@ class CoachToolExecutor(
         }
 
         // add new exercises (resolved from the library)
-        val unresolved = mutableListOf<String>()
+        val allExercises = exerciseLibraryRepository?.all() ?: emptyList()
+        val unresolved = mutableListOf<Pair<String, List<String>>>()
         for (a in add) {
-            val id = resolveExerciseId(a.name)
-            if (id == null) { unresolved += a.name; continue }
+            val id = resolveExerciseId(a.name, allExercises)
+            if (id == null) { unresolved += a.name to closestExerciseNames(a.name, allExercises); continue }
             lines += NewWorkoutLine(exerciseId = id, plannedSets = uniformSets(a.sets, a.reps, a.weight_kg))
         }
-        if (unresolved.isNotEmpty()) {
-            return """{"error":"not found in library: ${unresolved.joinToString(", ") { it.esc() }}. Use create_exercise first."}"""
-        }
+        if (unresolved.isNotEmpty()) return unresolvedError(unresolved)
 
         return runCatching {
             repo.updateWorkout(current.id, newName ?: current.name, current.note, lines)

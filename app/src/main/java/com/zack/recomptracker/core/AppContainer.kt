@@ -95,7 +95,15 @@ import com.zack.recomptracker.data.repository.RecipeRepository
 import com.zack.recomptracker.data.repository.StreakRepository
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ai.CoachPhrasingService
 import com.zack.recomptracker.ai.WeeklyBriefingGenerator
+import com.zack.recomptracker.data.coach.CoachContextBuilder
+import com.zack.recomptracker.data.coach.CoachContextCache
+import com.zack.recomptracker.data.coach.CoachDigestCoordinator
+import com.zack.recomptracker.data.coach.CoachInboxRepository
+import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
+import com.zack.recomptracker.domain.coach.CoachSignalEngine
+import com.zack.recomptracker.domain.coach.SignalSelector
 import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
 import com.zack.recomptracker.domain.review.WeeklyReviewComputer
 import com.zack.recomptracker.domain.streak.StreakCalculator
@@ -371,6 +379,34 @@ class AppContainer(context: Context) {
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
         toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
+    )
+
+    // ── Proactive coaching spine (deterministic engine → inbox; cloud phrasing on open) ──
+    val coachContextBuilder = CoachContextBuilder(
+        logRepository = logRepository,
+        planRepository = planRepository,
+        workoutSessionRepository = workoutSessionRepository,
+        streakRepository = streakRepository,
+        userProfileStore = userProfilePreferencesStore,
+        dateProvider = dateProvider,
+    )
+    val coachContextCache = CoachContextCache(coachContextBuilder, dateProvider)
+    val coachSignalEngine: CoachSignalEngine = CoachSignalEngine.default()
+    val signalSelector = SignalSelector()
+    val coachInboxRepository = CoachInboxRepository(context.applicationContext)
+
+    /** Stage-2 phrasing decoration for the featured signal, on demand when a surface opens. */
+    val coachPhrasingService = CoachPhrasingService(openAiCompatClient) { cloudConfigFlow.value }
+
+    val coachDigestCoordinator = CoachDigestCoordinator(
+        contextProvider = { coachContextCache.get() },
+        engine = coachSignalEngine,
+        selector = signalSelector,
+        inbox = coachInboxRepository,
+        aiEnabledFlow = uiPreferences.aiInsightsEnabled,
+        dateProvider = dateProvider,
+        appScope = appScope,
+        scheduler = WorkManagerCoachDigestScheduler(context.applicationContext),
     )
 
     // ── Routers (handed out to ViewModels) ──────────────────────────────────────────

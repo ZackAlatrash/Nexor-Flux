@@ -14,6 +14,28 @@ import kotlinx.coroutines.flow.map
 private val Context.coachInboxDataStore by preferencesDataStore(name = "coach_inbox")
 
 /**
+ * The minimal write/read surface the proactive-coach digest depends on, extracted so
+ * [CoachDigestCoordinator] can be unit-tested against a simple in-memory fake instead of the
+ * concrete DataStore class. [CoachInboxRepository] is the production implementation.
+ */
+interface CoachInbox {
+    /** Persist [signal] as the featured winner, or clear the slot when `null`. */
+    suspend fun stage(signal: CoachSignal?)
+
+    /** Record that [dedupKey] was surfaced on [date] (feeds the cooldown ledger). */
+    suspend fun markSeen(dedupKey: String, date: LocalDate)
+
+    /** The dedup/cooldown state the SignalSelector consumes: dedupKey → date last surfaced. */
+    suspend fun seenLedger(): Map<String, LocalDate>
+
+    /** The once-a-day debounce stamp for the digest coordinator, or `null` if never run. */
+    suspend fun lastRunDate(): LocalDate?
+
+    /** Stamp [date] as the last digest run (once-a-day debounce). */
+    suspend fun setLastRunDate(date: LocalDate)
+}
+
+/**
  * DataStore-backed persistence for the proactive coach's *current featured signal* plus the
  * dedup/cooldown "seen" ledger and once-a-day debounce stamp. See
  * `docs/ai-redesign/08-technical-architecture.md` §9 (dedup/cooldown) and §10 (memory).
@@ -27,7 +49,7 @@ private val Context.coachInboxDataStore by preferencesDataStore(name = "coach_in
  */
 class CoachInboxRepository(
     private val context: Context,
-) {
+) : CoachInbox {
 
     /**
      * The currently staged winner, or `null` when nothing is staged or the persisted value fails to
@@ -43,7 +65,7 @@ class CoachInboxRepository(
     }
 
     /** Persist [signal] as the featured winner, or clear the slot when `null`. */
-    suspend fun stage(signal: CoachSignal?) {
+    override suspend fun stage(signal: CoachSignal?) {
         context.coachInboxDataStore.edit { prefs ->
             if (signal == null) {
                 prefs.remove(Keys.CurrentSignal)
@@ -62,7 +84,7 @@ class CoachInboxRepository(
      * Record that [dedupKey] was surfaced on [date] and prune stale entries, so the [SignalSelector]'s
      * cooldown ("a dedupKey can't re-surface until ≥7 days pass") can consult it.
      */
-    suspend fun markSeen(dedupKey: String, date: LocalDate) {
+    override suspend fun markSeen(dedupKey: String, date: LocalDate) {
         context.coachInboxDataStore.edit { prefs ->
             val existing = CoachInboxSerialization.decodeLedger(prefs[Keys.SeenLedger])
             val updated = CoachInboxSerialization.markSeen(existing, dedupKey, date)
@@ -71,20 +93,20 @@ class CoachInboxRepository(
     }
 
     /** The dedup/cooldown state the SignalSelector consumes: dedupKey → date last surfaced. */
-    suspend fun seenLedger(): Map<String, LocalDate> =
+    override suspend fun seenLedger(): Map<String, LocalDate> =
         CoachInboxSerialization.decodeLedger(
             context.coachInboxDataStore.data.first()[Keys.SeenLedger],
         )
 
     /** The once-a-day debounce stamp for the digest coordinator, or `null` if never run. */
-    suspend fun lastRunDate(): LocalDate? {
+    override suspend fun lastRunDate(): LocalDate? {
         val raw = context.coachInboxDataStore.data.first()[Keys.LastRunDate]
         if (raw.isNullOrBlank()) return null
         return runCatching { LocalDate.parse(raw) }.getOrNull()
     }
 
     /** Stamp [date] as the last digest run (once-a-day debounce). */
-    suspend fun setLastRunDate(date: LocalDate) {
+    override suspend fun setLastRunDate(date: LocalDate) {
         context.coachInboxDataStore.edit { it[Keys.LastRunDate] = date.toString() }
     }
 

@@ -42,6 +42,9 @@ class RecompTrackerApp : Application(), ImageLoaderFactory {
             object : DefaultLifecycleObserver {
                 override fun onStart(owner: LifecycleOwner) {
                     container.healthSyncCoordinator.syncIfDue()
+                    // Refresh the proactive-coach "Today's Coaching" winner once/day (debounced
+                    // inside the coordinator). Deterministic CPU/DB work — no cloud call here.
+                    container.coachDigestCoordinator.runIfDue()
                 }
             },
         )
@@ -50,6 +53,13 @@ class RecompTrackerApp : Application(), ImageLoaderFactory {
         appScope.launch {
             if (container.planRepository.preferences.first().healthConnectEnabled) {
                 container.healthSyncCoordinator.enableBackgroundSync()
+            }
+        }
+        // Ensure the periodic coach digest is scheduled for users who already enabled AI insights
+        // (enqueue is idempotent — KEEP policy).
+        appScope.launch {
+            if (container.uiPreferences.aiInsightsEnabled.first()) {
+                container.coachDigestCoordinator.enableBackgroundDigest()
             }
         }
     }

@@ -115,6 +115,7 @@ private class NoopSessionDao : WorkoutSessionDao() {
     override fun observeActiveSession(): Flow<com.zack.recomptracker.data.local.entity.WorkoutSessionWithDetailsDb?> = MutableStateFlow(null)
     override suspend fun getLastCompletedSession(workoutId: Long): com.zack.recomptracker.data.local.entity.WorkoutSessionWithDetailsDb? = null
     override fun observeCompletedSessions(): Flow<List<com.zack.recomptracker.data.local.entity.WorkoutSessionWithDetailsDb>> = MutableStateFlow(emptyList())
+    override suspend fun getCompletedSessionsSince(startDate: String): List<com.zack.recomptracker.data.local.entity.WorkoutSessionWithDetailsDb> = emptyList()
     override suspend fun getExerciseHistory(exerciseId: Long): List<com.zack.recomptracker.data.local.entity.ExerciseHistoryRow> = emptyList()
     override suspend fun nextExerciseSortOrder(sessionId: Long): Int = 0
     override suspend fun deleteSessionExerciseById(id: Long) {}

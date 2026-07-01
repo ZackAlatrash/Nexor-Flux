@@ -21,12 +21,12 @@ import com.zack.recomptracker.domain.coach.ProfileContext
 import com.zack.recomptracker.domain.coach.StreakSnapshot
 import com.zack.recomptracker.domain.coach.StreaksContext
 import com.zack.recomptracker.domain.coach.TrainingContext
+import com.zack.recomptracker.domain.coach.TrainingDerivations
 import com.zack.recomptracker.domain.coach.WeeklyReviewSnapshot
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
-import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -255,19 +255,12 @@ object CoachContextAssembler {
         )
         val weeklyFrequency = ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
 
-        // e1RM series per exercise: for each exercise, group its completed weighted sets by day,
-        // keep the best estimated 1RM per day, oldest → newest. Derived from already-loaded
-        // sessions — no new DAO query.
-        val e1rmByExercise: Map<String, List<LiftE1rmPoint>> = buildE1rmSeries(sessionsInWindow)
-
-        // Recent RIR across the most recent sessions' completed sets (newest sessions first).
-        val recentRir: List<Int> = sessionsInWindow
-            .sortedByDescending { it.first }
-            .take(RECENT_SESSIONS_FOR_RIR)
-            .flatMap { it.second.exercises }
-            .flatMap { it.sets }
-            .filter { it.completed }
-            .mapNotNull { it.rir }
+        // e1RM series + recent RIR come from the shared pure derivation so the coach tool and this
+        // assembler never duplicate the math (docs/ai-redesign/08-technical-architecture.md §6).
+        val e1rmByExercise: Map<String, List<LiftE1rmPoint>> =
+            TrainingDerivations.e1rmSeriesByExercise(sessionsInWindow)
+        val recentRir: List<Int> =
+            TrainingDerivations.recentRir(sessionsInWindow, RECENT_SESSIONS_FOR_RIR)
 
         return TrainingContext(
             completedSessionDates = sessionDates,
@@ -276,27 +269,6 @@ object CoachContextAssembler {
             e1rmByExercise = e1rmByExercise,
             recentRir = recentRir,
         )
-    }
-
-    private fun buildE1rmSeries(
-        sessionsInWindow: List<Pair<LocalDate, WorkoutSession>>,
-    ): Map<String, List<LiftE1rmPoint>> {
-        // exerciseName -> (date -> best e1RM that day)
-        val byExercise = mutableMapOf<String, MutableMap<LocalDate, Double>>()
-        for ((date, session) in sessionsInWindow) {
-            for (exercise in session.exercises) {
-                val bestThisSession = exercise.sets
-                    .filter { it.completed }
-                    .mapNotNull { WorkoutProgressAnalyzer.estimatedOneRepMax(it.reps, it.weightKg) }
-                    .maxOrNull() ?: continue
-                val dayMap = byExercise.getOrPut(exercise.exerciseName) { mutableMapOf() }
-                val existing = dayMap[date]
-                if (existing == null || bestThisSession > existing) dayMap[date] = bestThisSession
-            }
-        }
-        return byExercise.mapValues { (_, dayMap) ->
-            dayMap.entries.sortedBy { it.key }.map { LiftE1rmPoint(it.key, it.value) }
-        }
     }
 
     // ── Streaks ────────────────────────────────────────────────────────────────────

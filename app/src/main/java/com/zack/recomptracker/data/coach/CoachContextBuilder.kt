@@ -40,7 +40,9 @@ class CoachContextBuilder(
         val meals = logRepository.observeMealEntriesSince(windowStart).first()
         val eatenMeals = meals.filterNot { it.planned }
         val plannedMeals = meals.filter { it.planned }
-        val completedSessions = workoutSessionRepository.observeCompletedSessions().first()
+        // Windowed batched read: bound the training load to the assembler's window instead of
+        // pulling all history. The assembler still windows in-memory, so behavior is unchanged.
+        val completedSessions = workoutSessionRepository.getCompletedSessionsSince(windowStart)
         val streaks = streakRepository.streaks().first()
         val weeklyReviews = logRepository.observeWeeklyReviews().first().map { review ->
             WeeklyReviewInput(

@@ -12,6 +12,7 @@ import com.zack.recomptracker.domain.workout.PlannedSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutTemplateExercise
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -54,6 +55,11 @@ class WorkoutSessionRepositoryTest {
                 .maxByOrNull { it.date + (it.completedAt ?: "") }?.let { build(it) }
         override fun observeCompletedSessions(): Flow<List<WorkoutSessionWithDetailsDb>> =
             flowOf(sessions.values.filter { it.status == "COMPLETED" }.map { build(it) })
+        override suspend fun getCompletedSessionsSince(startDate: String): List<WorkoutSessionWithDetailsDb> =
+            sessions.values
+                .filter { it.status == "COMPLETED" && it.date >= startDate }
+                .sortedByDescending { it.date + (it.completedAt ?: "") }
+                .map { build(it) }
         override suspend fun getExerciseHistory(exerciseId: Long): List<ExerciseHistoryRow> =
             exercises.values.filter { it.exerciseId == exerciseId }
                 .flatMap { se ->
@@ -252,6 +258,51 @@ class WorkoutSessionRepositoryTest {
         // The first completed set with our weight
         val completedSet = last.exercises.first().sets.first { it.completed && it.weightKg == 100.0 }
         assertEquals(100.0, completedSet.weightKg!!, 0.0001)
+    }
+
+    @Test
+    fun `getCompletedSessionsSince windows by date, keeps only completed, maps to domain`() = runTest {
+        val dao = FakeSessionDao()
+        val repo = repo(dao)
+        // Seed three sessions directly: one in-window completed, one out-of-window completed, one
+        // in-window but ACTIVE (must be excluded).
+        dao.insertSession(WorkoutSessionEntity(
+            workoutId = 1, workoutName = "In", date = "2026-06-20", startedAt = "2026-06-20T10:00",
+            completedAt = "2026-06-20T11:00", status = "COMPLETED", note = null, durationSeconds = null,
+        ))
+        dao.insertSession(WorkoutSessionEntity(
+            workoutId = 1, workoutName = "Old", date = "2026-05-01", startedAt = "2026-05-01T10:00",
+            completedAt = "2026-05-01T11:00", status = "COMPLETED", note = null, durationSeconds = null,
+        ))
+        dao.insertSession(WorkoutSessionEntity(
+            workoutId = 1, workoutName = "Active", date = "2026-06-25", startedAt = "2026-06-25T10:00",
+            completedAt = null, status = "ACTIVE", note = null, durationSeconds = null,
+        ))
+
+        val result = repo.getCompletedSessionsSince(LocalDate.of(2026, 6, 1))
+
+        assertEquals(1, result.size)
+        assertEquals("In", result.first().workoutName)
+        assertEquals(SessionStatus.COMPLETED, result.first().status)
+        assertEquals("2026-06-20", result.first().date)
+    }
+
+    @Test
+    fun `getCompletedSessionsSince returns newest first`() = runTest {
+        val dao = FakeSessionDao()
+        val repo = repo(dao)
+        dao.insertSession(WorkoutSessionEntity(
+            workoutId = 1, workoutName = "Older", date = "2026-06-10", startedAt = "2026-06-10T10:00",
+            completedAt = "2026-06-10T11:00", status = "COMPLETED", note = null, durationSeconds = null,
+        ))
+        dao.insertSession(WorkoutSessionEntity(
+            workoutId = 1, workoutName = "Newer", date = "2026-06-28", startedAt = "2026-06-28T10:00",
+            completedAt = "2026-06-28T11:00", status = "COMPLETED", note = null, durationSeconds = null,
+        ))
+
+        val result = repo.getCompletedSessionsSince(LocalDate.of(2026, 6, 1))
+
+        assertEquals(listOf("Newer", "Older"), result.map { it.workoutName })
     }
 
     @Test

@@ -55,6 +55,7 @@ class CoachToolExecutor(
         "search_exercises" -> searchExercises(args)
         "create_routine" -> createRoutine(args)
         "edit_routine" -> editRoutine(args)
+        "create_exercise" -> createExercise(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -528,6 +529,22 @@ class CoachToolExecutor(
             repo.updateWorkout(current.id, newName ?: current.name, current.note, lines)
             """{"success":true,"routine":"${(newName ?: current.name).esc()}","exercises":${lines.size}}"""
         }.getOrElse { """{"error":"${(it.message ?: "could not update routine").esc()}"}""" }
+    }
+
+    private suspend fun createExercise(args: Map<String, String>): String {
+        val lib = exerciseLibraryRepository ?: return """{"error":"exercise library unavailable"}"""
+        val name = args["name"]?.trim().orEmpty()
+        if (name.isBlank()) return """{"error":"create_exercise requires 'name'"}"""
+        fun muscles(key: String): List<String> =
+            runCatching { toolJson.decodeFromString<List<String>>(args[key] ?: "[]") }
+                .getOrDefault(emptyList())
+                .map { it.trim() }.filter { it.isNotBlank() }
+        val primary = muscles("primary_muscles")
+        val secondary = muscles("secondary_muscles")
+        return runCatching {
+            val id = lib.addCustomExercise(name, primaryMuscles = primary, secondaryMuscles = secondary)
+            """{"success":true,"exercise":"${name.esc()}","id":$id}"""
+        }.getOrElse { """{"error":"${(it.message ?: "could not create exercise").esc()}"}""" }
     }
 
     // ── Training / body-trend helpers ────────────────────────────────────────────

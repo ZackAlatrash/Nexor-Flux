@@ -188,4 +188,23 @@ class CoachToolExecutorRoutineToolsTest {
         assertTrue(json.contains("error"))
         assertTrue(repo.lastUpdated == null)
     }
+
+    @Test
+    fun `create_exercise stores the specified muscles`() = runTest {
+        val lib = FakeExerciseLibrary(emptyList())
+        val json = executor(FakeWorkoutRepo(), lib).execute(
+            "create_exercise",
+            mapOf("name" to "Cable Y-Raise", "primary_muscles" to """["Shoulders"]"""),
+        )
+        assertTrue(json.contains("\"success\":true"))
+        assertTrue(lib.created.single().first == "Cable Y-Raise")
+        assertTrue(lib.created.single().second == listOf("Shoulders"))
+    }
+
+    @Test
+    fun `create_exercise requires a name`() = runTest {
+        val json = executor(FakeWorkoutRepo(), FakeExerciseLibrary(emptyList()))
+            .execute("create_exercise", mapOf("primary_muscles" to """["Shoulders"]"""))
+        assertTrue(json.contains("error"))
+    }
 }

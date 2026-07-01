@@ -23,7 +23,7 @@ val COACH_TOOL_SCHEMAS: List<String> = listOf(
 
 /** Tool names that mutate user data and therefore require explicit confirmation. */
 val COACH_WRITE_TOOLS: Set<String> =
-    setOf("log_meal", "log_metric", "update_calorie_target", "create_routine", "edit_routine", "create_exercise")
+    setOf("log_meal", "log_metric", "update_calorie_target", "create_routine", "edit_routine", "create_exercise", "delete_meal", "edit_meal")
 
 /**
  * Web-search tool schema. CLOUD COACH ONLY — never added to the local Gemma tool list (the 2B
@@ -42,5 +42,11 @@ val ROUTINE_TOOL_SCHEMAS: List<String> = listOf(
     """{"name":"create_exercise","description":"Create a custom exercise in the library when the user names one that isn't found. Specify the muscle group(s) it works.","parameters":{"type":"object","properties":{"name":{"type":"string"},"primary_muscles":{"type":"array","items":{"type":"string"}},"secondary_muscles":{"type":"array","items":{"type":"string"}},"equipment":{"type":"string"}},"required":["name","primary_muscles"]}}""",
 )
 
-/** The cloud coach's full tool list: shared tools + web search + routine management. */
-val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS
+/** Cloud-coach tools for fixing mislogged meals. */
+val MEAL_EDIT_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"delete_meal","description":"Remove a meal the user already logged, identified by name. Pass 'date' (YYYY-MM-DD) if it was not today. If several entries match, the tool returns needs_disambiguation with the candidates — ask the user which.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Name of the logged meal to remove"},"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":["name"]}}""",
+    """{"name":"edit_meal","description":"Change a meal the user already logged. Pass 'grams' to rescale its macros, or pass calories/macros directly to override. Identified by name; pass 'date' if not today.","parameters":{"type":"object","properties":{"name":{"type":"string"},"grams":{"type":"number"},"calories":{"type":"integer"},"protein_g":{"type":"number"},"carbs_g":{"type":"number"},"fat_g":{"type":"number"},"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":["name"]}}""",
+)
+
+/** The cloud coach's full tool list: shared tools + web search + routine management + meal edits. */
+val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS + MEAL_EDIT_TOOL_SCHEMAS

@@ -4,6 +4,7 @@ import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.toToolJson
 import com.zack.recomptracker.data.repository.DailyMetricsInput
@@ -57,6 +58,7 @@ class CoachToolExecutor(
         "create_routine" -> createRoutine(args)
         "edit_routine" -> editRoutine(args)
         "create_exercise" -> createExercise(args)
+        "delete_meal" -> deleteMeal(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -630,6 +632,46 @@ class CoachToolExecutor(
         if (this == null) "null" else String.format(java.util.Locale.US, "%.2f", this)
 
     private fun List<Int>.toJsonArray(): String = "[" + joinToString(",") + "]"
+
+    /** Confident name matches among a day's logged meal entries (exact › startsWith › contains › all-words). */
+    private fun scoredMealMatches(query: String, meals: List<MealEntryEntity>): List<MealEntryEntity> {
+        val q = query.lowercase().trim()
+        val words = q.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        fun score(name: String): Int {
+            val n = name.lowercase()
+            return when {
+                n == q -> 3
+                n.startsWith(q) -> 2
+                n.contains(q) -> 1
+                words.isNotEmpty() && words.all { n.contains(it) } -> 0
+                else -> -1
+            }
+        }
+        return meals.map { it to score(it.name) }
+            .filter { (_, s) -> s >= 0 }
+            .sortedByDescending { (_, s) -> s }
+            .map { it.first }
+    }
+
+    private fun mealMatchJson(m: MealEntryEntity): String =
+        """{"name":"${m.name.esc()}","meal_type":"${m.mealType.esc()}","calories":${m.calories}""" +
+            (m.amountGrams?.let { ""","grams":${it.toInt()}""" } ?: "") + "}"
+
+    private suspend fun deleteMeal(args: Map<String, String>): String {
+        val name = args["name"]?.trim().orEmpty()
+        if (name.isBlank()) return """{"error":"delete_meal requires 'name'"}"""
+        val date = args["date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: dateProvider.today()
+        val matches = scoredMealMatches(name, logRepository.getDay(date).meals)
+        return when {
+            matches.isEmpty() -> """{"error":"no logged meal matching '${name.esc()}' on $date"}"""
+            matches.size > 1 -> """{"needs_disambiguation":true,"matches":[${matches.take(5).joinToString(",") { mealMatchJson(it) }}]}"""
+            else -> {
+                val entry = matches.first()
+                logRepository.deleteMeal(entry.id)
+                """{"success":true,"deleted":"${entry.name.esc()}","calories":${entry.calories}}"""
+            }
+        }
+    }
 
     private companion object {
         /** Trailing window for the training + body-trend tools (matches CoachContextAssembler). */

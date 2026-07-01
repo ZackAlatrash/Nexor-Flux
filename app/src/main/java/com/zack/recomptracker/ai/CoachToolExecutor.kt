@@ -54,6 +54,7 @@ class CoachToolExecutor(
         "get_routines" -> getRoutines()
         "search_exercises" -> searchExercises(args)
         "create_routine" -> createRoutine(args)
+        "edit_routine" -> editRoutine(args)
         else -> """{"error":"unknown tool $name"}"""
     }
 
@@ -469,6 +470,64 @@ class CoachToolExecutor(
             repo.saveWorkout(name, null, lines)
             """{"success":true,"routine":"${name.esc()}","exercises":${lines.size}}"""
         }.getOrElse { """{"error":"${(it.message ?: "could not save routine").esc()}"}""" }
+    }
+
+    private suspend fun editRoutine(args: Map<String, String>): String {
+        val repo = workoutRepository ?: return """{"error":"routines unavailable"}"""
+        val name = args["name"]?.trim().orEmpty()
+        if (name.isBlank()) return """{"error":"edit_routine requires 'name'"}"""
+        val current = repo.observeAll().first().firstOrNull { it.name.equals(name, ignoreCase = true) }
+            ?: return """{"error":"routine '${name.esc()}' not found"}"""
+
+        val add = runCatching { toolJson.decodeFromString<List<RoutineExerciseArg>>(args["add"] ?: "[]") }.getOrDefault(emptyList())
+        val remove = runCatching { toolJson.decodeFromString<List<String>>(args["remove"] ?: "[]") }.getOrDefault(emptyList())
+        val retarget = runCatching { toolJson.decodeFromString<List<RetargetArg>>(args["retarget"] ?: "[]") }.getOrDefault(emptyList())
+        val newName = args["new_name"]?.trim()?.takeIf { it.isNotBlank() }
+
+        // Start from the current lines (preserve everything not explicitly changed).
+        val lines = current.exercises.sortedBy { it.sortOrder }.map { line ->
+            NewWorkoutLine(
+                exerciseId = line.exercise.id,
+                plannedSets = line.plannedSets.map { PlannedSetDraft(it.targetReps, it.targetWeightKg) },
+                note = line.note,
+            )
+        }.toMutableList()
+
+        // remove by exercise name
+        if (remove.isNotEmpty()) {
+            val removeIds = current.exercises
+                .filter { ex -> remove.any { it.equals(ex.exercise.name, ignoreCase = true) } }
+                .map { it.exercise.id }.toSet()
+            lines.removeAll { it.exerciseId in removeIds }
+        }
+
+        // retarget existing lines (by matching exercise id resolved from current template)
+        for (rt in retarget) {
+            val ex = current.exercises.firstOrNull { it.exercise.name.equals(rt.name, ignoreCase = true) } ?: continue
+            val idx = lines.indexOfFirst { it.exerciseId == ex.exercise.id }
+            if (idx < 0) continue
+            val existingFirst = lines[idx].plannedSets.firstOrNull()
+            val setCount = rt.sets ?: lines[idx].plannedSets.size
+            val reps = rt.reps ?: existingFirst?.targetReps
+            val weight = rt.weight_kg ?: existingFirst?.targetWeightKg
+            lines[idx] = lines[idx].copy(plannedSets = uniformSets(setCount, reps, weight))
+        }
+
+        // add new exercises (resolved from the library)
+        val unresolved = mutableListOf<String>()
+        for (a in add) {
+            val id = resolveExerciseId(a.name)
+            if (id == null) { unresolved += a.name; continue }
+            lines += NewWorkoutLine(exerciseId = id, plannedSets = uniformSets(a.sets, a.reps, a.weight_kg))
+        }
+        if (unresolved.isNotEmpty()) {
+            return """{"error":"not found in library: ${unresolved.joinToString(", ") { it.esc() }}. Use create_exercise first."}"""
+        }
+
+        return runCatching {
+            repo.updateWorkout(current.id, newName ?: current.name, current.note, lines)
+            """{"success":true,"routine":"${(newName ?: current.name).esc()}","exercises":${lines.size}}"""
+        }.getOrElse { """{"error":"${(it.message ?: "could not update routine").esc()}"}""" }
     }
 
     // ── Training / body-trend helpers ────────────────────────────────────────────

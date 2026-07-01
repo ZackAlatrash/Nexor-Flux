@@ -142,4 +142,50 @@ class CoachToolExecutorRoutineToolsTest {
         )
         assertTrue(json.contains("error"))
     }
+
+    @Test
+    fun `edit_routine adds and removes exercises as deltas, preserving the rest`() = runTest {
+        val lib = FakeExerciseLibrary(listOf(exercise(10, "Cable Fly")))
+        val repo = FakeWorkoutRepo(listOf(template(1, "Push Day", listOf("Bench Press" to 4, "Dips" to 3))))
+        val json = executor(repo, lib).execute(
+            "edit_routine",
+            mapOf("name" to "Push Day", "add" to """[{"name":"cable fly","sets":3,"reps":12}]""", "remove" to """["Dips"]"""),
+        )
+        assertTrue(json.contains("\"success\":true"))
+        val updated = repo.lastUpdated!!
+        assertTrue(updated.first == 1L)
+        // Bench Press preserved (4 sets) + Cable Fly added (3 sets); Dips removed → 2 lines.
+        assertTrue(updated.third.size == 2)
+    }
+
+    @Test
+    fun `edit_routine retarget changes only the set count of one exercise`() = runTest {
+        val repo = FakeWorkoutRepo(listOf(template(1, "Push Day", listOf("Bench Press" to 4))))
+        executor(repo, FakeExerciseLibrary(emptyList())).execute(
+            "edit_routine",
+            mapOf("name" to "Push Day", "retarget" to """[{"name":"Bench Press","sets":5}]"""),
+        )
+        assertTrue(repo.lastUpdated!!.third[0].plannedSets.size == 5)
+    }
+
+    @Test
+    fun `edit_routine renames the routine`() = runTest {
+        val repo = FakeWorkoutRepo(listOf(template(1, "Push Day", listOf("Bench Press" to 4))))
+        executor(repo, FakeExerciseLibrary(emptyList())).execute(
+            "edit_routine",
+            mapOf("name" to "Push Day", "new_name" to "Upper A"),
+        )
+        assertTrue(repo.lastUpdated!!.second == "Upper A")
+    }
+
+    @Test
+    fun `edit_routine reports when the routine is not found`() = runTest {
+        val repo = FakeWorkoutRepo(emptyList())
+        val json = executor(repo, FakeExerciseLibrary(emptyList())).execute(
+            "edit_routine",
+            mapOf("name" to "Nope", "new_name" to "X"),
+        )
+        assertTrue(json.contains("error"))
+        assertTrue(repo.lastUpdated == null)
+    }
 }

@@ -3,15 +3,23 @@ package com.zack.recomptracker.ai
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.toToolJson
 import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.adherence.NutritionDay
+import com.zack.recomptracker.domain.coach.TrainingDerivations
+import com.zack.recomptracker.domain.coach.TrendDirection
 import com.zack.recomptracker.domain.food.MealEntryTypes
+import com.zack.recomptracker.domain.trend.MeasurementPoint
+import com.zack.recomptracker.domain.trend.TrendCalculator
+import com.zack.recomptracker.domain.workout.WorkoutSession
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
@@ -20,12 +28,16 @@ class CoachToolExecutor(
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
     private val webSearchProvider: WebSearchProvider? = null,
+    private val workoutSessionRepository: WorkoutSessionRepository? = null,
 ) {
     private val adherenceCalculator = AdherenceCalculator()
+    private val trendCalculator = TrendCalculator()
 
     suspend fun execute(name: String, args: Map<String, String>): String = when (name) {
         "get_today_summary" -> getTodaySummary(args)
         "get_weekly_trends" -> getWeeklyTrends()
+        "get_training_summary" -> getTrainingSummary()
+        "get_body_trends" -> getBodyTrends()
         "search_food_library" -> searchFoodLibrary(args)
         "log_meal" -> logMeal(args)
         "log_metric" -> logMetric(args)
@@ -88,6 +100,99 @@ class CoachToolExecutor(
         val adherencePercent = adherenceCalculator.calculate(nutritionDays).toInt()
         val daysLogged = macroMap.values.count { it.calories > 0 }
         return """{"week_start":"$start","week_end":"$today","daily_macros":[$dailyEntries],"adherence_percent":$adherencePercent,"days_logged":$daysLogged}"""
+    }
+
+    /**
+     * Strength / lifting / recovery-load snapshot over the trailing [TRAINING_WINDOW_DAYS] days.
+     * Every number is computed by the pure [TrainingDerivations] and [ActivitySummary] calculators —
+     * the model never invents figures. Per-lift latest e1RM + trend, total volume, sessions/week
+     * (over the trained-day union of session dates and `trained` daily-logs), recent RIR, and recent
+     * soreness. When no completed sessions land in the window, returns a compact `note` object.
+     */
+    private suspend fun getTrainingSummary(): String {
+        val repo = workoutSessionRepository
+            ?: return """{"window_days":$TRAINING_WINDOW_DAYS,"sessions_per_week":0,"lifts":[],"note":"no completed training sessions logged in this window"}"""
+        val today = dateProvider.today()
+        val windowStart = today.minusDays((TRAINING_WINDOW_DAYS - 1).toLong())
+
+        // Dated (date, session) pairs, oldest → newest — the shape every TrainingDerivations fn takes.
+        val datedSessions: List<Pair<LocalDate, WorkoutSession>> =
+            repo.getCompletedSessionsSince(windowStart)
+                .mapNotNull { session -> parseDate(session.date)?.let { it to session } }
+                .filter { (date, _) -> !date.isBefore(windowStart) && !date.isAfter(today) }
+                .sortedBy { it.first }
+
+        // Trained-day frequency uses the full union (session dates + `trained` daily-logs) over the
+        // trailing 4 weeks — the single ActivitySummary definition used across the app.
+        val trainedLogDates = logRepository.observeDailyLogs().first()
+            .filter { it.trained }
+            .mapNotNull { parseDate(it.date) }
+        val workoutDays = ActivitySummary.workoutDays(
+            completedSessionDates = datedSessions.map { it.first },
+            trainedLogDates = trainedLogDates,
+        )
+        val sessionsPerWeek = ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
+
+        if (datedSessions.isEmpty()) {
+            return """{"window_days":$TRAINING_WINDOW_DAYS,"sessions_per_week":${sessionsPerWeek.round1()},"lifts":[],"note":"no completed training sessions logged in this window"}"""
+        }
+
+        val latestE1rm = TrainingDerivations.latestE1rmByExercise(datedSessions)
+        val liftsJson = latestE1rm.entries
+            .sortedByDescending { it.value }
+            .joinToString(",") { (name, e1rm) ->
+                val trend = TrainingDerivations.trendDirection(datedSessions, name)
+                """{"name":"${name.esc()}","latest_e1rm_kg":${e1rm.round1()},"trend":"${trend.toJson()}"}"""
+            }
+        val totalVolume = TrainingDerivations.totalTrainingVolume(datedSessions)
+        val recentRir = TrainingDerivations.recentRir(datedSessions)
+
+        // Recent soreness: the last few non-null soreness scores from daily logs in the window,
+        // newest first — a recovery-load signal alongside RIR.
+        val recentSoreness = logRepository.observeDailyLogs().first()
+            .mapNotNull { log -> parseDate(log.date)?.let { it to log } }
+            .filter { (date, _) -> !date.isBefore(windowStart) && !date.isAfter(today) }
+            .sortedByDescending { it.first }
+            .mapNotNull { it.second.sorenessScore }
+            .take(RECENT_SORENESS_COUNT)
+
+        return """{"window_days":$TRAINING_WINDOW_DAYS,"sessions_per_week":${sessionsPerWeek.round1()},"total_volume_kg":${totalVolume.toInt()},"lifts":[$liftsJson],"recent_rir":${recentRir.toJsonArray()},"recent_soreness":${recentSoreness.toJsonArray()}}"""
+    }
+
+    /**
+     * Body-measurement history over the trailing [TRAINING_WINDOW_DAYS] days: weight / waist /
+     * skinfold linear trends (kg or cm or mm per week via [TrendCalculator.trendPerWeek]), plus the
+     * latest weight & waist and a 7-day average weight. Every field is null-safe — a metric that was
+     * never logged yields `null` for its trend/latest so the model can say "no data" rather than guess.
+     */
+    private suspend fun getBodyTrends(): String {
+        val today = dateProvider.today()
+        val windowStart = today.minusDays((TRAINING_WINDOW_DAYS - 1).toLong())
+
+        val logsInWindow = logRepository.observeDailyLogs().first()
+            .mapNotNull { log -> parseDate(log.date)?.let { it to log } }
+            .filter { (date, _) -> !date.isBefore(windowStart) && !date.isAfter(today) }
+            .sortedBy { it.first }
+
+        val weightSeries = doubleSeries(logsInWindow) { it.bodyWeightKg }
+        val waistSeries = doubleSeries(logsInWindow) { it.waistCm }
+        val skinfoldSeries = doubleSeries(logsInWindow) { it.waistSkinfoldMm }
+
+        val weightTrend = trendOrNull(weightSeries)
+        val waistTrend = trendOrNull(waistSeries)
+        val skinfoldTrend = trendOrNull(skinfoldSeries)
+
+        val latestWeight = weightSeries.maxByOrNull { it.date }?.value
+        val latestWaist = waistSeries.maxByOrNull { it.date }?.value
+
+        // 7-day average weight ending today, over logged weigh-ins only.
+        val weekStart = today.minusDays(6)
+        val last7Weights = weightSeries
+            .filter { !it.date.isBefore(weekStart) && !it.date.isAfter(today) }
+            .mapNotNull { it.value }
+        val avgWeight7 = if (last7Weights.isEmpty()) null else last7Weights.average()
+
+        return """{"window_days":$TRAINING_WINDOW_DAYS,"weight_trend_kg_per_week":${weightTrend.round2Json()},"waist_trend_cm_per_week":${waistTrend.round2Json()},"skinfold_trend_mm_per_week":${skinfoldTrend.round2Json()},"latest_weight_kg":${latestWeight.round1Json()},"latest_waist_cm":${latestWaist.round1Json()},"avg_weight_7d":${avgWeight7.round1Json()}}"""
     }
 
     private suspend fun searchFoodLibrary(args: Map<String, String>): String {
@@ -286,6 +391,51 @@ class CoachToolExecutor(
         val provider = webSearchProvider ?: return """{"error":"web search unavailable"}"""
         val result = provider.search(query) ?: return """{"error":"web search unavailable"}"""
         return result.toToolJson()
+    }
+
+    // ── Training / body-trend helpers ────────────────────────────────────────────
+
+    private fun parseDate(raw: String): LocalDate? = runCatching { LocalDate.parse(raw) }.getOrNull()
+
+    /** Dated series of the non-null values produced by [selector], oldest → newest. */
+    private inline fun doubleSeries(
+        logsInWindow: List<Pair<LocalDate, DailyLogEntity>>,
+        selector: (DailyLogEntity) -> Double?,
+    ): List<MeasurementPoint> = logsInWindow
+        .mapNotNull { (date, log) -> selector(log)?.let { MeasurementPoint(date, it) } }
+        .sortedBy { it.date }
+
+    /** Linear per-week trend via [TrendCalculator]; null when fewer than 2 logged points. */
+    private fun trendOrNull(series: List<MeasurementPoint>): Double? {
+        if (series.size < 2) return null
+        return trendCalculator.trendPerWeek(series)
+    }
+
+    private fun TrendDirection?.toJson(): String = when (this) {
+        TrendDirection.UP -> "up"
+        TrendDirection.DOWN -> "down"
+        TrendDirection.FLAT, null -> "flat"
+    }
+
+    /** Rounds to 1 decimal for a bare JSON number (no quotes). */
+    private fun Double.round1(): String = String.format(java.util.Locale.US, "%.1f", this)
+
+    /** Nullable → JSON: the metric rounded to 1 decimal, or the literal `null`. */
+    private fun Double?.round1Json(): String =
+        if (this == null) "null" else String.format(java.util.Locale.US, "%.1f", this)
+
+    /** Nullable → JSON: the trend rounded to 2 decimals, or the literal `null`. */
+    private fun Double?.round2Json(): String =
+        if (this == null) "null" else String.format(java.util.Locale.US, "%.2f", this)
+
+    private fun List<Int>.toJsonArray(): String = "[" + joinToString(",") + "]"
+
+    private companion object {
+        /** Trailing window for the training + body-trend tools (matches CoachContextAssembler). */
+        const val TRAINING_WINDOW_DAYS = 28
+
+        /** How many of the most-recent non-null soreness scores get_training_summary surfaces. */
+        const val RECENT_SORENESS_COUNT = 3
     }
 
     private fun String.esc() = replace("\\", "\\\\")

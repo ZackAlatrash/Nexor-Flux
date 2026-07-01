@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
  */
 internal const val COACH_PROMPT_GUIDELINES: String =
     "- For today's data, you may answer from the snapshot above. Call get_today_summary(date=…) for any other date, and get_weekly_trends() for multi-day or adherence questions.\n" +
+        "- Call get_training_summary() for lifting, strength, e1RM, volume, frequency, or recovery-load questions; call get_body_trends() for weight, waist, or recomposition questions (\"am I recomping?\").\n" +
         "- For any food's calories or macros you do not already have, you MUST call search_food_library first. If the food is not in the library, call search_web to look it up online — never estimate numbers from memory.\n" +
         "- If a fact you need is not in the snapshot, the food library, or the REFERENCE KNOWLEDGE — for example a restaurant or packaged-food nutrition figure, or a general nutrition, supplement, or training question — call search_web(query=…).\n" +
         "- When you use a web result, cite the source URL in your answer. Answer only from logged data, tool results, REFERENCE KNOWLEDGE, and web results you cite; never invent numbers.\n" +

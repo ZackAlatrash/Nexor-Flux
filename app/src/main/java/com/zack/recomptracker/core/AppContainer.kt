@@ -251,6 +251,7 @@ class AppContainer(context: Context) {
         planRepository = planRepository,
         dateProvider = dateProvider,
         webSearchProvider = webSearchProvider,
+        workoutSessionRepository = workoutSessionRepository,
     )
     private val gemmaCoachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
         serviceHolder = gemmaServiceHolder,

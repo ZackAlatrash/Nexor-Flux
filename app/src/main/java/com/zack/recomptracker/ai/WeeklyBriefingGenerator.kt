@@ -1,5 +1,7 @@
 package com.zack.recomptracker.ai
 
+import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
 import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
@@ -8,17 +10,27 @@ import com.zack.recomptracker.domain.review.WeeklyReviewData
 /**
  * Cloud-only generator. Asks the model for prose (BriefingNarration), then merges that prose onto
  * the deterministic [WeeklyReviewData] skeleton so numbers/verdict can never be altered by the model.
+ *
+ * The narration prompt is grounded in the knowledge corpus the same way chat is: a REFERENCE block
+ * (from [knowledgeInjector]) is prepended to the prompt so the model can phrase from the corpus. The
+ * deterministic skeleton — numbers and verdict — is untouched; grounding only shapes the prose.
  */
 class WeeklyBriefingGenerator(
     private val client: OpenAiCompatClient,
     private val promptBuilder: WeeklyBriefingPromptBuilder = WeeklyBriefingPromptBuilder(),
+    private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
 ) {
     /** Returns the merged briefing. Uses AI prose when available, deterministic engine summary as fallback. */
     suspend fun generate(config: CloudConfig, data: WeeklyReviewData): WeeklyBriefing? {
-        val prompt = promptBuilder.build(data)
+        val reference = knowledgeInjector.referenceBlock(knowledgeQuery(data))
+        val prompt = if (reference.isNotBlank()) reference + "\n\n" + promptBuilder.build(data) else promptBuilder.build(data)
         val narration = requestNarration(config, prompt) ?: requestNarration(config, prompt)
         return merge(data, narration)
     }
+
+    /** Grounding query: the verdict plus each signal label, so retrieval matches the week's themes. */
+    private fun knowledgeQuery(data: WeeklyReviewData): String =
+        "recomposition ${data.verdictLabel} " + data.signals.joinToString(" ") { it.label }
 
     private suspend fun requestNarration(config: CloudConfig, prompt: String): BriefingNarration? {
         return try {

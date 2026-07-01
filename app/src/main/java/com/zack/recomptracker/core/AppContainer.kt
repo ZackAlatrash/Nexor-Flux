@@ -265,8 +265,23 @@ class AppContainer(context: Context) {
 
     val coachHandoffStore = CoachHandoffStore()
 
+    // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
+    // invalid, so a bad ingestion run can never crash the app. Loaded synchronously here — fine for
+    // the small seed corpus; TODO: move to async init if the corpus grows beyond ~50 chunks.
+    // Shared by the cloud coach chat and the weekly briefing so both ground prose in the same corpus.
+    private val knowledgeInjector: KnowledgeInjector = runCatching {
+        val raw = context.applicationContext.assets
+            .open("knowledge/corpus.json")
+            .bufferedReader()
+            .use { it.readText() }
+        RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
+    }.getOrElse {
+        Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
+        NoOpKnowledgeInjector
+    }
+
     val weeklyReviewComputer = WeeklyReviewComputer()
-    val weeklyBriefingGenerator = WeeklyBriefingGenerator(openAiCompatClient)
+    val weeklyBriefingGenerator = WeeklyBriefingGenerator(openAiCompatClient, knowledgeInjector = knowledgeInjector)
     val weeklyBriefingRepository = WeeklyBriefingRepository(database.weeklyReviewDao())
 
     /** Feature gate: cloud backend selected, config complete, AI enabled. */
@@ -363,19 +378,6 @@ class AppContainer(context: Context) {
         uiPreferences.aiInsightsEnabled,
         cloudConfigComplete,
     ) { enabled, complete -> enabled && complete }
-    // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
-    // invalid, so a bad ingestion run can never crash the app. Loaded synchronously here — fine for
-    // the small seed corpus; TODO: move to async init if the corpus grows beyond ~50 chunks.
-    private val knowledgeInjector: KnowledgeInjector = runCatching {
-        val raw = context.applicationContext.assets
-            .open("knowledge/corpus.json")
-            .bufferedReader()
-            .use { it.readText() }
-        RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
-    }.getOrElse {
-        Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
-        NoOpKnowledgeInjector
-    }
 
     private val cloudCoachCoordinator: CoachCoordinator = CloudCoachCoordinator(
         cloudReadyFlow = cloudReadyFlow,

@@ -78,6 +78,22 @@ those detectors to `TODAY` or making the weekly check-in consume the engine's `W
 - PR + recomposition-win celebration events.
 - **Verify:** pushes are rare, always actionable, and never spammy; the coach references past weeks.
 
+**Status (2026-07-01): DONE.** Built in 6 commits + a review-fix pass, all TDD, boundary green:
+- **`CoachJourneyStore`** (`data/coach`, DataStore) — append-only fired-signal + weekly-verdict ledger with
+  recurrence detection; `journeyNarrative()` is injected into the weekly-briefing and chat prompts (omitted
+  byte-identically when <2 weeks of history). Recorded from real staged winners + weekly reviews in the digest.
+- **Celebration** — `NEW_PR`/`RECOMP_WIN` render in the *same* Today's-Coaching slot with a warm gold skin
+  (`FrostedCard` + new `celebration*` tokens + trophy), keyed off `CoachSignal.isCelebration`. No new surface.
+- **`RateLimiter`** (pure, `domain/coach`) + `PushHistoryStore` — enforces ≤2/week, P0-or-weekly-only,
+  ≤1/day (never consecutive **or** same day), ≤1 celebration/week (weekly-report push exempt), quiet hours.
+- **Push** — greenfield `CoachNotifier`/`AndroidCoachNotifier` (2 channels: `weekly_check_in` default,
+  `coaching` low), decision-attached gate (no push without verdict + actionable deep-link), `CoachPushEmitter`
+  gates on prefs → `RateLimiter` → gate, wired into the digest; `POST_NOTIFICATIONS` + tap deep-links.
+  The digest `run()` is `Mutex`-serialized so the worker/foreground race can't double-push.
+- **Settings** — a quiet-by-default "Notifications" group in the AI Coach screen (weekly on, ambient off,
+  quiet-hours display); opt-out first-class.
+On-device push delivery + permission dialog + the celebration/notification visuals are the user's to verify.
+
 ---
 
 ## Sequencing rationale

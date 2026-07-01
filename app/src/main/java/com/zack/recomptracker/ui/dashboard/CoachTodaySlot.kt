@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -23,8 +24,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.zack.recomptracker.domain.coach.CoachAction
 import com.zack.recomptracker.domain.coach.CoachActionType
 import com.zack.recomptracker.domain.coach.CoachSignal
+import com.zack.recomptracker.domain.coach.isCelebration
+import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
@@ -63,30 +67,96 @@ fun CoachTodaySlot(
         action.label.isNotBlank() &&
         isActionSupported(action.type)
 
-    TintedCard(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    // Celebration signals (new PR / recomp win) render the SAME card in the SAME slot, but in a
+    // warm/gold skin with a trophy header; every other signal keeps the violet accent tint.
+    if (signal.isCelebration) {
+        FrostedCard(
+            modifier = modifier,
+            surfaceTint = appColors.celebrationSurface,
+            borderColor = appColors.celebrationBorder,
         ) {
-            SectionLabel("Today's Coaching")
-            DismissButton(onDismiss)
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = displayText,
-            style = AppType.body,
-            color = appColors.textPrimary,
-        )
-        if (showButton) {
-            Spacer(Modifier.height(14.dp))
-            LiquidActionButton(
-                text = action.label,
-                onClick = { onAction(action.type) },
-                isPrimary = true,
-                small = true,
+            CoachSlotBody(
+                header = { CelebrationHeader(onDismiss) },
+                displayText = displayText,
+                showButton = showButton,
+                action = action,
+                onAction = onAction,
             )
         }
+    } else {
+        TintedCard(modifier = modifier) {
+            CoachSlotBody(
+                header = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SectionLabel("Today's Coaching")
+                        DismissButton(onDismiss)
+                    }
+                },
+                displayText = displayText,
+                showButton = showButton,
+                action = action,
+                onAction = onAction,
+            )
+        }
+    }
+}
+
+/** The shared card interior — identical for both skins; only [header] differs. */
+@Composable
+private fun CoachSlotBody(
+    header: @Composable () -> Unit,
+    displayText: String,
+    showButton: Boolean,
+    action: CoachAction,
+    onAction: (CoachActionType) -> Unit,
+) {
+    val appColors = LocalAppColors.current
+    header()
+    Spacer(Modifier.height(10.dp))
+    Text(
+        text = displayText,
+        style = AppType.body,
+        color = appColors.textPrimary,
+    )
+    if (showButton) {
+        Spacer(Modifier.height(14.dp))
+        LiquidActionButton(
+            text = action.label,
+            onClick = { onAction(action.type) },
+            isPrimary = true,
+            small = true,
+        )
+    }
+}
+
+/** Warm header for a celebration: trophy icon + gold "Today's Coaching · A win" label + dismiss. */
+@Composable
+private fun CelebrationHeader(onDismiss: () -> Unit) {
+    val appColors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Rounded.EmojiEvents,
+                contentDescription = null,
+                tint = appColors.celebrationInk,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.size(6.dp))
+            Text(
+                text = "Today's Coaching · A win".uppercase(),
+                style = AppType.sectionLabel,
+                color = appColors.celebrationInk,
+            )
+        }
+        DismissButton(onDismiss)
     }
 }
 

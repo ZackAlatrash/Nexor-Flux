@@ -37,6 +37,14 @@ data class CoachSignal(
     }
 }
 
+/**
+ * True when this signal is a *win* worth celebrating — a new PR or a recomposition win. Surfaces
+ * key off this to swap the usual accent skin for a warm/celebratory one. Pure; no Android/LLM
+ * dependency. Keyed off the explicit celebration [SignalKind] set (there is no CELEBRATION category).
+ */
+val CoachSignal.isCelebration: Boolean
+    get() = kind == SignalKind.NEW_PR || kind == SignalKind.RECOMP_WIN
+
 /** Priority band. P0 may push and always outranks lower tiers; P3 is ambient / in-app only. */
 @Serializable
 enum class SignalTier { P0, P1, P2, P3 }

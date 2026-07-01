@@ -1,8 +1,5 @@
 package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.CoachContextFixtures.TODAY
-import com.zack.recomptracker.domain.coach.CoachContextFixtures.flatSeries
-import com.zack.recomptracker.domain.coach.CoachContextFixtures.linearSeries
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -14,11 +11,11 @@ class BodyDetectorsTest {
 
     @Test
     fun `recomp win fires when weight is flat and waist is falling`() {
-        // weight flat at 80; waist falls ~0.3 cm/wk over 21 days (negative delta = falling).
+        // Detectors read the builder-computed smoothed trends (per §2), not raw series.
         val ctx = CoachContextFixtures.context(
             body = CoachContextFixtures.body(
-                weightSeries = flatSeries(80.0),
-                waistSeries = linearSeries(endValue = 85.0, perDayDelta = -0.3 / 7.0),
+                weightTrendKgPerWeek = 0.0,
+                waistTrendCmPerWeek = -0.3,
             ),
         )
         val s = RecompWinDetector().detect(ctx)!!
@@ -35,8 +32,8 @@ class BodyDetectorsTest {
     fun `recomp win does NOT fire when waist is flat`() {
         val ctx = CoachContextFixtures.context(
             body = CoachContextFixtures.body(
-                weightSeries = flatSeries(80.0),
-                waistSeries = flatSeries(85.0),
+                weightTrendKgPerWeek = 0.0,
+                waistTrendCmPerWeek = 0.0,
             ),
         )
         assertNull(RecompWinDetector().detect(ctx))
@@ -46,8 +43,19 @@ class BodyDetectorsTest {
     fun `recomp win does NOT fire when weight is climbing`() {
         val ctx = CoachContextFixtures.context(
             body = CoachContextFixtures.body(
-                weightSeries = linearSeries(endValue = 80.0, perDayDelta = 0.4 / 7.0),
-                waistSeries = linearSeries(endValue = 85.0, perDayDelta = 0.3 / 7.0),
+                weightTrendKgPerWeek = 0.4,
+                waistTrendCmPerWeek = -0.3,
+            ),
+        )
+        assertNull(RecompWinDetector().detect(ctx))
+    }
+
+    @Test
+    fun `recomp win does NOT fire when the trend is unknown (thin data)`() {
+        val ctx = CoachContextFixtures.context(
+            body = CoachContextFixtures.body(
+                weightTrendKgPerWeek = null,
+                waistTrendCmPerWeek = null,
             ),
         )
         assertNull(RecompWinDetector().detect(ctx))
@@ -60,8 +68,8 @@ class BodyDetectorsTest {
         val ctx = CoachContextFixtures.context(
             plan = CoachContextFixtures.plan(targetCalories = 2400),
             body = CoachContextFixtures.body(
-                weightSeries = linearSeries(endValue = 80.0, perDayDelta = 0.4 / 7.0),
-                waistSeries = linearSeries(endValue = 85.0, perDayDelta = 0.4 / 7.0),
+                weightTrendKgPerWeek = 0.4,
+                waistTrendCmPerWeek = 0.4,
             ),
         )
         val s = FatGainWarningDetector().detect(ctx)!!
@@ -76,8 +84,8 @@ class BodyDetectorsTest {
     fun `fat-gain warning does NOT fire when waist is stable`() {
         val ctx = CoachContextFixtures.context(
             body = CoachContextFixtures.body(
-                weightSeries = linearSeries(endValue = 80.0, perDayDelta = 0.4 / 7.0),
-                waistSeries = flatSeries(85.0),
+                weightTrendKgPerWeek = 0.4,
+                waistTrendCmPerWeek = 0.0,
             ),
         )
         assertNull(FatGainWarningDetector().detect(ctx))

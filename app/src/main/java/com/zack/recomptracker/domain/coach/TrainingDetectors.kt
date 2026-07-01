@@ -14,6 +14,9 @@ private const val PLATEAU_FLAT_BAND_KG = 1.0
 /** e1RM must beat the prior max by at least this (kg) to be a real PR — filters rep-math noise. */
 private const val PR_MARGIN_KG = 1.0
 
+/** A PR only counts as "news" if it was set within this many days — else it's a stale all-time max. */
+private const val PR_RECENCY_DAYS = 7L
+
 /**
  * #6 Training plateau (P1): a primary lift's e1RM series is flat or declining across the last
  * [PLATEAU_MIN_POINTS]+ points. Picks the lift with the most recent data / worst slope. e1RM values
@@ -72,21 +75,29 @@ class TrainingPlateauDetector : CoachDetector {
  * ≥[PR_MARGIN_KG]. Event-driven celebration tied to recomp (strength held/rising in a deficit).
  */
 class NewPrDetector : CoachDetector {
+    /** A fresh PR on one lift: the latest e1RM point, its date, and the prior all-time max. */
+    private data class PrCandidate(val name: String, val date: java.time.LocalDate, val latest: Double, val priorMax: Double)
+
     override fun detect(ctx: CoachContext): CoachSignal? {
+        val today = ctx.asOf
         val best = ctx.training.e1rmByExercise
             .mapNotNull { (name, points) ->
                 val ordered = points.sortedBy { it.date }
                 if (ordered.size < 2) return@mapNotNull null
-                val latest = ordered.last().estimatedOneRepMax
+                val latestPoint = ordered.last()
+                // Only celebrate a PR that was actually set recently — a stale all-time max that
+                // just happens to be the newest point in the window isn't news today.
+                if (latestPoint.date.isBefore(today.minusDays(PR_RECENCY_DAYS))) return@mapNotNull null
                 val priorMax = ordered.dropLast(1).maxOf { it.estimatedOneRepMax }
-                val gain = latest - priorMax
-                if (gain < PR_MARGIN_KG) return@mapNotNull null
-                Triple(name, latest, priorMax)
+                if (latestPoint.estimatedOneRepMax - priorMax < PR_MARGIN_KG) return@mapNotNull null
+                PrCandidate(name, latestPoint.date, latestPoint.estimatedOneRepMax, priorMax)
             }
-            .maxByOrNull { it.second - it.third }
+            .maxByOrNull { it.latest - it.priorMax }
             ?: return null
 
-        val (name, latest, priorMax) = best
+        val name = best.name
+        val latest = best.latest
+        val priorMax = best.priorMax
         val gain = latest - priorMax
         val severity = severityFromDistance(gain - PR_MARGIN_KG, span = 10.0)
         return CoachSignal(
@@ -110,7 +121,9 @@ class NewPrDetector : CoachDetector {
                 behaviorToOutcome = "strength up while dieting → the cut isn't costing you muscle",
                 confidence = Confidence.HIGH,
             ),
-            dedupKey = "NEW_PR|$name|e1rm=${CoachDetectorSupport.bucket(latest, 0.5, 1)}",
+            // Date-stamped so a specific PR is one event: it won't re-surface as "new" after the
+            // cooldown elapses (by then the recency guard has also stopped it firing).
+            dedupKey = "NEW_PR|$name|date=${best.date}|e1rm=${CoachDetectorSupport.bucket(latest, 0.5, 1)}",
             surface = CoachSurface.TODAY,
             fallbackText = "New $name e1RM — ${fmt(latest, 1)} kg, up from ${fmt(priorMax, 1)}. " +
                 "The cut isn't costing you strength.",

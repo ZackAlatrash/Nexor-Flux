@@ -51,6 +51,24 @@ class TrainingDetectorsTest {
         assertEquals("102.0", s.facts.values["e1rmKg"])
         assertEquals("99.0", s.facts.values["priorBestKg"])
         assertTrue(s.dedupKey.startsWith("NEW_PR|Bench"))
+        // Date-stamped so the same PR is one event, not a recurring "new PR" after cooldown.
+        assertTrue(s.dedupKey.contains("date="))
+    }
+
+    @Test
+    fun `new PR does NOT fire when the PR was set more than a week ago (stale)`() {
+        // Latest point is 10 days old — an all-time max, but not news today.
+        val ctx = CoachContextFixtures.context(
+            training = CoachContextFixtures.training(
+                e1rmByExercise = mapOf(
+                    "Bench" to CoachContextFixtures.e1rmPoints(
+                        96.0, 99.0, 98.0, 102.0,
+                        end = CoachContextFixtures.TODAY.minusDays(10),
+                    ),
+                ),
+            ),
+        )
+        assertNull(NewPrDetector().detect(ctx))
     }
 
     @Test

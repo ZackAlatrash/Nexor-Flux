@@ -5,12 +5,12 @@ import com.zack.recomptracker.domain.coach.CoachDetectorSupport.fmt
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.isoWeek
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.severityFromDistance
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.signed1
-import com.zack.recomptracker.domain.trend.TrendCalculator
 import kotlin.math.abs
 
 /**
- * Body-composition detectors (`03-proactive-ai-design.md` §A). Trends are computed with the shared
- * [TrendCalculator] over the CoachContext series — never re-implemented here.
+ * Body-composition detectors (`03-proactive-ai-design.md` §A). They read the smoothed trends the
+ * builder already computed with the shared TrendCalculator (`ctx.body.*TrendPerWeek`) — per §2, raw
+ * daily values never reach a detector, and the trend math is never re-implemented here.
  */
 
 /** Weekly weight band (kg/wk) that reads as "flat". Mirrors `AdjustmentThresholds` 0.20. */
@@ -23,21 +23,14 @@ private const val WAIST_DOWN_THRESHOLD = -0.15
  * #1 Recomposition win (P0): weight flat within the maintenance band while waist is genuinely down.
  * Skinfold falling raises severity. Celebrates + "keep calories where they are."
  */
-class RecompWinDetector(
-    private val trend: TrendCalculator = TrendCalculator(),
-) : CoachDetector {
+class RecompWinDetector : CoachDetector {
     override fun detect(ctx: CoachContext): CoachSignal? {
-        val weightPts = CoachDetectorSupport.toMeasurementPoints(ctx.body.weightSeries)
-        val waistPts = CoachDetectorSupport.toMeasurementPoints(ctx.body.waistSeries)
-        if (weightPts.count { it.value != null } < 2 || waistPts.count { it.value != null } < 2) return null
-
-        val weightTrend = trend.trendPerWeek(weightPts)
-        val waistTrend = trend.trendPerWeek(waistPts)
+        val weightTrend = ctx.body.weightTrendKgPerWeek ?: return null
+        val waistTrend = ctx.body.waistTrendCmPerWeek ?: return null
         if (abs(weightTrend) > WEIGHT_FLAT_BAND) return null
         if (waistTrend > WAIST_DOWN_THRESHOLD) return null
 
-        val skinfoldPts = CoachDetectorSupport.toMeasurementPoints(ctx.body.skinfoldSeries)
-        val skinfoldTrend = if (skinfoldPts.count { it.value != null } >= 2) trend.trendPerWeek(skinfoldPts) else null
+        val skinfoldTrend = ctx.body.skinfoldTrendMmPerWeek
         val skinfoldFalling = skinfoldTrend != null && skinfoldTrend < 0.0
 
         // Severity scales with how fast the waist is dropping; skinfold ↓ adds a bump.
@@ -83,16 +76,10 @@ private const val WAIST_UP_THRESHOLD = 0.25
  * #2 Fat-gain warning (P0): weight up AND waist up — the engine's `GAINING_WITH_WAIST_INCREASE`
  * verdict. Drives a −100 kcal target change.
  */
-class FatGainWarningDetector(
-    private val trend: TrendCalculator = TrendCalculator(),
-) : CoachDetector {
+class FatGainWarningDetector : CoachDetector {
     override fun detect(ctx: CoachContext): CoachSignal? {
-        val weightPts = CoachDetectorSupport.toMeasurementPoints(ctx.body.weightSeries)
-        val waistPts = CoachDetectorSupport.toMeasurementPoints(ctx.body.waistSeries)
-        if (weightPts.count { it.value != null } < 2 || waistPts.count { it.value != null } < 2) return null
-
-        val weightTrend = trend.trendPerWeek(weightPts)
-        val waistTrend = trend.trendPerWeek(waistPts)
+        val weightTrend = ctx.body.weightTrendKgPerWeek ?: return null
+        val waistTrend = ctx.body.waistTrendCmPerWeek ?: return null
         if (weightTrend <= WEIGHT_UP_THRESHOLD || waistTrend <= WAIST_UP_THRESHOLD) return null
 
         val newTarget = ctx.plan.targetCalories - 100

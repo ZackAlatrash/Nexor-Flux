@@ -54,9 +54,11 @@ groups) when a requested exercise isn't in the library. Also close a pre-existin
 
 ### Writes (each requires user confirmation)
 
-- **`create_routine(name, exercises[])`** — `exercises[]` = `{name, sets:int, reps:int,
-  weight_kg?:number}`. Executor resolves each `name` in the library, expands `sets`×`reps`
-  into `PlannedSetDraft`s, and calls `saveWorkout`.
+- **`create_routine(name, exercises[])`** — `exercises[]` = `{name, sets:int, reps?:int,
+  weight_kg?:number}`. `sets` is the **required set count**; `reps` and `weight_kg` are optional
+  per-exercise targets (null = no target, supported by the nullable `PlannedSet` fields).
+  Executor resolves each `name` in the library, builds `sets` uniform `PlannedSetDraft`s (each
+  carrying the same `reps`/`weight` target, or none), and calls `saveWorkout`.
 - **`edit_routine(name, add?[], remove?[], retarget?[], new_name?)`** — applies **deltas** to
   the current routine (fetched via `getById`), then calls `updateWorkout`:
   - `add[]` = `{name, sets, reps, weight_kg?}` (append)

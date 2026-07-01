@@ -32,6 +32,7 @@ class CoachSignalEngine(
                 FatGainWarningDetector(),
                 LowAdherenceDetector(),
                 RecoveryDeclineDetector(),
+                DeloadDueDetector(),
                 NeatCollapseDetector(),
                 TrainingPlateauDetector(),
                 NewPrDetector(),
@@ -40,6 +41,7 @@ class CoachSignalEngine(
                 QuietWeighInsDetector(),
                 DerailmentDayDetector(),
                 ProteinTrainingDayDetector(),
+                SleepHungerLinkDetector(),
             ),
         )
     }

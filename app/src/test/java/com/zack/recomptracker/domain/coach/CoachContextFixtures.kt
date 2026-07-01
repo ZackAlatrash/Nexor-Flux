@@ -151,6 +151,15 @@ internal object CoachContextFixtures {
         steps: StreakSnapshot = StreakSnapshot(9, 15),
     ) = StreaksContext(workout = workout, calorie = calorie, steps = steps)
 
+    /**
+     * A per-day [MetricPoint] series from explicit values, oldest → newest, one point per day ending
+     * at [end]. Used to pair sleep and hunger by date for the sleep↔hunger link tests.
+     */
+    fun datedSeries(vararg values: Double, end: LocalDate = TODAY): List<MetricPoint> {
+        val n = values.size
+        return values.mapIndexed { i, v -> MetricPoint(date = end.minusDays((n - 1 - i).toLong()), value = v) }
+    }
+
     fun e1rmPoints(vararg values: Double, end: LocalDate = TODAY, stepDays: Long = 3): List<LiftE1rmPoint> {
         val n = values.size
         return values.mapIndexed { i, v ->

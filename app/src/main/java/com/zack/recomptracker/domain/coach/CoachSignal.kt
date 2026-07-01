@@ -109,6 +109,7 @@ enum class SignalKind {
     WORKOUT_STREAK_AT_RISK,   // missed-workout pattern
     // ── Recovery ──
     RECOVERY_DECLINE,         // sleep/energy/soreness trending poor
+    SLEEP_HUNGER_LINK,        // cross-domain: poor-sleep days run hungrier
     // ── Behaviour ("noticing") ──
     UNCONFIRMED_PLANNED_MEALS,// stale planned meals to confirm
     QUIET_WEIGH_INS,          // no weigh-in in a while

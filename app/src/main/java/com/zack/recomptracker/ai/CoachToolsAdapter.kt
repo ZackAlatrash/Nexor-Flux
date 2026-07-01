@@ -27,6 +27,9 @@ internal const val COACH_PROMPT_GUIDELINES: String =
         "- When you use a web result, cite the source URL in your answer. Answer only from logged data, tool results, REFERENCE KNOWLEDGE, and web results you cite; never invent numbers.\n" +
         "- Use markdown when it improves clarity (short lists, bold key numbers).\n" +
         "- To log food, call log_meal(...); the tool checks the food library automatically. To record a metric, call log_metric(...). These actions are confirmed by the user before they run.\n" +
+        "- To build a routine: call search_exercises to find real exercises, then create_routine. 'sets' is the number of sets; reps/weight are optional.\n" +
+        "- To change a routine: call get_routines first, then edit_routine with ONLY the changes (add/remove/retarget/new_name). Existing exercises are preserved.\n" +
+        "- Only call create_exercise when the user names an exercise not found in the library; ask for the muscle group(s) if they didn't say.\n" +
         "- Stay on topic: nutrition, body composition, training, and recovery."
 
 /**

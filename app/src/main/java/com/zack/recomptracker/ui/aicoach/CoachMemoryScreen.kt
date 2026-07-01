@@ -47,9 +47,9 @@ fun CoachMemoryScreen(viewModel: CoachMemoryViewModel, onBack: () -> Unit) {
             )
         }
         item {
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 GlassInputField(
-                    label = "Add a fact",
+                    label = "",
                     value = draft,
                     onValueChange = { draft = it },
                     keyboardType = KeyboardType.Text,
@@ -82,7 +82,7 @@ fun CoachMemoryScreen(viewModel: CoachMemoryViewModel, onBack: () -> Unit) {
                 var editing by remember(entry.id) { mutableStateOf(entry.text) }
                 val dirty = editing.isNotBlank() && editing.trim() != entry.text
                 NeutralCard {
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         GlassInputField(
                             label = "",
                             value = editing,

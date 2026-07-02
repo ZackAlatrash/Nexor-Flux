@@ -153,10 +153,11 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `search_food_library scales macros when grams parameter is provided`() = runTest {
+    fun `search_food_library scales macros to requested grams on a per-100g basis`() = runTest {
+        // Saved-food macros are stored PER 100 g; the household serving (15 g) must NOT affect gram scaling.
         val ketchup = SavedFoodEntity(
             name = "Ketchup", servingName = "1 tbsp",
-            calories = 15, proteinG = 0.2, carbsG = 3.0, fatG = 0.0,
+            calories = 100, proteinG = 1.2, carbsG = 25.0, fatG = 0.1,
             householdServingGrams = 15.0,
         )
         val logRepo = mock<LogRepository>()
@@ -164,12 +165,11 @@ class CoachToolExecutorTest {
         whenever(logRepo.getSavedFoods()).thenReturn(listOf(ketchup))
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
-        // 1g out of 15g serving → macros should be 1/15 of saved values
-        val result = executor.execute("search_food_library", mapOf("query" to "ketchup", "grams" to "1"))
+        // 15 g of a 100 kcal/100g food → 100 × 15/100 = 15 kcal.
+        val result = executor.execute("search_food_library", mapOf("query" to "ketchup", "grams" to "15"))
 
-        // 15 kcal × (1/15) = 1 kcal
-        assertTrue("Calories should be scaled to 1", result.contains("\"calories\":1"))
-        assertTrue("Serving label should reflect requested grams", result.contains("1g"))
+        assertTrue("Calories should be 15% of the per-100g value", result.contains("\"calories\":15"))
+        assertTrue("Serving label should reflect requested grams", result.contains("15g"))
     }
 
     @Test
@@ -686,10 +686,11 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `log_meal scales library macros when grams provided`() = runTest {
+    fun `log_meal scales library macros to requested grams on a per-100g basis`() = runTest {
+        // Saved-food macros are stored PER 100 g; the household serving (15 g) must NOT affect gram scaling.
         val ketchup = SavedFoodEntity(
             name = "Ketchup", servingName = "1 tbsp",
-            calories = 15, proteinG = 0.2, carbsG = 3.0, fatG = 0.0,
+            calories = 100, proteinG = 1.2, carbsG = 25.0, fatG = 0.1,
             householdServingGrams = 15.0,
         )
         var captured: MealEntryInput? = null
@@ -700,10 +701,10 @@ class CoachToolExecutorTest {
         whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
-        // 1g of 15g serving → 1/15 of macros
-        executor.execute("log_meal", mapOf("name" to "ketchup", "calories" to "1", "grams" to "1"))
+        // 30 g of a 100 kcal/100g food → 100 × 30/100 = 30 kcal.
+        executor.execute("log_meal", mapOf("name" to "ketchup", "grams" to "30"))
 
-        assertTrue("Calories should be scaled to 1", captured?.calories == 1)
+        assertTrue("Calories should be per-100g scaled (100 × 30/100 = 30)", captured?.calories == 30)
         assertTrue("Name should be from library", captured?.name == "Ketchup")
     }
 

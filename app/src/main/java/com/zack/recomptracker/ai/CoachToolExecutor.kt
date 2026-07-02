@@ -235,10 +235,9 @@ class CoachToolExecutor(
         if (matches.isEmpty()) return """{"results":[],"count":0}"""
 
         val resultsJson = matches.joinToString(",") { (food, _) ->
-            val servingGrams = food.householdServingGrams
-            val scale = if (requestedGrams != null && servingGrams != null && servingGrams > 0) {
-                requestedGrams / servingGrams
-            } else null
+            // Saved-food macros are stored PER 100 g, so a requested gram amount scales by /100
+            // (NOT by the household serving size — see FoodScaling / basePer100Calories).
+            val scale = if (requestedGrams != null) requestedGrams / 100.0 else null
             val calories = if (scale != null) (food.calories * scale).toInt() else food.calories
             val proteinG = if (scale != null) food.proteinG * scale else food.proteinG
             val carbsG   = if (scale != null) food.carbsG   * scale else food.carbsG
@@ -273,9 +272,10 @@ class CoachToolExecutor(
         val fatG: Double
 
         if (libraryFood != null) {
-            val servingGrams = libraryFood.householdServingGrams
-            val scale = if (requestedGrams != null && servingGrams != null && servingGrams > 0)
-                requestedGrams / servingGrams else 1.0
+            // Saved-food macros are stored PER 100 g, so requested grams scale by /100 (NOT by the
+            // household serving size — see FoodScaling / basePer100Calories). No grams → one 100 g
+            // basis (scale 1.0), matching the food library's own default.
+            val scale = if (requestedGrams != null) requestedGrams / 100.0 else 1.0
             finalName = libraryFood.name
             calories = (libraryFood.calories * scale).toInt()
             proteinG = libraryFood.proteinG * scale

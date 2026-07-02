@@ -67,9 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
-import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import com.zack.recomptracker.ui.component.WeekCalorieStrip
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
@@ -104,7 +102,6 @@ fun FoodScreen(
     onCreateRecipeFromSelection: (List<com.zack.recomptracker.data.local.entity.RecipeIngredientEntity>) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val restOfDayInsightState by viewModel.restOfDayInsightState.collectAsStateWithLifecycle()
     val streakVm: com.zack.recomptracker.ui.streak.StreakViewModel =
         androidx.lifecycle.viewmodel.compose.viewModel(factory = com.zack.recomptracker.ui.LocalAppContainer.current.viewModelFactory)
     val streakUi by streakVm.uiState.collectAsStateWithLifecycle()
@@ -131,10 +128,6 @@ fun FoodScreen(
         onBrowseLibrary   = onBrowseLibrary,
         onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
         onSelectDate      = viewModel::selectDate,
-        restOfDayInsightState  = restOfDayInsightState,
-        restOfDayAvailable     = state.restOfDayInsightContext?.hasSufficientData == true,
-        onRevealRestOfDay      = viewModel::onRestOfDayInsightVisible,
-        onRetryRestOfDay       = viewModel::retryRestOfDayInsight,
         onStartRecipeSelection = viewModel::startRecipeSelection,
         onToggleRecipeSelection = viewModel::toggleRecipeSelection,
         onCancelRecipeSelection = viewModel::cancelRecipeSelection,
@@ -169,10 +162,6 @@ fun FoodContent(
     modifier: Modifier = Modifier,
     calorieStreak: com.zack.recomptracker.domain.streak.StreakResult =
         com.zack.recomptracker.domain.streak.StreakResult.ZERO,
-    restOfDayInsightState: AiInsightState = AiInsightState.Disabled,
-    restOfDayAvailable: Boolean = false,
-    onRevealRestOfDay: () -> Unit = {},
-    onRetryRestOfDay: () -> Unit = {},
     onStartRecipeSelection: (Long) -> Unit = {},
     onToggleRecipeSelection: (Long) -> Unit = {},
     onCancelRecipeSelection: () -> Unit = {},
@@ -256,14 +245,7 @@ fun FoodContent(
                     item { StalePlannedHint(count = state.stalePlannedCount) }
                 }
 
-                item {
-                    RestOfDayReveal(
-                        available = restOfDayAvailable,
-                        state = restOfDayInsightState,
-                        onReveal = onRevealRestOfDay,
-                        onRetry = onRetryRestOfDay,
-                    )
-                }
+                // meal suggestion card added in Task 4
 
                 // Meals header
                 item {
@@ -466,26 +448,6 @@ private fun ReconcilePlannedBanner(
             small = true,
         )
     }
-}
-
-// ── Rest of Day Insight ──────────────────────────────────────────────────────
-
-@Composable
-private fun RestOfDayReveal(
-    available: Boolean,
-    state: AiInsightState,
-    onReveal: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    if (!available) return
-    // Start generation as soon as the pill is on screen.
-    androidx.compose.runtime.LaunchedEffect(Unit) { onReveal() }
-    GeneratedInsightCard(
-        title = "Rest of day",
-        state = state,
-        onRetry = onRetry,
-        variant = com.zack.recomptracker.ui.component.InsightCardVariant.PILL,
-    )
 }
 
 @Composable

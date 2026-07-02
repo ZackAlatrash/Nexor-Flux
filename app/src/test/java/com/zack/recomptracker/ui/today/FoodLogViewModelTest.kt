@@ -1,9 +1,9 @@
 package com.zack.recomptracker.ui.today
 
-import com.zack.recomptracker.ai.StubInsightCoordinator
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
@@ -13,10 +13,8 @@ import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -59,6 +57,11 @@ class FoodLogViewModelTest {
         whenever(logRepo.observeSlots()).thenReturn(flowOf(emptyList()))
         whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
         whenever(logRepo.observeStalePlannedCount(any(), any())).thenReturn(flowOf(0))
+        val chicken = SavedFoodEntity(
+            name = "Chicken", servingName = "serving", calories = 165,
+            proteinG = 31.0, carbsG = 0.0, fatG = 4.0, householdServingGrams = 100.0,
+        )
+        whenever(logRepo.observeSavedFoods()).thenReturn(flowOf(listOf(chicken)))
         whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
         // No plan history by default → every day resolves to the current preferences.
         whenever(planRepo.observeVersions()).thenReturn(flowOf(emptyList()))
@@ -68,9 +71,8 @@ class FoodLogViewModelTest {
     @After
     fun tearDown() { Dispatchers.resetMain() }
 
-    private val aiCoordinator = StubInsightCoordinator(MutableStateFlow(false), CoroutineScope(dispatcher))
-
-    private fun buildVm() = FoodLogViewModel(logRepo, planRepo, dateProvider, aiCoordinator)
+    private fun buildVm(now: java.time.LocalTime = java.time.LocalTime.of(15, 0)) =
+        FoodLogViewModel(logRepo, planRepo, dateProvider) { now }
 
     @Test
     fun `initial selectedDate is today`() = runTest {
@@ -268,5 +270,21 @@ class FoodLogViewModelTest {
         advanceUntilIdle()
 
         verify(logRepo).confirmPlannedForDate(today)
+    }
+
+    @Test
+    fun `shows a protein meal-suggestion card for today past the gate`() = runTest {
+        val vm = buildVm() // 15:00
+        advanceUntilIdle()
+        val card = vm.uiState.value.mealSuggestion
+        org.junit.Assert.assertNotNull(card)
+        assertEquals(com.zack.recomptracker.domain.food.SuggestionFocus.PROTEIN, card!!.focus)
+    }
+
+    @Test
+    fun `hides the meal-suggestion card before the day-fraction gate`() = runTest {
+        val vm = buildVm(now = java.time.LocalTime.of(9, 0))
+        advanceUntilIdle()
+        org.junit.Assert.assertNull(vm.uiState.value.mealSuggestion)
     }
 }

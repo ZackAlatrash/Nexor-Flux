@@ -521,7 +521,6 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
-                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             TodayViewModel::class.java -> TodayViewModel(
                 logRepository = container.logRepository,

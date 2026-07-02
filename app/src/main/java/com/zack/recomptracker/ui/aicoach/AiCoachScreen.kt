@@ -379,38 +379,6 @@ fun AiCoachScreen(
                         )
                     }
                 }
-                // DEBUG ONLY (temporary — remove before merge). Stages any signal card into the
-                // Home Today slot, fires a test push, and seeds journey history so the gated
-                // proactive surfaces can be exercised on-device without real data.
-                if (com.zack.recomptracker.BuildConfig.DEBUG) {
-                    item {
-                        Spacer(Modifier.height(12.dp))
-                        SectionLabel("Debug — AI test panel")
-                    }
-                    item {
-                        Column(Modifier.fillMaxWidth()) {
-                            viewModel.debugSignalLabels.forEachIndexed { i, label ->
-                                Button(
-                                    onClick = { viewModel.debugStageSignal(i) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) { Text("Stage: $label") }
-                                Spacer(Modifier.height(6.dp))
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Button(onClick = viewModel::debugFirePush, modifier = Modifier.fillMaxWidth()) {
-                                Text("Fire test push")
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Button(onClick = viewModel::debugSeedJourney, modifier = Modifier.fillMaxWidth()) {
-                                Text("Seed 3-week journey")
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Button(onClick = viewModel::debugClearCard, modifier = Modifier.fillMaxWidth()) {
-                                Text("Clear Today card")
-                            }
-                        }
-                    }
-                }
             }
         }
     }

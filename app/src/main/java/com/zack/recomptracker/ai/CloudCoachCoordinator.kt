@@ -208,7 +208,6 @@ class CloudCoachCoordinator(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                android.util.Log.e("CoachDebug", "coach turn failed: ${e.message}", e) // TEMP DEBUG — remove
                 requestMessages.clear()
                 systemSeeded = false
                 lastReferenceMessage = null

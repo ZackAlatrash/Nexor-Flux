@@ -1,5 +1,6 @@
 package com.zack.recomptracker.domain.food
 
+import com.zack.recomptracker.core.model.MacroTotals
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -76,6 +77,25 @@ object MealSuggester {
             buildCombo(library, remaining) else emptyList()
 
         return SuggestionResult(remaining, focus, suggestions, combos, libraryThin = suggestions.isEmpty())
+    }
+
+    /** Plan targets for a day (all whole numbers, as stored in PlanPreferences). */
+    data class MacroTargets(val calories: Int, val proteinG: Int, val carbsG: Int, val fatG: Int)
+
+    /**
+     * Shared day-level entry point: derives the remaining-macro gap (target − eaten, clamped ≥0)
+     * and proteinMetRatio, then delegates to [suggest]. Used by both the suggest_meals coach tool
+     * and the Food-screen suggestion card so the gap math lives in exactly one place.
+     */
+    fun suggestForDay(target: MacroTargets, eaten: MacroTotals, library: List<SuggestionFood>): SuggestionResult {
+        val remaining = SuggestMacros(
+            calories = (target.calories - eaten.calories).coerceAtLeast(0),
+            proteinG = (target.proteinG - eaten.proteinG).coerceAtLeast(0.0),
+            carbsG = (target.carbsG - eaten.carbsG).coerceAtLeast(0.0),
+            fatG = (target.fatG - eaten.fatG).coerceAtLeast(0.0),
+        )
+        val proteinMetRatio = if (target.proteinG > 0) eaten.proteinG / target.proteinG else 1.0
+        return suggest(remaining, proteinMetRatio, library)
     }
 
     /** Portion [food] to ~half of [remainingFocus] of its focus macro, capped to fit [remainingCalories]. */

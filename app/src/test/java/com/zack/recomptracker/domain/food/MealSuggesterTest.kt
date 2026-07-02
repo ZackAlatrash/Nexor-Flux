@@ -87,4 +87,26 @@ class MealSuggesterTest {
         assertTrue(r.libraryThin)
         assertTrue(r.suggestions.isEmpty())
     }
+
+    @Test fun `suggestForDay derives remaining as target minus eaten, clamped`() {
+        val r = MealSuggester.suggestForDay(
+            target = MealSuggester.MacroTargets(2000, 150, 200, 60),
+            eaten = com.zack.recomptracker.core.model.MacroTotals(1000, 50.0, 120.0, 30.0),
+            library = listOf(food("Chicken", 165, 31.0, 0.0, 4.0)),
+        )
+        assertEquals(1000, r.remaining.calories)
+        assertEquals(100.0, r.remaining.proteinG, 0.01)
+        assertEquals(SuggestionFocus.PROTEIN, r.focus)  // 50/150 = 0.33 < 0.85
+    }
+
+    @Test fun `suggestForDay clamps negative gaps to zero and treats zero protein target as met`() {
+        val r = MealSuggester.suggestForDay(
+            target = MealSuggester.MacroTargets(1000, 0, 0, 0),
+            eaten = com.zack.recomptracker.core.model.MacroTotals(1500, 80.0, 0.0, 0.0),
+            library = emptyList(),
+        )
+        assertEquals(0, r.remaining.calories)
+        assertEquals(0.0, r.remaining.proteinG, 0.01)
+        assertEquals(SuggestionFocus.NONE, r.focus)
+    }
 }

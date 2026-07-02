@@ -17,6 +17,7 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.PlannedSetDraft
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.data.repository.toSuggestionFood
 import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.adherence.NutritionDay
@@ -24,9 +25,7 @@ import com.zack.recomptracker.domain.coach.TrainingDerivations
 import com.zack.recomptracker.domain.coach.TrendDirection
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.domain.food.MealSuggester
-import com.zack.recomptracker.domain.food.SuggestMacros
 import com.zack.recomptracker.domain.food.SuggestionFocus
-import com.zack.recomptracker.domain.food.SuggestionFood
 import com.zack.recomptracker.domain.food.SuggestionResult
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
@@ -757,20 +756,12 @@ class CoachToolExecutor(
         val date = args["date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: dateProvider.today()
         val prefs = planRepository.preferences.first()
         val eaten = logRepository.getDay(date).totals
-        val remaining = SuggestMacros(
-            calories = (prefs.targetCalories - eaten.calories).coerceAtLeast(0),
-            proteinG = (prefs.targetProteinG - eaten.proteinG).coerceAtLeast(0.0),
-            carbsG = (prefs.targetCarbsG - eaten.carbsG).coerceAtLeast(0.0),
-            fatG = (prefs.targetFatG - eaten.fatG).coerceAtLeast(0.0),
+        val target = MealSuggester.MacroTargets(
+            calories = prefs.targetCalories, proteinG = prefs.targetProteinG,
+            carbsG = prefs.targetCarbsG, fatG = prefs.targetFatG,
         )
-        val proteinMetRatio = if (prefs.targetProteinG > 0) eaten.proteinG / prefs.targetProteinG else 1.0
-        val library = logRepository.getSavedFoods().map {
-            SuggestionFood(
-                name = it.name, servingLabel = it.servingName, gramsPerServing = it.householdServingGrams,
-                calories = it.calories, proteinG = it.proteinG, carbsG = it.carbsG, fatG = it.fatG,
-            )
-        }
-        return serializeSuggestions(MealSuggester.suggest(remaining, proteinMetRatio, library))
+        val library = logRepository.getSavedFoods().map { it.toSuggestionFood() }
+        return serializeSuggestions(MealSuggester.suggestForDay(target, eaten, library))
     }
 
     private fun serializeSuggestions(r: SuggestionResult): String {

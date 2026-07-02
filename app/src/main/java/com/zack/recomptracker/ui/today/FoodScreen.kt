@@ -76,12 +76,14 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.streak.CalorieStreakChip
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
+import com.zack.recomptracker.ui.theme.Spacing
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
@@ -100,6 +102,7 @@ fun FoodScreen(
     onBrowseLibrary: () -> Unit,
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long, date: LocalDate) -> Unit,
     onCreateRecipeFromSelection: (List<com.zack.recomptracker.data.local.entity.RecipeIngredientEntity>) -> Unit = {},
+    onAskCoachForMeals: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val streakVm: com.zack.recomptracker.ui.streak.StreakViewModel =
@@ -135,6 +138,7 @@ fun FoodScreen(
             onCreateRecipeFromSelection(viewModel.selectedRecipeIngredients())
             viewModel.cancelRecipeSelection()
         },
+        onAskCoachForMeals = onAskCoachForMeals,
     )
 }
 
@@ -166,6 +170,7 @@ fun FoodContent(
     onToggleRecipeSelection: (Long) -> Unit = {},
     onCancelRecipeSelection: () -> Unit = {},
     onSaveRecipeSelection: () -> Unit = {},
+    onAskCoachForMeals: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val foodScreenOrbBrush = remember(accent.accent) {
@@ -245,7 +250,11 @@ fun FoodContent(
                     item { StalePlannedHint(count = state.stalePlannedCount) }
                 }
 
-                // meal suggestion card added in Task 4
+                if (state.isToday) {
+                    state.mealSuggestion?.let { suggestion ->
+                        item { MealSuggestionCard(state = suggestion, onAskCoach = onAskCoachForMeals) }
+                    }
+                }
 
                 // Meals header
                 item {
@@ -470,6 +479,62 @@ private fun StalePlannedHint(count: Int) {
             color = appColors.textMuted,
         )
     }
+}
+
+// ── Meal suggestion ──────────────────────────────────────────────────────────
+
+@Composable
+private fun MealSuggestionCard(
+    state: MealSuggestionCardState,
+    onAskCoach: () -> Unit,
+) {
+    val appColors = LocalAppColors.current
+    TintedCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                Text("🍽", style = AppType.label)
+                SectionLabel(text = "What to eat next")
+            }
+            Text(state.headline, style = AppType.cardTitle, color = appColors.textPrimary)
+            if (state.libraryThin) {
+                Text(
+                    "Your library is thin here — ask the coach for ideas that fit.",
+                    style = AppType.cardSubtitle, color = appColors.textMuted,
+                )
+            } else {
+                state.suggestions.forEach { s ->
+                    Text(
+                        "${s.name} · ${s.amountLabel} · ${mealSuggestionMacroLine(state.focus, s.proteinG, s.carbsG)} · ${s.calories} kcal",
+                        style = AppType.body, color = appColors.textSecondary,
+                    )
+                }
+                state.combo?.let { c ->
+                    Text(
+                        "Combo: ${c.items.joinToString(" + ") { it.name }} · ${c.proteinG.roundToInt()} g P · ${c.calories} kcal",
+                        style = AppType.cardSubtitle, color = appColors.textMuted,
+                    )
+                }
+            }
+            LiquidActionButton(
+                text = "Get meal ideas",
+                onClick = onAskCoach,
+                isPrimary = true,
+                small = true,
+            )
+        }
+    }
+}
+
+private fun mealSuggestionMacroLine(
+    focus: com.zack.recomptracker.domain.food.SuggestionFocus,
+    proteinG: Double,
+    carbsG: Double,
+): String = when (focus) {
+    com.zack.recomptracker.domain.food.SuggestionFocus.CARBS -> "${carbsG.roundToInt()} g carbs"
+    else -> "${proteinG.roundToInt()} g protein"
 }
 
 internal enum class CalorieDayStatus { BelowZone, GoalHit, Over, Missed }

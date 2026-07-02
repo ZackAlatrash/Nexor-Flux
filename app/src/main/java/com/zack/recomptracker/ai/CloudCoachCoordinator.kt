@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
@@ -63,7 +64,11 @@ class CloudCoachCoordinator(
     // multi-turn context never accumulates reference blocks.
     private var lastReferenceMessage: ChatRequestMessage? = null
 
-    @Volatile private var pendingConfirmation: CompletableDeferred<Boolean>? = null
+    // Holds the in-flight write-tool confirmation. AtomicReference + getAndSet ensures a tap can only
+    // ever complete the deferred it was shown for: the first confirm/cancel/clear atomically claims
+    // and clears it, so a stale or double tap can't complete a *later* turn's confirmation (which
+    // would silently run an unconfirmed write).
+    private val pendingConfirmation = AtomicReference<CompletableDeferred<Boolean>?>(null)
 
     init {
         scope.launch {
@@ -84,7 +89,7 @@ class CloudCoachCoordinator(
     }
 
     override fun clearHistory() {
-        pendingConfirmation?.complete(false)
+        pendingConfirmation.getAndSet(null)?.complete(false)
         scope.launch {
             turnLock.withLock {
                 history.clear()
@@ -96,8 +101,8 @@ class CloudCoachCoordinator(
         }
     }
 
-    override fun confirmPendingAction() { pendingConfirmation?.complete(true) }
-    override fun cancelPendingAction() { pendingConfirmation?.complete(false) }
+    override fun confirmPendingAction() { pendingConfirmation.getAndSet(null)?.complete(true) }
+    override fun cancelPendingAction() { pendingConfirmation.getAndSet(null)?.complete(false) }
 
     private suspend fun handleMessage(userText: String) {
         turnLock.withLock {
@@ -219,10 +224,10 @@ class CloudCoachCoordinator(
             displayText = pendingActionDisplayText(call.name, call.arguments),
         )
         val deferred = CompletableDeferred<Boolean>()
-        pendingConfirmation = deferred
+        pendingConfirmation.set(deferred)
         _state.value = CoachState.AwaitingConfirmation(history.toList(), action)
         val confirmed = deferred.await()
-        pendingConfirmation = null
+        pendingConfirmation.compareAndSet(deferred, null)
         if (!confirmed) return """{"cancelled":true}"""
         pushThinking(toolStatusText(call.name))
         return tools.execute(call.name, call.arguments)

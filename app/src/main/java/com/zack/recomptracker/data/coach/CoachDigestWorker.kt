@@ -24,10 +24,13 @@ class CoachDigestWorker(
 
     override suspend fun doWork(): Result {
         val app = applicationContext as? RecompTrackerApp ?: return Result.success()
+        // The digest is pure CPU/DB with no network, so a failure is deterministic — retrying it
+        // on WorkManager's backoff would just fail identically every time and burn wakeups. Skip
+        // this cycle instead; the next periodic run (24h) tries again with fresh data.
         return runCatching { app.container.coachDigestCoordinator.run() }
             .fold(
                 onSuccess = { Result.success() },
-                onFailure = { Result.retry() },
+                onFailure = { Result.success() },
             )
     }
 

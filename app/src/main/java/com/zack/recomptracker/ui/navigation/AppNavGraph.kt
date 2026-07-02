@@ -208,8 +208,10 @@ fun AppNavGraph(
             enterTransition = { tabEnter },
             exitTransition  = { tabExit },
         ) {
+            val foodLogViewModel = viewModel<FoodLogViewModel>(factory = factory)
+            val appContainer = LocalAppContainer.current
             FoodScreen(
-                viewModel = viewModel<FoodLogViewModel>(factory = factory),
+                viewModel = foodLogViewModel,
                 onAddToSlot = { slotId, slotName, date ->
                     navController.navigate(
                         "${Routes.FoodLibrary}?slotId=$slotId&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&date=$date"
@@ -226,6 +228,17 @@ fun AppNavGraph(
                     val seed = java.util.Base64.getUrlEncoder().withoutPadding()
                         .encodeToString(json.toByteArray(Charsets.UTF_8))
                     navController.navigate(Routes.recipeBuilder(seedIngredients = seed))
+                },
+                onAskCoachForMeals = {
+                    foodLogViewModel.askCoachSeed()?.let { seed ->
+                        appContainer.coachHandoffStore.set(seed)
+                        appContainer.coachCoordinator.clearHistory()
+                    }
+                    navController.navigate(TopLevelDestination.Coach.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 },
             )
         }

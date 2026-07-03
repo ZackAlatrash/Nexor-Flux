@@ -259,7 +259,7 @@ fun ActiveSessionScreen(
                 }
 
                 // ── Exercise cards ────────────────────────────────────────────────
-                items(displayExercises, key = { it.id }) { se ->
+                items(displayExercises, key = { it.id }, contentType = { "exercise" }) { se ->
                     ReorderableItem(reorderState, key = se.id) { isDragging ->
                         val visual = exerciseVisuals[se.exerciseId]
                         ExerciseCard(
@@ -301,18 +301,24 @@ fun ActiveSessionScreen(
                                 .padding(horizontal = 16.dp)
                                 .padding(bottom = 14.dp),
                         ) {
-                            // Build session set rows for this exercise
+                            // Build session set rows for this exercise. prevMap is populated once
+                            // per session load and static thereafter, so keying only on se.sets
+                            // (the actual per-keystroke-changing input) is sufficient — this list
+                            // was otherwise rebuilt on every recomposition, including every
+                            // keystroke in any KG/REPS field on any exercise card.
                             val prevList = prevMap[se.exerciseId] ?: emptyList()
-                            val sessionRows = se.sets.mapIndexed { idx, set ->
-                                SessionSetRow(
-                                    id = set.id,
-                                    setNumber = set.setNumber,
-                                    prev = prevList.getOrNull(idx),
-                                    reps = set.reps.takeIf { it > 0 },
-                                    weightKg = set.weightKg,
-                                    rir = set.rir,
-                                    completed = set.completed,
-                                )
+                            val sessionRows = remember(se.sets) {
+                                se.sets.mapIndexed { idx, set ->
+                                    SessionSetRow(
+                                        id = set.id,
+                                        setNumber = set.setNumber,
+                                        prev = prevList.getOrNull(idx),
+                                        reps = set.reps.takeIf { it > 0 },
+                                        weightKg = set.weightKg,
+                                        rir = set.rir,
+                                        completed = set.completed,
+                                    )
+                                }
                             }
 
                             SetGrid(

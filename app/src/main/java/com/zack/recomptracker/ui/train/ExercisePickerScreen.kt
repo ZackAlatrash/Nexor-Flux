@@ -420,6 +420,8 @@ private fun ExercisePickerRow(
         surfaceTint = if (isSelected) accent.tintedSurface else Color.Unspecified,
         borderColor = if (isSelected) accent.tintedBorder else Color.Unspecified,
         contentPadding = 10.dp,
+        // Repeated per search result (870+ exercise library) — lite skips the backdrop layer.
+        lite = true,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

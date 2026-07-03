@@ -86,6 +86,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
+// DateTimeFormatter is immutable + thread-safe — hoisted to file scope so it isn't rebuilt per
+// composition/recomposition (monthFormatter previously ran once per history change via remember,
+// still worth hoisting; historyDateFormatter previously rebuilt on every HistoryCard recomposition
+// inside the History tab's items{} list).
+private val monthYearFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
+private val historyDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
+
 @Composable
 fun TrainHomeScreen(
     viewModel: TrainViewModel,
@@ -114,11 +122,10 @@ fun TrainHomeScreen(
     // History grouped by month (newest first). Computed once per history change rather than
     // on every recomposition — the sort + per-row date parse/format is otherwise re-run each pass.
     val historyGrouped = remember(state.history) {
-        val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
         state.history
             .sortedByDescending { it.date }
             .groupBy { session ->
-                runCatching { LocalDate.parse(session.date).format(monthFormatter).uppercase() }
+                runCatching { LocalDate.parse(session.date).format(monthYearFormatter).uppercase() }
                     .getOrElse { "UNKNOWN" }
             }
             .entries
@@ -522,6 +529,7 @@ private fun RoutineCard(
         modifier = modifier
             .clickable { onCardClick() },
         contentPadding = 13.dp,
+        lite = true,
     ) {
         // Name + overflow menu
         Row(
@@ -646,6 +654,7 @@ private fun RoutineCard(
                 surfaceColor = Color.White.copy(alpha = 0.08f),
                 buttonHeight = 36.dp,
                 modifier = Modifier.width(110.dp),
+                lite = true,
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
@@ -740,6 +749,7 @@ private fun EmptyRoutinesCard(
                 surfaceColor = Color.White.copy(alpha = 0.08f),
                 buttonHeight = 44.dp,
                 modifier = Modifier.fillMaxWidth(0.65f),
+                lite = true,
             ) {
                 Text(
                     text = "Create routine",
@@ -767,13 +777,18 @@ private fun HistoryCard(
     val volume = WorkoutProgressAnalyzer.sessionVolume(allSets)
     val durationMin = session.durationSeconds?.let { it / 60 }
 
-    val dateFormatted = runCatching {
-        LocalDate.parse(session.date).format(DateTimeFormatter.ofPattern("MMM d"))
-    }.getOrElse { session.date }
+    // Row composable inside items(sessions) — memoize per session.date so a recomposition that
+    // doesn't change the date (e.g. a sibling row's state) doesn't re-run the parse/format.
+    val dateFormatted = remember(session.date) {
+        runCatching {
+            LocalDate.parse(session.date).format(historyDateFormatter)
+        }.getOrElse { session.date }
+    }
 
     FrostedCard(
         modifier = modifier.clickable { onClick() },
         contentPadding = 13.dp,
+        lite = true,
     ) {
         // Name + date row
         Row(

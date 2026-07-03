@@ -44,6 +44,10 @@ import kotlin.math.roundToInt
 
 private enum class ChartMetric(val label: String) { ONE_RM("Est. 1RM"), TOP_SET("Top set"), VOLUME("Volume") }
 
+// Immutable + thread-safe — hoisted to file scope instead of rebuilt on every friendlyDate() call
+// (friendlyDate runs once per row inside the recent-sessions items() list).
+private val friendlyDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
+
 @Composable
 fun ExerciseStatsScreen(
     viewModel: ExerciseStatsViewModel,
@@ -203,4 +207,4 @@ private fun RecentSessionCard(day: ExerciseStatsCalculator.DaySession, modifier:
 }
 
 private fun friendlyDate(iso: String): String =
-    runCatching { LocalDate.parse(iso).format(DateTimeFormatter.ofPattern("MMM d")) }.getOrDefault(iso)
+    runCatching { LocalDate.parse(iso).format(friendlyDateFormatter) }.getOrDefault(iso)

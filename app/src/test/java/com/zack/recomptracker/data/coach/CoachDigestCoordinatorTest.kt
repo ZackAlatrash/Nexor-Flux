@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -444,6 +445,55 @@ class CoachDigestCoordinatorTest {
         coordinator.run()
 
         assertEquals("the TODAY signal wins the Today slot", todaySignal, inbox.staged)
+    }
+
+    // ── active experiment evaluation (Phase 5F) ──────────────────────────────────────
+
+    /** A matured (age ≥ 7d) hunger experiment whose result is computable from the default context. */
+    private fun matureExperiment() = CoachExperiment(
+        correlationId = "PROTEIN_HIT_NEXT_DAY_HUNGER",
+        hypothesis = "Hitting protein may curb next-day cravings.",
+        trackedMetric = "hunger",
+        baselineValue = 5.0,
+        startDateIso = today.minusDays(8).toString(),
+    )
+
+    @Test
+    fun `a matured experiment whose result wins the slot is surfaced and then cleared`() = runTest {
+        val experiments = FakeCoachExperiments(matureExperiment())
+        val inbox = FakeInbox()
+        val coordinator = CoachDigestCoordinator(
+            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            engine = engineWith(null), // no competitor → the EXPERIMENT_RESULT wins the Today slot
+            selector = SignalSelector(), inbox = inbox,
+            aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
+            appScope = this, experiments = experiments,
+        )
+
+        coordinator.run()
+
+        assertEquals(SignalKind.EXPERIMENT_RESULT, inbox.staged?.kind)
+        assertNull("cleared once its result actually surfaced", experiments.current())
+    }
+
+    @Test
+    fun `a matured experiment result out-ranked by a P0 is NOT cleared and stays eligible`() = runTest {
+        // The result (P1) loses the single Today slot to a P0 event. It must not be discarded — else
+        // the user never sees their experiment outcome. It should persist and retry next run.
+        val experiments = FakeCoachExperiments(matureExperiment())
+        val inbox = FakeInbox()
+        val p0 = signal(kind = SignalKind.FAT_GAIN_WARNING, tier = SignalTier.P0, dedupKey = "FGW|w27")
+        val coordinator = CoachDigestCoordinator(
+            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            engine = engineWith(p0), selector = SignalSelector(), inbox = inbox,
+            aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
+            appScope = this, experiments = experiments,
+        )
+
+        coordinator.run()
+
+        assertEquals("the P0 event wins the slot", SignalKind.FAT_GAIN_WARNING, inbox.staged?.kind)
+        assertNotNull("experiment kept because its result never surfaced", experiments.current())
     }
 
     // ── runIfDue() ─────────────────────────────────────────────────────────────────

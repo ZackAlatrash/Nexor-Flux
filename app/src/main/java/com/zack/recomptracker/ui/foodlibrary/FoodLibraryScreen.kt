@@ -65,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.domain.food.FoodScaling
+import com.zack.recomptracker.domain.food.MealImpact
 import com.zack.recomptracker.domain.food.RecipeWithIngredients
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastMessage
@@ -77,6 +78,7 @@ import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.FoodAmountPanel
+import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -870,6 +872,8 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
             message = state.message,
             messageKind = state.messageKind,
         ) {
+            // Deterministic meal-impact strip (today-only; hidden when gated out).
+            state.mealImpact?.let { MealImpactStrip(it) }
             LiquidPrimaryButton(
                 text = when {
                     state.pickerMode -> "Add to Recipe"
@@ -877,6 +881,29 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
                     else -> "Save"
                 },
                 onClick = viewModel::confirmAmount,
+            )
+        }
+    }
+}
+
+// ── Meal Impact Strip (deterministic, zero-AI: where this item lands you today) ─
+
+@Composable
+private fun MealImpactStrip(impact: MealImpact.Result) {
+    val appColors = LocalAppColors.current
+    FrostedCard(contentPadding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "Puts you at ${impact.protein.percent}% protein, " +
+                    "${impact.carbs.percent}% carbs for today",
+                style = AppType.cardSubtitle,
+                color = appColors.textSecondary,
+            )
+            Text(
+                text = impact.hint,
+                style = AppType.metaLabel,
+                color = if (impact.calories.over || impact.carbs.over) appColors.textPrimary
+                    else appColors.textMuted,
             )
         }
     }

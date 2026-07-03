@@ -16,6 +16,8 @@ class WeeklyReviewComputer {
         result: AdjustmentResult,
         currentTargetCalories: Int,
         activity: WeeklyActivity? = null,
+        training: WeeklyTraining? = null,
+        patternFacts: List<com.zack.recomptracker.domain.insight.InsightFact> = emptyList(),
     ): WeeklyReviewData {
         val actionable = result.verdict == AdjustmentVerdict.INCREASE_CALORIES ||
             result.verdict == AdjustmentVerdict.REDUCE_CALORIES
@@ -40,6 +42,8 @@ class WeeklyReviewComputer {
             currentTargetCalories = currentTargetCalories,
             applyTargetCalories = applyTarget,
             activity = activity,
+            training = training,
+            patternFacts = patternFacts,
         )
     }
 

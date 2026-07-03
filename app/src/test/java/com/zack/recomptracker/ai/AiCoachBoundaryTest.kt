@@ -2,50 +2,32 @@ package com.zack.recomptracker.ai
 
 import java.io.File
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Test
 
 /**
- * Enforces the Phase-0 boundary rule (docs/ai-redesign/08-technical-architecture.md §5, invariant #7):
- * the cloud-first coach building blocks — and anything under the new `domain/coach` / `data/coach`
- * packages — must have ZERO compile-time dependency on the legacy on-device stack. This guard keeps a
- * future edit from silently re-coupling the new coach to Gemma/Routing/model-lifecycle code, so the
- * local stack can be deleted in Phase 6 without touching the new system.
+ * Cloud-only guard (Phase 8). The entire on-device/Gemma/LiteRT/routing stack was deleted; the app
+ * is now cloud-only for AI. This test keeps a future edit from re-introducing that stack: it scans
+ * the whole `ai` package plus the `domain/coach` / `data/coach` packages for the forbidden symbols
+ * and fails if any reappears.
  *
- * It works by scanning `import` lines in the guarded source files for forbidden tokens. Pure JVM
- * test — no Android, no model, no network.
+ * Pure JVM test — no Android, no model, no network.
  */
 class AiCoachBoundaryTest {
 
-    /** Import-line substrings that indicate a dependency on the legacy on-device/model path. */
-    private val forbiddenImportTokens = listOf(
+    /** Symbols that belonged to the deleted local stack. None may reappear anywhere in the scan set. */
+    private val forbiddenTokens = listOf(
         "Gemma",              // Gemma*Coordinator / GemmaInsightService / GemmaServiceHolder
-        "Routing",            // RoutingInsightCoordinator / RoutingCoachCoordinator / RoutingRecipeNamer
+        "RoutingCoachCoordinator",
+        "RoutingInsightCoordinator",
+        "RoutingRecipeNamer",
         "ModelVariant",       // on-device model selector enum
-        "AiBackend",          // LOCAL/CLOUD backend toggle + AiCapabilities
+        "AiBackend",          // LOCAL/CLOUD backend toggle
+        "AiCapabilities",     // per-backend capability flags
         "LocalNameGenerator", // on-device recipe namer
     )
 
-    /**
-     * The cloud-first coach path the new AI coach system is (and will be) built on. NOTE: the legacy
-     * insight-card generator `CloudInsightCoordinator` is intentionally excluded — it retains a
-     * documented, inert `ModelVariant` stub required by the shared interface (removed in Phase 6) and
-     * is not part of the new coach's phrasing path.
-     */
-    private val guardedRelativePaths = listOf(
-        "ai/CoachPhrasingService.kt",
-        "ai/CoachPhrasingPromptBuilder.kt",
-        "ai/CoachTools.kt",
-        "ai/CloudCoachCoordinator.kt",
-        "ai/CoachToolExecutor.kt",
-        "ai/CoachToolsAdapter.kt",
-        "ai/WeeklyBriefing.kt",
-        "ai/WeeklyBriefingGenerator.kt",
-        "ai/WeeklyBriefingPromptBuilder.kt",
-    )
-
-    /** Whole new-coach packages that must stay clean once they exist (empty until Phase 2). */
-    private val guardedNewPackages = listOf("domain/coach", "data/coach")
+    /** Packages that must stay free of the deleted local stack. */
+    private val guardedPackages = listOf("ai", "domain/coach", "data/coach")
 
     private fun sourceRoot(): File {
         // testDebugUnitTest runs with the module dir as cwd, but be robust to either.
@@ -60,35 +42,40 @@ class AiCoachBoundaryTest {
     private fun violationsIn(file: File): List<String> {
         if (!file.isFile) return emptyList()
         return file.readLines()
-            .filter { it.trimStart().startsWith("import ") }
-            .filter { line -> forbiddenImportTokens.any { it in line } }
+            .filterNot { it.trimStart().startsWith("//") || it.trimStart().startsWith("*") }
+            .filter { line -> forbiddenTokens.any { it in line } }
             .map { "${file.name}: ${it.trim()}" }
     }
 
     @Test
-    fun `cloud-first coach path does not import the legacy local stack`() {
+    fun `ai and coach packages contain no local-stack symbols`() {
         val root = sourceRoot()
-        // Fail loudly if a guarded file was renamed/moved so the guard silently stops covering it.
-        val missing = guardedRelativePaths.filterNot { File(root, it).isFile }
-        assertTrue("Guarded files not found (rename? update the guard): $missing", missing.isEmpty())
-
-        val violations = guardedRelativePaths.flatMap { violationsIn(File(root, it)) }
-        if (violations.isNotEmpty()) {
-            fail("New coach cloud path must not depend on the legacy on-device stack:\n" +
-                violations.joinToString("\n"))
-        }
-    }
-
-    @Test
-    fun `new coach packages stay free of local-stack imports`() {
-        val root = sourceRoot()
-        val violations = guardedNewPackages
+        val violations = guardedPackages
             .map { File(root, it) }
             .filter { it.isDirectory }
             .flatMap { dir -> dir.walkTopDown().filter { it.extension == "kt" }.flatMap { violationsIn(it) } }
-        if (violations.isNotEmpty()) {
-            fail("domain/coach & data/coach must not depend on the legacy on-device stack:\n" +
-                violations.joinToString("\n"))
-        }
+        assertTrue(
+            "The on-device/local AI stack was removed in Phase 8 and must not return:\n" +
+                violations.joinToString("\n"),
+            violations.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `deleted local-stack source files do not exist`() {
+        val root = File(sourceRoot(), "ai")
+        val deleted = listOf(
+            "GemmaInsightCoordinator.kt",
+            "GemmaCoachCoordinator.kt",
+            "GemmaInsightService.kt",
+            "GemmaServiceHolder.kt",
+            "RoutingInsightCoordinator.kt",
+            "RoutingCoachCoordinator.kt",
+            "RoutingRecipeNamer.kt",
+            "AiBackend.kt",
+            "ModelVariant.kt",
+        )
+        val stillPresent = deleted.filter { File(root, it).exists() }
+        assertTrue("These files should have been deleted in Phase 8: $stillPresent", stillPresent.isEmpty())
     }
 }

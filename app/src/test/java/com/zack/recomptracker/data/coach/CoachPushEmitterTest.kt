@@ -114,7 +114,7 @@ class CoachPushEmitterTest {
         // ambient on, weekly off — the weekly path must consult the weekly pref only.
         val emitter = emitter(notifier, history, FakePrefs(weekly = false, ambient = true))
 
-        val shown = emitter.emit(signal(kind = SignalKind.WEEKLY_VERDICT, tier = SignalTier.P2), isWeeklyCheckIn = true)
+        val shown = emitter.emit(signal(kind = SignalKind.LOW_ADHERENCE, tier = SignalTier.P2), isWeeklyCheckIn = true)
 
         assertFalse(shown)
         assertTrue(notifier.shown.isEmpty())
@@ -143,9 +143,9 @@ class CoachPushEmitterTest {
         val history = FakeHistory()
         val emitter = emitter(notifier, history, FakePrefs(weekly = true, ambient = false))
 
-        // A P2 weekly-verdict signal — only pushable because it is the weekly check-in.
+        // A P2 weekly check-in signal — only pushable because it is the weekly check-in.
         val shown = emitter.emit(
-            signal(kind = SignalKind.WEEKLY_VERDICT, tier = SignalTier.P2,
+            signal(kind = SignalKind.LOW_ADHERENCE, tier = SignalTier.P2,
                 action = CoachAction(CoachActionType.OPEN_WEEKLY_REVIEW, "Open review")),
             isWeeklyCheckIn = true,
         )

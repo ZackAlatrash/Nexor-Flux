@@ -2,10 +2,8 @@ package com.zack.recomptracker.ui.aicoach
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zack.recomptracker.ai.AiBackend
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.ModelVariant
 import com.zack.recomptracker.data.preferences.SecureKeyStore
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.remote.ChatRequestMessage
@@ -21,16 +19,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private data class AiCoachFlags(
-    val ai: Boolean,
-    val backend: AiBackend,
-)
-
 data class AiCoachUiState(
     val aiInsightsEnabled: Boolean = false,
     val busy: Boolean = false,
     val message: String? = null,
-    val aiBackend: AiBackend = AiBackend.LOCAL,
     val cloudBaseUrl: String = "",
     val cloudModelId: String = "",
     val cloudHasKey: Boolean = false,
@@ -56,23 +48,12 @@ class AiCoachViewModel(
     val uiState: StateFlow<AiCoachUiState> = _uiState.asStateFlow()
 
     val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
-    val selectedModel: StateFlow<ModelVariant> = aiInsightCoordinator.selectedModel
 
     init {
-        // Reactive toggles/selectors (not free-text, so no typing race).
+        // Reactive AI-enabled toggle (not free-text, so no typing race).
         viewModelScope.launch {
-            combine(
-                uiPreferences.aiInsightsEnabled,
-                uiPreferences.aiBackend,
-            ) { ai, backend ->
-                AiCoachFlags(ai, backend)
-            }.collect { f ->
-                _uiState.update {
-                    it.copy(
-                        aiInsightsEnabled = f.ai,
-                        aiBackend = f.backend,
-                    )
-                }
+            uiPreferences.aiInsightsEnabled.collect { ai ->
+                _uiState.update { it.copy(aiInsightsEnabled = ai) }
             }
         }
         // Free-text fields are seeded ONCE from persisted prefs. They must NOT be re-collected
@@ -122,10 +103,6 @@ class AiCoachViewModel(
         // Connect sync pattern). run() also self-gates on the preference, so this is belt-and-braces.
         if (enabled) coachDigestCoordinator.enableBackgroundDigest()
         else coachDigestCoordinator.disableBackgroundDigest()
-    }
-
-    fun setAiBackend(backend: AiBackend) {
-        viewModelScope.launch { uiPreferences.setAiBackend(backend) }
     }
 
     /** Toggle the single weekly check-in push (on by default). Mirrors [setAiInsights]. */
@@ -188,11 +165,6 @@ class AiCoachViewModel(
             _uiState.update { it.copy(testingConnection = false, testConnectionResult = result) }
         }
     }
-
-    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
-    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
-    fun deleteModel() = aiInsightCoordinator.deleteModel()
-    fun setModel(variant: ModelVariant) = aiInsightCoordinator.setSelectedModel(variant)
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
 

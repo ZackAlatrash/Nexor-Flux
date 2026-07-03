@@ -12,6 +12,15 @@ data class ProgressInsightContext(
     val waistPointCount: Int,
     /** Same trend over the PRIOR window of equal length — lets the card say "accelerating". */
     val priorWeightTrendKgPerWeek: Double? = null,
+    /**
+     * Actual training sessions per week (distinct training days ÷ weeks) from the same
+     * [com.zack.recomptracker.domain.activity.ActivitySummary] derivation the dashboard/AI snapshot
+     * use. Null when nothing was trained in the window. Lets the verdict name whether the stimulus
+     * (training frequency) or the recovery/diet side is the limiting factor.
+     */
+    val trainingSessionsPerWeek: Double? = null,
+    /** The user's profile target of gym sessions per week, or null if unset — the reference for frequency. */
+    val weeklyGymSessionsTarget: Int? = null,
 ) {
     val hasSufficientData: Boolean
         get() = weightPointCount >= 2 || waistPointCount >= 2
@@ -22,6 +31,8 @@ data class ProgressInsightContext(
         val wa = waistTrendCmPerWeek?.let { (it * 10).roundToInt() }?.toString() ?: "n"
         val l = liftTrendKgPerWeek?.let { (it * 10).roundToInt() }?.toString() ?: "n"
         val a = adherencePercent?.roundToInt()?.toString() ?: "n"
-        return "$rangeDays|$w|$wa|$l|$a"
+        val f = trainingSessionsPerWeek?.let { (it * 10).roundToInt() }?.toString() ?: "n"
+        val t = weeklyGymSessionsTarget?.toString() ?: "n"
+        return "$rangeDays|$w|$wa|$l|$a|$f|$t"
     }
 }

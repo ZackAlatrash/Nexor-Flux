@@ -45,6 +45,15 @@ data class CoachSignal(
 val CoachSignal.isCelebration: Boolean
     get() = kind == SignalKind.NEW_PR || kind == SignalKind.RECOMP_WIN
 
+/**
+ * True when this signal is a Cross-Signal Discovery (Phase 5) — the flagship genuine-LLM card that
+ * surfaces a testable cross-domain hypothesis. Surfaces key off this to swap in the distinct
+ * "discovery" skin and render the "Track this" experiment action. Pure; keyed off the explicit
+ * discovery [SignalKind] set.
+ */
+val CoachSignal.isDiscovery: Boolean
+    get() = kind == SignalKind.CROSS_SIGNAL_DISCOVERY || kind == SignalKind.EXPERIMENT_RESULT
+
 /** Priority band. P0 may push and always outranks lower tiers; P3 is ambient / in-app only. */
 @Serializable
 enum class SignalTier { P0, P1, P2, P3 }
@@ -91,6 +100,13 @@ enum class CoachActionType {
     APPLY_TARGET,
     OPEN_TRAINING,
     OPEN_FOOD_LOG,
+
+    /**
+     * Records the Cross-Signal Discovery card's hypothesis as the single active experiment (Phase 5).
+     * NOT navigation — the Today slot handles it specially (writes to the experiment store and
+     * dismisses the card); it deliberately stays out of the dashboard's navigation action set.
+     */
+    TRACK_EXPERIMENT,
 }
 
 /**
@@ -102,7 +118,6 @@ enum class SignalKind {
     // ── Plan / body (the recomposition thesis) ──
     RECOMP_WIN,               // weight flat while waist/skinfold falling
     FAT_GAIN_WARNING,         // weight up AND waist up
-    WEEKLY_VERDICT,           // the adjustment-engine calorie verdict
     // ── Nutrition ──
     LOW_ADHERENCE,            // logging/adherence below threshold
     PROTEIN_MISS_TRAINING_DAY,// protein short specifically on trained days
@@ -114,13 +129,17 @@ enum class SignalKind {
     TRAINING_PLATEAU,         // e1RM stalled
     NEW_PR,                   // new estimated 1RM (celebration)
     DELOAD_DUE,               // RIR falling + poor recovery
-    WORKOUT_STREAK_AT_RISK,   // missed-workout pattern
     // ── Recovery ──
     RECOVERY_DECLINE,         // sleep/energy/soreness trending poor
     SLEEP_HUNGER_LINK,        // cross-domain: poor-sleep days run hungrier
+    MORNING_READINESS,        // today's recovery inputs vs the user's own baseline → train-or-lighten
+    CROSS_SIGNAL_DISCOVERY,   // cross-domain: strongest deterministic correlation → a testable hypothesis (Phase 5)
+    EXPERIMENT_RESULT,        // the active experiment's week is up → did the tracked metric move? (Phase 5)
     // ── Behaviour ("noticing") ──
     UNCONFIRMED_PLANNED_MEALS,// stale planned meals to confirm
     QUIET_WEIGH_INS,          // no weigh-in in a while
+    CONSISTENCY_CHECK_IN,     // logging cadence dropped enough to degrade the engine's confidence
+    SCALE_CHECK,              // a scary day-over-day weight jump that contradicts the smoothed trend
     // ── Silence ──
     INSUFFICIENT_DATA,        // not enough logged days — hold, don't manufacture insight
 }

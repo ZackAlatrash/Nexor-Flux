@@ -285,7 +285,7 @@ class CoachToolExecutor(
         } else {
             // Food not in library — fall back to model-provided macros.
             finalName = name
-            // LiteRT-LM may surface integer JSON values as Double (e.g. "500.0"), so try
+            // The model may surface integer JSON values as Double (e.g. "500.0"), so try
             // toIntOrNull first and fall back to toDoubleOrNull().toInt() before giving up.
             calories = args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }
                 ?: return """{"error":"'${name.esc()}' not found in food library. Please call log_meal again with calories and macros."}"""

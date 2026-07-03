@@ -35,12 +35,13 @@ class RecompTrackerApp : Application(), ImageLoaderFactory {
             container.database
             _dbReady.value = true
         }
-        // Foreground auto-sync: when Health Connect is enabled + permitted, refresh today's
-        // steps/weight/sleep each time the app comes to the foreground (debounced inside the
-        // coordinator), so streaks stay live without the user opening Settings to "Sync now".
+        // Foreground auto-sync: when Health Connect is enabled + permitted, refresh steps on
+        // EVERY foreground (they rise all day, so no debounce) and the full steps/weight/sleep
+        // sync on the debounced schedule, so streaks stay live without opening Settings.
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             object : DefaultLifecycleObserver {
                 override fun onStart(owner: LifecycleOwner) {
+                    container.healthSyncCoordinator.syncStepsNow()
                     container.healthSyncCoordinator.syncIfDue()
                     // Refresh the proactive-coach "Today's Coaching" winner once/day (debounced
                     // inside the coordinator). Deterministic CPU/DB work — no cloud call here.

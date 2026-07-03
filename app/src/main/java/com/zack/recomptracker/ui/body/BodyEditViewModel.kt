@@ -25,6 +25,8 @@ data class BodyEditUiState(
     val waistCm: String = "",
     val waistSkinfoldMm: String = "",
     val steps: String = "",
+    /** True once the user types in the steps field — only then does saving mark steps manual. */
+    val stepsEdited: Boolean = false,
     val sleepHours: String = "",
     val energyScore: Int = 5,
     val hungerScore: Int = 5,
@@ -73,7 +75,7 @@ class BodyEditViewModel(
     fun onBodyWeightChanged(v: String) = edit { copy(bodyWeightKg = v) }
     fun onWaistChanged(v: String) = edit { copy(waistCm = v) }
     fun onWaistSkinfoldChanged(v: String) = edit { copy(waistSkinfoldMm = v) }
-    fun onStepsChanged(v: String) = edit { copy(steps = v) }
+    fun onStepsChanged(v: String) = edit { copy(steps = v, stepsEdited = true) }
     fun onSleepChanged(v: String) = edit { copy(sleepHours = v) }
     fun onEnergyChanged(v: Int) = edit { copy(energyScore = v.coerceIn(1, 10)) }
     fun onHungerChanged(v: Int) = edit { copy(hungerScore = v.coerceIn(1, 10)) }
@@ -98,6 +100,7 @@ class BodyEditViewModel(
                     waistCm = s.waistCm.toNullableDouble(),
                     waistSkinfoldMm = s.waistSkinfoldMm.toNullableDouble(),
                     steps = steps,
+                    stepsEdited = s.stepsEdited,
                     sleepHours = s.sleepHours.toNullableDouble(),
                     energyScore = s.energyScore,
                     hungerScore = s.hungerScore,

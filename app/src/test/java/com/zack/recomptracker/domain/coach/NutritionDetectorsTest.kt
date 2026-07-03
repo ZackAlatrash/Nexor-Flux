@@ -128,4 +128,53 @@ class NutritionDetectorsTest {
         )
         assertNull(UnconfirmedPlannedMealsDetector().detect(ctx))
     }
+
+    // ── ConsistencyCheckInDetector ─────────────────────────────────────────────
+
+    private val meal = MacroTotals(2400, 180.0, 250.0, 70.0)
+
+    /** Logged on the given day-offsets before TODAY (0 == today). */
+    private fun loggedOn(vararg offsets: Int) =
+        offsets.associate { TODAY.minusDays(it.toLong()) to meal }
+
+    @Test
+    fun `consistency check-in fires when a good stretch drops to a thin recent week`() {
+        // Prior week (offsets 7..13): 7 logged = good stretch. Recent week (0..6): only 3 logged.
+        val prior = (7..13).associate { TODAY.minusDays(it.toLong()) to meal }
+        val recent = loggedOn(0, 2, 4) // 3 of the last 7
+        val ctx = CoachContextFixtures.context(
+            nutrition = CoachContextFixtures.nutrition(eatenByDate = prior + recent),
+        )
+        val s = ConsistencyCheckInDetector().detect(ctx)!!
+        assertEquals(SignalKind.CONSISTENCY_CHECK_IN, s.kind)
+        assertEquals(SignalTier.P2, s.tier)
+        assertEquals(SignalCategory.NUTRITION, s.category)
+        assertEquals(CoachActionType.OPEN_FOOD_LOG, s.action.type)
+        assertEquals("3", s.facts.values["recentDaysLogged"])
+        assertTrue(s.verdict.contains("confidence", ignoreCase = true))
+        assertTrue(s.fallbackText.isNotBlank())
+        assertTrue(s.dedupKey.startsWith("CONSISTENCY_CHECK_IN|"))
+    }
+
+    @Test
+    fun `consistency check-in stays silent when the recent week is still well logged`() {
+        // Recent week has 5 logged (>= floor of 4) -> no slip.
+        val prior = (7..13).associate { TODAY.minusDays(it.toLong()) to meal }
+        val recent = loggedOn(0, 1, 2, 3, 4)
+        val ctx = CoachContextFixtures.context(
+            nutrition = CoachContextFixtures.nutrition(eatenByDate = prior + recent),
+        )
+        assertNull(ConsistencyCheckInDetector().detect(ctx))
+    }
+
+    @Test
+    fun `consistency check-in stays silent without a prior good stretch (new user)`() {
+        // Recent week thin (2 logged) but the prior week was also thin -> not a genuine drop.
+        val prior = loggedOn(7, 8) // only 2 in the prior window
+        val recent = loggedOn(0, 3)
+        val ctx = CoachContextFixtures.context(
+            nutrition = CoachContextFixtures.nutrition(eatenByDate = prior + recent),
+        )
+        assertNull(ConsistencyCheckInDetector().detect(ctx))
+    }
 }

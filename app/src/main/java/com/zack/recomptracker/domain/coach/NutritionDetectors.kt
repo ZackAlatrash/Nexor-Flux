@@ -43,6 +43,75 @@ class LowAdherenceDetector : CoachDetector {
     }
 }
 
+/** Recent-window length (days) and the min logged days in it before consistency reads as "dropped". */
+private const val CONSISTENCY_RECENT_DAYS = 7
+private const val CONSISTENCY_RECENT_MIN_LOGGED = 4
+
+/** The prior window must have been well-logged (a "good stretch") for the drop to be worth flagging. */
+private const val CONSISTENCY_PRIOR_DAYS = 7
+private const val CONSISTENCY_PRIOR_MIN_LOGGED = 6
+
+/**
+ * Consistency Check-In (P2, TODAY): logging cadence has dropped enough to degrade the adjustment
+ * engine's confidence — the recent [CONSISTENCY_RECENT_DAYS] days logged fewer than
+ * [CONSISTENCY_RECENT_MIN_LOGGED], *after* a prior [CONSISTENCY_PRIOR_DAYS]-day good stretch (so this
+ * is a genuine slip, not a new user). Gated off the logged-day counts the context already carries in
+ * `nutrition.eatenByDate`, mirroring how [QuietWeighInsDetector] watches a starving trend. Framed as a
+ * DATA-QUALITY nudge — never guilt.
+ */
+class ConsistencyCheckInDetector : CoachDetector {
+    override fun detect(ctx: CoachContext): CoachSignal? {
+        val today = ctx.asOf
+        val logged = ctx.nutrition.eatenByDate.keys
+
+        val recentStart = today.minusDays((CONSISTENCY_RECENT_DAYS - 1).toLong())
+        val priorEnd = recentStart.minusDays(1)
+        val priorStart = priorEnd.minusDays((CONSISTENCY_PRIOR_DAYS - 1).toLong())
+
+        val recentLogged = logged.count { !it.isBefore(recentStart) && !it.isAfter(today) }
+        val priorLogged = logged.count { !it.isBefore(priorStart) && !it.isAfter(priorEnd) }
+
+        // Recent slip AND a prior good stretch — otherwise stay silent.
+        if (recentLogged >= CONSISTENCY_RECENT_MIN_LOGGED) return null
+        if (priorLogged < CONSISTENCY_PRIOR_MIN_LOGGED) return null
+
+        val needed = CONSISTENCY_RECENT_MIN_LOGGED - recentLogged
+        val dayWord = if (needed == 1) "day" else "days"
+        // Severity scales with how far below the recent floor the logging fell.
+        val severity = severityFromDistance(
+            (CONSISTENCY_RECENT_MIN_LOGGED - recentLogged).toDouble(),
+            span = CONSISTENCY_RECENT_MIN_LOGGED.toDouble(),
+        )
+        return CoachSignal(
+            kind = SignalKind.CONSISTENCY_CHECK_IN,
+            tier = SignalTier.P2,
+            category = SignalCategory.NUTRITION,
+            severity = severity,
+            facts = SignalFacts(
+                mapOf(
+                    "recentDaysLogged" to recentLogged.toString(),
+                    "recentWindowDays" to CONSISTENCY_RECENT_DAYS.toString(),
+                    "priorDaysLogged" to priorLogged.toString(),
+                ),
+            ),
+            verdict = "Logged $recentLogged of the last $CONSISTENCY_RECENT_DAYS days — $needed more $dayWord " +
+                "and I can update your target with confidence.",
+            action = CoachAction(CoachActionType.OPEN_FOOD_LOG, "Log today"),
+            rationale = SignalRationale(
+                primaryCauseByDomain = mapOf(
+                    "nutrition" to "$recentLogged/$CONSISTENCY_RECENT_DAYS days logged recently, down from $priorLogged/$CONSISTENCY_PRIOR_DAYS",
+                ),
+                behaviorToOutcome = "fewer logged days → less confident target adjustments",
+                confidence = Confidence.MEDIUM,
+            ),
+            dedupKey = "CONSISTENCY_CHECK_IN|${isoWeek(today)}|logged=$recentLogged",
+            surface = CoachSurface.TODAY,
+            fallbackText = "You've logged $recentLogged of the last $CONSISTENCY_RECENT_DAYS days — a couple more and " +
+                "your target update lands on solid data.",
+        )
+    }
+}
+
 /**
  * #12 Derailment day (P2): a single day drove most of the week's calorie surplus. Reroutes the
  * existing `detectDerailmentDay` `InsightFact` into a coach signal — the math is not rebuilt.

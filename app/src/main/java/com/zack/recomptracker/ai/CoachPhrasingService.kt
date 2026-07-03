@@ -20,8 +20,7 @@ import kotlinx.coroutines.withTimeout
  *  - On ANY failure — no cloud config, timeout, network error, blank output — [phrase] returns
  *    [CoachSignal.fallbackText]. It never throws and is never "broken", just quieter.
  *
- * Boundary rule (invariant #7): this file and its prompt builder reference no `Gemma*`/`Routing*`/
- * `ModelVariant`/`AiBackend`/`LocalNameGenerator` class — cloud-only.
+ * Cloud-only: this file and its prompt builder use only the OpenAI-compatible client.
  *
  * @param client the shared OpenAI-compatible client (streaming, single-turn, no tools).
  * @param config a lambda/StateFlow accessor for the current [CloudConfig]; `null` means no cloud is

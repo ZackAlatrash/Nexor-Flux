@@ -9,8 +9,7 @@ import com.zack.recomptracker.domain.coach.CoachSignal
  * figure. See `docs/ai-redesign/08-technical-architecture.md` §3/§4 ("engine facts in, phrasing out;
  * the model never introduces a number absent from the payload").
  *
- * Pure string assembly — no Android, no network. Deliberately references no `Gemma*`/`Routing*`/
- * `ModelVariant`/`AiBackend` class (boundary rule, invariant #7).
+ * Pure string assembly — no Android, no network.
  */
 internal object CoachPhrasingPromptBuilder {
 

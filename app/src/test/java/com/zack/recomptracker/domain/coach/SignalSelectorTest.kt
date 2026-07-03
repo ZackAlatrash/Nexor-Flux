@@ -47,6 +47,30 @@ class SignalSelectorTest {
     }
 
     @Test
+    fun `a P1 daily signal beats a higher-severity P2 on the same day`() {
+        // Q9 tier budget: Morning Readiness (P1) outranks Consistency/Scale Check (P2) even when the
+        // P2 is more severe, because tier is the primary sort key.
+        val p1 = signal(SignalKind.MORNING_READINESS, SignalTier.P1, severity = 20, dedupKey = "a")
+        val p2 = signal(SignalKind.CONSISTENCY_CHECK_IN, SignalTier.P2, severity = 95, dedupKey = "b")
+
+        val result = selector.select(listOf(p2, p1), emptyMap(), today)
+
+        assertEquals(p1, result.winner)
+        assertEquals(listOf(p1, p2), result.ranked)
+    }
+
+    @Test
+    fun `higher severity wins within the P2 tier`() {
+        val strongP2 = signal(SignalKind.SCALE_CHECK, SignalTier.P2, severity = 80, dedupKey = "a")
+        val weakP2 = signal(SignalKind.CONSISTENCY_CHECK_IN, SignalTier.P2, severity = 20, dedupKey = "b")
+
+        val result = selector.select(listOf(weakP2, strongP2), emptyMap(), today)
+
+        assertEquals(strongP2, result.winner)
+        assertEquals(listOf(strongP2, weakP2), result.ranked)
+    }
+
+    @Test
     fun `severity breaks ties within a tier`() {
         val low = signal(SignalKind.LOW_ADHERENCE, SignalTier.P1, severity = 20, dedupKey = "a")
         val high = signal(SignalKind.RECOVERY_DECLINE, SignalTier.P1, severity = 80, dedupKey = "b")

@@ -28,6 +28,17 @@ class CoachSignalTest {
     )
 
     @Test
+    fun `retired dangling kinds are gone and enumeration stays coherent`() {
+        // Phase 2A (Q5b): WEEKLY_VERDICT and WORKOUT_STREAK_AT_RISK had no detector and were removed.
+        val names = SignalKind.entries.map { it.name }.toSet()
+        assertFalse("WEEKLY_VERDICT" in names)
+        assertFalse("WORKOUT_STREAK_AT_RISK" in names)
+        // Every kind still enumerates cleanly (no gaps): entries and values agree.
+        assertEquals(SignalKind.values().size, SignalKind.entries.size)
+        assertTrue(SignalKind.entries.isNotEmpty())
+    }
+
+    @Test
     fun `a valid signal is constructed`() {
         val s = signal()
         assertEquals(SignalKind.RECOMP_WIN, s.kind)
@@ -68,6 +79,6 @@ class CoachSignalTest {
     @Test
     fun `a non-celebration kind is not a celebration`() {
         assertFalse(signal(kind = SignalKind.LOW_ADHERENCE).isCelebration)
-        assertFalse(signal(kind = SignalKind.WEEKLY_VERDICT).isCelebration)
+        assertFalse(signal(kind = SignalKind.FAT_GAIN_WARNING).isCelebration)
     }
 }

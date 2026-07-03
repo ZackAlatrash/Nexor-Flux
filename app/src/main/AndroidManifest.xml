@@ -23,17 +23,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RecompTracker">
 
-        <!--
-            Required for LiteRT-LM GPU backend (OpenCL path).
-            Both libraries are declared optional (required="false") so the APK installs
-            on devices that lack them; GemmaInsightService falls back to CPU in that case.
-        -->
-        <uses-native-library
-            android:name="libvndksupport.so"
-            android:required="false" />
-        <uses-native-library
-            android:name="libOpenCL.so"
-            android:required="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -262,7 +262,7 @@ class CoachDigestCoordinatorTest {
         val prefs = FakeNotifPrefs(weekly = true)
         val emitter = CoachPushEmitter(notifier, history, prefs) { nowInstant }
         val weeklySignal = signal(
-            kind = SignalKind.WEEKLY_VERDICT, tier = SignalTier.P2, dedupKey = "WV|w25",
+            kind = SignalKind.LOW_ADHERENCE, tier = SignalTier.P2, dedupKey = "WV|w25",
             surface = CoachSurface.WEEKLY,
         ).copy(action = com.zack.recomptracker.domain.coach.CoachAction(
             com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW, "Open review"))

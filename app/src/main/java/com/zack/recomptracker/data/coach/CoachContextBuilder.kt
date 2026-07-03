@@ -17,8 +17,7 @@ import kotlinx.coroutines.flow.first
  * `StreakRepository` per-emission recompute cost. All derivation lives in the pure assembler; this
  * class only gathers and delegates.
  *
- * Boundary rule (§5, invariant #7): depends only on repositories / prefs / DateProvider and its own
- * `data/coach` + `domain/coach` — never on any Gemma/Routing/AiBackend/ModelVariant class.
+ * Depends only on repositories / prefs / DateProvider and its own `data/coach` + `domain/coach`.
  */
 class CoachContextBuilder(
     private val logRepository: LogRepository,

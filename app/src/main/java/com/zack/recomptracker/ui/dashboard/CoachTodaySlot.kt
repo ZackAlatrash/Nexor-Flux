@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.Icon
@@ -27,11 +28,13 @@ import com.zack.recomptracker.domain.coach.CoachAction
 import com.zack.recomptracker.domain.coach.CoachActionType
 import com.zack.recomptracker.domain.coach.CoachSignal
 import com.zack.recomptracker.domain.coach.isCelebration
+import com.zack.recomptracker.domain.coach.isDiscovery
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
 /**
@@ -46,6 +49,8 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
  * @param onAction invoked with the signal's [CoachActionType] when the action button is tapped; the
  *   screen maps it to an existing nav lambda. No button is shown for [CoachActionType.NONE] or an
  *   unmapped type.
+ * @param onTrackExperiment invoked for a Cross-Signal Discovery card's "Track this" button — records
+ *   the hypothesis as the active experiment (NOT navigation). See Phase 5 (5D).
  * @param onDismiss clears the slot (auto-dismiss on action/seen, §9).
  */
 @Composable
@@ -55,6 +60,7 @@ fun CoachTodaySlot(
     onAction: (CoachActionType) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onTrackExperiment: (CoachSignal) -> Unit = {},
     /** Whether the host screen can navigate for this action type — no button is shown otherwise, so
      *  a signal never renders a dead button. */
     isActionSupported: (CoachActionType) -> Boolean = { true },
@@ -65,6 +71,30 @@ fun CoachTodaySlot(
     val showButton = action.type != CoachActionType.NONE &&
         action.label.isNotBlank() &&
         isActionSupported(action.type)
+
+    // Cross-Signal Discovery (Phase 5) renders the SAME card in the SAME slot, but with a distinct
+    // "Coach spotted a link" header and a "Track this" button that records an experiment (not nav).
+    if (signal.isDiscovery) {
+        TintedCard(modifier = modifier) {
+            CoachSlotBody(
+                header = { DiscoveryHeader(onDismiss) },
+                displayText = displayText,
+                showButton = false,
+                action = CoachAction.None,
+                onAction = onAction,
+            )
+            if (action.type == CoachActionType.TRACK_EXPERIMENT && action.label.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                LiquidActionButton(
+                    text = action.label,
+                    onClick = { onTrackExperiment(signal) },
+                    isPrimary = true,
+                    small = true,
+                )
+            }
+        }
+        return
+    }
 
     // Celebration signals (new PR / recomp win) render the SAME card in the SAME slot, but in a
     // warm/gold skin with a trophy header; every other signal keeps the violet accent tint.
@@ -130,6 +160,33 @@ private fun CoachSlotBody(
             isPrimary = true,
             small = true,
         )
+    }
+}
+
+/** Discovery header: sparkle icon + accent "Coach spotted a link" label + dismiss (Phase 5 skin). */
+@Composable
+private fun DiscoveryHeader(onDismiss: () -> Unit) {
+    val accent = LocalAppAccent.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Rounded.AutoAwesome,
+                contentDescription = null,
+                tint = accent.inkLight,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.size(6.dp))
+            Text(
+                text = "Coach spotted a link".uppercase(),
+                style = AppType.sectionLabel,
+                color = accent.inkLight,
+            )
+        }
+        DismissButton(onDismiss)
     }
 }
 

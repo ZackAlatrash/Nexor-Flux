@@ -2,7 +2,12 @@ package com.zack.recomptracker.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.core.time.SystemDateProvider
+import com.zack.recomptracker.data.coach.CoachExperiment
+import com.zack.recomptracker.data.coach.CoachExperiments
 import com.zack.recomptracker.data.coach.CoachInbox
+import com.zack.recomptracker.data.coach.FakeCoachExperiments
 import com.zack.recomptracker.domain.coach.CoachSignal
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +50,9 @@ class CoachTodayViewModel(
     private val inbox: CoachInbox,
     private val phrase: suspend (CoachSignal) -> String,
     private val onVisibleRefresh: () -> Unit,
+    // Phase 5: defaults keep pre-Phase-5 callers/tests compiling; production wires the real store.
+    private val experiments: CoachExperiments = FakeCoachExperiments(),
+    private val dateProvider: DateProvider = SystemDateProvider(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CoachTodayUiState())
@@ -86,5 +94,30 @@ class CoachTodayViewModel(
     /** User dismissed the slot — clear the staged signal. */
     fun dismiss() {
         viewModelScope.launch { inbox.dismissCurrent() }
+    }
+
+    /**
+     * Phase 5 "Track this": records the Cross-Signal Discovery card's hypothesis as the single active
+     * experiment (overwriting any existing) and dismisses the slot (reusing the existing dismiss path).
+     * The experiment seed lives in the signal's engine-computed facts (correlation id, tracked metric,
+     * baseline) — no number is invented here. A no-op for a signal missing those facts.
+     */
+    fun onTrackExperiment(signal: CoachSignal) {
+        val facts = signal.facts.values
+        val correlationId = facts["correlationId"] ?: return
+        val trackedMetric = facts["trackedMetric"] ?: return
+        val baseline = facts["baselineValue"]?.toDoubleOrNull() ?: return
+        viewModelScope.launch {
+            experiments.start(
+                CoachExperiment(
+                    correlationId = correlationId,
+                    hypothesis = signal.verdict,
+                    trackedMetric = trackedMetric,
+                    baselineValue = baseline,
+                    startDateIso = dateProvider.today().toString(),
+                ),
+            )
+            inbox.dismissCurrent()
+        }
     }
 }

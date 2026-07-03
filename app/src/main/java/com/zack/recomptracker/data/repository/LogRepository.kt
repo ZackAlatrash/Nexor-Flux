@@ -15,7 +15,6 @@ import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
-import com.zack.recomptracker.data.local.entity.StepsSource
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.domain.food.RecentFoods
 import java.time.LocalDate
@@ -101,14 +100,16 @@ class LogRepository(
     fun observeWeeklyReviews(): Flow<List<WeeklyReviewEntity>> = weeklyReviewDao.observeAll()
 
     suspend fun saveDailyMetrics(input: DailyMetricsInput) {
+        val existing = dailyLogDao.getByDate(input.date.toString())
+        val steps = resolveSavedSteps(input.stepsEdited, input.steps, existing?.steps, existing?.stepsSource)
         dailyLogDao.upsert(
             DailyLogEntity(
                 date = input.date.toString(),
                 bodyWeightKg = input.bodyWeightKg,
                 waistCm = input.waistCm,
                 waistSkinfoldMm = input.waistSkinfoldMm,
-                steps = input.steps,
-                stepsSource = if (input.steps != null) StepsSource.MANUAL else null,
+                steps = steps.steps,
+                stepsSource = steps.source,
                 sleepHours = input.sleepHours,
                 energyScore = input.energyScore?.coerceIn(1, 10),
                 hungerScore = input.hungerScore?.coerceIn(1, 10),

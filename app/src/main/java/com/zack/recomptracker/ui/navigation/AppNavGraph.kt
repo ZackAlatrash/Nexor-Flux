@@ -266,8 +266,10 @@ fun AppNavGraph(
             enterTransition = { tabEnter },
             exitTransition  = { tabExit },
         ) {
+            val trainViewModel = viewModel<TrainViewModel>(factory = factory)
+            val appContainer = LocalAppContainer.current
             TrainHomeScreen(
-                viewModel = viewModel<TrainViewModel>(factory = factory),
+                viewModel = trainViewModel,
                 onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
                 onEditRoutine = { id -> navController.navigate(Routes.routineBuilder(id)) },
                 onStart = { navController.navigate(Routes.ActiveSession) },

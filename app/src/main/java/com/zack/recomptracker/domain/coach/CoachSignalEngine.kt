@@ -42,6 +42,10 @@ class CoachSignalEngine(
                 DerailmentDayDetector(),
                 ProteinTrainingDayDetector(),
                 SleepHungerLinkDetector(),
+                CrossSignalDiscoveryDetector(),
+                MorningReadinessDetector(),
+                ConsistencyCheckInDetector(),
+                ScaleCheckDetector(),
             ),
         )
     }

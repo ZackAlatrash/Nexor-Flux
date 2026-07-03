@@ -1,14 +1,10 @@
 package com.zack.recomptracker.ai
 
 /**
- * Backend-neutral coach tool schemas, shared by the cloud coach (and, for now, the legacy on-device
- * coach). Extracted out of `GemmaCoachCoordinator` in the Phase-0 isolation refactor so the cloud
- * path has no compile-time dependency on any local/Gemma file — see
- * `docs/ai-redesign/08-technical-architecture.md` §5. The new AI coach system depends on these
- * constants from here; when the local stack is deleted (Phase 6) this file is unaffected.
+ * Backend-neutral coach tool schemas used by the cloud coach.
  *
- * Each entry is a raw JSON object `{"name":..,"description":..,"parameters":..}`. The cloud path
- * sends them as OpenAI `tools` entries; the legacy Gemma path wraps them in its own SchemaTool.
+ * Each entry is a raw JSON object `{"name":..,"description":..,"parameters":..}`, sent to the model
+ * as OpenAI `tools` entries.
  */
 val COACH_TOOL_SCHEMAS: List<String> = listOf(
     """{"name":"get_today_summary","description":"Get a specific day's food log, macro totals, and daily metrics. Omit 'date' for today.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"ISO date YYYY-MM-DD. Omit for today."}},"required":[]}}""",
@@ -26,9 +22,8 @@ val COACH_WRITE_TOOLS: Set<String> =
     setOf("log_meal", "log_metric", "update_calorie_target", "create_routine", "edit_routine", "create_exercise", "delete_meal", "edit_meal")
 
 /**
- * Web-search tool schema. CLOUD COACH ONLY — never added to the local Gemma tool list (the 2B
- * model is poor at tool calls and the local backend is meant to work offline). Read-only, so it
- * is not in [COACH_WRITE_TOOLS] and runs without user confirmation.
+ * Web-search tool schema. Read-only, so it is not in [COACH_WRITE_TOOLS] and runs without user
+ * confirmation.
  */
 val SEARCH_WEB_TOOL_SCHEMA: String =
     """{"name":"search_web","description":"Search the public web for a fact you don't already have — e.g. calories or macros for a restaurant or packaged food that isn't in the user's library, or a general nutrition, supplement, or training question. Returns a short answer plus source URLs. Always cite the source URL in your reply.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"A concise search query, e.g. \"McDonald's Big Mac calories\""}},"required":["query"]}}"""

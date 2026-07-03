@@ -98,4 +98,27 @@ class WeeklyBriefingGeneratorTest {
         gen.generate(config, data())
         assertTrue("no journey header when blank", !client.lastUserPrompt!!.contains("YOUR JOURNEY SO FAR"))
     }
+
+    // ── 2C: supporting coach note is colour only; never overrides verdict/numbers ──
+
+    @Test
+    fun `supporting coach note reaches the prompt as supporting colour`() = runTest {
+        val client = FakeClient(validJson)
+        val gen = WeeklyBriefingGenerator(client)
+        gen.generate(config, data(), WeeklyCoachNote("Steps fell this week.", "avg 6.2k vs 9.1k"))
+        val prompt = client.lastUserPrompt!!
+        assertTrue("note statement present", prompt.contains("Steps fell this week."))
+        assertTrue("note framed as supporting colour", prompt.contains("SUPPORTING colour only"))
+    }
+
+    @Test
+    fun `verdict and calorie change are unchanged by presence or absence of the coach note`() = runTest {
+        val withoutNote = WeeklyBriefingGenerator(FakeClient(validJson)).generate(config, data())!!
+        val withNote = WeeklyBriefingGenerator(FakeClient(validJson))
+            .generate(config, data(), WeeklyCoachNote("Steps fell.", "6.2k vs 9.1k"))!!
+        // The authoritative verdict + apply target come from WeeklyReviewData, never the note.
+        assertEquals(withoutNote.action.verdict, withNote.action.verdict)
+        assertEquals(withoutNote.action.applyTargetCalories, withNote.action.applyTargetCalories)
+        assertEquals("Hold calories", withNote.action.verdict)
+    }
 }

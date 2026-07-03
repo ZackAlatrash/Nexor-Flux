@@ -2,10 +2,14 @@ package com.zack.recomptracker.data.coach
 
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.domain.coach.ActiveExperiment
 import com.zack.recomptracker.domain.coach.CoachContext
+import com.zack.recomptracker.domain.coach.CoachSignal
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
 import com.zack.recomptracker.domain.coach.CoachSurface
+import com.zack.recomptracker.domain.coach.ExperimentEvaluation
 import com.zack.recomptracker.domain.coach.SignalSelector
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -28,8 +32,7 @@ import kotlinx.coroutines.sync.withLock
  * a once-a-day debounce gate, plus [enableBackgroundDigest]/[disableBackgroundDigest] delegating to a
  * WorkManager-free [CoachDigestScheduler] so this class stays Context-free and unit-testable.
  *
- * Boundary rule (§5, invariant #7): depends only on `domain/coach` + `data/coach` + the AI-enabled
- * gate — never on any Gemma/Routing/AiBackend/ModelVariant class.
+ * Depends only on `domain/coach` + `data/coach` + the AI-enabled gate.
  *
  * @param contextProvider builds the snapshot; injected as a suspend lambda (AppContainer passes
  *   `{ coachContextCache.get() }`) so [run] is testable without the repository graph.
@@ -52,6 +55,7 @@ class CoachDigestCoordinator(
     private val cooldownDays: Int = SignalSelector.DEFAULT_COOLDOWN_DAYS,
     private val pushEmitter: CoachPushEmitter? = null,
     private val notificationPreferences: CoachNotifierPreferences? = null,
+    private val experiments: CoachExperiments? = null,
 ) {
 
     /**
@@ -87,7 +91,7 @@ class CoachDigestCoordinator(
         ctx.history.weeklyReviews.forEach { review ->
             journey.recordWeeklyVerdict(review.signature, review.weekStart.toString(), review.verdict)
         }
-        val signals = engine.evaluate(ctx)
+        val signals = engine.evaluate(ctx) + evaluateActiveExperiment(ctx, today)
         // The digest feeds the "Today's Coaching" slot, so only TODAY-surface signals are eligible.
         // WEEKLY-surface signals (e.g. the recomp verdict) belong to the weekly check-in surface and
         // must not leak into the daily slot.
@@ -105,6 +109,39 @@ class CoachDigestCoordinator(
         }
         emitWeeklyCheckInPush(signals, ctx, today)
         inbox.setLastRunDate(today)
+    }
+
+    /**
+     * Phase 5F — evaluate the single active Cross-Signal Discovery experiment. When one is running and
+     * is ≥ [ExperimentEvaluation.MIN_EXPERIMENT_DAYS] days old, recompute the tracked metric vs its
+     * baseline, emit the deterministic [com.zack.recomptracker.domain.coach.SignalKind.EXPERIMENT_RESULT]
+     * follow-up, and clear the experiment so it doesn't re-fire. Returns an empty list otherwise (no
+     * store, no experiment, too young, or no current metric value).
+     */
+    private suspend fun evaluateActiveExperiment(
+        ctx: CoachContext,
+        today: java.time.LocalDate,
+    ): List<CoachSignal> {
+        val store = experiments ?: return emptyList()
+        val experiment = store.current() ?: return emptyList()
+        val start = runCatching { java.time.LocalDate.parse(experiment.startDateIso) }.getOrNull()
+            ?: return emptyList()
+        if (ChronoUnit.DAYS.between(start, today) < ExperimentEvaluation.MIN_EXPERIMENT_DAYS) return emptyList()
+
+        val result = ExperimentEvaluation.evaluate(
+            ActiveExperiment(
+                correlationId = experiment.correlationId,
+                hypothesis = experiment.hypothesis,
+                trackedMetric = experiment.trackedMetric,
+                baselineValue = experiment.baselineValue,
+                startDateIso = experiment.startDateIso,
+            ),
+            ctx,
+        )
+        // The week is up: clear the experiment regardless of whether a metric value was computable, so
+        // a stuck experiment (metric no longer logged) can't linger forever.
+        store.clear()
+        return listOfNotNull(result)
     }
 
     /**

@@ -23,14 +23,23 @@ class WeeklyBriefingGenerator(
     private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
     private val journey: CoachJourney = NoopCoachJourney,
 ) {
-    /** Returns the merged briefing. Uses AI prose when available, deterministic engine summary as fallback. */
-    suspend fun generate(config: CloudConfig, data: WeeklyReviewData): WeeklyBriefing? {
+    /**
+     * Returns the merged briefing. Uses AI prose when available, deterministic engine summary as
+     * fallback. [coachNote] is optional SUPPORTING colour from the deterministic engine's WEEKLY
+     * winner (D45): it only shapes prose — the verdict and every number stay authoritative because
+     * [merge] takes them straight from [data], never from the narration.
+     */
+    suspend fun generate(
+        config: CloudConfig,
+        data: WeeklyReviewData,
+        coachNote: WeeklyCoachNote? = null,
+    ): WeeklyBriefing? {
         val reference = knowledgeInjector.referenceBlock(knowledgeQuery(data))
         val journeyBlock = journeyBlock(journey.journeyNarrative())
         val prompt = buildString {
             if (reference.isNotBlank()) append(reference).append("\n\n")
             if (journeyBlock.isNotBlank()) append(journeyBlock).append("\n\n")
-            append(promptBuilder.build(data))
+            append(promptBuilder.build(data, coachNote))
         }
         val narration = requestNarration(config, prompt) ?: requestNarration(config, prompt)
         return merge(data, narration)
@@ -83,6 +92,8 @@ class WeeklyBriefingGenerator(
                 applyTargetCalories = data.applyTargetCalories,
             ),
             watchNext = narration?.watchNext.orEmpty(),
+            // Deterministic Weekly Pattern Spotlight — rendered verbatim from the engine, never the model.
+            patternSpotlight = data.patternFacts.map { it.statement },
         )
     }
 

@@ -22,6 +22,13 @@ data class DailyMetricsInput(
     val waistCm: Double?,
     val waistSkinfoldMm: Double? = null,
     val steps: Int?,
+    /**
+     * True only when the user deliberately typed/changed the steps field. When false (the
+     * default), [steps] is treated as a pass-through prefill: the save preserves the day's
+     * existing steps and provenance instead of stamping [StepsSource.MANUAL] — see
+     * [resolveSavedSteps].
+     */
+    val stepsEdited: Boolean = false,
     val sleepHours: Double?,
     val energyScore: Int?,
     val hungerScore: Int?,

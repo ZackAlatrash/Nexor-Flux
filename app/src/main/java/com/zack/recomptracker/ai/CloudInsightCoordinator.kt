@@ -1,8 +1,9 @@
 package com.zack.recomptracker.ai
 
+import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
-import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.TimeoutCancellationException
@@ -16,36 +17,28 @@ import kotlinx.coroutines.withTimeout
 /**
  * [AiInsightCoordinator] backed by an OpenAI-compatible cloud model.
  *
- * Cloud has no model download/verify lifecycle, so [requestDownload], [cancelDownload],
- * [deleteModel], and [setSelectedModel] are inert. [state] reflects readiness only:
- * [AiInsightState.ModelReady] when AI is enabled AND a [CloudConfig] is available,
- * otherwise [AiInsightState.Disabled].
+ * [state] reflects readiness only: [AiInsightState.ModelReady] when AI is enabled AND a
+ * [CloudConfig] is available, otherwise [AiInsightState.Disabled].
  */
 class CloudInsightCoordinator(
     private val aiEnabledFlow: Flow<Boolean>,
     private val configFlow: StateFlow<CloudConfig?>,
     private val client: OpenAiCompatClient,
     private val scope: CoroutineScope,
+    // Grounds the insight prompts in the shared knowledge corpus the same way the coach + briefing
+    // do: a REFERENCE block is prepended to the prompt. Defaults to a no-op so tests and the missing
+    // -corpus path produce unchanged prompts.
+    private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
 ) : AiInsightCoordinator {
 
     private val _state = MutableStateFlow<AiInsightState>(AiInsightState.Disabled)
     override val state: StateFlow<AiInsightState> = _state.asStateFlow()
-
-    // LEGACY COUPLING (documented, inert): `selectedModel`/`setSelectedModel` are model-lifecycle
-    // members required by the shared AiInsightCoordinator interface, which only the on-device path
-    // uses. The cloud path has no model to select, so this is an inert stub. It is intentionally NOT
-    // relied on by the new AI coach system (boundary rule, invariant #7). Removed in Phase 6 when the
-    // interface is split and the local stack is deleted. See docs/ai-redesign/08-technical-architecture.md §5.
-    private val _selectedModel = MutableStateFlow(ModelVariant.GEMMA_2B)
-    override val selectedModel: StateFlow<ModelVariant> = _selectedModel.asStateFlow()
 
     private val promptBuilder = InsightPromptBuilder()
 
     private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
         InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
     private val lastInsightKeys = java.util.concurrent.ConcurrentHashMap<InsightKind, String>()
-
-    @Volatile private var lastGeneratedKey: String? = null
 
     // Caches the latest enabled emission so the configFlow collector can re-derive state
     // when config appears or disappears while the enabled flag is unchanged.
@@ -72,29 +65,6 @@ class CloudInsightCoordinator(
         }
     }
 
-    // Cloud has no on-device model lifecycle — these are intentionally inert.
-    override fun setSelectedModel(variant: ModelVariant) { _selectedModel.value = variant }
-    override fun requestDownload() {}
-    override fun cancelDownload() {}
-    override fun deleteModel() {}
-
-    override fun onAiCardVisible(context: InsightContext) {
-        if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
-        if (_state.value != AiInsightState.ModelReady) return
-        val key = context.result.key()
-        if (key == lastGeneratedKey) return
-        lastGeneratedKey = key
-        scope.launch { streamInto(_state, promptBuilder.buildWeeklySummaryPrompt(context)) }
-    }
-
-    override fun retryGeneration(context: InsightContext) {
-        if (context.result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) return
-        if (_state.value !is AiInsightState.Ready && _state.value != AiInsightState.ModelReady && _state.value !is AiInsightState.Error) return
-        lastGeneratedKey = null
-        _state.value = AiInsightState.ModelReady
-        onAiCardVisible(context)
-    }
-
     override fun generationState(kind: InsightKind): StateFlow<AiInsightState> =
         insightStates.getValue(kind).asStateFlow()
 
@@ -108,17 +78,26 @@ class CloudInsightCoordinator(
         val key = request.dedupKey()
         if (lastInsightKeys[request.kind] == key) return
         lastInsightKeys[request.kind] = key
-        val prompt = when (request) {
+        val basePrompt = when (request) {
             is InsightRequest.ProgressTrend -> promptBuilder.buildProgressTrendPrompt(request.context)
             is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
-            is InsightRequest.RestOfDay -> promptBuilder.buildRestOfDayPrompt(request.context)
-            is InsightRequest.WeeklyPattern -> promptBuilder.buildPatternInsightPrompt(request.context)
-            is InsightRequest.TargetChange -> promptBuilder.buildTargetChangePrompt(request.context)
-            is InsightRequest.NoiseDefuser -> promptBuilder.buildNoiseDefuserPrompt(request.context)
-            is InsightRequest.CrossMetric -> promptBuilder.buildCrossMetricPrompt(request.context)
-            is InsightRequest.Activity -> promptBuilder.buildActivityNeatPrompt(request.context)
         }
+        val prompt = withKnowledge(request.kind, basePrompt)
         scope.launch { streamInto(flow, prompt) }
+    }
+
+    /**
+     * Prepends a knowledge REFERENCE block (retrieved for the insight kind's theme) to [basePrompt],
+     * mirroring the coach/briefing grounding. When the injector finds nothing it returns "" and the
+     * prompt is unchanged.
+     */
+    private fun withKnowledge(kind: InsightKind, basePrompt: String): String {
+        val query = when (kind) {
+            InsightKind.PROGRESS_TREND -> "recomposition trend weight waist lifts training frequency"
+            InsightKind.RECOVERY_READINESS -> "recovery sleep soreness readiness training"
+        }
+        val reference = knowledgeInjector.referenceBlock(query)
+        return if (reference.isBlank()) basePrompt else "$reference\n\n$basePrompt"
     }
 
     override fun retryInsight(request: InsightRequest) {
@@ -127,14 +106,7 @@ class CloudInsightCoordinator(
         onInsightVisible(request)
     }
 
-    private fun isModelUsable(): Boolean = when (_state.value) {
-        AiInsightState.Disabled,
-        AiInsightState.ModelMissing,
-        is AiInsightState.Downloading,
-        AiInsightState.DownloadFailed,
-        AiInsightState.ModelVerifying -> false
-        else -> true
-    }
+    private fun isModelUsable(): Boolean = _state.value != AiInsightState.Disabled
 
     private suspend fun streamInto(flow: MutableStateFlow<AiInsightState>, prompt: String) {
         val config = configFlow.value ?: run {
@@ -177,7 +149,7 @@ class CloudInsightCoordinator(
     }
 
     private companion object {
-        // Cloud path: 60 s to allow for network latency (local Gemma uses 45 s).
+        // 60 s to allow for network latency.
         private const val GENERATION_TIMEOUT_MS = 60_000L
         private const val SYSTEM_PROMPT =
             "You are a precise, supportive body-recomposition coach. Answer only from the data you are given."

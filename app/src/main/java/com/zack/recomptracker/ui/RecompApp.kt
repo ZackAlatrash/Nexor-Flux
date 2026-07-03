@@ -97,7 +97,9 @@ private fun CoachActionType?.toDeepLinkRoute(): String? = when (this) {
     CoachActionType.OPEN_TRAINING -> Routes.Train
     // The weekly review + plan target live on the Home dashboard; land there.
     CoachActionType.OPEN_WEEKLY_REVIEW, CoachActionType.APPLY_TARGET -> TopLevelDestination.Home.route
-    CoachActionType.NONE, null -> null
+    // TRACK_EXPERIMENT is not navigation — the Today slot records the experiment in-place — and a
+    // discovery card never pushes, so a deep-link mapping would be dead. NONE/null → no navigation.
+    CoachActionType.TRACK_EXPERIMENT, CoachActionType.NONE, null -> null
 }
 
 @Composable

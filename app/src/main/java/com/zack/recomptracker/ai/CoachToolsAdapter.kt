@@ -38,9 +38,7 @@ internal const val COACH_PROMPT_GUIDELINES: String =
 
 /**
  * Production [CoachReadTools]: dispatches tool calls to [CoachToolExecutor] and builds the coach
- * system prompt (plan + profile + today's snapshot + rules). Mirrors
- * `GemmaCoachCoordinator.buildSystemPrompt`, minus the 2B-specific anti-confusion wording — a
- * capable cloud model needs only clear instructions.
+ * system prompt (plan + profile + today's snapshot + rules) for the cloud coach.
  */
 class CoachToolsAdapter(
     private val toolExecutor: CoachToolExecutor,

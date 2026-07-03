@@ -19,6 +19,8 @@ removed. All planning assumes a cloud model.
 | 6 | [06-ai-product-vision.md](06-ai-product-vision.md) | The redesigned AI: purpose, principles, one-brain-three-surfaces model, when to speak/stay silent. |
 | 7 | [07-roadmap.md](07-roadmap.md) | Prioritized, phased plan (subtract first, then build the proactive spine). |
 | 8 | [08-technical-architecture.md](08-technical-architecture.md) | **The source-of-truth technical architecture** every implementation follows: pipeline, deterministic engine, cloud responsibilities, prompts, service layer, data flow, caching, scheduling, proactive engine, memory, notifications. |
+| 10 | [10-insight-cards-plan.md](10-insight-cards-plan.md) | **Card-level rethink (2026-07-02):** code-verified inventory of all 10 insight cards, brutal usefulness audit, 17-app competitor summary, 11 proposed cards, keep/improve/remove disposition, and a P0–P2 priority order. The card-focused companion to docs 1–2. |
+| 11 | [11-insight-cards-implementation-plan.md](11-insight-cards-implementation-plan.md) | **Implementation plan (2026-07-02):** turns docs 1–10 into concrete work — what to implement/modify/remove, build order, dependency graph, risks, missing data, and the STEP-0 decisions/conflicts to resolve first. Grounded in a code-verified map of what's already built (the proactive engine is LIVE; doc-10's card reforms are not). Reconciles the card view with the shipped `CoachSignalEngine`. |
 
 ## The thesis in five lines
 

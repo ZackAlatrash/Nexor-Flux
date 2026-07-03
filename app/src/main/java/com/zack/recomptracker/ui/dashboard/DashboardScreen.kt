@@ -48,20 +48,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.key
 import com.zack.recomptracker.core.util.formatPercent
 import com.zack.recomptracker.core.util.formatSignedOneDecimal
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.ui.component.AiBadge
-import com.zack.recomptracker.ui.component.AiBorderMode
-import com.zack.recomptracker.ui.component.AiInsightCard
-import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import coil.compose.AsyncImage
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
@@ -118,29 +112,8 @@ fun HomeDashboardScreen(
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
-    val patternInsightState by viewModel.patternInsightState.collectAsStateWithLifecycle()
-    val targetChangeInsightState by viewModel.targetChangeInsightState.collectAsStateWithLifecycle()
-    val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
-    val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
-    val activityInsightState by viewModel.activityInsightState.collectAsStateWithLifecycle()
-    val activityInsightContext by viewModel.activityInsightContext.collectAsStateWithLifecycle()
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
     val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(state.patternInsightContext?.key()) {
-        viewModel.onPatternInsightVisible()
-    }
-    LaunchedEffect(state.targetChangeContext?.key()) {
-        viewModel.onTargetChangeVisible()
-    }
-    LaunchedEffect(state.noiseDefuserContext?.key()) {
-        viewModel.onNoiseDefuserVisible()
-    }
-    LaunchedEffect(state.crossMetricContext?.key()) {
-        viewModel.onCrossMetricVisible()
-    }
-    LaunchedEffect(activityInsightContext?.key()) {
-        viewModel.onActivityInsightVisible()
-    }
 
     HomeDashboardContent(
         state = state,
@@ -166,16 +139,7 @@ fun HomeDashboardScreen(
             }
         },
         onDismissCoach = coachTodayViewModel::dismiss,
-        patternInsightState = patternInsightState,
-        onRetryPatternInsight = viewModel::retryPatternInsight,
-        targetChangeInsightState = targetChangeInsightState,
-        onRetryTargetChange = viewModel::retryTargetChange,
-        noiseDefuserInsightState = noiseDefuserInsightState,
-        onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
-        crossMetricInsightState = crossMetricInsightState,
-        onRetryCrossMetric = viewModel::retryCrossMetric,
-        activityInsightState = activityInsightState,
-        onRetryActivityInsight = viewModel::retryActivityInsight,
+        onTrackExperiment = coachTodayViewModel::onTrackExperiment,
         streaks = streakState.streaks,
         stepGoal = streakState.stepGoal,
         activity = streakState.activity,
@@ -213,16 +177,6 @@ fun HomeDashboardContent(
     onOpenSettings: (() -> Unit)? = null,
     onOpenFoodLog: (() -> Unit)? = null,
     onOpenBody: (() -> Unit)? = null,
-    patternInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryPatternInsight: () -> Unit = {},
-    targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryTargetChange: () -> Unit = {},
-    noiseDefuserInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryNoiseDefuser: () -> Unit = {},
-    crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryCrossMetric: () -> Unit = {},
-    activityInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryActivityInsight: () -> Unit = {},
     streaks: Streaks = Streaks.EMPTY,
     stepGoal: Int? = null,
     activity: ActivityMetrics = ActivityMetrics(),
@@ -231,6 +185,7 @@ fun HomeDashboardContent(
     coachTodayText: String = "",
     onCoachAction: (com.zack.recomptracker.domain.coach.CoachActionType) -> Unit = {},
     onDismissCoach: () -> Unit = {},
+    onTrackExperiment: (com.zack.recomptracker.domain.coach.CoachSignal) -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -281,55 +236,8 @@ fun HomeDashboardContent(
                             displayText = coachTodayText,
                             onAction = onCoachAction,
                             onDismiss = onDismissCoach,
+                            onTrackExperiment = onTrackExperiment,
                             isActionSupported = { it in SUPPORTED_COACH_ACTIONS },
-                        )
-                    }
-                }
-                if (state.patternInsightContext != null &&
-                    (patternInsightState is AiInsightState.Generating ||
-                        patternInsightState is AiInsightState.Ready ||
-                        patternInsightState is AiInsightState.Error)
-                ) {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Coach spotted",
-                            state = patternInsightState,
-                            onRetry = onRetryPatternInsight,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.HERO,
-                            evidence = state.patternInsightContext?.fact?.statement,
-                            confidence = com.zack.recomptracker.ui.component.confidenceFrom(
-                                state.patternInsightContext?.fact?.priority ?: 0,
-                            ),
-                        )
-                    }
-                }
-                state.crossMetricContext?.let {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Coach noticed a link",
-                            state = crossMetricInsightState,
-                            onRetry = onRetryCrossMetric,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                        )
-                    }
-                }
-                state.targetChangeContext?.let {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Why your target changed",
-                            state = targetChangeInsightState,
-                            onRetry = onRetryTargetChange,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                        )
-                    }
-                }
-                state.noiseDefuserContext?.let {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Scale check",
-                            state = noiseDefuserInsightState,
-                            onRetry = onRetryNoiseDefuser,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
                         )
                     }
                 }
@@ -350,19 +258,6 @@ fun HomeDashboardContent(
                         todayValue = state.todaySteps,
                         goalValue = stepGoal,
                     )
-                }
-                if (activityInsightState is AiInsightState.Generating ||
-                    activityInsightState is AiInsightState.Ready ||
-                    activityInsightState is AiInsightState.Error
-                ) {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Activity",
-                            state = activityInsightState,
-                            onRetry = onRetryActivityInsight,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                        )
-                    }
                 }
                 if (activity.weeklyGymSessionsTarget != null || activity.weeklyTrainingFrequency > 0.0) {
                     item { TrainingFrequencyTile(activity) }
@@ -990,13 +885,7 @@ private fun StatTile(
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
     val appColors = LocalAppColors.current
-    // Key on result.key() so the effect only restarts when verdict/reasons/change differ —
-    // not on every summary text update, which is not part of the dedup logic.
-    LaunchedEffect(state.result.key()) {
-        viewModel.onAiCardVisible(state.result)
-    }
     LazyColumn(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1038,18 +927,6 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
         }
         item {
             VerdictHero(result = state.result)
-        }
-        // Doctrine "stay quiet": hide the AI verdict explanation on a clean on-track HOLD week.
-        if (state.showWeeklyVerdictCard) {
-            item {
-                AiInsightSection(
-                    result = state.result,
-                    aiState = aiState,
-                    onDownload = viewModel::requestModelDownload,
-                    onCancel = viewModel::cancelDownload,
-                    onRetry = viewModel::retryGeneration,
-                )
-            }
         }
         item {
             FrostedCard {
@@ -1151,198 +1028,6 @@ private fun ReasonChip(text: String) {
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(20.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
     )
-}
-
-@Composable
-private fun AiInsightSection(
-    result: AdjustmentResult,
-    aiState: AiInsightState,
-    onDownload: () -> Unit,
-    onCancel: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    val accent = LocalAppAccent.current
-    val appColors = LocalAppColors.current
-    if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
-        if (aiState != AiInsightState.Disabled) {
-            Text(
-                text = "AI explanations appear once a weekly verdict is ready.",
-                style = AppType.label,
-                color = appColors.textMuted,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-        }
-        return
-    }
-
-    when (aiState) {
-        AiInsightState.Disabled -> Unit
-
-        AiInsightState.ModelMissing -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Understand the reasoning behind this verdict.",
-                    style = AppType.body,
-                    color = appColors.textMuted,
-                )
-                Text(
-                    text = "Requires a ~2.6 GB download · Wi-Fi recommended",
-                    style = AppType.label,
-                    color = appColors.textMuted,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.material3.Button(onClick = onDownload) {
-                    Text("Download Model")
-                }
-            }
-        }
-
-        is AiInsightState.Downloading -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(10.dp))
-                val progress = aiState.progress
-                if (progress != null) {
-                    Text(
-                        text = "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
-                        style = AppType.label,
-                        color = appColors.textMuted,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    Text("Downloading…", style = AppType.label, color = appColors.textMuted)
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
-                Spacer(Modifier.height(8.dp))
-                androidx.compose.material3.TextButton(onClick = onCancel) {
-                    Text("Cancel", style = AppType.label)
-                }
-            }
-        }
-
-        AiInsightState.DownloadFailed -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text("Download failed — check your connection.", style = AppType.body, color = appColors.textMuted)
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.material3.Button(onClick = onDownload) { Text("Retry") }
-            }
-        }
-
-        AiInsightState.ModelVerifying -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                androidx.compose.foundation.layout.Row(
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = accent.inkLight,
-                    )
-                    Text("Verifying download…", style = AppType.body, color = appColors.textMuted)
-                }
-            }
-        }
-
-        AiInsightState.ModelReady,
-        AiInsightState.LoadingModel -> {
-            AiInsightCard(borderMode = AiBorderMode.Preparing) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = accent.inkLight,
-                    )
-                    Text("Preparing model…", style = AppType.body, color = appColors.textMuted)
-                }
-            }
-        }
-
-        is AiInsightState.Generating -> {
-            AiInsightCard(borderMode = AiBorderMode.Generating) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = aiState.partialText,
-                    style = AppType.body,
-                    color = appColors.textPrimary,
-                    lineHeight = 20.sp,
-                )
-            }
-        }
-
-        is AiInsightState.Ready -> {
-            AiInsightCard(borderMode = AiBorderMode.Ready) {
-                AiCardHeader(title = "Why this verdict", showRefresh = true, onRefresh = onRetry)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = aiState.text,
-                    style = AppType.body,
-                    color = appColors.textPrimary,
-                    lineHeight = 20.sp,
-                )
-            }
-        }
-
-        is AiInsightState.Error -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text(aiState.message, style = AppType.body, color = appColors.textMuted)
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AiCardHeader(
-    title: String,
-    showRefresh: Boolean,
-    onRefresh: () -> Unit,
-) {
-    val accent = LocalAppAccent.current
-    val appColors = LocalAppColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title.uppercase(),
-            style = AppType.sectionLabel,
-            color = appColors.textFaint,
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showRefresh) {
-                androidx.compose.material3.IconButton(onClick = onRefresh) {
-                    Text("↺", fontSize = 14.sp, color = accent.inkLight)
-                }
-            }
-            AiBadge()
-        }
-    }
 }
 
 @Composable

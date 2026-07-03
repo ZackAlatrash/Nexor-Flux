@@ -114,6 +114,65 @@ class FatGainWarningDetector : CoachDetector {
     }
 }
 
+/** Day-over-day weight jump (kg) below which a reading isn't scary enough to defuse. */
+private const val SCALE_JUMP_KG = 0.6
+
+/** Smoothed weekly trend (kg/wk) below which the trend reads as "essentially flat". */
+private const val SCALE_FLAT_TREND_KG_WK = 0.10
+
+/**
+ * Scale Check (P2, TODAY): defuses a scary daily scale reading that contradicts the smoothed trend.
+ * Ported from `InsightGate.shouldFireNoiseDefuser` — fires only when today's day-over-day jump is
+ * large ([SCALE_JUMP_KG]+) AND it contradicts the smoothed trend (points the opposite way, or jumps
+ * while the trend is essentially flat). A jump that agrees with the trend is real signal, so stay
+ * quiet. Reads today's vs the most recent prior weight from `body.weightSeries` and the smoothed
+ * `body.weightTrendKgPerWeek` the builder already computed — no raw math is re-implemented. Severity
+ * scales with the jump magnitude. Reassurance only: a verdict is required, the action is null.
+ */
+class ScaleCheckDetector : CoachDetector {
+    override fun detect(ctx: CoachContext): CoachSignal? {
+        val trend = ctx.body.weightTrendKgPerWeek ?: return null
+        val series = ctx.body.weightSeries
+        val todayWeight = series.lastOrNull { it.date == ctx.asOf }?.value ?: return null
+        val priorWeight = series.lastOrNull { it.date < ctx.asOf }?.value ?: return null
+
+        val jump = todayWeight - priorWeight
+        if (abs(jump) < SCALE_JUMP_KG) return null
+        // Contradiction test: a flat trend always contradicts a big jump; otherwise signs must differ.
+        val contradicts = if (abs(trend) < SCALE_FLAT_TREND_KG_WK) true else (jump > 0) != (trend > 0)
+        if (!contradicts) return null
+
+        val severity = severityFromDistance(abs(jump) - SCALE_JUMP_KG, span = 1.4)
+        return CoachSignal(
+            kind = SignalKind.SCALE_CHECK,
+            tier = SignalTier.P2,
+            category = SignalCategory.BODY,
+            severity = severity,
+            facts = SignalFacts(
+                mapOf(
+                    "todayDeltaKg" to fmt(jump),
+                    "smoothedTrendKgPerWk" to fmt(trend),
+                ),
+            ),
+            verdict = "Today's reading moved ${signed1(jump)} kg, but your trend is ${signed1(trend)} kg/wk — " +
+                "that's water, food, and glycogen, not fat.",
+            // Reassurance: no action needed, nothing to change.
+            action = CoachAction.None,
+            rationale = SignalRationale(
+                primaryCauseByDomain = mapOf(
+                    "body" to "day jump ${signed1(jump)} kg against a ${signed1(trend)} kg/wk smoothed trend",
+                ),
+                behaviorToOutcome = "single-day scale noise → water/food/glycogen, not fat",
+                confidence = Confidence.HIGH,
+            ),
+            dedupKey = "SCALE_CHECK|${ctx.asOf}|jump=${bucket(jump, 0.2, 1)}",
+            surface = CoachSurface.TODAY,
+            fallbackText = "Today's reading moved ${signed1(jump)} kg, but your smoothed trend is " +
+                "${signed1(trend)} kg/wk — that's day-to-day water, food, and glycogen, not fat, so nothing to change.",
+        )
+    }
+}
+
 /** How many days without a weigh-in triggers the nudge. */
 private const val QUIET_WEIGH_IN_DAYS = 5
 

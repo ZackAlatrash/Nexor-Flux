@@ -64,6 +64,144 @@ class RecoveryDeclineDetector(
     }
 }
 
+/** Minimum recovery inputs logged for *today* before Morning Readiness will speak. */
+private const val READINESS_MIN_INPUTS = 2
+
+/** A today-vs-baseline gap counts as "meaningful" past these per-metric deltas (metric's own units). */
+private const val READINESS_SLEEP_GAP_H = 0.75      // hours below the user's usual sleep
+private const val READINESS_ENERGY_GAP = 1.0        // energy points below usual (1–10, higher = better)
+private const val READINESS_SORENESS_GAP = 1.0      // soreness points above usual (1–10, higher = worse)
+private const val READINESS_HUNGER_GAP = 1.5        // hunger points above usual (1–10, higher = worse)
+
+/**
+ * Morning Readiness (P1, TODAY): the proactive daily "train as planned vs go lighter" call. Fires
+ * when at least [READINESS_MIN_INPUTS] of today's recovery inputs (sleep/energy/hunger/soreness) are
+ * logged, and grades each against the *user's own baseline* — the window average of that same metric
+ * (excluding today), which the [CoachContext] already carries as each series. No new baseline is
+ * invented; the decisive driver (e.g. sleep short vs usual, soreness up) is named in the rationale.
+ *
+ * Deterministic verdict is authoritative — the slot's LLM only rephrases it. Coexists with the Body
+ * screen's RECOVERY_READINESS LLM card (that card is untouched; this is the proactive slot version).
+ */
+class MorningReadinessDetector : CoachDetector {
+    override fun detect(ctx: CoachContext): CoachSignal? {
+        val today = ctx.asOf
+
+        // Each dimension: (today's value, the user's own baseline = window avg excluding today).
+        val sleep = todayAndBaseline(ctx.body.sleepSeries, today)
+        val energy = todayAndBaseline(ctx.body.energySeries, today)
+        val soreness = todayAndBaseline(ctx.body.sorenessSeries, today)
+        val hunger = todayAndBaseline(ctx.body.hungerSeries, today)
+
+        val loggedToday = listOf(sleep, energy, soreness, hunger).count { it != null }
+        if (loggedToday < READINESS_MIN_INPUTS) return null
+
+        // Score "worse-than-usual" dimensions; track the single decisive (largest) miss for the driver.
+        var lowSignals = 0
+        var worstMiss = 0.0
+        var driver: String? = null
+        val facts = LinkedHashMap<String, String>()
+
+        sleep?.let { (t, base) ->
+            facts["sleepHoursToday"] = CoachDetectorSupport.fmt(t, 1)
+            facts["sleepHoursUsual"] = CoachDetectorSupport.fmt(base, 1)
+            val miss = base - t // positive = slept less than usual
+            if (miss >= READINESS_SLEEP_GAP_H) {
+                lowSignals++
+                val norm = miss / READINESS_SLEEP_GAP_H
+                if (norm > worstMiss) { worstMiss = norm; driver = "sleep ${CoachDetectorSupport.fmt(t, 1)}h vs usual ${CoachDetectorSupport.fmt(base, 1)}h" }
+            }
+        }
+        energy?.let { (t, base) ->
+            facts["energyToday"] = CoachDetectorSupport.fmt(t, 1)
+            facts["energyUsual"] = CoachDetectorSupport.fmt(base, 1)
+            val miss = base - t // positive = lower energy than usual
+            if (miss >= READINESS_ENERGY_GAP) {
+                lowSignals++
+                val norm = miss / READINESS_ENERGY_GAP
+                if (norm > worstMiss) { worstMiss = norm; driver = "energy ${CoachDetectorSupport.fmt(t, 1)}/10 vs usual ${CoachDetectorSupport.fmt(base, 1)}/10" }
+            }
+        }
+        soreness?.let { (t, base) ->
+            facts["sorenessToday"] = CoachDetectorSupport.fmt(t, 1)
+            facts["sorenessUsual"] = CoachDetectorSupport.fmt(base, 1)
+            val miss = t - base // positive = more sore than usual
+            if (miss >= READINESS_SORENESS_GAP) {
+                lowSignals++
+                val norm = miss / READINESS_SORENESS_GAP
+                if (norm > worstMiss) { worstMiss = norm; driver = "soreness ${CoachDetectorSupport.fmt(t, 1)}/10 vs usual ${CoachDetectorSupport.fmt(base, 1)}/10" }
+            }
+        }
+        hunger?.let { (t, base) ->
+            facts["hungerToday"] = CoachDetectorSupport.fmt(t, 1)
+            facts["hungerUsual"] = CoachDetectorSupport.fmt(base, 1)
+            val miss = t - base // positive = hungrier than usual
+            if (miss >= READINESS_HUNGER_GAP) {
+                lowSignals++
+                val norm = miss / READINESS_HUNGER_GAP
+                if (norm > worstMiss) { worstMiss = norm; driver = "hunger ${CoachDetectorSupport.fmt(t, 1)}/10 vs usual ${CoachDetectorSupport.fmt(base, 1)}/10" }
+            }
+        }
+
+        val lowReadiness = lowSignals >= 1 && driver != null
+        facts["inputsLogged"] = loggedToday.toString()
+
+        return if (lowReadiness) {
+            val cue = driver!!
+            // Severity scales with how far the decisive driver sits past its "meaningful" gap.
+            val severity = severityFromDistance(worstMiss - 1.0, span = 2.0)
+            CoachSignal(
+                kind = SignalKind.MORNING_READINESS,
+                tier = SignalTier.P1,
+                category = SignalCategory.RECOVERY,
+                severity = severity,
+                facts = SignalFacts(facts),
+                verdict = "Recovery's low ($cue) — keep today's session light.",
+                action = CoachAction(CoachActionType.OPEN_TRAINING, "Adjust today"),
+                rationale = SignalRationale(
+                    primaryCauseByDomain = mapOf("recovery" to cue),
+                    behaviorToOutcome = "readiness down vs your usual → train lighter to recover",
+                    confidence = Confidence.MEDIUM,
+                ),
+                dedupKey = "MORNING_READINESS|$today|low",
+                surface = CoachSurface.TODAY,
+                fallbackText = "This morning's readiness is down — $cue. Keep today's session light and let recovery catch up.",
+            )
+        } else {
+            // Good readiness: today's inputs are at or above the user's own baseline.
+            val severity = 20 // low urgency: reassurance, not a warning
+            CoachSignal(
+                kind = SignalKind.MORNING_READINESS,
+                tier = SignalTier.P1,
+                category = SignalCategory.RECOVERY,
+                severity = severity,
+                facts = SignalFacts(facts),
+                verdict = "You're recovered — train as planned.",
+                action = CoachAction(CoachActionType.OPEN_TRAINING, "Open training"),
+                rationale = SignalRationale(
+                    primaryCauseByDomain = mapOf("recovery" to "today's recovery inputs are in line with your usual"),
+                    behaviorToOutcome = "readiness on par with baseline → session as planned",
+                    confidence = Confidence.MEDIUM,
+                ),
+                dedupKey = "MORNING_READINESS|$today|good",
+                surface = CoachSurface.TODAY,
+                fallbackText = "Your recovery markers this morning are in line with your usual — you're good to train as planned.",
+            )
+        }
+    }
+
+    /**
+     * Today's value for [series] paired with the user's own baseline = the mean of the other days in
+     * the window. Returns null when today isn't logged or there's no prior day to form a baseline.
+     */
+    private fun todayAndBaseline(series: List<MetricPoint>, today: LocalDate): Pair<Double, Double>? {
+        val todayValue = series.lastOrNull { it.date == today }?.value ?: return null
+        val prior = series.filter { it.date != today }
+        if (prior.isEmpty()) return null
+        return todayValue to prior.map { it.value }.average()
+    }
+}
+
 /** Fraction the 7-day step average must drop vs the prior 7 days to count as a collapse. */
 private const val NEAT_DROP_FRACTION = 0.25
 

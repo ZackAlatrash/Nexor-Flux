@@ -51,12 +51,15 @@ match it.
   message re-parses only the tail after the last safe blank-line boundary (code-fence parity
   tracked). Previously the entire accumulated string re-parsed on every streamed token.
 - **Active session:** the hidden swipe-to-delete pill (one per set row, ~24 latent glass buttons
-  per session) is composed only while actually revealing, and is lite. Exercise cards lite.
+  per session) is composed only while actually revealing, and is lite.
   `sessionRows` remembered per emission; RIR expansion reads per-row (one row's toggle no longer
   recomposes siblings); `contentType` added.
-- **Train home / session detail / exercise picker:** repeated routine/history/exercise/result
-  cards lite; the picker's singleton sticky "Add" button stays premium. Formatters hoisted to
-  file-level constants.
+- **Train home / session detail / exercise picker:** formatters hoisted to file-level constants.
+  The repeated routine/history/exercise/result cards were initially lite but **reverted to real
+  glass after on-device review** — the fixed opaque fallback fill read flat/dead on these large,
+  content-dense cards and cannot track the themed backgrounds the way glass (which samples them)
+  does. They now run at the post-Wave-1 cost (1 layer per card instead of the original 3–4).
+  Small lite surfaces elsewhere passed on-device review and stay.
 - **Food log:** per-slot Add buttons lite (slot cards were already cheap). Gradient hoists.
 - **Dashboard:** the app's only `Modifier.blur` (a live 26dp pass for the Weekly-Review glow, on
   the landing tab) replaced with a remembered radial gradient in the file's own orb idiom.
@@ -99,6 +102,8 @@ match it.
   proved is sampled at rest by the tab indicator (gating it would visibly change the selected tab).
 - Dashboard hero cards, AI insight/suggestion cards, the live chat bubble, pickers' sticky action,
   onboarding, profile/plan/stats cards: full premium glass.
+- Train routine/history/exercise/picker cards: real glass (a lite pass was tried and reverted —
+  see above). Large themed cards are where the opaque approximation visibly breaks down.
 - Slider/toggle/nav-indicator chromatic dispersion (drag-only, small pixels, premium feel): kept.
 - `GlassBottomSheet` (already a cheap tinted solid), `AuroraBackground` (already disabled — do NOT
   re-enable it naively: its per-frame loop would force every glass consumer to re-blur every frame).
@@ -119,8 +124,9 @@ match it.
   HTTP 429 rate limit), which also failed on the unmodified baseline.
 - New tests: markdown split invariants (9), RoutineBuilder reference-identity (2), ChatMessage id (2).
 - An independent full-diff code review was run before merge readiness.
-- **On-device visual + feel verification is pending** (owner does this): check FrostedCard-lite vs
-  glass side by side (Train lists vs Dashboard cards), chat scroll, workout typing, nav feel.
+- **On-device review (owner, 2026-07-04):** everything approved except the Train cards, whose lite
+  fill looked bad on large themed cards → reverted to real glass (see above). Remaining lite
+  surfaces (chat history bubbles, small pills/buttons) approved.
 
 ## Follow-ups (need a real device)
 
@@ -131,5 +137,8 @@ match it.
    `CanvasBackdrop` instead of `LayerBackdrop` for the static orb capture; dropping chromatic
    aberration (7× shader samples) on slider/toggle/nav-indicator drags; FoodsScreen's eagerly
    composed saved-foods rows (real cost only for large libraries).
+   If Train scroll ever shows jank in traces, the evaluated alternative is an "adaptive lite"
+   fill derived from the theme's own background colours (not the fixed fallback constant) —
+   option B of the 2026-07-04 material comparison.
 3. Perfetto/Macrobenchmark scroll traces on release builds for before/after numbers — all changes
    here are mechanism-verified but not device-measured.

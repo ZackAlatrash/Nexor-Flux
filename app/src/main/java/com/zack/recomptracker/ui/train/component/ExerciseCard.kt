@@ -108,7 +108,6 @@ fun ExerciseCard(
             clip = false
         },
         contentPadding = 12.dp,
-        lite = true,
     ) {
         // ── Header row ────────────────────────────────────────────────────────
         Row(

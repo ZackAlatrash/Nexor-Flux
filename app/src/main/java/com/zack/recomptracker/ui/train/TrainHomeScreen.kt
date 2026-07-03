@@ -529,7 +529,6 @@ private fun RoutineCard(
         modifier = modifier
             .clickable { onCardClick() },
         contentPadding = 13.dp,
-        lite = true,
     ) {
         // Name + overflow menu
         Row(
@@ -654,7 +653,6 @@ private fun RoutineCard(
                 surfaceColor = Color.White.copy(alpha = 0.08f),
                 buttonHeight = 36.dp,
                 modifier = Modifier.width(110.dp),
-                lite = true,
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
@@ -749,7 +747,6 @@ private fun EmptyRoutinesCard(
                 surfaceColor = Color.White.copy(alpha = 0.08f),
                 buttonHeight = 44.dp,
                 modifier = Modifier.fillMaxWidth(0.65f),
-                lite = true,
             ) {
                 Text(
                     text = "Create routine",
@@ -788,7 +785,6 @@ private fun HistoryCard(
     FrostedCard(
         modifier = modifier.clickable { onClick() },
         contentPadding = 13.dp,
-        lite = true,
     ) {
         // Name + date row
         Row(

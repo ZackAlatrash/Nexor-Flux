@@ -145,7 +145,6 @@ private fun ExerciseDetailCard(
     FrostedCard(
         modifier = modifier,
         contentPadding = 14.dp,
-        lite = true,
     ) {
         // ── Exercise title row + PR badge ──────────────────────────────────────
         Row(

@@ -198,6 +198,17 @@ class AppContainer(context: Context) {
         backgroundScheduler = WorkManagerBackgroundSyncScheduler(context.applicationContext),
     )
 
+    // Knowledge base: read + JSON-parsed once from assets (~116 KB). The read/parse is done off the
+    // main thread (see the appScope.launch in init) — mirroring the exercise-library and MuscleArt
+    // loads — so it can never block cold start. Until the parse completes, and if it fails (missing
+    // or invalid corpus, so a bad ingestion run can never crash the app), the injector delegates to a
+    // no-op that emits no REFERENCE block; the swap is invisible to consumers because they only call
+    // referenceBlock() at generation time (a chat turn / insight / briefing), long after startup.
+    // Shared by the cloud coach chat and the weekly briefing so both ground prose in the same corpus.
+    // Declared BEFORE the init block that hands it to the IO coroutine, like every other property
+    // an init-launched load touches — property initializers and init blocks run in source order.
+    private val knowledgeInjector = DeferredKnowledgeInjector()
+
     init {
         appScope.launch {
             runCatching {
@@ -277,15 +288,6 @@ class AppContainer(context: Context) {
         coachMemory = coachMemoryStore,
     )
     val coachHandoffStore = CoachHandoffStore()
-
-    // Knowledge base: read + JSON-parsed once from assets (~116 KB). The read/parse is done off the
-    // main thread (see the appScope.launch in init) — mirroring the exercise-library and MuscleArt
-    // loads — so it can never block cold start. Until the parse completes, and if it fails (missing
-    // or invalid corpus, so a bad ingestion run can never crash the app), the injector delegates to a
-    // no-op that emits no REFERENCE block; the swap is invisible to consumers because they only call
-    // referenceBlock() at generation time (a chat turn / insight / briefing), long after startup.
-    // Shared by the cloud coach chat and the weekly briefing so both ground prose in the same corpus.
-    private val knowledgeInjector = DeferredKnowledgeInjector()
 
     // Multi-week coach memory: one shared journey ledger. The digest records fired signals + weekly
     // verdicts into it; the briefing and chat prompts read its narrative. See Phase 5 / §10.

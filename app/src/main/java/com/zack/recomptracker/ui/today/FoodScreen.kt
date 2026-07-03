@@ -800,6 +800,9 @@ private fun MacroProgressItem(
     val resolvedLabel  = if (labelColor  != Color.Unspecified) labelColor  else appColors.textMuted
     val resolvedValue  = if (valueColor  != Color.Unspecified) valueColor  else appColors.textPrimary
     val resolvedRemain = if (remainColor != Color.Unspecified) remainColor else appColors.textVeryMuted
+    val fillBrush = remember(accent.accent, accent.accentLight) {
+        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight))
+    }
     val animatedFrac by animateFloatAsState(
         targetValue = frac,
         animationSpec = tween(durationMillis = 900),
@@ -836,7 +839,7 @@ private fun MacroProgressItem(
                     .fillMaxWidth(animatedFrac)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
+                        fillBrush,
                         RoundedCornerShape(3.dp),
                     ),
             )
@@ -936,6 +939,7 @@ private fun LockedSlotCard(
                         tint = accent.accent,
                         surfaceColor = Color.White.copy(alpha = 0.08f),
                         buttonHeight = 32.dp,
+                        lite = true,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,

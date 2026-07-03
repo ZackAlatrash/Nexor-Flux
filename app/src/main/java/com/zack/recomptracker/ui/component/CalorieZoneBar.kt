@@ -28,6 +28,10 @@ internal fun calorieFraction(value: Int, scaleMax: Int): Float =
 
 private val BarFillStart = Color(0xFF3b82f6)
 private val BarFillEnd = Color(0xFF2563eb)
+// Colour list for the fill gradient — hoisted to a constant since the two colours never
+// change. The Brush itself still has to be built in the draw scope: its endX depends on the
+// filled width (w * fillFrac), which is only known once the Canvas has a measured size.
+private val BarFillColors = listOf(BarFillStart, BarFillEnd)
 private val ZoneDark = Color(0xFF0f4a26)
 private val ZoneLight = Color(0xFF15803d)
 private val ZoneLabel = Color(0xFF22c55e)
@@ -99,8 +103,10 @@ fun CalorieZoneBar(
             if (fillFrac > 0f) {
                 clipRect(left = 0f, top = 0f, right = w * fillFrac, bottom = h) {
                     drawRect(
+                        // endX depends on the measured width (only known in this draw scope),
+                        // so the Brush can't be hoisted out of draw — only the colour list is.
                         brush = Brush.horizontalGradient(
-                            colors = listOf(BarFillStart, BarFillEnd),
+                            colors = BarFillColors,
                             startX = 0f,
                             endX = w * fillFrac,
                         ),
@@ -185,8 +191,10 @@ fun MacroMiniBar(
             )
             if (fillFrac > 0f) {
                 drawRect(
+                    // endX depends on the measured width (only known in this draw scope),
+                    // so the Brush can't be hoisted out of draw — only the colour list is.
                     brush = Brush.horizontalGradient(
-                        colors = listOf(BarFillStart, BarFillEnd),
+                        colors = BarFillColors,
                         startX = 0f,
                         endX = w * fillFrac,
                     ),

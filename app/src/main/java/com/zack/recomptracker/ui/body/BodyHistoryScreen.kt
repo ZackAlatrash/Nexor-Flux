@@ -133,6 +133,7 @@ private fun MissingRow(item: BodyHistoryItem.Missing, onAdd: (LocalDate) -> Unit
             onClick = { onAdd(item.date) },
             isPrimary = true,
             small = true,
+            lite = true,
         )
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)

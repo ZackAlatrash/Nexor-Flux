@@ -67,7 +67,6 @@ import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiExpandToggle
 import com.zack.recomptracker.ui.component.AiInsightCard
@@ -418,7 +417,9 @@ private fun TodayCoachingCard(
         contentPadding = if (collapsed) 12.dp else 16.dp,
         modifier = modifier.animateContentSize(),
     ) {
-        // Header row — tap anywhere on it to expand / collapse.
+        // Header row = the ✦ identity marker + the verdict itself + the glass toggle, one row. The
+        // verdict IS the title (big & bold when expanded, a one-line summary when collapsed); tapping
+        // anywhere on the row expands / collapses.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -427,31 +428,24 @@ private fun TodayCoachingCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = "✦", style = AppType.body, color = accent.inkLight)
-            if (collapsed) {
-                Text(
-                    text = summary,
-                    style = AppType.body,
-                    color = appColors.textPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                Spacer(Modifier.weight(1f))
-                AiBadge()
-            }
+            Text(
+                text = if (collapsed) summary else verdict,
+                style = if (collapsed) AppType.body else AppType.statValue,
+                color = appColors.textPrimary,
+                maxLines = if (collapsed) 1 else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
             AiExpandToggle(collapsed = collapsed)
         }
 
         if (!collapsed) {
-            Spacer(Modifier.height(10.dp))
-            Text(text = verdict, style = AppType.statValue, color = appColors.textPrimary)
             hint?.let {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(text = it, style = AppType.body, color = appColors.textSecondary)
             }
             cadence?.let {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(if (hint != null) 4.dp else 8.dp))
                 Text(text = it, style = AppType.cardSubtitle, color = appColors.textMuted)
             }
             // Actions. Primary = Start the recommended routine on train days. Secondary is context-smart,

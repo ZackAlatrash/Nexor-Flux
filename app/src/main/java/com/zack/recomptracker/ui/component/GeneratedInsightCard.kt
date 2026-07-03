@@ -222,68 +222,10 @@ internal fun InsightCardHeader(
         }
         if (confidence != null && !collapsed) ConfidenceBadge(confidence)
         if (collapsible) {
-            ExpandToggle(collapsed = collapsed)
+            AiExpandToggle(collapsed = collapsed)
         } else {
             AiBadge()
         }
-    }
-}
-
-/** A liquid-glass chevron affordance. The parent header Row owns the click. */
-@Composable
-private fun ExpandToggle(collapsed: Boolean) {
-    val rot by animateFloatAsState(if (collapsed) 0f else 180f, tween(400), label = "chev")
-    GlassIconButton(
-        icon = Icons.Rounded.KeyboardArrowDown,
-        contentDescription = null,
-        onClick = null,
-        rotation = rot,
-    )
-}
-
-/**
- * Small liquid-glass icon button (nav-bar material: vibrancy + blur over a neutral pill). The icon
- * is a vector centred in the pill. If [onClick] is null the button is purely decorative and the
- * parent owns the tap (used by the header toggle, where the whole row is clickable).
- */
-@Composable
-private fun GlassIconButton(
-    icon: ImageVector,
-    contentDescription: String?,
-    onClick: (() -> Unit)?,
-    rotation: Float = 0f,
-) {
-    val backdrop = LocalBackdrop.current
-    val appColors = LocalAppColors.current
-    val accent = LocalAppAccent.current
-    val surface = if (appColors.isDark) Color.White.copy(alpha = 0.14f) else appColors.glassPillSurface
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { Capsule() },
-                effects = {
-                    vibrancy()
-                    blur(4f.dp.toPx())
-                },
-                onDrawSurface = { drawRect(surface) },
-            )
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(role = Role.Button, onClickLabel = contentDescription, onClick = onClick)
-                } else {
-                    Modifier
-                },
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = accent.inkLight,
-            modifier = Modifier.size(16.dp).rotate(rotation),
-        )
     }
 }
 

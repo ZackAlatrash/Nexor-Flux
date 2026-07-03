@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,8 +67,8 @@ import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
-import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiExpandToggle
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
@@ -369,11 +370,11 @@ fun TrainHomeScreen(
 // ── Today's coaching card (one AI card: recovery read + plan + coach handoff) ──
 
 /**
- * The single Train-home "Today" card, styled as the app's AI insight card (always expanded: the
- * liquid-glass edge glow + ✦ header + AI badge). It merges what used to be two overlapping cards —
- * the recovery readiness read and the deterministic training plan — so the screen never shows two
- * cards restating the same "train / rest" verdict. Leads with the recovery-aware verdict, keeps the
- * "Start <routine>" action on train days, and offers a coach handoff seeded from the readiness.
+ * The single Train-home "Today" card, styled as the app's AI insight card (liquid-glass edge glow +
+ * ✦). It merges what used to be two overlapping cards — the recovery readiness read and the
+ * deterministic training plan — so the screen never shows two cards restating the same "train / rest"
+ * verdict. **Collapsible**: a compact one-line pill by default (✦ + verdict), tap to expand to the
+ * big verdict, guidance, cadence, and the "Start <routine>" + context-smart action.
  */
 @Composable
 private fun TodayCoachingCard(
@@ -393,85 +394,104 @@ private fun TodayCoachingCard(
 
     // Verdict leads with the recovery read; falls back to the plan's reason when recovery is unlogged.
     val verdict = readiness?.headline ?: plan?.reason ?: "Today"
+    val hint = readiness?.adaptHint
+    // Collapsed one-liner: verdict + guidance, e.g. "You're recovered — train as planned".
+    val summary = if (hint != null) "$verdict — $hint" else verdict
 
-    // Meta line: recommended routine (train days) + cadence.
-    val meta = buildList {
-        if (startRoutineName != null) add("Recommended: $startRoutineName")
-        plan?.let { p ->
-            add(
-                buildString {
-                    append("${p.sessionsThisWeek}")
-                    p.weeklyTarget?.let { append("/$it") }
-                    append(" this week")
-                    p.daysSinceLastSession?.let { d -> if (d > 0) append(" · last trained ${d}d ago") }
-                },
-            )
+    // Cadence footnote (the Start button already names the routine, so we don't repeat it here).
+    val cadence = plan?.let { p ->
+        buildString {
+            append("${p.sessionsThisWeek}")
+            p.weeklyTarget?.let { append("/$it") }
+            append(" this week")
+            p.daysSinceLastSession?.let { d -> if (d > 0) append(" · last trained ${d}d ago") }
         }
-    }.joinToString(" · ")
+    }
 
-    AiInsightCard(borderMode = AiBorderMode.Ready, modifier = modifier) {
-        // Slim identity row (✦ + AI badge) so the verdict itself is the card's big, bold title.
+    // Collapsed by default so the card stays a slim pill; re-collapses when the verdict changes (a new day).
+    var collapsed by rememberSaveable(verdict) { mutableStateOf(true) }
+
+    AiInsightCard(
+        borderMode = AiBorderMode.Ready,
+        collapsed = collapsed,
+        contentPadding = if (collapsed) 12.dp else 16.dp,
+        modifier = modifier.animateContentSize(),
+    ) {
+        // Header row = the ✦ identity marker + the verdict itself + the glass toggle, one row. The
+        // verdict IS the title (big & bold when expanded, a one-line summary when collapsed); tapping
+        // anywhere on the row expands / collapses.
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { collapsed = !collapsed },
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = "✦", style = AppType.body, color = accent.inkLight)
-            AiBadge()
+            Text(
+                text = if (collapsed) summary else verdict,
+                style = if (collapsed) AppType.body else AppType.statValue,
+                color = appColors.textPrimary,
+                maxLines = if (collapsed) 1 else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            AiExpandToggle(collapsed = collapsed)
         }
-        Spacer(Modifier.height(8.dp))
-        Text(text = verdict, style = AppType.statValue, color = appColors.textPrimary)
-        readiness?.adaptHint?.let { hint ->
-            Spacer(Modifier.height(2.dp))
-            Text(text = hint, style = AppType.body, color = appColors.textSecondary)
-        }
-        if (meta.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(text = meta, style = AppType.cardSubtitle, color = appColors.textMuted)
-        }
-        // Actions. Primary = Start the recommended routine on train days. Secondary is context-smart,
-        // shown only when it's genuinely useful (never a filler button):
-        //   - today's recovery not logged        → "Log recovery" (sharpen the read)
-        //   - train day + recovery below GOOD     → "Start light" (adapted, one fewer set/exercise)
-        //   - otherwise                           → nothing
-        val hasStart = startRoutineId != null && startRoutineName != null
-        val secondary: Pair<String, () -> Unit>? = when {
-            readiness == null -> null
-            !recoveryLoggedToday -> "Log recovery" to onLogRecovery
-            isTrain && readiness.level != TrainingReadinessMapper.Level.GOOD && startRoutineId != null ->
-                "Start light" to { onStartLight(startRoutineId) }
-            else -> null
-        }
-        if (hasStart || secondary != null) {
-            Spacer(Modifier.height(12.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (hasStart) {
-                    LiquidActionButton(
-                        text = "Start $startRoutineName",
-                        onClick = { onStartRoutine(startRoutineId!!) },
-                        isPrimary = true,
-                        small = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (secondary != null) {
+
+        if (!collapsed) {
+            hint?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(text = it, style = AppType.body, color = appColors.textSecondary)
+            }
+            cadence?.let {
+                Spacer(Modifier.height(if (hint != null) 4.dp else 8.dp))
+                Text(text = it, style = AppType.cardSubtitle, color = appColors.textMuted)
+            }
+            // Actions. Primary = Start the recommended routine on train days. Secondary is context-smart,
+            // shown only when it's genuinely useful (never a filler button):
+            //   - today's recovery not logged        → "Log recovery" (sharpen the read)
+            //   - train day + recovery below GOOD     → "Start light" (adapted, one fewer set/exercise)
+            //   - otherwise                           → nothing
+            val hasStart = startRoutineId != null && startRoutineName != null
+            val secondary: Pair<String, () -> Unit>? = when {
+                readiness == null -> null
+                !recoveryLoggedToday -> "Log recovery" to onLogRecovery
+                isTrain && readiness.level != TrainingReadinessMapper.Level.GOOD && startRoutineId != null ->
+                    "Start light" to { onStartLight(startRoutineId) }
+                else -> null
+            }
+            if (hasStart || secondary != null) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (hasStart) {
+                        LiquidActionButton(
+                            text = "Start $startRoutineName",
+                            onClick = { onStartRoutine(startRoutineId!!) },
+                            isPrimary = true,
+                            small = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (secondary != null) {
+                            LiquidActionButton(
+                                text = secondary.first,
+                                onClick = secondary.second,
+                                isPrimary = false,
+                                small = true,
+                            )
+                        }
+                    } else if (secondary != null) {
                         LiquidActionButton(
                             text = secondary.first,
                             onClick = secondary.second,
-                            isPrimary = false,
+                            isPrimary = true,
                             small = true,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                } else if (secondary != null) {
-                    LiquidActionButton(
-                        text = secondary.first,
-                        onClick = secondary.second,
-                        isPrimary = true,
-                        small = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
             }
         }

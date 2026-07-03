@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ai
 
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.StateFlow
 
 interface CoachCoordinator {
@@ -33,6 +34,23 @@ data class PendingCoachAction(
     val displayText: String,
 )
 
-data class ChatMessage(val role: Role, val text: String)
+/**
+ * A single chat turn. [role] + [text] carry the content and define equality (unchanged data-class
+ * semantics — two messages with the same role and text are equal).
+ *
+ * [id] is a process-unique, monotonically increasing identity assigned at construction. It is
+ * DELIBERATELY outside the primary constructor so it is excluded from `equals`/`hashCode`/`copy`
+ * (a copied or re-constructed message keeps value equality). Messages are only ever appended to the
+ * in-memory history and never reordered, so this id is a stable per-item key for `LazyColumn`
+ * (unlike the list index, which shifts, or `hashCode()`, which collides for repeated identical
+ * text). It is never persisted or serialized, so it needs no serialization-safe form.
+ */
+data class ChatMessage(val role: Role, val text: String) {
+    val id: Long = nextMessageId()
+}
+
+private val messageIdCounter = AtomicLong(0L)
+
+private fun nextMessageId(): Long = messageIdCounter.getAndIncrement()
 
 enum class Role { User, Assistant }

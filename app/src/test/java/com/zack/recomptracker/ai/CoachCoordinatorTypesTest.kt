@@ -23,6 +23,23 @@ class CoachCoordinatorTypesTest {
     }
 
     @Test
+    fun `ChatMessage id is unique per instance and excluded from equality`() {
+        val a = ChatMessage(Role.User, "hello")
+        val b = ChatMessage(Role.User, "hello")
+        // Distinct instances get distinct ids (usable as stable list keys)…
+        assertNotEquals(a.id, b.id)
+        // …but the id does not participate in equality/hashCode (still value-equal).
+        assertEquals(a, b)
+        assertEquals(a.hashCode(), b.hashCode())
+    }
+
+    @Test
+    fun `ChatMessage id is stable across reads`() {
+        val m = ChatMessage(Role.Assistant, "hi")
+        assertEquals(m.id, m.id)
+    }
+
+    @Test
     fun `CoachState Idle holds history`() {
         val history = listOf(ChatMessage(Role.User, "hi"), ChatMessage(Role.Assistant, "hello"))
         val state = CoachState.Idle(history)

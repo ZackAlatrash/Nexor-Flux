@@ -20,10 +20,15 @@ object MealImpact {
     /** Below this post-log protein fraction we nudge toward protein instead. */
     const val PROTEIN_GAP_THRESHOLD: Double = 0.85
 
-    /** Post-log projection for one macro. [percent] is the whole-number % of target (0 = no target). */
+    /**
+     * Post-log projection for one macro. [percent] is the whole-number % of target. [hasTarget] is
+     * false when this macro has no positive target set — callers must not render a "0%" for it (a
+     * missing target is not the same as being at 0% of target).
+     */
     data class MacroImpact(
         val percent: Int,
         val over: Boolean,
+        val hasTarget: Boolean,
     )
 
     data class Result(
@@ -65,11 +70,12 @@ object MealImpact {
     }
 
     private fun macroImpact(postLog: Double, target: Double): MacroImpact {
-        if (target <= 0.0) return MacroImpact(percent = 0, over = false)
+        if (target <= 0.0) return MacroImpact(percent = 0, over = false, hasTarget = false)
         val fraction = postLog / target
         return MacroImpact(
             percent = (fraction * 100.0).roundToInt(),
             over = fraction > OVER_THRESHOLD,
+            hasTarget = true,
         )
     }
 

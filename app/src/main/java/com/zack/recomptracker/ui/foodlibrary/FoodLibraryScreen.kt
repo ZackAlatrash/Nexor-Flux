@@ -891,14 +891,21 @@ private fun AmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewMod
 @Composable
 private fun MealImpactStrip(impact: MealImpact.Result) {
     val appColors = LocalAppColors.current
+    // Only name macros that actually have a target — a missing target is not "0%".
+    val parts = buildList {
+        if (impact.protein.hasTarget) add("${impact.protein.percent}% protein")
+        if (impact.carbs.hasTarget) add("${impact.carbs.percent}% carbs")
+        if (isEmpty() && impact.calories.hasTarget) add("${impact.calories.percent}% calories")
+    }
     FrostedCard(contentPadding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "Puts you at ${impact.protein.percent}% protein, " +
-                    "${impact.carbs.percent}% carbs for today",
-                style = AppType.cardSubtitle,
-                color = appColors.textSecondary,
-            )
+            if (parts.isNotEmpty()) {
+                Text(
+                    text = "Puts you at ${parts.joinToString(", ")} for today",
+                    style = AppType.cardSubtitle,
+                    color = appColors.textSecondary,
+                )
+            }
             Text(
                 text = impact.hint,
                 style = AppType.metaLabel,

@@ -98,7 +98,23 @@ class MealImpactTest {
         )!!
         assertEquals(0, result.protein.percent)
         assertFalse(result.protein.over)
+        // A missing target is flagged so the UI won't render a misleading "0% protein".
+        assertFalse(result.protein.hasTarget)
+        assertTrue(result.carbs.hasTarget)
+        assertTrue(result.calories.hasTarget)
         // With no protein target, the protein-gap branch is skipped → neutral line.
         assertEquals("Fits your day.", result.hint)
+    }
+
+    @Test
+    fun hasTarget_isTrueForEveryMacroWhenAllTargetsSet() {
+        val result = MealImpact.compute(
+            eatenCalories = 800, eatenProtein = 100.0, eatenCarbs = 100.0,
+            targetCalories = targetCalories, targetProtein = targetProtein, targetCarbs = targetCarbs,
+            addCalories = 200, addProtein = 20.0, addCarbs = 20.0,
+        )!!
+        assertTrue(result.calories.hasTarget)
+        assertTrue(result.protein.hasTarget)
+        assertTrue(result.carbs.hasTarget)
     }
 }

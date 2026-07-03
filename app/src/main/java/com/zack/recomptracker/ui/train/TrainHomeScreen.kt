@@ -69,6 +69,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.TintedCard
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.AppType
@@ -93,6 +94,7 @@ fun TrainHomeScreen(
     onResume: () -> Unit,
     onOpenSession: (Long) -> Unit = {},
     onOpenExerciseStats: (Long) -> Unit = {},
+    onAskCoach: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -175,6 +177,19 @@ fun TrainHomeScreen(
                             }
                         }
                     },
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                )
+            }
+        }
+
+        // ── Recovery readiness (recovery framing + coach handoff) ──────────────
+        state.readiness?.let { readiness ->
+            item {
+                ReadinessCard(
+                    readiness = readiness,
+                    onAskCoach = onAskCoach,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),
@@ -348,6 +363,43 @@ fun TrainHomeScreen(
         if (state.tab == TrainTab.STATS) {
             item { StatsContent(state = state, onOpenExerciseStats = onOpenExerciseStats) }
         }
+    }
+}
+
+// ── Recovery-readiness card (recovery framing + a coach handoff) ──────────────
+
+@Composable
+private fun ReadinessCard(
+    readiness: TrainingReadinessMapper.Readiness,
+    onAskCoach: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val appColors = LocalAppColors.current
+    TintedCard(modifier = modifier.fillMaxWidth()) {
+        SectionLabel(text = "Recovery")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = readiness.headline,
+            style = AppType.cardTitle,
+            color = appColors.textPrimary,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = readiness.adaptHint,
+            style = AppType.body,
+            color = appColors.textSecondary,
+        )
+        readiness.loadNote?.let { note ->
+            Spacer(Modifier.height(2.dp))
+            Text(text = note, style = AppType.cardSubtitle, color = appColors.textMuted)
+        }
+        Spacer(Modifier.height(12.dp))
+        LiquidActionButton(
+            text = readiness.actionLabel,
+            onClick = onAskCoach,
+            isPrimary = true,
+            small = true,
+        )
     }
 }
 

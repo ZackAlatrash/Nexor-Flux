@@ -276,6 +276,17 @@ fun AppNavGraph(
                 onResume = { navController.navigate(Routes.ActiveSession) },
                 onOpenSession = { id -> navController.navigate(Routes.sessionDetail(id)) },
                 onOpenExerciseStats = { exerciseId -> navController.navigate(Routes.exerciseStats(exerciseId)) },
+                onAskCoach = {
+                    trainViewModel.askCoachSeed()?.let { seed ->
+                        appContainer.coachHandoffStore.set(seed)
+                        appContainer.coachCoordinator.clearHistory()
+                    }
+                    navController.navigate(TopLevelDestination.Coach.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 modifier = Modifier,
             )
         }

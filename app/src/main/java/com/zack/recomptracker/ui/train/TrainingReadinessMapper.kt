@@ -48,11 +48,12 @@ object TrainingReadinessMapper {
     }
 
     /** Recent recovery averages (last ~2 weeks, excluding today) — the trend used for the deload
-     *  check, the fallback when today isn't logged, and softening a single bad day. */
+     *  check, the fallback when today isn't logged, and softening a single bad day. Averages are kept
+     *  as Doubles so a real 5.5 doesn't round to 6 and flip a threshold (e.g. the deload gate). */
     data class RecoveryBaseline(
-        val avgSorenessScore: Int? = null,
+        val avgSorenessScore: Double? = null,
         val avgSleepHours: Double? = null,
-        val avgEnergyScore: Int? = null,
+        val avgEnergyScore: Double? = null,
     ) {
         val hasAnySignal: Boolean
             get() = avgSorenessScore != null || avgSleepHours != null || avgEnergyScore != null
@@ -102,7 +103,7 @@ object TrainingReadinessMapper {
         val usedBaseline = !recovery.hasAnySignal
         val source: Signals = when {
             recovery.hasAnySignal ->
-                Signals(recovery.sorenessScore, recovery.sleepHours, recovery.energyScore)
+                Signals(recovery.sorenessScore?.toDouble(), recovery.sleepHours, recovery.energyScore?.toDouble())
             baseline?.hasAnySignal == true ->
                 Signals(baseline.avgSorenessScore, baseline.avgSleepHours, baseline.avgEnergyScore)
             else -> return null // nothing logged today or recently → hide
@@ -211,7 +212,7 @@ object TrainingReadinessMapper {
 
     // ── Scoring ──────────────────────────────────────────────────────────────
 
-    private data class Signals(val soreness: Int?, val sleep: Double?, val energy: Int?)
+    private data class Signals(val soreness: Double?, val sleep: Double?, val energy: Double?)
 
     private fun levelOf(s: Signals): Level {
         var penalty = 0
@@ -275,16 +276,17 @@ object TrainingReadinessMapper {
 
     private fun signalList(recovery: RecoveryToday): String = buildList {
         recovery.sorenessScore?.let { add("whole-body soreness $it/10") }
-        recovery.sleepHours?.let { add("${trimHours(it)}h sleep") }
+        recovery.sleepHours?.let { add("${trimNum(it)}h sleep") }
         recovery.energyScore?.let { add("energy $it/10") }
     }.joinToString(", ")
 
     private fun baselineList(b: RecoveryBaseline): String = buildList {
-        b.avgSorenessScore?.let { add("avg soreness $it/10") }
-        b.avgSleepHours?.let { add("avg ${trimHours(it)}h sleep") }
-        b.avgEnergyScore?.let { add("avg energy $it/10") }
+        b.avgSorenessScore?.let { add("avg soreness ${trimNum(it)}/10") }
+        b.avgSleepHours?.let { add("avg ${trimNum(it)}h sleep") }
+        b.avgEnergyScore?.let { add("avg energy ${trimNum(it)}/10") }
     }.joinToString(", ")
 
-    private fun trimHours(h: Double): String =
-        if (h == h.toLong().toDouble()) h.toLong().toString() else "%.1f".format(h)
+    /** Whole numbers print without a decimal; otherwise one decimal place. */
+    private fun trimNum(v: Double): String =
+        if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(v)
 }

@@ -267,7 +267,6 @@ fun AppNavGraph(
             exitTransition  = { tabExit },
         ) {
             val trainViewModel = viewModel<TrainViewModel>(factory = factory)
-            val appContainer = LocalAppContainer.current
             TrainHomeScreen(
                 viewModel = trainViewModel,
                 onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
@@ -276,12 +275,8 @@ fun AppNavGraph(
                 onResume = { navController.navigate(Routes.ActiveSession) },
                 onOpenSession = { id -> navController.navigate(Routes.sessionDetail(id)) },
                 onOpenExerciseStats = { exerciseId -> navController.navigate(Routes.exerciseStats(exerciseId)) },
-                onAskCoach = {
-                    trainViewModel.askCoachSeed()?.let { seed ->
-                        appContainer.coachHandoffStore.set(seed)
-                        appContainer.coachCoordinator.clearHistory()
-                    }
-                    navController.navigate(TopLevelDestination.Coach.route) {
+                onLogRecovery = {
+                    navController.navigate(TopLevelDestination.Body.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true

@@ -66,10 +66,10 @@ import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.FrostedCard
-import com.zack.recomptracker.ui.component.InsightCardHeader
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
@@ -96,7 +96,7 @@ fun TrainHomeScreen(
     onResume: () -> Unit,
     onOpenSession: (Long) -> Unit = {},
     onOpenExerciseStats: (Long) -> Unit = {},
-    onAskCoach: () -> Unit = {},
+    onLogRecovery: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -172,6 +172,7 @@ fun TrainHomeScreen(
                 TodayCoachingCard(
                     plan = state.plan,
                     readiness = state.readiness,
+                    recoveryLoggedToday = state.recoveryLoggedToday,
                     onStartRoutine = { routineId ->
                         state.routines.firstOrNull { it.id == routineId }?.let { template ->
                             scope.launch {
@@ -180,7 +181,15 @@ fun TrainHomeScreen(
                             }
                         }
                     },
-                    onAskCoach = onAskCoach,
+                    onStartLight = { routineId ->
+                        state.routines.firstOrNull { it.id == routineId }?.let { template ->
+                            scope.launch {
+                                viewModel.startLightSession(template)
+                                onStart()
+                            }
+                        }
+                    },
+                    onLogRecovery = onLogRecovery,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),
@@ -370,11 +379,14 @@ fun TrainHomeScreen(
 private fun TodayCoachingCard(
     plan: TrainingPlanBuilder.TrainingPlan?,
     readiness: TrainingReadinessMapper.Readiness?,
+    recoveryLoggedToday: Boolean,
     onStartRoutine: (Long) -> Unit,
-    onAskCoach: () -> Unit,
+    onStartLight: (Long) -> Unit,
+    onLogRecovery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
     val isTrain = plan?.verdict == TrainingPlanBuilder.Verdict.TRAIN
     val startRoutineId = plan?.recommendedRoutineId?.takeIf { isTrain }
     val startRoutineName = plan?.recommendedRoutineName?.takeIf { isTrain }
@@ -398,20 +410,39 @@ private fun TodayCoachingCard(
     }.joinToString(" · ")
 
     AiInsightCard(borderMode = AiBorderMode.Ready, modifier = modifier) {
-        InsightCardHeader(title = "Today", collapsible = false, collapsed = false, onToggle = {})
-        Spacer(Modifier.height(10.dp))
-        Text(text = verdict, style = AppType.cardTitle, color = appColors.textPrimary)
+        // Slim identity row (✦ + AI badge) so the verdict itself is the card's big, bold title.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "✦", style = AppType.body, color = accent.inkLight)
+            AiBadge()
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(text = verdict, style = AppType.statValue, color = appColors.textPrimary)
         readiness?.adaptHint?.let { hint ->
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(text = hint, style = AppType.body, color = appColors.textSecondary)
         }
         if (meta.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Text(text = meta, style = AppType.cardSubtitle, color = appColors.textMuted)
         }
-        // Actions: Start the recommended routine on train days; a readiness-seeded coach handoff.
+        // Actions. Primary = Start the recommended routine on train days. Secondary is context-smart,
+        // shown only when it's genuinely useful (never a filler button):
+        //   - today's recovery not logged        → "Log recovery" (sharpen the read)
+        //   - train day + recovery below GOOD     → "Start light" (adapted, one fewer set/exercise)
+        //   - otherwise                           → nothing
         val hasStart = startRoutineId != null && startRoutineName != null
-        if (hasStart || readiness != null) {
+        val secondary: Pair<String, () -> Unit>? = when {
+            readiness == null -> null
+            !recoveryLoggedToday -> "Log recovery" to onLogRecovery
+            isTrain && readiness.level != TrainingReadinessMapper.Level.GOOD && startRoutineId != null ->
+                "Start light" to { onStartLight(startRoutineId) }
+            else -> null
+        }
+        if (hasStart || secondary != null) {
             Spacer(Modifier.height(12.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -425,18 +456,18 @@ private fun TodayCoachingCard(
                         small = true,
                         modifier = Modifier.weight(1f),
                     )
-                    if (readiness != null) {
+                    if (secondary != null) {
                         LiquidActionButton(
-                            text = readiness.actionLabel,
-                            onClick = onAskCoach,
+                            text = secondary.first,
+                            onClick = secondary.second,
                             isPrimary = false,
                             small = true,
                         )
                     }
-                } else if (readiness != null) {
+                } else if (secondary != null) {
                     LiquidActionButton(
-                        text = readiness.actionLabel,
-                        onClick = onAskCoach,
+                        text = secondary.first,
+                        onClick = secondary.second,
                         isPrimary = true,
                         small = true,
                         modifier = Modifier.fillMaxWidth(),

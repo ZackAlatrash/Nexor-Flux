@@ -27,8 +27,10 @@ data class TrainUiState(
     val statsCategories: List<TrainStatsBuilder.CategoryStats> = emptyList(),
     /** Deterministic training plan for the Train-home "Today" card (train/rest + focus + routine). */
     val plan: TrainingPlanBuilder.TrainingPlan? = null,
-    /** Recovery-readiness card state (headline + adapt hint + coach-handoff seed); null = hide. */
+    /** Recovery-readiness card state (headline + adapt hint); null = hide. */
     val readiness: TrainingReadinessMapper.Readiness? = null,
+    /** Whether today's recovery (soreness/sleep/energy) has been logged — drives the "Log recovery" action. */
+    val recoveryLoggedToday: Boolean = false,
 )
 
 class TrainViewModel(
@@ -84,12 +86,13 @@ class TrainViewModel(
         val daysSinceLast = sessionDates.maxOrNull()?.let { ChronoUnit.DAYS.between(it, today).toInt() }
         val weekStart = today.minusDays((today.dayOfWeek.value - 1).toLong())
         val sessionsThisWeek = sessionDates.count { !it.isBefore(weekStart) }
+        val recoveryToday = TrainingReadinessMapper.RecoveryToday(
+            sorenessScore = todayLog?.sorenessScore,
+            sleepHours = todayLog?.sleepHours,
+            energyScore = todayLog?.energyScore,
+        )
         val recovery = TrainingReadinessMapper.build(
-            recovery = TrainingReadinessMapper.RecoveryToday(
-                sorenessScore = todayLog?.sorenessScore,
-                sleepHours = todayLog?.sleepHours,
-                energyScore = todayLog?.energyScore,
-            ),
+            recovery = recoveryToday,
             baseline = baseline,
             daysSinceLastSession = daysSinceLast,
             sessionsThisWeek = sessionsThisWeek,
@@ -107,6 +110,7 @@ class TrainViewModel(
                 deloadSuggested = recovery?.mode == TrainingReadinessMapper.Mode.DELOAD,
             ),
             readiness = recovery,
+            recoveryLoggedToday = recoveryToday.hasAnySignal,
         )
     }
 
@@ -119,11 +123,9 @@ class TrainViewModel(
             statsCategories = c.stats,
             plan = pr.plan,
             readiness = pr.readiness,
+            recoveryLoggedToday = pr.recoveryLoggedToday,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TrainUiState())
-
-    /** The coach-handoff seed for the readiness card's action, or null when no card is showing. */
-    fun askCoachSeed(): String? = state.value.readiness?.coachSeed
 
     private data class Quad(
         val routines: List<WorkoutTemplate>,
@@ -135,11 +137,26 @@ class TrainViewModel(
     private data class PlanBundle(
         val plan: TrainingPlanBuilder.TrainingPlan?,
         val readiness: TrainingReadinessMapper.Readiness?,
+        val recoveryLoggedToday: Boolean,
     )
 
     fun selectTab(t: TrainTab) { tab.value = t }
     fun deleteRoutine(id: Long) { viewModelScope.launch { workoutRepository.deleteWorkout(id) } }
     suspend fun startSession(template: WorkoutTemplate): Long = sessionRepository.startSession(template)
+
+    /**
+     * Starts a lighter version of [template] for a reduced-recovery day: one fewer planned set per
+     * exercise (never below one). Everything else (exercises, target reps/weight) is unchanged, so
+     * the session is the same workout at trimmed volume.
+     */
+    suspend fun startLightSession(template: WorkoutTemplate): Long {
+        val light = template.copy(
+            exercises = template.exercises.map { ex ->
+                if (ex.plannedSets.size > 1) ex.copy(plannedSets = ex.plannedSets.dropLast(1)) else ex
+            },
+        )
+        return sessionRepository.startSession(light)
+    }
 }
 
 @JvmName("avgIntOrNull")

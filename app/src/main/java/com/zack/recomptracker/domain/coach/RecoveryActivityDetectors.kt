@@ -168,11 +168,14 @@ class MorningReadinessDetector : CoachDetector {
                 fallbackText = "This morning's readiness is down — $cue. Keep today's session light and let recovery catch up.",
             )
         } else {
-            // Good readiness: today's inputs are at or above the user's own baseline.
+            // Good readiness: today's inputs are at or above the user's own baseline. This is
+            // reassurance, not a decision, so it sits at P2 (maintenance) — a genuinely actionable
+            // P2 (a scale check, a consistency dip) should win the single daily slot over a daily
+            // "you're fine", and this must never out-rank them just because it fires every day.
             val severity = 20 // low urgency: reassurance, not a warning
             CoachSignal(
                 kind = SignalKind.MORNING_READINESS,
-                tier = SignalTier.P1,
+                tier = SignalTier.P2,
                 category = SignalCategory.RECOVERY,
                 severity = severity,
                 facts = SignalFacts(facts),

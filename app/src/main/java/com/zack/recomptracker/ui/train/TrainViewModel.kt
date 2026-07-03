@@ -14,7 +14,6 @@ import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -28,6 +27,10 @@ data class TrainUiState(
     val statsCategories: List<TrainStatsBuilder.CategoryStats> = emptyList(),
     /** Deterministic training plan for the Train-home "Today" card (train/rest + focus + routine). */
     val plan: TrainingPlanBuilder.TrainingPlan? = null,
+    /** Recovery-readiness card state (headline + adapt hint); null = hide. */
+    val readiness: TrainingReadinessMapper.Readiness? = null,
+    /** Whether today's recovery (soreness/sleep/energy) has been logged — drives the "Log recovery" action. */
+    val recoveryLoggedToday: Boolean = false,
 )
 
 class TrainViewModel(
@@ -56,7 +59,7 @@ class TrainViewModel(
      * (recoveryLow / deloadSuggested come from [TrainingReadinessMapper], the single recovery-scoring
      * source) → a train/rest verdict, a muscle focus, and a recommended routine. See [TrainingPlanBuilder].
      */
-    private val plan: Flow<TrainingPlanBuilder.TrainingPlan?> = combine(
+    private val planAndReadiness: Flow<PlanBundle> = combine(
         workoutRepository.observeAll(),
         exerciseLibraryRepository.observeAll(),
         sessionRepository.observeCompletedSessions(),
@@ -73,9 +76,9 @@ class TrainViewModel(
             d != null && !d.isBefore(windowStart) && d.isBefore(today)
         }
         val baseline = TrainingReadinessMapper.RecoveryBaseline(
-            avgSorenessScore = recent.mapNotNull { it.sorenessScore }.avgIntOrNull(),
+            avgSorenessScore = recent.mapNotNull { it.sorenessScore }.avgOrNull(),
             avgSleepHours = recent.mapNotNull { it.sleepHours }.avgOrNull(),
-            avgEnergyScore = recent.mapNotNull { it.energyScore }.avgIntOrNull(),
+            avgEnergyScore = recent.mapNotNull { it.energyScore }.avgOrNull(),
         ).takeIf { it.hasAnySignal }
         val sessionDates = history
             .mapNotNull { runCatching { LocalDate.parse(it.date) }.getOrNull() }
@@ -83,37 +86,44 @@ class TrainViewModel(
         val daysSinceLast = sessionDates.maxOrNull()?.let { ChronoUnit.DAYS.between(it, today).toInt() }
         val weekStart = today.minusDays((today.dayOfWeek.value - 1).toLong())
         val sessionsThisWeek = sessionDates.count { !it.isBefore(weekStart) }
+        val recoveryToday = TrainingReadinessMapper.RecoveryToday(
+            sorenessScore = todayLog?.sorenessScore,
+            sleepHours = todayLog?.sleepHours,
+            energyScore = todayLog?.energyScore,
+        )
         val recovery = TrainingReadinessMapper.build(
-            recovery = TrainingReadinessMapper.RecoveryToday(
-                sorenessScore = todayLog?.sorenessScore,
-                sleepHours = todayLog?.sleepHours,
-                energyScore = todayLog?.energyScore,
-            ),
+            recovery = recoveryToday,
             baseline = baseline,
             daysSinceLastSession = daysSinceLast,
             sessionsThisWeek = sessionsThisWeek,
             weeklyTarget = weeklyTarget,
         )
 
-        TrainingPlanBuilder.build(
-            history = history,
-            library = library,
-            routines = routines,
-            today = today,
-            weeklyTarget = weeklyTarget,
-            recoveryLow = recovery?.level == TrainingReadinessMapper.Level.LOW,
-            deloadSuggested = recovery?.mode == TrainingReadinessMapper.Mode.DELOAD,
+        PlanBundle(
+            plan = TrainingPlanBuilder.build(
+                history = history,
+                library = library,
+                routines = routines,
+                today = today,
+                weeklyTarget = weeklyTarget,
+                recoveryLow = recovery?.level == TrainingReadinessMapper.Level.LOW,
+                deloadSuggested = recovery?.mode == TrainingReadinessMapper.Mode.DELOAD,
+            ),
+            readiness = recovery,
+            recoveryLoggedToday = recoveryToday.hasAnySignal,
         )
     }
 
-    val state: StateFlow<TrainUiState> = combine(tab, core, plan) { t, c, p ->
+    val state: StateFlow<TrainUiState> = combine(tab, core, planAndReadiness) { t, c, pr ->
         TrainUiState(
             tab = t,
             routines = c.routines,
             activeSession = c.active,
             history = c.history,
             statsCategories = c.stats,
-            plan = p,
+            plan = pr.plan,
+            readiness = pr.readiness,
+            recoveryLoggedToday = pr.recoveryLoggedToday,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TrainUiState())
 
@@ -124,13 +134,34 @@ class TrainViewModel(
         val stats: List<TrainStatsBuilder.CategoryStats>,
     )
 
+    private data class PlanBundle(
+        val plan: TrainingPlanBuilder.TrainingPlan?,
+        val readiness: TrainingReadinessMapper.Readiness?,
+        val recoveryLoggedToday: Boolean,
+    )
+
     fun selectTab(t: TrainTab) { tab.value = t }
     fun deleteRoutine(id: Long) { viewModelScope.launch { workoutRepository.deleteWorkout(id) } }
     suspend fun startSession(template: WorkoutTemplate): Long = sessionRepository.startSession(template)
+
+    /**
+     * Starts a lighter version of [template] for a reduced-recovery day: one fewer planned set per
+     * exercise (never below one). Everything else (exercises, target reps/weight) is unchanged, so
+     * the session is the same workout at trimmed volume.
+     */
+    suspend fun startLightSession(template: WorkoutTemplate): Long {
+        val light = template.copy(
+            exercises = template.exercises.map { ex ->
+                if (ex.plannedSets.size > 1) ex.copy(plannedSets = ex.plannedSets.dropLast(1)) else ex
+            },
+        )
+        return sessionRepository.startSession(light)
+    }
 }
 
-private fun List<Int>.avgIntOrNull(): Int? =
-    if (isEmpty()) null else (sum().toDouble() / size).roundToInt()
+@JvmName("avgIntOrNull")
+private fun List<Int>.avgOrNull(): Double? =
+    if (isEmpty()) null else sum().toDouble() / size
 
 private fun List<Double>.avgOrNull(): Double? =
     if (isEmpty()) null else sum() / size

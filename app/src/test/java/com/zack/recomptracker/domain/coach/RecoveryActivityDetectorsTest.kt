@@ -127,7 +127,8 @@ class RecoveryActivityDetectorsTest {
         )
         val s = MorningReadinessDetector().detect(ctx)!!
         assertEquals(SignalKind.MORNING_READINESS, s.kind)
-        assertEquals(SignalTier.P1, s.tier)
+        // Good readiness is reassurance (maintenance) → P2, so it never out-ranks an actionable P2.
+        assertEquals(SignalTier.P2, s.tier)
         assertTrue(s.verdict.contains("train as planned", ignoreCase = true))
         assertTrue(s.dedupKey.endsWith("|good"))
         assertTrue(s.fallbackText.isNotBlank())

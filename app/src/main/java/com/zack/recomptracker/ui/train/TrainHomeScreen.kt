@@ -66,6 +66,9 @@ import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.AiBadge
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
@@ -93,6 +96,7 @@ fun TrainHomeScreen(
     onResume: () -> Unit,
     onOpenSession: (Long) -> Unit = {},
     onOpenExerciseStats: (Long) -> Unit = {},
+    onLogRecovery: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -162,11 +166,13 @@ fun TrainHomeScreen(
             }
         }
 
-        // ── Today's training plan (train/rest + focus + recommended routine) ───
-        state.plan?.let { plan ->
+        // ── Today's coaching: one AI card = recovery read + plan + coach handoff ─
+        if (state.plan != null || state.readiness != null) {
             item {
-                TrainingPlanCard(
-                    plan = plan,
+                TodayCoachingCard(
+                    plan = state.plan,
+                    readiness = state.readiness,
+                    recoveryLoggedToday = state.recoveryLoggedToday,
                     onStartRoutine = { routineId ->
                         state.routines.firstOrNull { it.id == routineId }?.let { template ->
                             scope.launch {
@@ -175,6 +181,15 @@ fun TrainHomeScreen(
                             }
                         }
                     },
+                    onStartLight = { routineId ->
+                        state.routines.firstOrNull { it.id == routineId }?.let { template ->
+                            scope.launch {
+                                viewModel.startLightSession(template)
+                                onStart()
+                            }
+                        }
+                    },
+                    onLogRecovery = onLogRecovery,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),
@@ -351,62 +366,114 @@ fun TrainHomeScreen(
     }
 }
 
-// ── Today's training-plan card (deterministic: train/rest + focus + routine) ──
+// ── Today's coaching card (one AI card: recovery read + plan + coach handoff) ──
 
+/**
+ * The single Train-home "Today" card, styled as the app's AI insight card (always expanded: the
+ * liquid-glass edge glow + ✦ header + AI badge). It merges what used to be two overlapping cards —
+ * the recovery readiness read and the deterministic training plan — so the screen never shows two
+ * cards restating the same "train / rest" verdict. Leads with the recovery-aware verdict, keeps the
+ * "Start <routine>" action on train days, and offers a coach handoff seeded from the readiness.
+ */
 @Composable
-private fun TrainingPlanCard(
-    plan: TrainingPlanBuilder.TrainingPlan,
+private fun TodayCoachingCard(
+    plan: TrainingPlanBuilder.TrainingPlan?,
+    readiness: TrainingReadinessMapper.Readiness?,
+    recoveryLoggedToday: Boolean,
     onStartRoutine: (Long) -> Unit,
+    onStartLight: (Long) -> Unit,
+    onLogRecovery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    val isTrain = plan.verdict == TrainingPlanBuilder.Verdict.TRAIN
+    val accent = LocalAppAccent.current
+    val isTrain = plan?.verdict == TrainingPlanBuilder.Verdict.TRAIN
+    val startRoutineId = plan?.recommendedRoutineId?.takeIf { isTrain }
+    val startRoutineName = plan?.recommendedRoutineName?.takeIf { isTrain }
 
-    // Secondary line: recommended routine + a "keep it light" tempering when recovery is down.
-    val subLine = buildList {
-        if (isTrain && plan.recommendedRoutineName != null) add("Recommended: ${plan.recommendedRoutineName}")
-        if (plan.recoveryTempered) add("keep it light")
-    }.joinToString(" · ")
+    // Verdict leads with the recovery read; falls back to the plan's reason when recovery is unlogged.
+    val verdict = readiness?.headline ?: plan?.reason ?: "Today"
 
-    // Cadence footnote: sessions this week (vs target) + how long since the last one.
-    val cadence = buildString {
-        append("${plan.sessionsThisWeek}")
-        plan.weeklyTarget?.let { append("/$it") }
-        append(" this week")
-        plan.daysSinceLastSession?.let { d -> if (d > 0) append(" · last trained ${d}d ago") }
-    }
-
-    FrostedCard(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = 14.dp,
-    ) {
-        SectionLabel(text = "Today")
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = plan.reason,
-            style = AppType.cardTitle,
-            color = appColors.textPrimary,
-        )
-        if (subLine.isNotEmpty()) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subLine,
-                style = AppType.body,
-                color = if (isTrain) accent.inkLight else appColors.textMuted,
+    // Meta line: recommended routine (train days) + cadence.
+    val meta = buildList {
+        if (startRoutineName != null) add("Recommended: $startRoutineName")
+        plan?.let { p ->
+            add(
+                buildString {
+                    append("${p.sessionsThisWeek}")
+                    p.weeklyTarget?.let { append("/$it") }
+                    append(" this week")
+                    p.daysSinceLastSession?.let { d -> if (d > 0) append(" · last trained ${d}d ago") }
+                },
             )
         }
-        Spacer(Modifier.height(2.dp))
-        Text(text = cadence, style = AppType.cardSubtitle, color = appColors.textMuted)
-        // The one useful action: launch the recommended routine. Rest days (or no match) show none.
-        if (isTrain && plan.recommendedRoutineId != null && plan.recommendedRoutineName != null) {
+    }.joinToString(" · ")
+
+    AiInsightCard(borderMode = AiBorderMode.Ready, modifier = modifier) {
+        // Slim identity row (✦ + AI badge) so the verdict itself is the card's big, bold title.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "✦", style = AppType.body, color = accent.inkLight)
+            AiBadge()
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(text = verdict, style = AppType.statValue, color = appColors.textPrimary)
+        readiness?.adaptHint?.let { hint ->
+            Spacer(Modifier.height(2.dp))
+            Text(text = hint, style = AppType.body, color = appColors.textSecondary)
+        }
+        if (meta.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(text = meta, style = AppType.cardSubtitle, color = appColors.textMuted)
+        }
+        // Actions. Primary = Start the recommended routine on train days. Secondary is context-smart,
+        // shown only when it's genuinely useful (never a filler button):
+        //   - today's recovery not logged        → "Log recovery" (sharpen the read)
+        //   - train day + recovery below GOOD     → "Start light" (adapted, one fewer set/exercise)
+        //   - otherwise                           → nothing
+        val hasStart = startRoutineId != null && startRoutineName != null
+        val secondary: Pair<String, () -> Unit>? = when {
+            readiness == null -> null
+            !recoveryLoggedToday -> "Log recovery" to onLogRecovery
+            isTrain && readiness.level != TrainingReadinessMapper.Level.GOOD && startRoutineId != null ->
+                "Start light" to { onStartLight(startRoutineId) }
+            else -> null
+        }
+        if (hasStart || secondary != null) {
             Spacer(Modifier.height(12.dp))
-            LiquidActionButton(
-                text = "Start ${plan.recommendedRoutineName}",
-                onClick = { onStartRoutine(plan.recommendedRoutineId) },
-                isPrimary = true,
-                small = true,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (hasStart) {
+                    LiquidActionButton(
+                        text = "Start $startRoutineName",
+                        onClick = { onStartRoutine(startRoutineId!!) },
+                        isPrimary = true,
+                        small = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (secondary != null) {
+                        LiquidActionButton(
+                            text = secondary.first,
+                            onClick = secondary.second,
+                            isPrimary = false,
+                            small = true,
+                        )
+                    }
+                } else if (secondary != null) {
+                    LiquidActionButton(
+                        text = secondary.first,
+                        onClick = secondary.second,
+                        isPrimary = true,
+                        small = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
     }
 }

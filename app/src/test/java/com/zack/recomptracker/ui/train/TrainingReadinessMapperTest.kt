@@ -135,7 +135,7 @@ class TrainingReadinessMapperTest {
     @Test fun `deload when recent recovery is poor and training frequently`() {
         val r = TrainingReadinessMapper.build(
             RecoveryToday(energyScore = 5),
-            baseline = RecoveryBaseline(avgSorenessScore = 7, avgSleepHours = 5.5, avgEnergyScore = 4),
+            baseline = RecoveryBaseline(avgSorenessScore = 7.0, avgSleepHours = 5.5, avgEnergyScore = 4.0),
             sessionsThisWeek = 4,
         )
         assertNotNull(r)
@@ -147,9 +147,21 @@ class TrainingReadinessMapperTest {
     @Test fun `no deload when trained little even if recovery is poor`() {
         val r = TrainingReadinessMapper.build(
             RecoveryToday(energyScore = 5),
-            baseline = RecoveryBaseline(avgSorenessScore = 7, avgSleepHours = 5.5, avgEnergyScore = 4),
+            baseline = RecoveryBaseline(avgSorenessScore = 7.0, avgSleepHours = 5.5, avgEnergyScore = 4.0),
             sessionsThisWeek = 1,
         )
+        assertEquals(Mode.TRAIN, r!!.mode)
+    }
+
+    @Test fun `fractional soreness average below the deload gate does not trigger deload`() {
+        // avg soreness 5.5 sits just under the deload threshold (>= 6). The old Int-rounded baseline
+        // rounded 5.5 -> 6 and wrongly fired a deload; carrying the Double keeps the gate closed.
+        val r = TrainingReadinessMapper.build(
+            RecoveryToday(),
+            baseline = RecoveryBaseline(avgSorenessScore = 5.5, avgSleepHours = 5.5, avgEnergyScore = 3.0),
+            sessionsThisWeek = 4,
+        )
+        assertNotNull(r)
         assertEquals(Mode.TRAIN, r!!.mode)
     }
 
@@ -157,7 +169,7 @@ class TrainingReadinessMapperTest {
     @Test fun `falls back to the recent baseline when today has no recovery`() {
         val r = TrainingReadinessMapper.build(
             RecoveryToday(),
-            baseline = RecoveryBaseline(avgSorenessScore = 8, avgSleepHours = 5.0, avgEnergyScore = 7),
+            baseline = RecoveryBaseline(avgSorenessScore = 8.0, avgSleepHours = 5.0, avgEnergyScore = 7.0),
         )
         assertNotNull(r)
         assertEquals(Mode.TRAIN, r!!.mode)
@@ -170,7 +182,7 @@ class TrainingReadinessMapperTest {
             // Today reads LOW (soreness 8 + sleep 5 = 2 penalties)…
             RecoveryToday(sorenessScore = 8, sleepHours = 5.0, energyScore = 7),
             // …but the recent trend has been solid → soften to MODERATE.
-            baseline = RecoveryBaseline(avgSorenessScore = 2, avgSleepHours = 8.0, avgEnergyScore = 8),
+            baseline = RecoveryBaseline(avgSorenessScore = 2.0, avgSleepHours = 8.0, avgEnergyScore = 8.0),
         )
         assertNotNull(r)
         assertEquals(Mode.TRAIN, r!!.mode)

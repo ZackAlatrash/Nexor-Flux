@@ -1,5 +1,6 @@
 package com.zack.recomptracker.domain.coach
 
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -80,6 +81,32 @@ class ExperimentEvaluationTest {
         assertEquals("5.0", s.facts.values["baselineValue"])
         assertEquals("3.0", s.facts.values["currentValue"])
         assertTrue(s.dedupKey.startsWith("EXPERIMENT_RESULT|PROTEIN_HIT_NEXT_DAY_HUNGER|"))
+    }
+
+    @Test
+    fun `currentValue reads only the test window since the experiment start, not the whole context window`() {
+        // Baseline (pre-experiment) hunger was 6.0; since starting the experiment hunger has run 3.0.
+        // The evaluation must compare the SINCE-START window (3.0), not a blended full-window average
+        // (~4.9) that barely moves off the overlapping baseline.
+        val start = LocalDate.of(2026, 6, 24)
+        val hunger = (0 until 22).map { i ->
+            val date = CoachContextFixtures.TODAY.minusDays(i.toLong()) // 2026-07-01 .. 2026-06-10
+            MetricPoint(date, if (date.isBefore(start)) 6.0 else 3.0)
+        }
+        val ctx = CoachContextFixtures.context(body = CoachContextFixtures.body(hungerSeries = hunger))
+        val experiment = ActiveExperiment(
+            correlationId = "PROTEIN_HIT_NEXT_DAY_HUNGER",
+            hypothesis = "Hitting protein may curb next-day cravings.",
+            trackedMetric = "hunger",
+            baselineValue = 6.0,
+            startDateIso = "2026-06-24",
+        )
+
+        assertEquals(3.0, ExperimentEvaluation.currentValue(experiment, ctx)!!, 0.001)
+
+        val s = ExperimentEvaluation.evaluate(experiment, ctx)!!
+        assertEquals("3.0", s.facts.values["currentValue"])
+        assertEquals("IMPROVED", s.facts.values["direction"])
     }
 
     @Test

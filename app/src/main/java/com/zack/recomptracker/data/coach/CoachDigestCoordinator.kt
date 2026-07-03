@@ -8,6 +8,7 @@ import com.zack.recomptracker.domain.coach.CoachSignal
 import com.zack.recomptracker.domain.coach.CoachSignalEngine
 import com.zack.recomptracker.domain.coach.CoachSurface
 import com.zack.recomptracker.domain.coach.ExperimentEvaluation
+import com.zack.recomptracker.domain.coach.SignalKind
 import com.zack.recomptracker.domain.coach.SignalSelector
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.CoroutineScope
@@ -99,6 +100,9 @@ class CoachDigestCoordinator(
         inbox.stage(winner)
         if (winner != null) {
             inbox.markSeen(winner.dedupKey, today)
+            // The experiment result is cleared only once it actually reaches the slot, so a higher
+            // priority winner on maturity day doesn't silently discard it (it retries next run).
+            if (winner.kind == SignalKind.EXPERIMENT_RESULT) experiments?.clear()
             // Record the fired winner under the current week signature so recurrence detection aligns
             // with the weekly rhythm. Reuse the latest weekly-review signature the snapshot already
             // built (no new heavy computation); fall back to today's ISO date when no review exists.
@@ -125,8 +129,14 @@ class CoachDigestCoordinator(
         val store = experiments ?: return emptyList()
         val experiment = store.current() ?: return emptyList()
         val start = runCatching { java.time.LocalDate.parse(experiment.startDateIso) }.getOrNull()
-            ?: return emptyList()
-        if (ChronoUnit.DAYS.between(start, today) < ExperimentEvaluation.MIN_EXPERIMENT_DAYS) return emptyList()
+            ?: run {
+                // Unparseable start date → this experiment can never be evaluated; clear it so it
+                // can't wedge the single active-experiment slot forever.
+                store.clear()
+                return emptyList()
+            }
+        val age = ChronoUnit.DAYS.between(start, today)
+        if (age < ExperimentEvaluation.MIN_EXPERIMENT_DAYS) return emptyList()
 
         val result = ExperimentEvaluation.evaluate(
             ActiveExperiment(
@@ -138,9 +148,11 @@ class CoachDigestCoordinator(
             ),
             ctx,
         )
-        // The week is up: clear the experiment regardless of whether a metric value was computable, so
-        // a stuck experiment (metric no longer logged) can't linger forever.
-        store.clear()
+        // A computable result is cleared by the caller ONLY once it actually surfaces (wins the slot),
+        // so it isn't lost to a higher-priority winner on maturity day. Clear here only when there is
+        // nothing to surface (metric no longer logged) or the surfacing window has fully elapsed, so a
+        // stuck or perpetually out-ranked experiment can't linger forever.
+        if (result == null || age >= ExperimentEvaluation.MAX_EXPERIMENT_DAYS) store.clear()
         return listOfNotNull(result)
     }
 

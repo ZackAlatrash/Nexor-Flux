@@ -4,6 +4,7 @@ import com.zack.recomptracker.domain.coach.CoachDetectorSupport.fmt
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.isoWeek
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.severityFromDistance
 import java.time.DayOfWeek
+import java.time.LocalDate
 import kotlin.math.abs
 
 /**
@@ -265,8 +266,12 @@ internal object CrossSignalCorrelations {
 
         val weekendAvg = weekendCals.average()
         val weekdayAvg = weekdayCals.average()
-        // Effect = how many MORE kcal weekends run than weekdays (surplus direction positive).
+        // Effect = how many MORE kcal weekends run than weekdays (surplus direction positive). This
+        // candidate is a one-directional "weekend surplus" story: only fire when weekends actually run
+        // enough HIGHER. A lower-weekend user clears |effect| but the "(+delta) — surplus builds"
+        // framing would be inverted and self-contradictory, so stay silent.
         val effect = weekendAvg - weekdayAvg
+        if (effect < WEEKEND_SURPLUS_MIN_GAP) return null
         val weekendStr = fmt(weekendAvg, 0)
         val weekdayStr = fmt(weekdayAvg, 0)
         val deltaStr = fmt(abs(effect), 0)
@@ -385,6 +390,14 @@ object ExperimentEvaluation {
     /** An experiment runs at least this long before its result is evaluated (Q9 "week's up"). */
     const val MIN_EXPERIMENT_DAYS = 7
 
+    /**
+     * Hard upper bound on an experiment's life. Between [MIN_EXPERIMENT_DAYS] and this the result is
+     * eligible to surface (and clears once it does); past this it is force-cleared even if it never
+     * surfaced, so a metric that stopped being logged (or a result perpetually out-ranked) can't
+     * linger forever.
+     */
+    const val MAX_EXPERIMENT_DAYS = 14
+
     /** Minimum absolute move (metric units) before we call the metric "changed" rather than flat. */
     private const val MOVE_EPSILON = 0.3
 
@@ -400,14 +413,25 @@ object ExperimentEvaluation {
         else -> false
     }
 
-    /** Current window value of the tracked metric, or `null` when it can't be computed. */
-    fun currentValue(experiment: ActiveExperiment, ctx: CoachContext): Double? = when (experiment.trackedMetric) {
-        "hunger" -> ctx.body.hungerSeries.map { it.value }.averageOrNull()
-        "energy" -> ctx.body.energySeries.map { it.value }.averageOrNull()
-        "weekend_calories" -> ctx.nutrition.eatenByDate
-            .filterKeys { it.dayOfWeek == DayOfWeek.SATURDAY || it.dayOfWeek == DayOfWeek.SUNDAY }
-            .values.map { it.calories.toDouble() }.averageOrNull()
-        else -> null
+    /**
+     * The tracked metric's value over the TEST window — the days on/after the experiment start —
+     * or `null` when it can't be computed. Deliberately NOT the full 28-day context window: the
+     * stored baseline is the pre-experiment window average, so averaging the whole window again
+     * (~21 days of which overlap the baseline) barely moves and would mask a real behaviour change.
+     * Comparing the since-start window against the baseline is what makes the result meaningful.
+     */
+    fun currentValue(experiment: ActiveExperiment, ctx: CoachContext): Double? {
+        val start = runCatching { LocalDate.parse(experiment.startDateIso) }.getOrNull() ?: return null
+        return when (experiment.trackedMetric) {
+            "hunger" -> ctx.body.hungerSeries.filter { !it.date.isBefore(start) }.map { it.value }.averageOrNull()
+            "energy" -> ctx.body.energySeries.filter { !it.date.isBefore(start) }.map { it.value }.averageOrNull()
+            "weekend_calories" -> ctx.nutrition.eatenByDate
+                .filterKeys {
+                    (it.dayOfWeek == DayOfWeek.SATURDAY || it.dayOfWeek == DayOfWeek.SUNDAY) && !it.isBefore(start)
+                }
+                .values.map { it.calories.toDouble() }.averageOrNull()
+            else -> null
+        }
     }
 
     /** Classify the move from [baseline] to [current] given whether lower is the hoped direction. */

@@ -1,6 +1,7 @@
 package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.core.model.MacroTotals
+import java.time.DayOfWeek
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -105,6 +106,38 @@ class CrossSignalDiscoveryDetectorTest {
         // Default fixtures: every day hits protein (180=target), flat hunger/energy, no weekend spread
         // meaningful → protein groups can't split (all hits) and other gaps are ~0.
         val ctx = CoachContextFixtures.context()
+        assertNull(CrossSignalDiscoveryDetector().detect(ctx))
+    }
+
+    // ── Weekend surplus fires only when weekends are actually HIGHER ──────────────
+
+    /** 28 days of eaten macros where weekend calories differ from weekday by a fixed amount. */
+    private fun weekendVsWeekday(weekendCals: Int, weekdayCals: Int): Map<LocalDate, MacroTotals> =
+        (0 until 28).associate { i ->
+            val date = today.minusDays(i.toLong())
+            val weekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
+            // Protein pinned at target on every day so the protein candidate can't split (all hits),
+            // carbs constant so the carb candidate stays flat — leaving weekend as the only candidate.
+            date to MacroTotals(if (weekend) weekendCals else weekdayCals, 180.0, 250.0, 70.0)
+        }
+
+    @Test
+    fun `weekend surplus fires when weekends run higher than weekdays`() {
+        val ctx = CoachContextFixtures.context(
+            nutrition = CoachContextFixtures.nutrition(eatenByDate = weekendVsWeekday(2900, 2500)),
+        )
+        val s = CrossSignalDiscoveryDetector().detect(ctx)!!
+        assertEquals("WEEKEND_CALORIE_SURPLUS", s.facts.values["correlationId"])
+        assertTrue("verdict names a positive surplus", s.verdict.contains("+"))
+    }
+
+    @Test
+    fun `weekend surplus is silent when weekends run LOWER than weekdays`() {
+        // effect = 2300 - 2600 = -300; |effect| clears 150 but the direction is wrong — the card
+        // must not fire a "+300, weekends build the surplus" claim when weekends are actually lower.
+        val ctx = CoachContextFixtures.context(
+            nutrition = CoachContextFixtures.nutrition(eatenByDate = weekendVsWeekday(2300, 2600)),
+        )
         assertNull(CrossSignalDiscoveryDetector().detect(ctx))
     }
 

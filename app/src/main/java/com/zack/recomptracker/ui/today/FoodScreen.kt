@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -52,6 +53,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.zack.recomptracker.ui.component.PillStatus
 import androidx.compose.ui.Alignment
@@ -67,9 +69,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
-import com.zack.recomptracker.ui.component.GeneratedInsightCard
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.InsightCardHeader
 import com.zack.recomptracker.ui.component.WeekCalorieStrip
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
@@ -84,6 +87,7 @@ import com.zack.recomptracker.ui.theme.CornerCard
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
+import com.zack.recomptracker.ui.theme.Spacing
 import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
@@ -102,9 +106,9 @@ fun FoodScreen(
     onBrowseLibrary: () -> Unit,
     onEditEntryAmount: (slotId: Long?, slotName: String, entryId: Long, date: LocalDate) -> Unit,
     onCreateRecipeFromSelection: (List<com.zack.recomptracker.data.local.entity.RecipeIngredientEntity>) -> Unit = {},
+    onAskCoachForMeals: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val restOfDayInsightState by viewModel.restOfDayInsightState.collectAsStateWithLifecycle()
     val streakVm: com.zack.recomptracker.ui.streak.StreakViewModel =
         androidx.lifecycle.viewmodel.compose.viewModel(factory = com.zack.recomptracker.ui.LocalAppContainer.current.viewModelFactory)
     val streakUi by streakVm.uiState.collectAsStateWithLifecycle()
@@ -131,10 +135,6 @@ fun FoodScreen(
         onBrowseLibrary   = onBrowseLibrary,
         onEditEntryAmount = { slotId, slotName, entryId -> onEditEntryAmount(slotId, slotName, entryId, state.selectedDate) },
         onSelectDate      = viewModel::selectDate,
-        restOfDayInsightState  = restOfDayInsightState,
-        restOfDayAvailable     = state.restOfDayInsightContext?.hasSufficientData == true,
-        onRevealRestOfDay      = viewModel::onRestOfDayInsightVisible,
-        onRetryRestOfDay       = viewModel::retryRestOfDayInsight,
         onStartRecipeSelection = viewModel::startRecipeSelection,
         onToggleRecipeSelection = viewModel::toggleRecipeSelection,
         onCancelRecipeSelection = viewModel::cancelRecipeSelection,
@@ -142,6 +142,7 @@ fun FoodScreen(
             onCreateRecipeFromSelection(viewModel.selectedRecipeIngredients())
             viewModel.cancelRecipeSelection()
         },
+        onAskCoachForMeals = onAskCoachForMeals,
     )
 }
 
@@ -169,14 +170,11 @@ fun FoodContent(
     modifier: Modifier = Modifier,
     calorieStreak: com.zack.recomptracker.domain.streak.StreakResult =
         com.zack.recomptracker.domain.streak.StreakResult.ZERO,
-    restOfDayInsightState: AiInsightState = AiInsightState.Disabled,
-    restOfDayAvailable: Boolean = false,
-    onRevealRestOfDay: () -> Unit = {},
-    onRetryRestOfDay: () -> Unit = {},
     onStartRecipeSelection: (Long) -> Unit = {},
     onToggleRecipeSelection: (Long) -> Unit = {},
     onCancelRecipeSelection: () -> Unit = {},
     onSaveRecipeSelection: () -> Unit = {},
+    onAskCoachForMeals: () -> Unit = {},
 ) {
     val accent = LocalAppAccent.current
     val foodScreenOrbBrush = remember(accent.accent) {
@@ -256,13 +254,10 @@ fun FoodContent(
                     item { StalePlannedHint(count = state.stalePlannedCount) }
                 }
 
-                item {
-                    RestOfDayReveal(
-                        available = restOfDayAvailable,
-                        state = restOfDayInsightState,
-                        onReveal = onRevealRestOfDay,
-                        onRetry = onRetryRestOfDay,
-                    )
+                if (state.isToday) {
+                    state.mealSuggestion?.let { suggestion ->
+                        item { MealSuggestionCard(state = suggestion, onAskCoach = onAskCoachForMeals) }
+                    }
                 }
 
                 // Meals header
@@ -468,26 +463,6 @@ private fun ReconcilePlannedBanner(
     }
 }
 
-// ── Rest of Day Insight ──────────────────────────────────────────────────────
-
-@Composable
-private fun RestOfDayReveal(
-    available: Boolean,
-    state: AiInsightState,
-    onReveal: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    if (!available) return
-    // Start generation as soon as the pill is on screen.
-    androidx.compose.runtime.LaunchedEffect(Unit) { onReveal() }
-    GeneratedInsightCard(
-        title = "Rest of day",
-        state = state,
-        onRetry = onRetry,
-        variant = com.zack.recomptracker.ui.component.InsightCardVariant.PILL,
-    )
-}
-
 @Composable
 private fun StalePlannedHint(count: Int) {
     val appColors = LocalAppColors.current
@@ -508,6 +483,76 @@ private fun StalePlannedHint(count: Int) {
             color = appColors.textMuted,
         )
     }
+}
+
+// ── Meal suggestion ──────────────────────────────────────────────────────────
+
+@Composable
+private fun MealSuggestionCard(
+    state: MealSuggestionCardState,
+    onAskCoach: () -> Unit,
+) {
+    val appColors = LocalAppColors.current
+    // Collapsible glass card — reuses the expandable AI-coach card (AiInsightCard + InsightCardHeader).
+    // Starts COLLAPSED as a compact pill showing just the remaining-macro headline; tapping the header
+    // expands it to the full suggestions + "Get meal ideas" button, so it takes minimal space by default.
+    var collapsed by rememberSaveable(state.headline) { mutableStateOf(true) }
+    AiInsightCard(
+        borderMode = AiBorderMode.Ready,
+        modifier = Modifier.animateContentSize(spring()),
+        collapsed = collapsed,
+        contentPadding = if (collapsed) 12.dp else 16.dp,
+    ) {
+        InsightCardHeader(
+            title = "What to eat next",
+            collapsible = true,
+            collapsed = collapsed,
+            // Collapsed pill shows the card's title (not the macro headline); the headline moves to
+            // the expanded body below.
+            collapsedVerdict = "What to eat next",
+            onToggle = { collapsed = !collapsed },
+        )
+        if (!collapsed) {
+            Spacer(Modifier.height(10.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                Text(state.headline, style = AppType.cardTitle, color = appColors.textPrimary)
+                if (state.libraryThin) {
+                    Text(
+                        "Your library is thin here — ask the coach for ideas that fit.",
+                        style = AppType.cardSubtitle, color = appColors.textMuted,
+                    )
+                } else {
+                    state.suggestions.forEach { s ->
+                        Text(
+                            "${s.name} · ${s.amountLabel} · ${mealSuggestionMacroLine(state.focus, s.proteinG, s.carbsG)} · ${s.calories} kcal",
+                            style = AppType.body, color = appColors.textSecondary,
+                        )
+                    }
+                    state.combo?.let { c ->
+                        Text(
+                            "Combo: ${c.items.joinToString(" + ") { it.name }} · ${c.proteinG.roundToInt()} g P · ${c.calories} kcal",
+                            style = AppType.cardSubtitle, color = appColors.textMuted,
+                        )
+                    }
+                }
+                LiquidActionButton(
+                    text = "Get meal ideas",
+                    onClick = onAskCoach,
+                    isPrimary = true,
+                    small = true,
+                )
+            }
+        }
+    }
+}
+
+private fun mealSuggestionMacroLine(
+    focus: com.zack.recomptracker.domain.food.SuggestionFocus,
+    proteinG: Double,
+    carbsG: Double,
+): String = when (focus) {
+    com.zack.recomptracker.domain.food.SuggestionFocus.CARBS -> "${carbsG.roundToInt()} g carbs"
+    else -> "${proteinG.roundToInt()} g protein"
 }
 
 internal enum class CalorieDayStatus { BelowZone, GoalHit, Over, Missed }

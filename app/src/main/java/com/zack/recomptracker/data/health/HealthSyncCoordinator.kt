@@ -78,6 +78,28 @@ class HealthSyncCoordinator(
     }
 
     /**
+     * Fire-and-forget steps-only refresh, safe to call on every app foreground with NO debounce:
+     * steps rise continuously through the day, so unlike the full [syncIfDue] sync this always
+     * reads. It reconciles by provenance like any sync but leaves weight, sleep, and the full-sync
+     * timestamp untouched (so the debounced full sync still runs on its own schedule). No-op
+     * unless Health Connect is enabled and permitted; failures are logged, never surfaced.
+     */
+    fun syncStepsNow() {
+        appScope.launch {
+            val prefs = planRepository.preferences.first()
+            if (!prefs.healthConnectEnabled) return@launch
+            runCatching {
+                if (hcRepository.hasPermissions()) syncTodaySteps()
+            }.onFailure { Log.w(TAG, "Steps-only sync failed", it) }
+        }
+    }
+
+    private suspend fun syncTodaySteps() = mutex.withLock {
+        val steps = hcRepository.readStepsHistory(days = 1)
+        if (steps.isNotEmpty()) logRepository.applyHealthConnectStepsHistory(steps)
+    }
+
+    /**
      * Suspending guarded sync for background work (WorkManager): syncs only if Health Connect is
      * enabled and permitted. Returns true if a sync ran. Unlike [syncIfDue] this awaits completion
      * so the Worker can report a result.

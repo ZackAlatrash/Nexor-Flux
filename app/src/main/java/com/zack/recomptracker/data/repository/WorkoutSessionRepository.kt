@@ -185,6 +185,14 @@ open class WorkoutSessionRepository(
     open fun observeCompletedSessions(): Flow<List<WorkoutSession>> =
         sessionDao.observeCompletedSessions().map { list -> list.map { it.toDomain() } }
 
+    /**
+     * Windowed one-shot read of completed sessions dated on/after [start], mapped to the domain
+     * model. Bounds the training snapshot load for the coach context builder instead of pulling all
+     * history via [observeCompletedSessions] (docs/ai-redesign/08-technical-architecture.md §6).
+     */
+    open suspend fun getCompletedSessionsSince(start: LocalDate): List<WorkoutSession> =
+        sessionDao.getCompletedSessionsSince(start.toString()).map { it.toDomain() }
+
     open suspend fun getSession(sessionId: Long): WorkoutSession? =
         sessionDao.getSessionWithDetails(sessionId)?.toDomain()
 

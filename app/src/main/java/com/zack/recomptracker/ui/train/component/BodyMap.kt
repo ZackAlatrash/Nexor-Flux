@@ -36,15 +36,18 @@ import kotlin.math.ceil
 private val FaintBody = Color.White.copy(alpha = 0.13f)
 
 /**
- * Two full body silhouettes (front + back) side by side. All muscles drawn faint; the slugs for
- * [selected] are filled with the theme accent. Tapping a muscle reports its [MuscleCategory] via
- * [onMuscleTap] (no-op for non-muscle regions). Reuses the shared MuscleArt path data.
+ * Two full body silhouettes (front + back) side by side. Muscles are shaded by [intensities] — a
+ * per-category ABSOLUTE weekly set count fed through [heatColor] (undertrained → green → overtrained
+ * red): 0 sets reads faint. When [intensities] is empty the original faint look is preserved. The
+ * slugs for [selected] are always filled solid accent (tap-to-select). Tapping a muscle reports its
+ * [MuscleCategory] via [onMuscleTap] (no-op for non-muscle regions). Reuses the shared MuscleArt path data.
  */
 @Composable
 fun BodyMap(
     selected: MuscleCategory?,
     onMuscleTap: (MuscleCategory) -> Unit,
     modifier: Modifier = Modifier,
+    intensities: Map<MuscleCategory, Float> = emptyMap(),
 ) {
     val context = LocalContext.current
     val appColors = LocalAppColors.current
@@ -60,12 +63,12 @@ fun BodyMap(
         BodyFigure(
             label = "FRONT", paths = front, highlightSlugs = highlight?.front.orEmpty(),
             tint = accent.accent, faintColor = FaintBody, labelColor = appColors.textMuted,
-            onMuscleTap = onMuscleTap, modifier = Modifier.weight(1f),
+            intensities = intensities, onMuscleTap = onMuscleTap, modifier = Modifier.weight(1f),
         )
         BodyFigure(
             label = "BACK", paths = back, highlightSlugs = highlight?.back.orEmpty(),
             tint = accent.accent, faintColor = FaintBody, labelColor = appColors.textMuted,
-            onMuscleTap = onMuscleTap, modifier = Modifier.weight(1f),
+            intensities = intensities, onMuscleTap = onMuscleTap, modifier = Modifier.weight(1f),
         )
     }
 }
@@ -78,6 +81,7 @@ private fun androidx.compose.foundation.layout.RowScope.BodyFigure(
     tint: Color,
     faintColor: Color,
     labelColor: Color,
+    intensities: Map<MuscleCategory, Float>,
     onMuscleTap: (MuscleCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -111,7 +115,7 @@ private fun androidx.compose.foundation.layout.RowScope.BodyFigure(
                 },
         ) {
             val t = BodyMapGeometry.fit(bounds.left, bounds.top, bounds.right, bounds.bottom, size.width, size.height)
-            drawFigure(paths, highlightSlugs, tint, faintColor, t)
+            drawFigure(paths, highlightSlugs, tint, faintColor, intensities, t)
         }
         Text(text = label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = labelColor, modifier = Modifier.padding(top = 4.dp))
     }
@@ -122,12 +126,19 @@ private fun DrawScope.drawFigure(
     highlightSlugs: Set<String>,
     tint: Color,
     faintColor: Color,
+    intensities: Map<MuscleCategory, Float>,
     t: BodyMapGeometry.FitTransform,
 ) {
     translate(left = t.dx, top = t.dy) {
         scale(t.scale, t.scale, pivot = Offset.Zero) {
             paths.forEach { mp ->
-                drawPath(mp.path, if (mp.slug in highlightSlugs) tint else faintColor)
+                val heat = categoryForSlug(mp.slug)?.let { intensities[it] } ?: 0f
+                val color = when {
+                    mp.slug in highlightSlugs -> tint // tapped → solid accent (distinct from the green heat)
+                    heat <= 0f -> faintColor // untrained this week → uncolored, like the base silhouette
+                    else -> heatColor(heat).copy(alpha = 0.9f) // trained → light→deep green by volume
+                }
+                drawPath(mp.path, color)
             }
         }
     }

@@ -1,0 +1,59 @@
+package com.zack.recomptracker.ai
+
+/**
+ * Backend-neutral coach tool schemas used by the cloud coach.
+ *
+ * Each entry is a raw JSON object `{"name":..,"description":..,"parameters":..}`, sent to the model
+ * as OpenAI `tools` entries.
+ */
+val COACH_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"get_today_summary","description":"Get a specific day's food log, macro totals, and daily metrics. Omit 'date' for today.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"ISO date YYYY-MM-DD. Omit for today."}},"required":[]}}""",
+    """{"name":"get_weekly_trends","description":"Get last 7 days of daily macro totals (calories, protein, carbs, fat) and adherence percent. Use this for weekly trends or any multi-day macro question.","parameters":{"type":"object","properties":{},"required":[]}}""",
+    """{"name":"get_training_summary","description":"Get a 28-day training snapshot: per-lift latest estimated 1RM and trend (up/flat/down), total volume, sessions per week, recent reps-in-reserve (RIR) and soreness. Use for any lifting, strength, e1RM, volume, frequency, or recovery-load question.","parameters":{"type":"object","properties":{},"required":[]}}""",
+    """{"name":"get_body_trends","description":"Get a 28-day body-measurement trend: weight, waist, and skinfold trends per week, plus latest weight & waist and 7-day average weight. Use for weight, waist, recomposition, or \"am I recomping?\" questions.","parameters":{"type":"object","properties":{},"required":[]}}""",
+    """{"name":"search_food_library","description":"Search your saved food library by name. If the user specified a weight in grams, pass it as 'grams' and the tool returns macros already scaled to that weight — use those directly in log_meal.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Food name only — no quantities or weights"},"grams":{"type":"number","description":"Optional: weight in grams requested by the user. If provided, returned macros are pre-scaled to this weight."}},"required":["query"]}}""",
+    """{"name":"log_meal","description":"Add a meal to the food log. Defaults to today. Pass a future 'date' to PLAN the meal for that day instead of logging it as eaten. The tool looks up your food library automatically and uses the correct macros. Pass grams if the user specified a weight. If the food is NOT in the library, you MUST also provide calories, protein_g, carbs_g, and fat_g.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Food name"},"grams":{"type":"number","description":"Optional: weight in grams. Macros are scaled automatically if food is in library."},"meal_type":{"type":"string","description":"One of: Breakfast, Lunch, Dinner, Snack. Default: Snack"},"date":{"type":"string","description":"Optional ISO date YYYY-MM-DD. A future date plans the meal instead of logging it eaten. Omit for today."},"calories":{"type":"integer","description":"Required only if food is NOT in your library. Omit for library foods."},"protein_g":{"type":"number","description":"Required only if food is NOT in your library."},"carbs_g":{"type":"number","description":"Required only if food is NOT in your library."},"fat_g":{"type":"number","description":"Required only if food is NOT in your library."}},"required":["name"]}}""",
+    """{"name":"log_metric","description":"Record a body or recovery metric for today.","parameters":{"type":"object","properties":{"metric":{"type":"string","description":"One of: weight_kg, waist_cm, sleep_hours, energy_score, hunger_score, soreness_score"},"value":{"type":"number","description":"The numeric value to record"}},"required":["metric","value"]}}""",
+    """{"name":"update_calorie_target","description":"Update the daily calorie target. Value must be between 500 and 6000.","parameters":{"type":"object","properties":{"target_calories":{"type":"integer","description":"New daily calorie target in kcal (500–6000)"}},"required":["target_calories"]}}""",
+)
+
+/** Tool names that mutate user data and therefore require explicit confirmation. */
+val COACH_WRITE_TOOLS: Set<String> =
+    setOf("log_meal", "log_metric", "update_calorie_target", "create_routine", "edit_routine", "create_exercise", "delete_meal", "edit_meal")
+
+/**
+ * Web-search tool schema. Read-only, so it is not in [COACH_WRITE_TOOLS] and runs without user
+ * confirmation.
+ */
+val SEARCH_WEB_TOOL_SCHEMA: String =
+    """{"name":"search_web","description":"Search the public web for a fact you don't already have — e.g. calories or macros for a restaurant or packaged food that isn't in the user's library, or a general nutrition, supplement, or training question. Returns a short answer plus source URLs. Always cite the source URL in your reply.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"A concise search query, e.g. \"McDonald's Big Mac calories\""}},"required":["query"]}}"""
+
+/** Cloud-coach routine-management tools (create/edit routines + custom exercises). */
+val ROUTINE_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"get_routines","description":"List the user's saved training routines with each exercise's name, number of sets, and target reps/weight. Call before editing a routine.","parameters":{"type":"object","properties":{},"required":[]}}""",
+    """{"name":"search_exercises","description":"Search the exercise library by name. Returns up to 8 matches with primary muscles. Use to find real exercises before adding them to a routine.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Exercise name to search for"}},"required":["query"]}}""",
+    """{"name":"create_routine","description":"Create a new training routine. 'sets' is the number of sets for that exercise; 'reps' and 'weight_kg' are optional targets.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Routine name, e.g. 'Push Day'"},"exercises":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"sets":{"type":"integer"},"reps":{"type":"integer"},"weight_kg":{"type":"number"}},"required":["name","sets"]}}},"required":["name","exercises"]}}""",
+    """{"name":"edit_routine","description":"Edit an existing routine by applying only the changes you specify (existing exercises are preserved). Use 'add' to append exercises, 'remove' to drop them by name, 'retarget' to change an exercise's sets/reps/weight, and 'new_name' to rename.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Name of the routine to edit"},"add":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"sets":{"type":"integer"},"reps":{"type":"integer"},"weight_kg":{"type":"number"}},"required":["name","sets"]}},"remove":{"type":"array","items":{"type":"string"}},"retarget":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"sets":{"type":"integer"},"reps":{"type":"integer"},"weight_kg":{"type":"number"}},"required":["name"]}},"new_name":{"type":"string"}},"required":["name"]}}""",
+    """{"name":"create_exercise","description":"Create a custom exercise in the library when the user names one that isn't found. Specify the muscle group(s) it works.","parameters":{"type":"object","properties":{"name":{"type":"string"},"primary_muscles":{"type":"array","items":{"type":"string"}},"secondary_muscles":{"type":"array","items":{"type":"string"}},"equipment":{"type":"string"}},"required":["name","primary_muscles"]}}""",
+)
+
+/** Cloud-coach tools for fixing mislogged meals. */
+val MEAL_EDIT_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"delete_meal","description":"Remove a meal the user already logged, identified by name. Pass 'date' (YYYY-MM-DD) if it was not today. If several entries match, the tool returns needs_disambiguation with the candidates — ask the user which.","parameters":{"type":"object","properties":{"name":{"type":"string","description":"Name of the logged meal to remove"},"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":["name"]}}""",
+    """{"name":"edit_meal","description":"Change a meal the user already logged. Pass 'grams' to rescale its macros, or pass calories/macros directly to override. Identified by name; pass 'date' if not today.","parameters":{"type":"object","properties":{"name":{"type":"string"},"grams":{"type":"number"},"calories":{"type":"integer"},"protein_g":{"type":"number"},"carbs_g":{"type":"number"},"fat_g":{"type":"number"},"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":["name"]}}""",
+)
+
+/** Cloud-coach memory tools. Deliberately NOT in COACH_WRITE_TOOLS — low-stakes, reversible in the
+ *  Coach memory screen, so they run without a confirmation dialog. */
+val MEMORY_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"remember","description":"Save a fact about the user to your memory (diet, injuries, preferences, context) when they ask you to remember something. It will show in the user's Coach memory screen.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"The fact to remember, e.g. 'Vegetarian' or 'Bad left knee — no barbell squats'"}},"required":["text"]}}""",
+    """{"name":"forget","description":"Remove a fact from your memory when the user asks you to forget it. Matches the closest stored fact.","parameters":{"type":"object","properties":{"text":{"type":"string","description":"The fact to forget"}},"required":["text"]}}""",
+)
+
+/** Cloud-coach meal-suggestion tool. Read-only — not in COACH_WRITE_TOOLS. */
+val SUGGESTION_TOOL_SCHEMAS: List<String> = listOf(
+    """{"name":"suggest_meals","description":"Get what the user could eat to hit their remaining macros for the day. Returns remaining calories/macros, the focus macro (protein until it's ~met, then carbs), portioned suggestions from their food library (exact macros), and combos. Use for 'what should I eat', 'how do I hit my protein', 'I have calories left'.","parameters":{"type":"object","properties":{"date":{"type":"string","description":"Optional ISO date; omit for today"}},"required":[]}}""",
+)
+
+/** The cloud coach's full tool list: shared tools + web search + routine management + meal edits. */
+val CLOUD_COACH_TOOL_SCHEMAS: List<String> = COACH_TOOL_SCHEMAS + SEARCH_WEB_TOOL_SCHEMA + ROUTINE_TOOL_SCHEMAS + MEAL_EDIT_TOOL_SCHEMAS + MEMORY_TOOL_SCHEMAS + SUGGESTION_TOOL_SCHEMAS

@@ -30,6 +30,11 @@ data class WeeklyBriefing(
     val signals: List<SignalLine>,
     val action: ActionBlock,
     val watchNext: String,
+    /**
+     * Deterministic Weekly Pattern Spotlight facts (top two), rendered verbatim — the relocated
+     * Weekly Pattern card (Phase 2D). Empty when no pattern fires. Never model-generated.
+     */
+    val patternSpotlight: List<String> = emptyList(),
 )
 
 /** Prose-only payload the model returns. No numbers, no verdict. */

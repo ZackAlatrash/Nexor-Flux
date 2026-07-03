@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -310,6 +311,10 @@ fun SessionSummaryScreen(
                         PrBadge()
                     }
                 }
+                if (recap.isPr) {
+                    Spacer(Modifier.height(11.dp))
+                    PrCallout(recap = recap)
+                }
             }
         }
 
@@ -471,6 +476,46 @@ private fun DurationEditDialog(
             }
         },
     )
+}
+
+// ── Live PR callout (forward-looking record banner) ───────────────────────────
+
+@Composable
+private fun PrCallout(recap: ExerciseRecap) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val callout = PrCalloutFormatter.format(recap.name, recap.topSet)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CornerSmall))
+            .background(accent.tintedSurface)
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerSmall))
+            .padding(horizontal = 11.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.EmojiEvents,
+            contentDescription = null,
+            tint = accent.inkLight,
+            modifier = Modifier.size(18.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = callout.headline,
+                style = AppType.label,
+                color = accent.inkLight,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = callout.forwardLine,
+                style = AppType.cardSubtitle,
+                color = appColors.textMuted,
+            )
+        }
+    }
 }
 
 // ── PR badge chip ─────────────────────────────────────────────────────────────

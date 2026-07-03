@@ -378,13 +378,15 @@ fun GlassInputField(
     val bgColor = if (focused) accent.tintedSurface else if (appColors.isDark) Color(0x40000000) else appColors.cardSurface
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(
-            text = label.uppercase(),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.textMuted,
-            letterSpacing = 0.10.sp,
-        )
+        if (label.isNotBlank()) {
+            Text(
+                text = label.uppercase(),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = appColors.textMuted,
+                letterSpacing = 0.10.sp,
+            )
+        }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,

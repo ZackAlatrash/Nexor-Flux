@@ -27,7 +27,6 @@ import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.zack.recomptracker.ai.AiBackend
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.ai.CloudCoachCoordinator
 import com.zack.recomptracker.ai.CloudInsightCoordinator
@@ -35,17 +34,9 @@ import com.zack.recomptracker.ai.CoachCoordinator
 import com.zack.recomptracker.ai.CoachToolExecutor
 import com.zack.recomptracker.ai.CoachHandoffStore
 import com.zack.recomptracker.ai.CoachToolsAdapter
-import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.CloudNameGenerator
-import com.zack.recomptracker.ai.GemmaServiceHolder
-import com.zack.recomptracker.ai.GemmaCoachCoordinator
-import com.zack.recomptracker.ai.GemmaInsightCoordinator
-import com.zack.recomptracker.ai.LocalNameGenerator
+import com.zack.recomptracker.ai.CloudRecipeNamer
 import com.zack.recomptracker.ai.RecipeNamer
-import com.zack.recomptracker.ai.RoutingCoachCoordinator
-import com.zack.recomptracker.ai.RoutingInsightCoordinator
 import com.zack.recomptracker.ai.CLOUD_COACH_TOOL_SCHEMAS
-import com.zack.recomptracker.ai.RoutingRecipeNamer
 import com.zack.recomptracker.ai.knowledge.KeywordKnowledgeRetriever
 import com.zack.recomptracker.ai.knowledge.KnowledgeCorpus
 import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
@@ -60,6 +51,9 @@ import com.zack.recomptracker.data.remote.TavilyWebSearchProvider
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import com.zack.recomptracker.ui.coach.CoachViewModel
 import com.zack.recomptracker.ui.body.BodyEditViewModel
@@ -68,8 +62,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
+import com.zack.recomptracker.ui.aicoach.CoachMemoryViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
+import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
@@ -95,9 +91,29 @@ import com.zack.recomptracker.data.repository.RecipeRepository
 import com.zack.recomptracker.data.repository.StreakRepository
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
+import com.zack.recomptracker.ai.CoachPhrasingService
 import com.zack.recomptracker.ai.WeeklyBriefingGenerator
+import com.zack.recomptracker.ai.WeeklyCoachNote
+import com.zack.recomptracker.data.coach.CoachContextBuilder
+import com.zack.recomptracker.data.coach.CoachContextCache
+import com.zack.recomptracker.data.coach.CoachDigestCoordinator
+import com.zack.recomptracker.data.coach.CoachExperimentStore
+import com.zack.recomptracker.data.coach.CoachInboxRepository
+import com.zack.recomptracker.data.coach.CoachJourneyStore
+import com.zack.recomptracker.data.coach.CoachMemoryStore
+import com.zack.recomptracker.data.coach.AndroidCoachNotifier
+import com.zack.recomptracker.data.coach.CoachNotificationPreferences
+import com.zack.recomptracker.data.coach.CoachPushEmitter
+import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
+import com.zack.recomptracker.domain.coach.RateLimiter
+import com.zack.recomptracker.domain.coach.CoachSignalEngine
+import com.zack.recomptracker.domain.coach.CoachSurface
+import com.zack.recomptracker.domain.coach.SignalSelector
 import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
+import com.zack.recomptracker.domain.activity.ActivitySummary
+import com.zack.recomptracker.domain.review.WeeklyActivity
 import com.zack.recomptracker.domain.review.WeeklyReviewComputer
+import com.zack.recomptracker.domain.review.WeeklyTrainingBuilder
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import com.zack.recomptracker.domain.review.WeeklyReviewData
 import com.zack.recomptracker.ui.review.WeeklyReviewConfig
@@ -107,6 +123,9 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.domain.adherence.NutritionDay
+import com.zack.recomptracker.domain.insight.DayNutrition
+import com.zack.recomptracker.domain.insight.InsightEngine
+import com.zack.recomptracker.domain.insight.NutritionTargets
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
@@ -201,7 +220,6 @@ class AppContainer(context: Context) {
         }
     }
 
-    val gemmaServiceHolder = GemmaServiceHolder(context)
     val secureKeyStore = SecureKeyStore(context)
     val openAiCompatClient = OpenAiCompatClient()
 
@@ -224,58 +242,87 @@ class AppContainer(context: Context) {
             present && hasKey
         }.stateIn(appScope, SharingStarted.Eagerly, false)
 
-    // ── Local (Gemma) coordinators ───────────────────────────────────────────────
-    private val gemmaInsightCoordinator: AiInsightCoordinator = GemmaInsightCoordinator(
-        context = context,
-        aiEnabledFlow = uiPreferences.aiInsightsEnabled,
-        scope = appScope,
-        serviceHolder = gemmaServiceHolder,
-        uiPreferences = uiPreferences,
-    )
     private val webSearchProvider = TavilyWebSearchProvider(
         keyProvider = { secureKeyStore.getWebSearchKey() },
     )
+    // Coach freeform memory: user-editable facts the coach reads into its chat prompt and can
+    // write via remember/forget. Constructed once here; also wired into the adapter (below) and
+    // the CoachMemoryViewModel factory.
+    val coachMemoryStore = CoachMemoryStore(context.applicationContext, dateProvider)
+
     private val coachToolExecutor = CoachToolExecutor(
         logRepository = logRepository,
         planRepository = planRepository,
         dateProvider = dateProvider,
         webSearchProvider = webSearchProvider,
+        workoutSessionRepository = workoutSessionRepository,
+        workoutRepository = workoutRepository,
+        exerciseLibraryRepository = exerciseLibraryRepository,
+        coachMemory = coachMemoryStore,
     )
-    private val gemmaCoachCoordinator: CoachCoordinator = GemmaCoachCoordinator(
-        serviceHolder = gemmaServiceHolder,
-        insightCoordinator = gemmaInsightCoordinator,
-        toolExecutor = coachToolExecutor,
-        planRepository = planRepository,
-        userProfileStore = userProfilePreferencesStore,
-        dateProvider = dateProvider,
-        scope = appScope,
-    )
-
     val coachHandoffStore = CoachHandoffStore()
 
+    // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
+    // invalid, so a bad ingestion run can never crash the app. Loaded synchronously here — fine for
+    // the small seed corpus; TODO: move to async init if the corpus grows beyond ~50 chunks.
+    // Shared by the cloud coach chat and the weekly briefing so both ground prose in the same corpus.
+    private val knowledgeInjector: KnowledgeInjector = runCatching {
+        val raw = context.applicationContext.assets
+            .open("knowledge/corpus.json")
+            .bufferedReader()
+            .use { it.readText() }
+        RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
+    }.getOrElse {
+        Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
+        NoOpKnowledgeInjector
+    }
+
+    // Multi-week coach memory: one shared journey ledger. The digest records fired signals + weekly
+    // verdicts into it; the briefing and chat prompts read its narrative. See Phase 5 / §10.
+    val coachJourneyStore = CoachJourneyStore(context.applicationContext, dateProvider)
+
     val weeklyReviewComputer = WeeklyReviewComputer()
-    val weeklyBriefingGenerator = WeeklyBriefingGenerator(openAiCompatClient)
+    val weeklyBriefingGenerator = WeeklyBriefingGenerator(
+        openAiCompatClient,
+        knowledgeInjector = knowledgeInjector,
+        journey = coachJourneyStore,
+    )
     val weeklyBriefingRepository = WeeklyBriefingRepository(database.weeklyReviewDao())
 
-    /** Feature gate: cloud backend selected, config complete, AI enabled. */
+    /** Feature gate: cloud config complete, AI enabled. */
     val cloudBriefingActive: StateFlow<Boolean> = combine(
-        uiPreferences.aiBackend,
         cloudConfigComplete,
         uiPreferences.aiInsightsEnabled,
-    ) { backend, complete, enabled ->
-        backend == AiBackend.CLOUD && complete && enabled
+    ) { complete, enabled ->
+        complete && enabled
     }.stateIn(appScope, SharingStarted.Eagerly, false)
 
     /** Current review week's deterministic data, recomputed from the same sources as the dashboard. */
     val weeklyReviewDataFlow: Flow<WeeklyReviewData?> = combine(
-        logRepository.observeDailyLogs(),
-        logRepository.observeMealEntriesSince(dateProvider.today().minusDays(27)),
-        logRepository.observePerformances(),
-        planRepository.preferences,
-        planRepository.observeVersions(),
-    ) { logs, meals, performances, prefs, versions ->
-        computeWeeklyReviewData(logs, meals, performances, prefs, versions)
+        combine(
+            logRepository.observeDailyLogs(),
+            logRepository.observeMealEntriesSince(dateProvider.today().minusDays(27)),
+            logRepository.observePerformances(),
+            planRepository.preferences,
+            planRepository.observeVersions(),
+        ) { logs, meals, performances, prefs, versions ->
+            NutritionBodyInputs(logs, meals, performances, prefs, versions)
+        },
+        workoutSessionRepository.observeCompletedSessions(),
+    ) { base, sessions ->
+        computeWeeklyReviewData(
+            base.logs, base.meals, base.performances, base.prefs, base.versions, sessions,
+        )
     }
+
+    /** Bundles the five nutrition/body flows so the review data can also fold in training sessions. */
+    private data class NutritionBodyInputs(
+        val logs: List<DailyLogEntity>,
+        val meals: List<MealEntryEntity>,
+        val performances: List<LiftPerformanceEntity>,
+        val prefs: PlanPreferences,
+        val versions: List<PlanVersion>,
+    )
 
     fun cloudConfigForBriefing(): CloudConfig? = cloudConfigFlow.value
 
@@ -285,6 +332,7 @@ class AppContainer(context: Context) {
         performances: List<LiftPerformanceEntity>,
         prefs: PlanPreferences,
         versions: List<PlanVersion>,
+        completedSessions: List<com.zack.recomptracker.domain.workout.WorkoutSession>,
     ): WeeklyReviewData? {
         val today = dateProvider.today()
         val meals = allMeals.filterNot { it.planned }
@@ -329,33 +377,72 @@ class AppContainer(context: Context) {
         val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
         val weekEndTarget = PlanHistory.planOnOrFallback(versions, today, prefs.toPlanTargets()).calories
-        return weeklyReviewComputer.build(weekStart, input, result, weekEndTarget)
+        // Activity domain (steps) — the fourth domain fed into the weekly check-in. Derived from the
+        // step logs via the shared ActivitySummary (no duplicated math), this week vs last week.
+        val stepsByDate = logs28.mapNotNull { l -> l.steps?.let { LocalDate.parse(l.date) to it } }.toMap()
+        val activity = WeeklyActivity(
+            avgSteps7 = ActivitySummary.averageDailySteps(stepsByDate, today, 7),
+            avgStepsPrev7 = ActivitySummary.averageDailySteps(stepsByDate, today.minusDays(7), 7),
+            stepGoal = null,
+        )
+        // Training domain (SUPPORTING) — reuse the shared TrainingDerivations e1RM/trend math over the
+        // completed-session window (matches get_training_summary). Null when nothing was logged.
+        val datedSessions = completedSessions
+            .mapNotNull { s -> runCatching { LocalDate.parse(s.date) }.getOrNull()?.let { it to s } }
+            .filter { (d, _) -> d in last28Start..today }
+        val training = WeeklyTrainingBuilder.build(datedSessions, today)
+        // Weekly Pattern Spotlight (Phase 2D) — the top two deterministic pattern facts over the same
+        // 14-day window, computed by InsightEngine (relocated from the dashboard card into the briefing).
+        val patternDays = (0..13).map { off ->
+            val d = last14Start.plusDays(off.toLong())
+            val t = mealsByDate[d].orEmpty().macroTotals()
+            DayNutrition(d, t.calories, t.proteinG, t.carbsG, t.fatG, logged = t.calories > 0)
+        }
+        val patternTargets = NutritionTargets(
+            calories = prefs.targetCalories,
+            proteinG = prefs.targetProteinG,
+            carbsG = prefs.targetCarbsG,
+            fatG = prefs.targetFatG,
+            calorieZoneLower = prefs.calorieZoneLowerBound,
+            calorieZoneUpper = prefs.calorieZoneUpperBound,
+        )
+        val patternFacts = InsightEngine.detectTopFacts(patternDays, patternTargets, n = 2)
+        return weeklyReviewComputer.build(
+            weekStart, input, result, weekEndTarget, activity, training, patternFacts,
+        )
+    }
+
+    /**
+     * SUPPORTING "what the coach noticed this week" note for the briefing (D45): the deterministic
+     * engine's WEEKLY-surface winner, mapped to number-safe text. A passive READ — it runs the same
+     * catalog the digest does but selects with an empty seen-ledger (no cooldown side effects, no push,
+     * no inbox write). Null when the engine has nothing weekly to say. The briefing verdict/numbers
+     * remain authoritative; this only colours prose (see WeeklyBriefingGenerator/PromptBuilder).
+     */
+    suspend fun weeklyCoachNote(): WeeklyCoachNote? {
+        val ctx = runCatching { coachContextCache.get() }.getOrNull() ?: return null
+        val signals = coachSignalEngine.evaluate(ctx)
+        val winner = signalSelector.selectForSurface(
+            CoachSurface.WEEKLY, signals, emptyMap(), dateProvider.today(),
+        ).winner ?: return null
+        return WeeklyCoachNote(statement = winner.verdict, rationale = winner.fallbackText)
     }
 
     // ── Cloud coordinators ─────────────────────────────────────────────────────────
-    private val cloudInsightCoordinator: AiInsightCoordinator = CloudInsightCoordinator(
+    // Exposed (was private) so the migrated insight cards (Trends PROGRESS_TREND, Body
+    // RECOVERY_READINESS) bind straight to the cloud coordinator, no longer via the router (Q6a,
+    // Phase-8 enabler). Grounded in the same knowledge corpus the coach + briefing use (D33).
+    val cloudInsightCoordinator: AiInsightCoordinator = CloudInsightCoordinator(
         aiEnabledFlow = uiPreferences.aiInsightsEnabled,
         configFlow = cloudConfigFlow,
         client = openAiCompatClient,
         scope = appScope,
+        knowledgeInjector = knowledgeInjector,
     )
     private val cloudReadyFlow = combine(
         uiPreferences.aiInsightsEnabled,
         cloudConfigComplete,
     ) { enabled, complete -> enabled && complete }
-    // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
-    // invalid, so a bad ingestion run can never crash the app. Loaded synchronously here — fine for
-    // the small seed corpus; TODO: move to async init if the corpus grows beyond ~50 chunks.
-    private val knowledgeInjector: KnowledgeInjector = runCatching {
-        val raw = context.applicationContext.assets
-            .open("knowledge/corpus.json")
-            .bufferedReader()
-            .use { it.readText() }
-        RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
-    }.getOrElse {
-        Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
-        NoOpKnowledgeInjector
-    }
 
     private val cloudCoachCoordinator: CoachCoordinator = CloudCoachCoordinator(
         cloudReadyFlow = cloudReadyFlow,
@@ -367,55 +454,91 @@ class AppContainer(context: Context) {
             userProfileStore = userProfilePreferencesStore,
             dateProvider = dateProvider,
             handoffStore = coachHandoffStore,
+            journey = coachJourneyStore,
+            coachMemory = coachMemoryStore,
         ),
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
         toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
     )
 
-    // ── Routers (handed out to ViewModels) ──────────────────────────────────────────
-    val aiInsightCoordinator: AiInsightCoordinator = RoutingInsightCoordinator(
-        local = gemmaInsightCoordinator,
-        cloud = cloudInsightCoordinator,
-        backendFlow = uiPreferences.aiBackend,
-        cloudConfigCompleteFlow = cloudConfigComplete,
-        scope = appScope,
+    // ── Proactive coaching spine (deterministic engine → inbox; cloud phrasing on open) ──
+    val coachContextBuilder = CoachContextBuilder(
+        logRepository = logRepository,
+        planRepository = planRepository,
+        workoutSessionRepository = workoutSessionRepository,
+        streakRepository = streakRepository,
+        userProfileStore = userProfilePreferencesStore,
+        dateProvider = dateProvider,
+    )
+    val coachContextCache = CoachContextCache(coachContextBuilder, dateProvider).also { cache ->
+        // A plan or profile edit must invalidate the proactive-engine context snapshot so the next
+        // context build (weekly coach note, next digest run, forced refresh) reflects the new targets.
+        // Without this the cache only rebuilds on a calendar-day rollover, so a same-day change to
+        // calorie/macro targets (or the profile's gym-session target) would be served stale until the
+        // next day. `drop(1)` skips each flow's initial (current-value) emission so we invalidate only
+        // on an actual change, not on startup.
+        appScope.launch {
+            merge(
+                planRepository.preferences.distinctUntilChanged().drop(1).map { },
+                userProfilePreferencesStore.preferences.distinctUntilChanged().drop(1).map { },
+            ).collect { cache.invalidate() }
+        }
+    }
+    val coachSignalEngine: CoachSignalEngine = CoachSignalEngine.default()
+    val signalSelector = SignalSelector()
+    val coachInboxRepository = CoachInboxRepository(context.applicationContext)
+
+    /** Phase 5: the single active Cross-Signal Discovery experiment (Track this → evaluation). */
+    val coachExperimentStore = CoachExperimentStore(context.applicationContext)
+
+    /** Stage-2 phrasing decoration for the featured signal, on demand when a surface opens. */
+    val coachPhrasingService = CoachPhrasingService(openAiCompatClient) { cloudConfigFlow.value }
+
+    // ── Phase-5 push layer ───────────────────────────────────────────────────────────
+    val pushHistoryStore = com.zack.recomptracker.data.coach.PushHistoryStore(
+        context.applicationContext, dateProvider,
+    )
+    val coachNotificationPreferences = CoachNotificationPreferences(context.applicationContext)
+    val coachNotifier = AndroidCoachNotifier(context.applicationContext)
+    val coachPushEmitter = CoachPushEmitter(
+        notifier = coachNotifier,
+        pushHistory = pushHistoryStore,
+        preferences = coachNotificationPreferences,
+        rateLimiter = RateLimiter(),
+        now = { java.time.LocalDateTime.now() },
     )
 
-    // Effective backend for naming — same rule as RoutingInsightCoordinator.
-    private val recipeNamerBackend: StateFlow<AiBackend> =
-        combine(uiPreferences.aiBackend, cloudConfigComplete) { backend, complete ->
-            if (backend == AiBackend.CLOUD && complete) AiBackend.CLOUD else AiBackend.LOCAL
-        }.stateIn(appScope, SharingStarted.Eagerly, AiBackend.LOCAL)
+    val coachDigestCoordinator = CoachDigestCoordinator(
+        contextProvider = { coachContextCache.get() },
+        engine = coachSignalEngine,
+        selector = signalSelector,
+        inbox = coachInboxRepository,
+        aiEnabledFlow = uiPreferences.aiInsightsEnabled,
+        dateProvider = dateProvider,
+        appScope = appScope,
+        journey = coachJourneyStore,
+        scheduler = WorkManagerCoachDigestScheduler(context.applicationContext),
+        pushEmitter = coachPushEmitter,
+        notificationPreferences = coachNotificationPreferences,
+        experiments = coachExperimentStore,
+    )
 
-    // Naming is available exactly when the routed insight model is usable (covers
-    // AI-enabled, backend, cloud-config, and on-device model presence in one signal).
+    // ── Cloud coordinators handed out to ViewModels (cloud-only, Phase 8) ────────────
+    val aiInsightCoordinator: AiInsightCoordinator = cloudInsightCoordinator
+
+    // Naming is available exactly when the cloud insight path is usable (AI enabled + cloud config
+    // complete) — the same signal the insight cards gate on.
     private val recipeNamerAvailable: StateFlow<Boolean> =
-        aiInsightCoordinator.state.map { state ->
-            when (state) {
-                AiInsightState.Disabled,
-                AiInsightState.ModelMissing,
-                is AiInsightState.Downloading,
-                AiInsightState.DownloadFailed,
-                AiInsightState.ModelVerifying -> false
-                else -> true
-            }
-        }.stateIn(appScope, SharingStarted.Eagerly, false)
+        cloudReadyFlow.stateIn(appScope, SharingStarted.Eagerly, false)
 
-    val recipeNamer: RecipeNamer = RoutingRecipeNamer(
-        local = LocalNameGenerator(gemmaServiceHolder) { gemmaInsightCoordinator.selectedModel.value },
-        cloud = CloudNameGenerator(openAiCompatClient, cloudConfigFlow),
-        effectiveBackend = recipeNamerBackend,
+    val recipeNamer: RecipeNamer = CloudRecipeNamer(
+        client = openAiCompatClient,
+        configFlow = cloudConfigFlow,
         available = recipeNamerAvailable,
     )
 
-    val coachCoordinator: CoachCoordinator = RoutingCoachCoordinator(
-        local = gemmaCoachCoordinator,
-        cloud = cloudCoachCoordinator,
-        backendFlow = uiPreferences.aiBackend,
-        cloudConfigCompleteFlow = cloudConfigComplete,
-        scope = appScope,
-    )
+    val coachCoordinator: CoachCoordinator = cloudCoachCoordinator
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)
 }
 
@@ -429,14 +552,14 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
-                aiInsightCoordinator = container.aiInsightCoordinator,
             )
             TodayViewModel::class.java -> TodayViewModel(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 hcRepository = container.healthConnectRepository,
-                aiInsightCoordinator = container.aiInsightCoordinator,
+                // Q6a: Body RECOVERY_READINESS card now binds directly to the cloud coordinator.
+                aiInsightCoordinator = container.cloudInsightCoordinator,
             )
             DashboardViewModel::class.java -> DashboardViewModel(
                 logRepository = container.logRepository,
@@ -453,7 +576,9 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 adherenceCalculator = container.adherenceCalculator,
-                aiInsightCoordinator = container.aiInsightCoordinator,
+                // Q6a: Trends PROGRESS_TREND card now binds directly to the cloud coordinator.
+                aiInsightCoordinator = container.cloudInsightCoordinator,
+                userProfileStore = container.userProfilePreferencesStore,
             )
             PlanViewModel::class.java -> PlanViewModel(
                 planRepository = container.planRepository,
@@ -468,6 +593,13 @@ private class AppViewModelFactory(
             StreakViewModel::class.java -> StreakViewModel(
                 streakRepository = container.streakRepository,
                 userProfileStore = container.userProfilePreferencesStore,
+            )
+            CoachTodayViewModel::class.java -> CoachTodayViewModel(
+                inbox = container.coachInboxRepository,
+                phrase = container.coachPhrasingService::phrase,
+                onVisibleRefresh = container.coachDigestCoordinator::runIfDue,
+                experiments = container.coachExperimentStore,
+                dateProvider = container.dateProvider,
             )
             OnboardingViewModel::class.java -> OnboardingViewModel(
                 userProfileStore = container.userProfilePreferencesStore,
@@ -520,10 +652,13 @@ private class AppViewModelFactory(
                 aiInsightCoordinator = container.aiInsightCoordinator,
                 secureKeyStore = container.secureKeyStore,
                 openAiCompatClient = container.openAiCompatClient,
+                coachDigestCoordinator = container.coachDigestCoordinator,
+                coachNotificationPreferences = container.coachNotificationPreferences,
             )
             CoachViewModel::class.java -> CoachViewModel(
                 coachCoordinator = container.coachCoordinator,
             )
+            CoachMemoryViewModel::class.java -> CoachMemoryViewModel(container.coachMemoryStore)
             WeeklyReviewViewModel::class.java -> WeeklyReviewViewModel(
                 WeeklyReviewConfig(
                     cloudActiveFlow = container.cloudBriefingActive,
@@ -534,7 +669,9 @@ private class AppViewModelFactory(
                     },
                     generate = { data ->
                         val config = container.cloudConfigForBriefing() ?: error("Cloud not configured")
-                        container.weeklyBriefingGenerator.generate(config, data) ?: error("Generation failed")
+                        val coachNote = container.weeklyCoachNote()
+                        container.weeklyBriefingGenerator.generate(config, data, coachNote)
+                            ?: error("Generation failed")
                     },
                     saveCalorieTarget = { target ->
                         val prefs = container.planRepository.preferences.first()
@@ -557,6 +694,9 @@ private class AppViewModelFactory(
                 workoutRepository = container.workoutRepository,
                 sessionRepository = container.workoutSessionRepository,
                 exerciseLibraryRepository = container.exerciseLibraryRepository,
+                logRepository = container.logRepository,
+                userProfileStore = container.userProfilePreferencesStore,
+                dateProvider = container.dateProvider,
             )
             ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
                 repository = container.exerciseLibraryRepository,

@@ -183,7 +183,7 @@ private fun ReadyCard(
 }
 
 @Composable
-private fun InsightCardHeader(
+internal fun InsightCardHeader(
     title: String,
     collapsible: Boolean,
     collapsed: Boolean,

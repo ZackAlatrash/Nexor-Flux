@@ -1,5 +1,8 @@
 package com.zack.recomptracker.ui.train
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +60,8 @@ import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.streak.StreakHeroBanner
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
+import com.zack.recomptracker.domain.workout.TrainingPlanBuilder
+import com.zack.recomptracker.ui.train.component.heatColor
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
@@ -62,6 +69,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -147,6 +155,26 @@ fun TrainHomeScreen(
                 StreakHeroBanner(
                     result = workoutStreak,
                     type = StreakType.WORKOUT,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                )
+            }
+        }
+
+        // ── Today's training plan (train/rest + focus + recommended routine) ───
+        state.plan?.let { plan ->
+            item {
+                TrainingPlanCard(
+                    plan = plan,
+                    onStartRoutine = { routineId ->
+                        state.routines.firstOrNull { it.id == routineId }?.let { template ->
+                            scope.launch {
+                                viewModel.startSession(template)
+                                onStart()
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),
@@ -319,6 +347,66 @@ fun TrainHomeScreen(
         // ── Stats tab ──────────────────────────────────────────────────────────
         if (state.tab == TrainTab.STATS) {
             item { StatsContent(state = state, onOpenExerciseStats = onOpenExerciseStats) }
+        }
+    }
+}
+
+// ── Today's training-plan card (deterministic: train/rest + focus + routine) ──
+
+@Composable
+private fun TrainingPlanCard(
+    plan: TrainingPlanBuilder.TrainingPlan,
+    onStartRoutine: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    val isTrain = plan.verdict == TrainingPlanBuilder.Verdict.TRAIN
+
+    // Secondary line: recommended routine + a "keep it light" tempering when recovery is down.
+    val subLine = buildList {
+        if (isTrain && plan.recommendedRoutineName != null) add("Recommended: ${plan.recommendedRoutineName}")
+        if (plan.recoveryTempered) add("keep it light")
+    }.joinToString(" · ")
+
+    // Cadence footnote: sessions this week (vs target) + how long since the last one.
+    val cadence = buildString {
+        append("${plan.sessionsThisWeek}")
+        plan.weeklyTarget?.let { append("/$it") }
+        append(" this week")
+        plan.daysSinceLastSession?.let { d -> if (d > 0) append(" · last trained ${d}d ago") }
+    }
+
+    FrostedCard(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = 14.dp,
+    ) {
+        SectionLabel(text = "Today")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = plan.reason,
+            style = AppType.cardTitle,
+            color = appColors.textPrimary,
+        )
+        if (subLine.isNotEmpty()) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = subLine,
+                style = AppType.body,
+                color = if (isTrain) accent.inkLight else appColors.textMuted,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(text = cadence, style = AppType.cardSubtitle, color = appColors.textMuted)
+        // The one useful action: launch the recommended routine. Rest days (or no match) show none.
+        if (isTrain && plan.recommendedRoutineId != null && plan.recommendedRoutineName != null) {
+            Spacer(Modifier.height(12.dp))
+            LiquidActionButton(
+                text = "Start ${plan.recommendedRoutineName}",
+                onClick = { onStartRoutine(plan.recommendedRoutineId) },
+                isPrimary = true,
+                small = true,
+            )
         }
     }
 }
@@ -680,10 +768,17 @@ private fun StatsContent(
 
     val anyLogged = state.statsCategories.any { it.exercises.isNotEmpty() }
 
+    // Heat = each muscle's ABSOLUTE weekly set count. heatColor maps it to a training-status colour
+    // (undertrained → green → overtrained red); 0-set groups render faint on the body map.
+    val heat = state.plan?.let { plan ->
+        plan.weekly.associate { it.category to it.setsThisWeek.toFloat() }
+    } ?: emptyMap()
+
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         com.zack.recomptracker.ui.train.component.BodyMap(
             selected = selected,
             onMuscleTap = { category -> selected = if (selected == category) null else category },
+            intensities = heat,
             modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
         )
 
@@ -701,6 +796,9 @@ private fun StatsContent(
             return@Column
         }
 
+        // ── This week's muscle balance (collapsible; ranked lagging-first) ──
+        state.plan?.let { plan -> WeeklyBalanceSection(plan) }
+
         SectionLabel(
             text = "By muscle",
             modifier = Modifier.padding(bottom = 8.dp),
@@ -716,6 +814,164 @@ private fun StatsContent(
             )
         }
     }
+}
+
+/** Collapsible "This week" muscle-balance card (ranked lagging-first). Collapsed = a one-line
+ *  summary of the lagging groups; expanded = a mini volume bar + recency per muscle, plus a legend. */
+@Composable
+private fun WeeklyBalanceSection(plan: TrainingPlanBuilder.TrainingPlan) {
+    val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
+    var expanded by remember { mutableStateOf(false) }
+    val maxSets = plan.weekly.maxOfOrNull { it.setsThisWeek } ?: 0
+    val ranked = remember(plan.weekly) { plan.weekly.sortedBy { it.setsThisWeek } } // lagging first
+    val chevronRot by animateFloatAsState(if (expanded) 90f else 0f, tween(300), label = "wk-chev")
+    val lagging = plan.focus.joinToString(", ") { it.displayName.lowercase() }
+
+    FrostedCard(
+        modifier = Modifier
+            .padding(bottom = 8.dp)
+            .clip(RoundedCornerShape(CornerCard))
+            .clickable { expanded = !expanded }
+            .animateContentSize(),
+        contentPadding = 14.dp,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                SectionLabel(text = "This week")
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = if (expanded) "Volume by muscle group"
+                    else if (lagging.isNotEmpty()) "Lagging: $lagging"
+                    else "Balanced across muscle groups",
+                    style = AppType.cardSubtitle,
+                    color = when {
+                        expanded -> appColors.textSecondary
+                        lagging.isNotEmpty() -> accent.inkLight
+                        else -> appColors.textSecondary
+                    },
+                )
+            }
+            // A bordered circular chevron reads clearly as a tap affordance (matches the app's
+            // back button), so the whole card obviously expands.
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(appColors.cardSurface)
+                    .border(1.dp, appColors.cardBorder, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = if (expanded) "Collapse this week" else "Expand this week",
+                    tint = appColors.textSecondary,
+                    modifier = Modifier.size(18.dp).rotate(chevronRot),
+                )
+            }
+        }
+        if (expanded) {
+            Spacer(Modifier.height(14.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                ranked.forEach { cw ->
+                    WeeklyBarRow(week = cw, maxSets = maxSets, isFocus = cw.category in plan.focus)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            HeatLegend()
+        }
+    }
+}
+
+/** Compact colour key for the volume bars: none → trained → overtrained. */
+@Composable
+private fun HeatLegend() {
+    val appColors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LegendDot(fill = null, label = "None")
+        LegendDot(fill = heatColor(14f), label = "Trained")
+        LegendDot(fill = heatColor(30f), label = "Too much")
+    }
+}
+
+/** One legend swatch: a filled dot ([fill]) or a hollow ring (fill = null → "not trained") + label. */
+@Composable
+private fun LegendDot(fill: Color?, label: String) {
+    val appColors = LocalAppColors.current
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .then(
+                    if (fill != null) Modifier.background(fill)
+                    else Modifier.border(1.dp, appColors.textMuted, CircleShape),
+                ),
+        )
+        Text(text = label, style = AppType.metaLabel, color = appColors.textMuted)
+    }
+}
+
+/** One muscle group's week: name · volume bar (∝ sets, vs the most-trained group) · sets + recency.
+ *  Lagging groups (in the plan's focus) render in the accent colour. */
+@Composable
+private fun WeeklyBarRow(week: TrainingPlanBuilder.CategoryWeek, maxSets: Int, isFocus: Boolean) {
+    val appColors = LocalAppColors.current
+    val trained = week.setsThisWeek > 0
+    val frac = if (maxSets > 0) week.setsThisWeek.toFloat() / maxSets else 0f // bar WIDTH: relative fill
+    val barColor = heatColor(week.setsThisWeek.toFloat()) // COLOR: absolute training-status
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = week.category.displayName,
+            style = AppType.cardSubtitle.copy(fontWeight = if (isFocus) FontWeight.SemiBold else FontWeight.Normal),
+            color = appColors.textPrimary,
+            modifier = Modifier.width(64.dp),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(7.dp)
+                .clip(RoundedCornerShape(100))
+                .background(appColors.cardSurface),
+        ) {
+            // Untrained (0 sets) → empty track (uncolored); trained → green bar sized by volume.
+            if (trained) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(frac.coerceIn(0.08f, 1f))
+                        .height(7.dp)
+                        .clip(RoundedCornerShape(100))
+                        .background(barColor),
+                )
+            }
+        }
+        Text(
+            text = "${week.setsThisWeek} · ${lastHitLabel(week.daysSinceLastHit)}",
+            style = AppType.metaLabel,
+            color = if (trained) barColor else appColors.textMuted,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(56.dp),
+        )
+    }
+}
+
+private fun lastHitLabel(days: Int?): String = when {
+    days == null -> "—"
+    days <= 0 -> "today"
+    days == 1 -> "1d"
+    else -> "${days}d"
 }
 
 @Composable

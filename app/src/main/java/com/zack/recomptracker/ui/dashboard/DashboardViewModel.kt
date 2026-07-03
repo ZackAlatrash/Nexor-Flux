@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
-import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
@@ -15,19 +14,7 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.data.repository.toPlanTargets
-import com.zack.recomptracker.ai.ActivityInsightContext
 import com.zack.recomptracker.ai.AiInsightCoordinator
-import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.CrossMetricContext
-import com.zack.recomptracker.ai.InsightContext
-import com.zack.recomptracker.ai.InsightGate
-import com.zack.recomptracker.ai.InsightKind
-import com.zack.recomptracker.ai.InsightRequest
-import com.zack.recomptracker.ai.NoiseDefuserContext
-import com.zack.recomptracker.ai.PatternInsightContext
-import com.zack.recomptracker.ai.TargetChangeContext
-import com.zack.recomptracker.domain.insight.CrossMetricDetector
-import com.zack.recomptracker.domain.insight.DayNutrition
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
@@ -93,11 +80,6 @@ data class DashboardUiState(
     ),
     val motivationalMessage: String = "",   // display-only, at end
     val adjustmentInput: AdjustmentInput? = null,
-    val showWeeklyVerdictCard: Boolean = false,   // doctrine "stay quiet": hidden on clean on-track weeks
-    val patternInsightContext: PatternInsightContext? = null,
-    val targetChangeContext: TargetChangeContext? = null,
-    val noiseDefuserContext: NoiseDefuserContext? = null,
-    val crossMetricContext: CrossMetricContext? = null,
 )
 
 /** Profile visual for the dashboard header avatar. */
@@ -136,109 +118,6 @@ class DashboardViewModel(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
-
-    val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
-
-    val patternInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.WEEKLY_PATTERN)
-
-    val targetChangeInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.TARGET_CHANGE)
-    val noiseDefuserInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.NOISE_DEFUSER)
-    val crossMetricInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.CROSS_METRIC)
-    val activityInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.ACTIVITY_NEAT)
-
-    /** Pre-computed activity (NEAT) context: today's steps vs goal + 7-day average. */
-    val activityInsightContext: StateFlow<ActivityInsightContext?> =
-        combine(logRepository.observeDailyLogs(), userProfileStore.preferences) { logs, profile ->
-            val today = dateProvider.today()
-            val stepsByDate = logs.mapNotNull { log ->
-                log.steps?.let { LocalDate.parse(log.date) to it }
-            }.toMap()
-            ActivityInsightContext(
-                steps = logs.lastOrNull { it.localDate() == today }?.steps,
-                stepGoal = profile.dailyStepGoal,
-                averageDailySteps7 = ActivitySummary.averageDailySteps(stepsByDate, today),
-            )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-    fun onActivityInsightVisible() {
-        val ctx = activityInsightContext.value ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.Activity(ctx))
-    }
-    fun retryActivityInsight() {
-        val ctx = activityInsightContext.value ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.Activity(ctx))
-    }
-
-    fun onPatternInsightVisible() {
-        val ctx = _uiState.value.patternInsightContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.WeeklyPattern(ctx))
-    }
-
-    fun retryPatternInsight() {
-        val ctx = _uiState.value.patternInsightContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.WeeklyPattern(ctx))
-    }
-
-    fun onTargetChangeVisible() {
-        val ctx = _uiState.value.targetChangeContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.TargetChange(ctx))
-    }
-    fun retryTargetChange() {
-        val ctx = _uiState.value.targetChangeContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.TargetChange(ctx))
-    }
-    fun onNoiseDefuserVisible() {
-        val ctx = _uiState.value.noiseDefuserContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.NoiseDefuser(ctx))
-    }
-    fun retryNoiseDefuser() {
-        val ctx = _uiState.value.noiseDefuserContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.NoiseDefuser(ctx))
-    }
-    fun onCrossMetricVisible() {
-        val ctx = _uiState.value.crossMetricContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.CrossMetric(ctx))
-    }
-    fun retryCrossMetric() {
-        val ctx = _uiState.value.crossMetricContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.CrossMetric(ctx))
-    }
-
-    fun onAiCardVisible(result: AdjustmentResult) {
-        val state = _uiState.value
-        val input = state.adjustmentInput ?: return
-        val context = InsightContext(
-            result = result,
-            input = input,
-            targetCalories = state.preferences.targetCalories,
-            targetProteinG = state.preferences.targetProteinG,
-        )
-        // Doctrine "stay quiet": on a clean, on-track HOLD week the verdict card has nothing to add.
-        if (!InsightGate.shouldFireWeekly(context)) return
-        aiInsightCoordinator.onAiCardVisible(context)
-    }
-
-    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
-
-    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
-
-    fun retryGeneration() {
-        val state = _uiState.value
-        val input = state.adjustmentInput ?: return
-        aiInsightCoordinator.retryGeneration(
-            InsightContext(
-                result = state.result,
-                input = input,
-                targetCalories = state.preferences.targetCalories,
-                targetProteinG = state.preferences.targetProteinG,
-            )
-        )
-    }
 
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()
@@ -362,70 +241,6 @@ class DashboardViewModel(
             z.zoneLowerBound > 0 && cals > 0 && cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
         }
 
-        val patternDays = (0..13).map { offset ->
-            val date = last14Start.plusDays(offset.toLong())
-            val totals = mealsByDate[date].orEmpty().macroTotals()
-            DayNutrition(
-                date = date,
-                calories = totals.calories,
-                proteinG = totals.proteinG,
-                carbsG = totals.carbsG,
-                fatG = totals.fatG,
-                logged = totals.calories > 0,
-            )
-        }
-        val patternInsightContext = buildPatternInsightContext(patternDays, preferences)
-
-        // Target-change explainer: fires only when the verdict actually moves the target.
-        val targetChangeContext = run {
-            val change = result.recommendedCalorieChange
-            if (change == 0 || result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
-                null
-            } else {
-                TargetChangeContext(
-                    oldTarget = preferences.targetCalories,
-                    newTarget = preferences.targetCalories + change,
-                    weightTrendKgPerWeek = weightTrend,
-                    adherencePercent = adherence,
-                    reasonCodes = result.reasonCodes,
-                )
-            }
-        }
-
-        // Noise-defuser: today's logged weight vs the most recent prior logged weight, gated by the trend.
-        val noiseDefuserContext = run {
-            val loggedWeights = logsLast28.filter { it.bodyWeightKg != null }.sortedBy { it.localDate() }
-            val todayWeight = loggedWeights.lastOrNull { it.localDate() == today }?.bodyWeightKg
-            val priorWeight = loggedWeights.lastOrNull { it.localDate() < today }?.bodyWeightKg
-            if (todayWeight != null && priorWeight != null) {
-                NoiseDefuserContext(todayWeight, priorWeight, weightTrend)
-                    .takeIf { InsightGate.shouldFireNoiseDefuser(it) }
-            } else {
-                null
-            }
-        }
-
-        // Cross-metric: protein adherence vs hunger over the 14-day window.
-        val hungerByDate = logsLast28
-            .filter { it.localDate() in last14Start..today && it.hungerScore != null }
-            .associate { it.localDate() to it.hungerScore!! }
-        val crossMetricContext = CrossMetricDetector
-            .detectProteinHungerLink(patternDays, hungerByDate, preferences.targetProteinG)
-            ?.let { CrossMetricContext(it) }
-
-        // Hide the verdict card ONLY on a clean on-track HOLD week (doctrine "stay quiet").
-        // Non-HOLD verdicts — including WAIT_FOR_DATA, which still shows the new-user placeholder
-        // and model-download UI — keep the card.
-        val showWeeklyVerdictCard = result.verdict != AdjustmentVerdict.HOLD ||
-            InsightGate.shouldFireWeekly(
-                InsightContext(
-                    result = result,
-                    input = adjustmentInput,
-                    targetCalories = preferences.targetCalories,
-                    targetProteinG = preferences.targetProteinG,
-                ),
-            )
-
         return DashboardUiState(
             preferences = preferences,
             todayTotals = todayTotals,
@@ -444,11 +259,6 @@ class DashboardViewModel(
             motivationalMessage = todayMessage,
             result = result,
             adjustmentInput = adjustmentInput,
-            patternInsightContext = patternInsightContext,
-            targetChangeContext = targetChangeContext,
-            noiseDefuserContext = noiseDefuserContext,
-            crossMetricContext = crossMetricContext,
-            showWeeklyVerdictCard = showWeeklyVerdictCard,
         )
     }
 

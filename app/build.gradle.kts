@@ -144,7 +144,6 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.security.crypto)
     implementation(libs.coil.compose)
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
 
     ksp(libs.androidx.room.compiler)
 

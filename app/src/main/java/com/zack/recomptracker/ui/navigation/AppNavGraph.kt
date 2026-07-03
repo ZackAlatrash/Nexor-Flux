@@ -14,6 +14,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.zack.recomptracker.ui.LocalAppContainer
+import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardScreen
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.dashboard.HomeDashboardScreen
@@ -32,6 +33,8 @@ import com.zack.recomptracker.ui.profile.ProfileScreen
 import com.zack.recomptracker.ui.profile.ProfileViewModel
 import com.zack.recomptracker.ui.aicoach.AiCoachScreen
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
+import com.zack.recomptracker.ui.aicoach.CoachMemoryScreen
+import com.zack.recomptracker.ui.aicoach.CoachMemoryViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceScreen
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.integrations.IntegrationsScreen
@@ -91,6 +94,7 @@ object Routes {
     const val Profile      = "profile"
     const val Appearance   = "appearance"
     const val AiCoach      = "ai_coach"
+    const val CoachMemory  = "coach_memory"
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
     const val Train          = "train"
@@ -160,6 +164,7 @@ fun AppNavGraph(
                 viewModel = viewModel<DashboardViewModel>(factory = factory),
                 weeklyReviewViewModel = viewModel<WeeklyReviewViewModel>(factory = factory),
                 streakViewModel = viewModel<StreakViewModel>(factory = factory),
+                coachTodayViewModel = viewModel<CoachTodayViewModel>(factory = factory),
                 onOpenCoach = {
                     navController.navigate(TopLevelDestination.Coach.route) {
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
@@ -189,6 +194,13 @@ fun AppNavGraph(
                         restoreState = true
                     }
                 },
+                onOpenTraining = {
+                    navController.navigate(Routes.Train) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
         composable(
@@ -196,8 +208,10 @@ fun AppNavGraph(
             enterTransition = { tabEnter },
             exitTransition  = { tabExit },
         ) {
+            val foodLogViewModel = viewModel<FoodLogViewModel>(factory = factory)
+            val appContainer = LocalAppContainer.current
             FoodScreen(
-                viewModel = viewModel<FoodLogViewModel>(factory = factory),
+                viewModel = foodLogViewModel,
                 onAddToSlot = { slotId, slotName, date ->
                     navController.navigate(
                         "${Routes.FoodLibrary}?slotId=$slotId&slotName=${java.net.URLEncoder.encode(slotName, "UTF-8")}&date=$date"
@@ -214,6 +228,17 @@ fun AppNavGraph(
                     val seed = java.util.Base64.getUrlEncoder().withoutPadding()
                         .encodeToString(json.toByteArray(Charsets.UTF_8))
                     navController.navigate(Routes.recipeBuilder(seedIngredients = seed))
+                },
+                onAskCoachForMeals = {
+                    foodLogViewModel.askCoachSeed()?.let { seed ->
+                        appContainer.coachHandoffStore.set(seed)
+                        appContainer.coachCoordinator.clearHistory()
+                    }
+                    navController.navigate(TopLevelDestination.Coach.route) {
+                        popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 },
             )
         }
@@ -241,8 +266,10 @@ fun AppNavGraph(
             enterTransition = { tabEnter },
             exitTransition  = { tabExit },
         ) {
+            val trainViewModel = viewModel<TrainViewModel>(factory = factory)
+            val appContainer = LocalAppContainer.current
             TrainHomeScreen(
-                viewModel = viewModel<TrainViewModel>(factory = factory),
+                viewModel = trainViewModel,
                 onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
                 onEditRoutine = { id -> navController.navigate(Routes.routineBuilder(id)) },
                 onStart = { navController.navigate(Routes.ActiveSession) },
@@ -666,6 +693,17 @@ fun AppNavGraph(
         ) {
             AiCoachScreen(
                 viewModel = viewModel<AiCoachViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+                onOpenCoachMemory = { navController.navigate(Routes.CoachMemory) },
+            )
+        }
+        composable(
+            route = Routes.CoachMemory,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            CoachMemoryScreen(
+                viewModel = viewModel<CoachMemoryViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

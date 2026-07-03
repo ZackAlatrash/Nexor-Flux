@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.StepsSource
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
+import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
@@ -110,30 +111,86 @@ class LogRepositorySyncTest {
     }
 
     @Test
-    fun `steps history backfill fills empty and non-manual days but preserves manual ones`() = runTest {
+    fun `steps history backfill fills empty and non-manual days and only keeps higher manual ones`() = runTest {
         val dao = FakeDailyLogDao()
-        // d1: empty (no row), d2: prior HC value, d3: manual value.
+        // d1: empty (no row), d2: prior HC value, d3: manual value above the HC reading,
+        // d4: manual value the HC reading has overtaken.
         val d1 = "2026-05-20"
         val d2 = "2026-05-21"
         val d3 = "2026-05-22"
+        val d4 = "2026-05-23"
         dao.logs[d2] = DailyLogEntity(date = d2, steps = 1_000, stepsSource = StepsSource.HEALTH_CONNECT)
         dao.logs[d3] = DailyLogEntity(date = d3, steps = 7_777, stepsSource = StepsSource.MANUAL)
+        dao.logs[d4] = DailyLogEntity(date = d4, steps = 6_000, stepsSource = StepsSource.MANUAL)
         val repo = buildRepository(dao)
 
         repo.applyHealthConnectStepsHistory(
             mapOf(
                 LocalDate.parse(d1) to 4_000,
                 LocalDate.parse(d2) to 9_000,
-                LocalDate.parse(d3) to 9_000,
+                LocalDate.parse(d3) to 5_000,
+                LocalDate.parse(d4) to 9_000,
             ),
         )
 
         assertEquals(4_000, dao.logs[d1]!!.steps)                      // empty day filled
         assertEquals(StepsSource.HEALTH_CONNECT, dao.logs[d1]!!.stepsSource)
         assertEquals(9_000, dao.logs[d2]!!.steps)                      // prior HC day refreshed
-        assertEquals(7_777, dao.logs[d3]!!.steps)                      // manual day preserved
+        assertEquals(7_777, dao.logs[d3]!!.steps)                      // higher manual day preserved
         assertEquals(StepsSource.MANUAL, dao.logs[d3]!!.stepsSource)
+        assertEquals(9_000, dao.logs[d4]!!.steps)                      // real steps overtook the manual entry
+        assertEquals(StepsSource.HEALTH_CONNECT, dao.logs[d4]!!.stepsSource)
     }
+
+    @Test
+    fun `metrics save with untouched steps preserves health-connect provenance`() = runTest {
+        // The Body check-in pre-fills steps from the log; saving without editing them must not
+        // convert a synced value into a frozen "manual" entry (the steps-stop-updating bug).
+        val dao = FakeDailyLogDao()
+        dao.logs[date.toString()] = DailyLogEntity(
+            date = date.toString(),
+            steps = 5_000,
+            stepsSource = StepsSource.HEALTH_CONNECT,
+        )
+        val repo = buildRepository(dao)
+
+        repo.saveDailyMetrics(metricsInput(steps = 5_000, stepsEdited = false))
+
+        val saved = dao.logs[date.toString()]!!
+        assertEquals(5_000, saved.steps)
+        assertEquals(StepsSource.HEALTH_CONNECT, saved.stepsSource)
+    }
+
+    @Test
+    fun `metrics save with edited steps stamps them manual`() = runTest {
+        val dao = FakeDailyLogDao()
+        dao.logs[date.toString()] = DailyLogEntity(
+            date = date.toString(),
+            steps = 5_000,
+            stepsSource = StepsSource.HEALTH_CONNECT,
+        )
+        val repo = buildRepository(dao)
+
+        repo.saveDailyMetrics(metricsInput(steps = 12_000, stepsEdited = true))
+
+        val saved = dao.logs[date.toString()]!!
+        assertEquals(12_000, saved.steps)
+        assertEquals(StepsSource.MANUAL, saved.stepsSource)
+    }
+
+    private fun metricsInput(steps: Int?, stepsEdited: Boolean) = DailyMetricsInput(
+        date = date,
+        bodyWeightKg = null,
+        waistCm = null,
+        steps = steps,
+        stepsEdited = stepsEdited,
+        sleepHours = null,
+        energyScore = null,
+        hungerScore = null,
+        sorenessScore = null,
+        trained = false,
+        notes = "",
+    )
 
     @Test
     fun `sync does nothing when result has all nulls`() = runTest {

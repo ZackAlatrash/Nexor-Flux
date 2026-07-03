@@ -2,11 +2,6 @@ package com.zack.recomptracker.ui.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zack.recomptracker.ai.AiInsightCoordinator
-import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.InsightKind
-import com.zack.recomptracker.ai.InsightRequest
-import com.zack.recomptracker.ai.RestOfDayInsightContext
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
@@ -17,8 +12,11 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.data.repository.toSuggestionFood
+import com.zack.recomptracker.domain.food.MealSuggester
 import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -48,7 +46,8 @@ data class FoodLogUiState(
     val recipeSelection: RecipeSelection? = null,
     val weekSummary: ImmutableList<DayCalorieSummary> = persistentListOf(),
     val message: String? = null,
-    val restOfDayInsightContext: RestOfDayInsightContext? = null,
+    /** Deterministic meal-suggestion card for today, or null when it should not show. */
+    val mealSuggestion: MealSuggestionCardState? = null,
     /** Count of unconfirmed plans sitting on past days — a nudge to reconcile them. */
     val stalePlannedCount: Int = 0,
 ) {
@@ -62,7 +61,7 @@ class FoodLogViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     dateProvider: DateProvider,
-    private val aiInsightCoordinator: AiInsightCoordinator,
+    private val clock: () -> LocalTime = { LocalTime.now() },
 ) : ViewModel() {
 
     val today: LocalDate = dateProvider.today()
@@ -71,19 +70,8 @@ class FoodLogViewModel(
     private val _uiState = MutableStateFlow(FoodLogUiState(selectedDate = today, today = today))
     val uiState: StateFlow<FoodLogUiState> = _uiState.asStateFlow()
 
-    val restOfDayInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.REST_OF_DAY)
-
-    fun onRestOfDayInsightVisible() {
-        val ctx = _uiState.value.restOfDayInsightContext ?: return
-        if (!ctx.hasSufficientData) return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.RestOfDay(ctx))
-    }
-
-    fun retryRestOfDayInsight() {
-        val ctx = _uiState.value.restOfDayInsightContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.RestOfDay(ctx))
-    }
+    /** Coach seed for the meal-suggestion card's "Get meal ideas" action, if the card is showing. */
+    fun askCoachSeed(): String? = _uiState.value.mealSuggestion?.coachSeed
 
     init {
         viewModelScope.launch {
@@ -118,12 +106,29 @@ class FoodLogViewModel(
                         plannedTotals = day.plannedTotals,
                         hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
-                        restOfDayInsightContext = if (day.date == today) {
-                            buildRestOfDayInsightContext(day.totals, dayTarget, day.meals.size)
-                        } else null,
                     )
                 }
             }
+        }
+
+        viewModelScope.launch {
+            combine(
+                logRepository.observeDay(today),
+                planRepository.preferences,
+                planRepository.observePlanOn(today),
+                logRepository.observeSavedFoods(),
+            ) { day, _, dayPlan, foods ->
+                val target = MealSuggester.MacroTargets(
+                    calories = dayPlan.calories, proteinG = dayPlan.proteinG,
+                    carbsG = dayPlan.carbsG, fatG = dayPlan.fatG,
+                )
+                MealSuggestionCardMapper.build(
+                    target = target,
+                    eaten = day.totals,
+                    library = foods.map { it.toSuggestionFood() },
+                    fractionOfDayElapsed = MealSuggestionCardMapper.eatingDayFraction(clock()),
+                )
+            }.collect { card -> _uiState.update { it.copy(mealSuggestion = card) } }
         }
 
         viewModelScope.launch {

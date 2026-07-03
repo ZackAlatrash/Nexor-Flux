@@ -250,6 +250,18 @@ private fun ColumnScope.ReadyBody(
         Text(briefing.narrative, style = AppType.body, color = appColors.textPrimary.copy(alpha = 0.90f), lineHeight = 20.sp)
     }
 
+    // Weekly Pattern Spotlight — deterministic pattern facts relocated from the dashboard card.
+    if (briefing.patternSpotlight.isNotEmpty()) {
+        Spacer(Modifier.height(16.dp))
+        BriefingDivider()
+        Spacer(Modifier.height(14.dp))
+        SectionLabel(text = "Weekly pattern spotlight")
+        Spacer(Modifier.height(8.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            briefing.patternSpotlight.forEach { PatternSpotlightRow(it) }
+        }
+    }
+
     // Signals
     if (briefing.signals.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
@@ -307,6 +319,26 @@ private fun ColumnScope.ReadyBody(
         onClick = onDiscussWithCoach,
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+@Composable
+private fun PatternSpotlightRow(statement: String) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            text = "•",
+            style = AppType.body.copy(fontWeight = FontWeight.Bold),
+            color = accent.inkLight,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = statement,
+            style = AppType.body,
+            color = appColors.textPrimary.copy(alpha = 0.90f),
+            lineHeight = 19.sp,
+        )
+    }
 }
 
 @Composable

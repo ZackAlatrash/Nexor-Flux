@@ -72,6 +72,20 @@ abstract class WorkoutSessionDao {
     @Query("SELECT * FROM workout_sessions WHERE status = 'COMPLETED' ORDER BY date DESC, completedAt DESC")
     abstract fun observeCompletedSessions(): Flow<List<WorkoutSessionWithDetailsDb>>
 
+    /**
+     * Windowed batched read of completed sessions (with all exercises → sets, via @Relation) dated on
+     * or after [startDate] — the "all completed sets across all exercises in a window" query the
+     * training coach detectors need without N per-exercise joins
+     * (docs/ai-redesign/08-technical-architecture.md §6 data gotcha). `date` is stored as an ISO
+     * `YYYY-MM-DD` string, so a lexicographic `>=` compare is a correct date-range filter.
+     */
+    @Transaction
+    @Query(
+        "SELECT * FROM workout_sessions WHERE status = 'COMPLETED' AND date >= :startDate " +
+            "ORDER BY date DESC, completedAt DESC",
+    )
+    abstract suspend fun getCompletedSessionsSince(startDate: String): List<WorkoutSessionWithDetailsDb>
+
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM session_exercises WHERE sessionId = :sessionId")
     abstract suspend fun nextExerciseSortOrder(sessionId: Long): Int
 

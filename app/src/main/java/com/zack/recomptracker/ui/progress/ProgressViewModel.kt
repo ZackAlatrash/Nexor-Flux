@@ -11,9 +11,11 @@ import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
@@ -53,6 +55,7 @@ class ProgressViewModel(
     private val dateProvider: DateProvider,
     private val adherenceCalculator: AdherenceCalculator,
     private val aiInsightCoordinator: AiInsightCoordinator,
+    private val userProfileStore: UserProfilePreferencesStore,
 ) : ViewModel() {
     private val rangeDays = MutableStateFlow(28)
     private val _uiState = MutableStateFlow(ProgressUiState())
@@ -79,8 +82,10 @@ class ProgressViewModel(
                 logRepository.observeMealEntries(),
                 logRepository.observePerformances(),
                 planRepository.observeVersions(),
-                rangeDays,
-            ) { logs, meals, performances, versions, range ->
+                // Pair rangeDays with the profile so the 5-slot combine still carries the gym target.
+                combine(rangeDays, userProfileStore.preferences) { r, p -> r to p },
+            ) { logs, meals, performances, versions, rangeAndProfile ->
+                val (range, profile) = rangeAndProfile
                 val today = dateProvider.today()
                 val dates = (range - 1 downTo 0).map { today.minusDays(it.toLong()) }
                 val targetsByDate = PlanHistory.resolve(versions, dates)
@@ -115,6 +120,17 @@ class ProgressViewModel(
                 val weightTrend = trendPerWeek(weightValues)
                 val waistTrend = trendPerWeek(waistValues)
                 val adherenceLast = adherenceValues.lastOrNull { it > 0 }
+
+                // Training frequency reuses the shared ActivitySummary derivation (same source the
+                // dashboard + get_training_summary use): distinct training days = logged lift dates
+                // ∪ days flagged `trained`, over its default trailing-4-week window ending today.
+                val workoutDays = ActivitySummary.workoutDays(
+                    completedSessionDates = liftByDate.keys,
+                    trainedLogDates = logs.filter { it.trained }.map { LocalDate.parse(it.date) },
+                )
+                val trainingSessionsPerWeek =
+                    if (workoutDays.isEmpty()) null
+                    else ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
 
                 ProgressUiState(
                     rangeDays = range,
@@ -182,6 +198,8 @@ class ProgressViewModel(
                         waistValues = waistValues,
                         liftValues = liftValues,
                         adherencePercent = adherenceLast,
+                        trainingSessionsPerWeek = trainingSessionsPerWeek,
+                        weeklyGymSessionsTarget = profile.weeklyGymSessions,
                     ),
                 )
             }.collect { _uiState.value = it }

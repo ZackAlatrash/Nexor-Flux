@@ -8,8 +8,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.zack.recomptracker.ai.AiBackend
-import com.zack.recomptracker.ai.ModelVariant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -99,17 +97,6 @@ class UiPreferences(private val context: Context) {
     val onboardingComplete: kotlinx.coroutines.flow.Flow<Boolean> =
         context.uiDataStore.data.map { it[Keys.OnboardingComplete] ?: false }
 
-    /**
-     * The DownloadManager ID of an in-progress model download. Persisted so that if
-     * the app process is killed mid-download, the coordinator can resume progress
-     * polling on next launch. -1L means no active download.
-     */
-    val pendingDownloadId: kotlinx.coroutines.flow.Flow<Long> =
-        context.uiDataStore.data.map { it[Keys.PendingDownloadId] ?: -1L }
-
-    val aiBackend: kotlinx.coroutines.flow.Flow<AiBackend> =
-        context.uiDataStore.data.map { AiBackend.fromStored(it[Keys.AiBackend]) }
-
     val lastSeenBriefingSignature: kotlinx.coroutines.flow.Flow<String> =
         context.uiDataStore.data.map { it[Keys.LastSeenBriefingSignature] ?: "" }
 
@@ -133,14 +120,6 @@ class UiPreferences(private val context: Context) {
     val cloudConfigPresent: kotlinx.coroutines.flow.Flow<Boolean> =
         context.uiDataStore.data.map {
             !(it[Keys.CloudBaseUrl].isNullOrBlank()) && !(it[Keys.CloudModelId].isNullOrBlank())
-        }
-
-    val selectedModelVariant: kotlinx.coroutines.flow.Flow<ModelVariant> =
-        context.uiDataStore.data.map {
-            when (it[Keys.SelectedModelVariant]) {
-                ModelVariant.GEMMA_4B.name -> ModelVariant.GEMMA_4B
-                else -> ModelVariant.GEMMA_2B
-            }
         }
 
     val accentTheme: kotlinx.coroutines.flow.Flow<com.zack.recomptracker.ui.theme.AccentTheme> =
@@ -176,24 +155,6 @@ class UiPreferences(private val context: Context) {
         context.uiDataStore.edit { it[Keys.ThemeMode] = mode.storageValue }
     }
 
-    /**
-     * Persists [id] so it survives process death. Pass -1L to clear.
-     */
-    suspend fun setPendingDownloadId(id: Long) {
-        context.uiDataStore.edit { prefs ->
-            if (id == -1L) prefs.remove(Keys.PendingDownloadId)
-            else prefs[Keys.PendingDownloadId] = id
-        }
-    }
-
-    suspend fun setSelectedModel(variant: ModelVariant) {
-        context.uiDataStore.edit { it[Keys.SelectedModelVariant] = variant.name }
-    }
-
-    suspend fun setAiBackend(backend: AiBackend) {
-        context.uiDataStore.edit { it[Keys.AiBackend] = backend.name }
-    }
-
     suspend fun setCloudBaseUrl(url: String) {
         context.uiDataStore.edit { it[Keys.CloudBaseUrl] = url.trim() }
     }
@@ -210,11 +171,8 @@ class UiPreferences(private val context: Context) {
         val SelectedFont = stringPreferencesKey("selected_font")
         val AiInsightsEnabled = booleanPreferencesKey("ai_insights_enabled")
         val OnboardingComplete = booleanPreferencesKey("onboarding_complete")
-        val PendingDownloadId = longPreferencesKey("pending_download_id")
-        val SelectedModelVariant = stringPreferencesKey("selected_model_variant")
         val AccentTheme = stringPreferencesKey("accent_theme")
         val ThemeMode = stringPreferencesKey("theme_mode")
-        val AiBackend = stringPreferencesKey("ai_backend")
         val CloudBaseUrl = stringPreferencesKey("cloud_base_url")
         val CloudModelId = stringPreferencesKey("cloud_model_id")
         val LastSeenBriefingSignature = stringPreferencesKey("last_seen_briefing_signature")

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -342,29 +343,50 @@ fun ExercisePickerScreen(
     // ── Create custom exercise dialog ───────────────────────────────────────────
     if (showCreateDialog) {
         var customName by remember { mutableStateOf("") }
+        var customMuscle by remember { mutableStateOf<String?>(null) }
         AlertDialog(
-            onDismissRequest = { showCreateDialog = false; customName = "" },
+            onDismissRequest = { showCreateDialog = false; customName = ""; customMuscle = null },
             title = { Text("Custom exercise", color = appColors.textPrimary) },
             text = {
-                OutlinedTextField(
-                    value = customName,
-                    onValueChange = { customName = it },
-                    label = { Text("Exercise name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column {
+                    OutlinedTextField(
+                        value = customName,
+                        onValueChange = { customName = it },
+                        label = { Text("Exercise name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text("Muscle group (optional)", style = AppType.label, color = appColors.textSecondary)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    ) {
+                        MUSCLE_FILTER_CHIPS.filter { it != "All" }.forEach { muscle ->
+                            val active = customMuscle == muscle
+                            FilterChip(
+                                selected = active,
+                                onClick = { customMuscle = if (active) null else muscle },
+                                label = { Text(muscle) },
+                            )
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         val name = customName.trim()
                         if (name.isNotEmpty()) {
+                            val muscles = listOfNotNull(customMuscle)
                             scope.launch {
-                                val id = viewModel.createCustom(name)
+                                val id = viewModel.createCustom(name, muscles)
                                 if (replaceMode) onReplacePick(id)
                             }
                             showCreateDialog = false
                             customName = ""
+                            customMuscle = null
                         }
                     },
                     enabled = customName.isNotBlank(),
@@ -373,7 +395,7 @@ fun ExercisePickerScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false; customName = "" }) {
+                TextButton(onClick = { showCreateDialog = false; customName = ""; customMuscle = null }) {
                     Text("Cancel", color = appColors.textMuted)
                 }
             },

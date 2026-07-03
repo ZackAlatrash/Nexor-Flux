@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
@@ -63,7 +64,11 @@ class CloudCoachCoordinator(
     // multi-turn context never accumulates reference blocks.
     private var lastReferenceMessage: ChatRequestMessage? = null
 
-    @Volatile private var pendingConfirmation: CompletableDeferred<Boolean>? = null
+    // Holds the in-flight write-tool confirmation. AtomicReference + getAndSet ensures a tap can only
+    // ever complete the deferred it was shown for: the first confirm/cancel/clear atomically claims
+    // and clears it, so a stale or double tap can't complete a *later* turn's confirmation (which
+    // would silently run an unconfirmed write).
+    private val pendingConfirmation = AtomicReference<CompletableDeferred<Boolean>?>(null)
 
     init {
         scope.launch {
@@ -84,7 +89,7 @@ class CloudCoachCoordinator(
     }
 
     override fun clearHistory() {
-        pendingConfirmation?.complete(false)
+        pendingConfirmation.getAndSet(null)?.complete(false)
         scope.launch {
             turnLock.withLock {
                 history.clear()
@@ -96,8 +101,8 @@ class CloudCoachCoordinator(
         }
     }
 
-    override fun confirmPendingAction() { pendingConfirmation?.complete(true) }
-    override fun cancelPendingAction() { pendingConfirmation?.complete(false) }
+    override fun confirmPendingAction() { pendingConfirmation.getAndSet(null)?.complete(true) }
+    override fun cancelPendingAction() { pendingConfirmation.getAndSet(null)?.complete(false) }
 
     private suspend fun handleMessage(userText: String) {
         turnLock.withLock {
@@ -218,10 +223,10 @@ class CloudCoachCoordinator(
             displayText = pendingActionDisplayText(call.name, call.arguments),
         )
         val deferred = CompletableDeferred<Boolean>()
-        pendingConfirmation = deferred
+        pendingConfirmation.set(deferred)
         _state.value = CoachState.AwaitingConfirmation(history.toList(), action)
         val confirmed = deferred.await()
-        pendingConfirmation = null
+        pendingConfirmation.compareAndSet(deferred, null)
         if (!confirmed) return """{"cancelled":true}"""
         pushThinking(toolStatusText(call.name))
         return tools.execute(call.name, call.arguments)
@@ -264,10 +269,22 @@ class CloudCoachCoordinator(
     private fun toolStatusText(name: String): String = when (name) {
         "get_today_summary" -> "Reading your food log…"
         "get_weekly_trends" -> "Reading your weekly trends…"
+        "get_training_summary" -> "Reading your training…"
+        "get_body_trends" -> "Reading your body trends…"
         "log_meal" -> "Logging meal…"
         "log_metric" -> "Saving metric…"
         "update_calorie_target" -> "Updating calorie target…"
         "search_web" -> "Searching the web…"
+        "get_routines" -> "Reading your routines…"
+        "search_exercises" -> "Searching exercises…"
+        "create_routine" -> "Creating routine…"
+        "edit_routine" -> "Updating routine…"
+        "create_exercise" -> "Creating exercise…"
+        "delete_meal" -> "Removing meal…"
+        "edit_meal" -> "Updating meal…"
+        "remember" -> "Updating memory…"
+        "forget" -> "Updating memory…"
+        "suggest_meals" -> "Planning your meals…"
         else -> "Running tool…"
     }
 
@@ -285,6 +302,8 @@ class CloudCoachCoordinator(
             }
             "log_metric" -> "Save ${args["metric"]} = ${args["value"]}"
             "update_calorie_target" -> "Update daily calorie target to ${args["target_calories"]} kcal"
+            "create_routine", "edit_routine", "create_exercise" -> routineActionSummary(toolName, args)
+            "delete_meal", "edit_meal" -> mealEditActionSummary(toolName, args)
             else -> toolName
         }
 
@@ -297,4 +316,41 @@ class CloudCoachCoordinator(
             "You returned nothing. If you intended to log food, save a metric, or update a target, " +
                 "call the matching tool now. Otherwise, reply to the user's last message in one or two sentences."
     }
+}
+
+internal fun routineActionSummary(toolName: String, args: Map<String, String>): String = when (toolName) {
+    "create_routine" -> {
+        val name = args["name"].orEmpty()
+        val ex = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").findAll(args["exercises"].orEmpty())
+            .map { it.groupValues[1] }.toList()
+        "Create routine \"$name\"" + if (ex.isNotEmpty()) " — ${ex.joinToString(", ")}" else ""
+    }
+    "edit_routine" -> {
+        val parts = buildList {
+            Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").findAll(args["add"].orEmpty())
+                .map { it.groupValues[1] }.toList().takeIf { it.isNotEmpty() }?.let { add("add ${it.joinToString(", ")}") }
+            Regex("\"([^\"]+)\"").findAll(args["remove"].orEmpty())
+                .map { it.groupValues[1] }.toList().takeIf { it.isNotEmpty() }?.let { add("remove ${it.joinToString(", ")}") }
+            Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").findAll(args["retarget"].orEmpty())
+                .map { it.groupValues[1] }.toList().takeIf { it.isNotEmpty() }?.let { add("retarget ${it.joinToString(", ")}") }
+            args["new_name"]?.takeIf { it.isNotBlank() }?.let { add("rename to \"$it\"") }
+        }
+        "Edit \"${args["name"].orEmpty()}\"" + if (parts.isNotEmpty()) " — ${parts.joinToString("; ")}" else ""
+    }
+    "create_exercise" -> {
+        val muscles = Regex("\"([^\"]+)\"").findAll(args["primary_muscles"].orEmpty())
+            .map { it.groupValues[1] }.toList()
+        "Create custom exercise \"${args["name"].orEmpty()}\"" + if (muscles.isNotEmpty()) " (${muscles.joinToString(", ")})" else ""
+    }
+    else -> toolName
+}
+
+internal fun mealEditActionSummary(toolName: String, args: Map<String, String>): String = when (toolName) {
+    "delete_meal" -> "Delete \"${args["name"].orEmpty()}\" from ${args["date"] ?: "today"}'s log"
+    "edit_meal" -> buildString {
+        append("Change \"${args["name"].orEmpty()}\"")
+        args["grams"]?.toDoubleOrNull()?.let { append(" to ${it.toInt()} g") }
+        args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }?.let { append(" ($it kcal)") }
+    }
+    else -> toolName
 }

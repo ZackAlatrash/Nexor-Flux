@@ -32,6 +32,13 @@ data class AppColors(
     // On light backgrounds a faint white wash is invisible, so the light value is a
     // much more opaque frosted white that reads as a distinct pill.
     val glassPillSurface: Color,
+    // Warm/gold celebration skin — surface wash + hairline border for the "a win" variant of
+    // the Today's Coaching card (new PR / recomposition win). Independent of the user's accent
+    // theme: a win always reads gold. Alphas mirror the accent tinted surface/border intent.
+    val celebrationSurface: Color,
+    val celebrationBorder: Color,
+    // Legible warm ink for the celebration label + trophy icon painted on the gold skin.
+    val celebrationInk: Color,
 ) {
     companion object {
         // Dark = current production values (see DesignTokens.kt).
@@ -52,6 +59,9 @@ data class AppColors(
             glassOverlay           = Color(0x33000000),
             glassShimmer           = Color(0x33FFFFFF),
             glassPillSurface       = Color(0x24FFFFFF),
+            celebrationSurface     = Color(0x14F59E0B), // gold @ 0.08
+            celebrationBorder      = Color(0x54F59E0B), // gold @ 0.33
+            celebrationInk         = Color(0xFFFBBF24), // bright gold ink — legible on dark
         )
 
         // Light = dark ink on light frosted glass. Alphas mirror the dark set's intent.
@@ -77,6 +87,9 @@ data class AppColors(
             glassOverlay           = Color(0xC4FFFFFF),
             glassShimmer           = Color(0x40FFFFFF),
             glassPillSurface       = Color(0xC4FFFFFF),
+            celebrationSurface     = Color(0x1FF59E0B), // gold @ 0.12 — reads on light glass
+            celebrationBorder      = Color(0x54B45309), // deepened gold @ 0.33
+            celebrationInk         = Color(0xFF92400E), // deep amber ink — legible on light
         )
 
         fun of(darkMode: Boolean): AppColors = if (darkMode) Dark else Light

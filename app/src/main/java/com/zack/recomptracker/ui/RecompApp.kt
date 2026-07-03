@@ -19,10 +19,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import com.zack.recomptracker.domain.coach.CoachActionType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,8 +86,29 @@ private val tabRoutes = listOf(
     Routes.Train,
 )
 
+/**
+ * Maps a tapped push's [CoachActionType] to the top-level route it should open — mirrors the dashboard
+ * `onCoachAction` mapping (LOG_WEIGHT/LOG_STEPS→Body, meals→Food, training→Train, weekly review→Home).
+ * `null`/NONE means "no navigation".
+ */
+private fun CoachActionType?.toDeepLinkRoute(): String? = when (this) {
+    CoachActionType.LOG_WEIGHT, CoachActionType.LOG_STEPS -> TopLevelDestination.Body.route
+    CoachActionType.CONFIRM_PLANNED_MEALS, CoachActionType.OPEN_FOOD_LOG -> Routes.Food
+    CoachActionType.OPEN_TRAINING -> Routes.Train
+    // The weekly review + plan target live on the Home dashboard; land there.
+    CoachActionType.OPEN_WEEKLY_REVIEW, CoachActionType.APPLY_TARGET -> TopLevelDestination.Home.route
+    // TRACK_EXPERIMENT is not navigation — the Today slot records the experiment in-place — and a
+    // discovery card never pushes, so a deep-link mapping would be dead. NONE/null → no navigation.
+    CoachActionType.TRACK_EXPERIMENT, CoachActionType.NONE, null -> null
+}
+
 @Composable
-fun RecompApp(container: AppContainer, darkMode: Boolean) {
+fun RecompApp(
+    container: AppContainer,
+    darkMode: Boolean,
+    deepLinkAction: State<CoachActionType?> = remember { mutableStateOf(null) },
+    onDeepLinkHandled: () -> Unit = {},
+) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
     RecompTrackerTheme(accentTheme = accentTheme, darkMode = darkMode) {
@@ -91,6 +116,20 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
         val navController = rememberNavController()
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+        // Notification-tap deep-link: navigate to the mapped tab, then clear the pending action so a
+        // recomposition/rotation doesn't re-navigate. Guarded on onboardingComplete so we never route
+        // over the onboarding flow.
+        val pendingAction by deepLinkAction
+        LaunchedEffect(pendingAction) {
+            val route = pendingAction.toDeepLinkRoute() ?: return@LaunchedEffect
+            navController.navigate(route) {
+                popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onDeepLinkHandled()
+        }
 
         // Null until the flag is read, so the NavHost is not composed with the wrong start
         // destination (which would flash Home before redirecting to onboarding, or vice versa).

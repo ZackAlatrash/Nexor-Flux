@@ -53,6 +53,8 @@ data class TodayUiState(
     val waistCm: String = "",
     val waistSkinfoldMm: String = "",
     val steps: String = "",
+    /** True once the user types in the steps field — only then does saving mark steps manual. */
+    val stepsEdited: Boolean = false,
     val sleepHours: String = "",
     val energyScore: Int = 5,
     val hungerScore: Int = 5,
@@ -250,7 +252,7 @@ class TodayViewModel(
     fun onBodyWeightChanged(v: String) = editMetrics { copy(bodyWeightKg = v) }
     fun onWaistChanged(v: String) = editMetrics { copy(waistCm = v) }
     fun onWaistSkinfoldChanged(v: String) = editMetrics { copy(waistSkinfoldMm = v) }
-    fun onStepsChanged(v: String) = editMetrics { copy(steps = v) }
+    fun onStepsChanged(v: String) = editMetrics { copy(steps = v, stepsEdited = true) }
     fun onSleepChanged(v: String) = editMetrics { copy(sleepHours = v) }
     fun onEnergyChanged(v: Int) = editMetrics { copy(energyScore = v.coerceIn(1, 10)) }
     fun onHungerChanged(v: Int) = editMetrics { copy(hungerScore = v.coerceIn(1, 10)) }
@@ -276,6 +278,7 @@ class TodayViewModel(
                     waistCm = s.waistCm.toNullableDouble(),
                     waistSkinfoldMm = s.waistSkinfoldMm.toNullableDouble(),
                     steps = steps,
+                    stepsEdited = s.stepsEdited,
                     sleepHours = s.sleepHours.toNullableDouble(),
                     energyScore = s.energyScore,
                     hungerScore = s.hungerScore,
@@ -284,7 +287,7 @@ class TodayViewModel(
                     notes = s.notes,
                 ),
             )
-            _uiState.update { it.copy(metricsDirty = false, message = null) }
+            _uiState.update { it.copy(metricsDirty = false, stepsEdited = false, message = null) }
             _savedEvent.emit(Unit)
         }
     }

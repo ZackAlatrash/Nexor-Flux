@@ -167,8 +167,7 @@ private fun ExerciseDetailCard(
                 ) {
                     Text(
                         text = "PR",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.metaLabel,
                         color = accent.accentLighter,
                     )
                 }

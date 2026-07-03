@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.data.repository.DayCalorieSummary
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
@@ -82,7 +83,7 @@ fun WeekCalorieStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (appColors.isDark) Color(0x0D000000) else appColors.cardSurface, RoundedCornerShape(14.dp))
+            .background(appColors.cardSurface, RoundedCornerShape(14.dp))
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -197,8 +198,7 @@ fun WeekCalorieStrip(
             ) {
                 Text(
                     text = "Today",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
                     color = accent.inkLight,
                 )
             }

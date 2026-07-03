@@ -187,8 +187,8 @@ private fun SavedFoodRow(
                 color = appColors.textMuted,
             )
         }
-        LiquidActionButton(text = "Add", onClick = { onAdd(food) }, isPrimary = true)
-        LiquidActionButton(text = "Delete", onClick = { showDeleteConfirm = true }, isPrimary = false)
+        LiquidActionButton(text = "Add", onClick = { onAdd(food) }, isPrimary = true, small = true)
+        LiquidActionButton(text = "Delete", onClick = { showDeleteConfirm = true }, isPrimary = false, small = true)
     }
     if (showDeleteConfirm) {
         ConfirmDialog(
@@ -223,8 +223,8 @@ private fun SavedMealRow(
                 color = appColors.textMuted,
             )
         }
-        LiquidActionButton(text = "Add", onClick = { onAdd(meal) }, isPrimary = true)
-        LiquidActionButton(text = "Delete", onClick = { showDeleteConfirm = true }, isPrimary = false)
+        LiquidActionButton(text = "Add", onClick = { onAdd(meal) }, isPrimary = true, small = true)
+        LiquidActionButton(text = "Delete", onClick = { showDeleteConfirm = true }, isPrimary = false, small = true)
     }
     if (showDeleteConfirm) {
         ConfirmDialog(

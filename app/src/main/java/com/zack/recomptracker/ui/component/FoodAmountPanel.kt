@@ -48,7 +48,7 @@ fun FoodAmountPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 16.dp)
             .padding(bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

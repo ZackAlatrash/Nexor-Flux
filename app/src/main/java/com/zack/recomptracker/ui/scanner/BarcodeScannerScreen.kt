@@ -135,6 +135,7 @@ fun BarcodeScannerScreen(
                 ) {
                     Text(
                         "Camera permission is required to scan barcodes.",
+                        style = AppType.body,
                         color = Color.White,
                     )
                     LiquidPrimaryButton(
@@ -193,7 +194,7 @@ fun BarcodeScannerScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         CircularProgressIndicator(color = Color.White)
-                        Text("Looking up product…", color = Color.White)
+                        Text("Looking up product…", style = AppType.body, color = Color.White)
                     }
                 }
             }

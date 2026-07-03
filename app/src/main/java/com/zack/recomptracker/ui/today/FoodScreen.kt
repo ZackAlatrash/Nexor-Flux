@@ -382,9 +382,9 @@ private fun FoodScreenHeader(
         if (isFuture) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(accent.accent.copy(alpha = 0.20f))
-                    .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(5.dp))
+                    .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 7.dp, vertical = 2.dp),
             ) {
                 Text(
@@ -444,13 +444,12 @@ private fun ReconcilePlannedBanner(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = "Planned meals not confirmed",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Bold),
                 color = appColors.textPrimary,
             )
             Text(
                 text = "You planned $plannedCalories kcal for this day. Did you eat it?",
-                fontSize = 10.sp,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
             )
         }
@@ -479,7 +478,7 @@ private fun StalePlannedHint(count: Int) {
         Text("🗓", fontSize = 13.sp)
         Text(
             text = "$count planned ${if (count == 1) "meal" else "meals"} on past days await confirmation — use ‹ to review.",
-            fontSize = 10.sp,
+            style = AppType.metaLabel,
             color = appColors.textMuted,
         )
     }
@@ -696,7 +695,7 @@ private fun NutritionStrip(
                     )
                     Text(
                         text = calSubText,
-                        fontSize = 11.sp,
+                        style = AppType.label,
                         color = mutedText,
                     )
                 }
@@ -727,8 +726,7 @@ private fun NutritionStrip(
                 Text(
                     text = if (cal > 0) "+$plannedCal kcal planned · ${cal + plannedCal} projected"
                            else "$plannedCal kcal planned",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.metaLabel,
                     color = plannedText,
                 )
             }
@@ -900,8 +898,7 @@ private fun LockedSlotCard(
                         val t = slotWithEntries.totals
                         "${t.calories} kcal · ${t.proteinG.roundToInt()}P · ${t.carbsG.roundToInt()}C · ${t.fatG.roundToInt()}F"
                     } else "empty",
-                    fontSize = 10.sp,
-                    fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal,
+                    style = AppType.metaLabel.copy(fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal),
                     color = if (hasEntries) accent.accentLight else appColors.textMuted,
                 )
             }
@@ -1020,7 +1017,7 @@ private fun LockedSlotCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(modifier = Modifier.weight(1f).height(1.dp).background(appColors.cardBorder))
-                Text("nothing logged yet", fontSize = 10.sp, color = appColors.textFaint)
+                Text("nothing logged yet", style = AppType.metaLabel, color = appColors.textFaint)
                 Box(modifier = Modifier.weight(1f).height(1.dp).background(appColors.cardBorder))
             }
         }
@@ -1143,7 +1140,7 @@ private fun SlotEntryRow(
                             .border(1.dp, accent.accent.copy(alpha = 0.34f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                     ) {
-                        Text("Planned", fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = accent.inkLight)
+                        Text("Planned", style = AppType.metaLabel.copy(fontWeight = FontWeight.SemiBold), color = accent.inkLight)
                     }
                 }
             }
@@ -1347,25 +1344,19 @@ private fun EditModeSlotCard(
 
         // ── Actions ───────────────────────────────────────────────────────────
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(accent.tintedSurface)
-                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(8.dp))
-                    .clickable { showRename = true; renameValue = slotWithEntries.slot.name }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            LiquidActionButton(
+                text = "Rename",
+                onClick = { showRename = true; renameValue = slotWithEntries.slot.name },
+                small = true,
+                lite = true,
+            )
+            LiquidGlassButton(
+                onClick = { showDeleteConfirm = true },
+                buttonHeight = 32.dp,
+                lite = true,
+                tint = ErrorRed,
             ) {
-                Text("Rename", style = AppType.label, color = accent.inkLight)
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x1AFB7185))
-                    .border(1.dp, Color(0x33FB7185), RoundedCornerShape(8.dp))
-                    .clickable { showDeleteConfirm = true }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text("Delete", style = AppType.label, color = ErrorRed)
+                Text("Delete", style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = ErrorRed)
             }
         }
     }

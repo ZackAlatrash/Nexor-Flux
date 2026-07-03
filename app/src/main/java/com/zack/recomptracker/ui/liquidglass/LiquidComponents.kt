@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.liquidglass
 
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
@@ -836,7 +837,7 @@ fun LiquidPrimaryButton(
         surfaceColor = Color.White.copy(alpha = 0.08f),
         lite = lite,
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = LocalAppAccent.current.onAccent)
+        Text(text = text, style = AppType.cardTitle, color = LocalAppAccent.current.onAccent)
     }
 }
 
@@ -859,7 +860,7 @@ fun LiquidSecondaryButton(
         surfaceColor = if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
         lite = lite,
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LocalAppColors.current.textPrimary.copy(alpha = 0.90f))
+        Text(text = text, style = AppType.cardTitle.copy(fontWeight = FontWeight.Medium), color = LocalAppColors.current.textPrimary.copy(alpha = 0.90f))
     }
 }
 
@@ -900,6 +901,7 @@ fun LiquidStepButton(
             .then(if (enabled) highlight.modifier.then(highlight.gestureModifier) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
+        // Symbol glyph (+/−), not label text — no AppType text token applies to this size/weight.
         Text(text = symbol, fontSize = 18.sp, fontWeight = FontWeight.Light, color = LocalAppColors.current.textPrimary)
     }
 }
@@ -931,8 +933,7 @@ fun LiquidActionButton(
     ) {
         Text(
             text = text,
-            fontSize = 13.sp,
-            fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
+            style = AppType.body.copy(fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium),
             color = if (isPrimary) accent.accentLighter else LocalAppColors.current.textPrimary.copy(alpha = 0.85f),
         )
     }

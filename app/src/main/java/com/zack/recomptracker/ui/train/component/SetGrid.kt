@@ -38,12 +38,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zack.recomptracker.ui.liquidglass.LiquidStepButton
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -177,20 +178,16 @@ private fun SessionSetGrid(
             // SET
             Text(
                 text = "SET",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textSecondary,
-                letterSpacing = 0.4.sp,
                 modifier = Modifier.width(28.dp),
             )
             Spacer(Modifier.width(6.dp))
             // PREV
             Text(
                 text = "PREV",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textSecondary,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.width(52.dp),
             )
@@ -198,10 +195,8 @@ private fun SessionSetGrid(
             // KG
             Text(
                 text = "KG",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textSecondary,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -209,10 +204,8 @@ private fun SessionSetGrid(
             // REPS
             Text(
                 text = "REPS",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textSecondary,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -256,8 +249,7 @@ private fun SessionSetGrid(
             )
             Text(
                 text = "Add set",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.label,
                 color = accent.inkLight,
             )
         }
@@ -320,8 +312,7 @@ private fun SessionSetRowItem(
                 ) {
                     Text(
                         text = "${row.setNumber}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardSubtitle.copy(fontWeight = FontWeight.SemiBold),
                         color = if (row.completed) accent.inkLighter else appColors.textSecondary,
                         textAlign = TextAlign.Center,
                     )
@@ -338,7 +329,7 @@ private fun SessionSetRowItem(
                 ) {
                     Text(
                         text = row.prev ?: "–",
-                        fontSize = 12.sp,
+                        style = AppType.cardSubtitle,
                         // Real previous value reads bright; the "–" empty state stays faint.
                         color = if (row.prev != null) appColors.textPrimary else appColors.textMuted,
                         textAlign = TextAlign.Center,
@@ -425,47 +416,35 @@ private fun SessionSetRowItem(
                 ) {
                     Text(
                         text = "RIR",
-                        fontSize = 11.sp,
+                        style = AppType.label,
                         color = appColors.textSecondary,
-                        fontWeight = FontWeight.Medium,
                     )
                     Spacer(Modifier.weight(1f))
                     // Decrement
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(appColors.cardSurface)
-                            .clickable(enabled = !row.completed) {
-                                val cur = row.rir ?: 0
-                                onRirChanged(row, (cur - 1).coerceAtLeast(0))
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("–", fontSize = 16.sp, color = if (row.completed) appColors.textMuted else appColors.textPrimary, fontWeight = FontWeight.Bold)
-                    }
+                    LiquidStepButton(
+                        symbol = "−",
+                        enabled = !row.completed,
+                        onClick = {
+                            val cur = row.rir ?: 0
+                            onRirChanged(row, (cur - 1).coerceAtLeast(0))
+                        },
+                    )
                     Text(
                         text = row.rir?.toString() ?: "–",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardTitle,
                         color = if (row.completed) appColors.textMuted else appColors.textPrimary,
                         modifier = Modifier.width(24.dp),
                         textAlign = TextAlign.Center,
                     )
                     // Increment
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(appColors.cardSurface)
-                            .clickable(enabled = !row.completed) {
-                                val cur = row.rir ?: 0
-                                onRirChanged(row, cur + 1)
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("+", fontSize = 16.sp, color = if (row.completed) appColors.textMuted else appColors.textPrimary, fontWeight = FontWeight.Bold)
-                    }
+                    LiquidStepButton(
+                        symbol = "+",
+                        enabled = !row.completed,
+                        onClick = {
+                            val cur = row.rir ?: 0
+                            onRirChanged(row, cur + 1)
+                        },
+                    )
                 }
             }
         }
@@ -491,27 +470,21 @@ private fun ReadonlySetGrid(
         ) {
             Text(
                 text = "SET",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.4.sp,
                 modifier = Modifier.width(34.dp),
             )
             Text(
                 text = "KG",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = "REPS",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -536,8 +509,7 @@ private fun ReadonlySetGrid(
                 ) {
                     Text(
                         text = "${index + 1}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.cardSubtitle.copy(fontWeight = FontWeight.SemiBold),
                         color = appColors.textMuted,
                         textAlign = TextAlign.Center,
                     )
@@ -581,27 +553,21 @@ private fun PlanSetGrid(
         ) {
             Text(
                 text = "SET",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.4.sp,
                 modifier = Modifier.width(34.dp),
             )
             Text(
                 text = "KG",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = "REPS",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
-                letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -630,8 +596,7 @@ private fun PlanSetGrid(
                     ) {
                         Text(
                             text = "${index + 1}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            style = AppType.cardSubtitle.copy(fontWeight = FontWeight.SemiBold),
                             color = appColors.textMuted,
                             textAlign = TextAlign.Center,
                         )
@@ -703,8 +668,7 @@ private fun PlanSetGrid(
             )
             Text(
                 text = "Add set",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                style = AppType.label,
                 color = accent.inkLight,
             )
         }
@@ -750,9 +714,7 @@ private fun SetInputCell(
         enabled = !locked,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        textStyle = TextStyle(
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
+        textStyle = AppType.cardTitle.copy(
             color = if (completed) accent.inkLighter else appColors.textPrimary,
             textAlign = TextAlign.Center,
         ),
@@ -771,8 +733,7 @@ private fun SetInputCell(
                 if (localValue.isEmpty()) {
                     Text(
                         text = placeholder,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
+                        style = AppType.cardTitle.copy(fontWeight = FontWeight.Normal),
                         color = appColors.textMuted,
                         textAlign = TextAlign.Center,
                     )
@@ -798,8 +759,7 @@ private fun ReadonlySetCell(
     ) {
         Text(
             text = text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
+            style = AppType.cardTitle,
             color = appColors.textPrimary,
             textAlign = TextAlign.Center,
         )

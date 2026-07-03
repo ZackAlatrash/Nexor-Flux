@@ -357,7 +357,7 @@ fun ActiveSessionScreen(
                         onClick = onAddExercise,
                         tint = accent.accent,
                         surfaceColor = Color.White.copy(alpha = 0.08f),
-                        buttonHeight = 44.dp,
+                        buttonHeight = 48.dp,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
@@ -371,7 +371,7 @@ fun ActiveSessionScreen(
                         )
                         Text(
                             text = "Add Exercise",
-                            style = AppType.body.copy(fontWeight = FontWeight.Medium),
+                            style = AppType.cardTitle.copy(fontWeight = FontWeight.Medium),
                             color = accent.onAccent,
                         )
                     }
@@ -735,7 +735,7 @@ private fun UnfinishedSetsOverlay(
                 ) {
                     Text(
                         text = "End anyway",
-                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                        style = AppType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
                         color = appColors.textPrimary,
                     )
                 }
@@ -748,7 +748,7 @@ private fun UnfinishedSetsOverlay(
                 ) {
                     Text(
                         text = "Keep going",
-                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                        style = AppType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
                         color = accent.onAccent,
                     )
                 }

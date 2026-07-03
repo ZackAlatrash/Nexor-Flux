@@ -532,8 +532,7 @@ private fun PrBadge() {
     ) {
         Text(
             text = "PR",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.metaLabel,
             color = accent.inkLight,
         )
     }

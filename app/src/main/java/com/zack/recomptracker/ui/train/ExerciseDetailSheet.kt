@@ -1,10 +1,8 @@
 package com.zack.recomptracker.ui.train
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,16 +23,12 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,14 +36,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassBottomSheet
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerChip
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.exerciseImageUrl
-
-/** Top-corner radius of the sheet — matches the Weekly Review card (ModalCorner = 24.dp). */
-private val SheetCorner = 24.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -61,37 +55,12 @@ fun ExerciseDetailSheet(
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
 
-    // Same neutral frosted surface as the Weekly Review card (BriefingGlassCard): a near-opaque
-    // dark/light fill with a top sheen and a hairline edge. The container is kept transparent so
-    // this surface — not the busy workout screen — is what reads behind the frosted info cards.
-    val sheetShape = RoundedCornerShape(topStart = SheetCorner, topEnd = SheetCorner)
-    val sheetSurface = if (appColors.isDark) {
-        Color(0xFF101014).copy(alpha = 0.92f)
-    } else {
-        Color(0xFFF6F6F8).copy(alpha = 0.95f)
-    }
-    val sheetHairline = Color.White.copy(alpha = if (appColors.isDark) 0.16f else 0.24f)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
+    GlassBottomSheet(
+        onDismiss = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.Transparent,
-        dragHandle = null,
     ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(sheetShape)
-                .background(sheetSurface)
-                .drawBehind {
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.White.copy(alpha = 0.12f),
-                            0.14f to Color.Transparent,
-                        ),
-                    )
-                }
-                .border(0.5.dp, sheetHairline, sheetShape),
+            modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -104,8 +73,7 @@ fun ExerciseDetailSheet(
                 ) {
                     Text(
                         text = exercise.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.screenTitleCompact,
                         color = appColors.textPrimary,
                         modifier = Modifier.weight(1f).padding(end = 8.dp),
                     )
@@ -158,8 +126,7 @@ fun ExerciseDetailSheet(
                     listOfNotNull(exercise.category, exercise.equipment, exercise.level).forEach { label ->
                         Text(
                             text = label.replaceFirstChar { it.uppercase() },
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
+                            style = AppType.label,
                             color = appColors.textMuted,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(CornerChip))
@@ -174,13 +141,7 @@ fun ExerciseDetailSheet(
             if (exercise.primaryMuscles.isNotEmpty()) {
                 item {
                     FrostedCard(contentPadding = 12.dp) {
-                        Text(
-                            text = "Primary Muscles",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accent.inkLight,
-                            letterSpacing = 0.6.sp,
-                        )
+                        SectionLabel("Primary muscles")
                         Spacer(Modifier.height(6.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -189,8 +150,7 @@ fun ExerciseDetailSheet(
                             exercise.primaryMuscles.forEach { muscle ->
                                 Text(
                                     text = muscle.replaceFirstChar { it.uppercase() },
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Medium),
                                     color = accent.onAccent,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(CornerChip))
@@ -207,13 +167,7 @@ fun ExerciseDetailSheet(
             if (exercise.secondaryMuscles.isNotEmpty()) {
                 item {
                     FrostedCard(contentPadding = 12.dp) {
-                        Text(
-                            text = "Secondary Muscles",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = appColors.textMuted,
-                            letterSpacing = 0.6.sp,
-                        )
+                        SectionLabel("Secondary muscles")
                         Spacer(Modifier.height(6.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -222,8 +176,7 @@ fun ExerciseDetailSheet(
                             exercise.secondaryMuscles.forEach { muscle ->
                                 Text(
                                     text = muscle.replaceFirstChar { it.uppercase() },
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Medium),
                                     color = appColors.textPrimary,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(CornerChip))
@@ -238,12 +191,7 @@ fun ExerciseDetailSheet(
 
             // ── Instructions ────────────────────────────────────────────────────
             item {
-                Text(
-                    text = "Instructions",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.textPrimary,
-                )
+                SectionLabel("Instructions")
             }
             if (exercise.instructions.isEmpty()) {
                 // Clean fallback for exercises with no recorded instructions (e.g. custom).
@@ -251,8 +199,7 @@ fun ExerciseDetailSheet(
                     FrostedCard(contentPadding = 12.dp) {
                         Text(
                             text = "No instructions available for this exercise.",
-                            fontSize = 13.sp,
-                            lineHeight = 19.sp,
+                            style = AppType.body.copy(lineHeight = 19.sp),
                             color = appColors.textMuted,
                         )
                     }
@@ -270,16 +217,14 @@ fun ExerciseDetailSheet(
                             ) {
                                 Text(
                                     text = "${index + 1}",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    style = AppType.label.copy(fontWeight = FontWeight.Bold),
                                     color = accent.inkLight,
                                 )
                             }
                             Spacer(Modifier.width(10.dp))
                             Text(
                                 text = step,
-                                fontSize = 13.sp,
-                                lineHeight = 19.sp,
+                                style = AppType.body.copy(lineHeight = 19.sp),
                                 color = appColors.textPrimary,
                                 modifier = Modifier.weight(1f),
                             )

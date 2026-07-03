@@ -660,7 +660,7 @@ private fun RoutineCard(
                     tint = accent.onAccent,
                     modifier = Modifier.size(15.dp),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = "Start",
                     style = AppType.body,
@@ -745,12 +745,12 @@ private fun EmptyRoutinesCard(
                 onClick = onCreateRoutine,
                 tint = accent.accent,
                 surfaceColor = Color.White.copy(alpha = 0.08f),
-                buttonHeight = 44.dp,
+                buttonHeight = 48.dp,
                 modifier = Modifier.fillMaxWidth(0.65f),
             ) {
                 Text(
                     text = "Create routine",
-                    style = AppType.body,
+                    style = AppType.cardTitle,
                     color = accent.onAccent,
                 )
             }

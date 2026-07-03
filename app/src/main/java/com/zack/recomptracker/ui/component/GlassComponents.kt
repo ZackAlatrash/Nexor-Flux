@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.onFocusChanged
@@ -42,6 +43,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -95,6 +97,14 @@ fun FrostedCard(
     surfaceTint: Color = Color.Unspecified,
     /** Optional border colour override. Defaults to the standard frosted border. */
     borderColor: Color = Color.Unspecified,
+    /**
+     * Cheap look-alike mode for repeated-in-list call sites. When true, skips the
+     * `drawBackdrop` glass layer entirely and paints an opaque frosted fill
+     * ([AppColors.frostedSurfaceFallback]) instead. Over the app's static soft background the
+     * blurred glass output is near-constant, so the opaque fill reads the same at arm's length
+     * while paying zero offscreen-layer cost per frame. Border + top sheen line are identical.
+     */
+    lite: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
@@ -108,30 +118,52 @@ fun FrostedCard(
             endX   = cardWidth * 0.88f,
         )
     }
+    // The surface painter is shared between modes so the tint + top sheen line stay identical:
+    // the frosted (drawBackdrop) path paints it above the blur; the lite path paints it above
+    // an opaque fill. Both are DrawScope receivers.
+    val drawSurface: DrawScope.() -> Unit = {
+        if (surfaceTint != Color.Unspecified) drawRect(surfaceTint)
+        val shimmerY = 1.dp.toPx() / 2f
+        drawLine(
+            brush = shimmerBrush,
+            start       = Offset(0f, shimmerY),
+            end         = Offset(size.width, shimmerY),
+            strokeWidth = 1.dp.toPx(),
+        )
+    }
+    val surfaceModifier = if (lite) {
+        // Opaque frost look-alike: frostedSurfaceFallback IS the app's non-blur approximation of
+        // the frosted glass surface, so no new colour is introduced.
+        Modifier
+            .drawBehind {
+                drawRect(appColors.frostedSurfaceFallback)
+                drawSurface()
+            }
+    } else {
+        Modifier.drawBackdrop(
+            backdrop = backdrop,
+            shape = { RoundedRectangle(CornerCard) },
+            effects = {
+                vibrancy()
+                blur(12f.dp.toPx())
+            },
+            // Skip highlight + shadow layers: the card's own .border() hairline + top sheen line
+            // define the visible edge, and each of these params otherwise records an extra
+            // offscreen GraphicsLayer every frame.
+            highlight = null,
+            shadow = null,
+            onDrawSurface = {
+                drawRect(appColors.glassOverlay)
+                drawSurface()
+            }
+        )
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
             .onSizeChanged { cardWidth = it.width }
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { RoundedRectangle(CornerCard) },
-                effects = {
-                    vibrancy()
-                    blur(12f.dp.toPx())
-                },
-                onDrawSurface = {
-                    drawRect(appColors.glassOverlay)
-                    if (surfaceTint != Color.Unspecified) drawRect(surfaceTint)
-                    val shimmerY = 1.dp.toPx() / 2f
-                    drawLine(
-                        brush = shimmerBrush,
-                        start       = Offset(0f, shimmerY),
-                        end         = Offset(size.width, shimmerY),
-                        strokeWidth = 1.dp.toPx(),
-                    )
-                }
-            )
+            .then(surfaceModifier)
             .border(1.dp, resolvedBorder, RoundedCornerShape(CornerCard))
             .padding(contentPadding),
         content = content,
@@ -182,6 +214,10 @@ fun GlassSpeechBubble(
                         vibrancy()
                         blur(12f.dp.toPx())
                     },
+                    // Skip highlight + shadow layers; the tail's own .border() hairline defines its
+                    // edge and the card body sits on top hiding the tail's lower half anyway.
+                    highlight = null,
+                    shadow = null,
                     onDrawSurface = {
                         drawRect(appColors.glassOverlay)
                         if (surfaceTint != Color.Unspecified) drawRect(surfaceTint)
@@ -205,10 +241,18 @@ fun GlassSpeechBubble(
 @Composable
 fun TintedCard(
     modifier: Modifier = Modifier,
+    /**
+     * Cheap look-alike mode for repeated-in-list call sites. When true, skips the
+     * `drawBackdrop` glass layer entirely and paints an opaque accent-tinted fill instead
+     * (the frost fallback base + the same accent wash the glass version paints). Reads the same
+     * at arm's length over the static background; border + top sheen line are identical.
+     */
+    lite: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backdrop = LocalBackdrop.current
     val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
     var cardWidth by remember { mutableIntStateOf(0) }
     val shimmerBrush = remember(cardWidth, accent.tintedBorder) {
         Brush.horizontalGradient(
@@ -217,29 +261,49 @@ fun TintedCard(
             endX   = cardWidth * 0.90f,
         )
     }
+    // Shared surface painter (accent wash + top sheen) so both modes look identical above their
+    // respective base (blurred glass vs. opaque fallback fill).
+    val drawSurface: DrawScope.() -> Unit = {
+        drawRect(accent.tintedSurface)
+        val shimmerY = 1.dp.toPx() / 2f
+        drawLine(
+            brush = shimmerBrush,
+            start       = Offset(0f, shimmerY),
+            end         = Offset(size.width, shimmerY),
+            strokeWidth = 1.dp.toPx(),
+        )
+    }
+    val surfaceModifier = if (lite) {
+        // Opaque accent-tinted look-alike: frostedSurfaceFallback is the app's non-blur frost base;
+        // the accent wash on top matches what the glass path paints over its blur.
+        Modifier
+            .drawBehind {
+                drawRect(appColors.frostedSurfaceFallback)
+                drawSurface()
+            }
+    } else {
+        Modifier.drawBackdrop(
+            backdrop = backdrop,
+            shape = { RoundedRectangle(CornerCard) },
+            effects = {
+                vibrancy()
+                // 12dp matches FrostedCard: over the static soft background the extra blur radius
+                // is imperceptible but inflates the offscreen layer + blur kernel.
+                blur(12f.dp.toPx())
+            },
+            // Skip highlight + shadow layers; the card's own accent .border() + top sheen line
+            // define the edge, and each param otherwise records an extra offscreen layer per frame.
+            highlight = null,
+            shadow = null,
+            onDrawSurface = drawSurface,
+        )
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(CornerCard))
             .onSizeChanged { cardWidth = it.width }
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { RoundedRectangle(CornerCard) },
-                effects = {
-                    vibrancy()
-                    blur(20f.dp.toPx())
-                },
-                onDrawSurface = {
-                    drawRect(accent.tintedSurface)
-                    val shimmerY = 1.dp.toPx() / 2f
-                    drawLine(
-                        brush = shimmerBrush,
-                        start       = Offset(0f, shimmerY),
-                        end         = Offset(size.width, shimmerY),
-                        strokeWidth = 1.dp.toPx(),
-                    )
-                }
-            )
+            .then(surfaceModifier)
             .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerCard))
             .padding(16.dp),
         content = content,

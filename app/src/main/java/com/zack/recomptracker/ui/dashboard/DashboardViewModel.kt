@@ -47,8 +47,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -108,6 +111,10 @@ class DashboardViewModel(
     private val adjustmentEngine: AdjustmentEngine,
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val userProfileStore: UserProfilePreferencesStore,
+    // Off-main dispatcher for the combine transform + debounce (list filters, LocalDate.parse over
+    // 14–28-day windows, trend/adherence/adjustment math). Injectable so tests can pass their
+    // TestDispatcher; default keeps AppContainer/call sites unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     /** Profile photo + initials for the header avatar; updates live with the profile. */
@@ -143,6 +150,9 @@ class DashboardViewModel(
                 buildState(logs, meals, performances, preferences, versions)
             }
             .debounce(300L)
+            // Run the combine transform and debounce off the main thread; the terminal collect
+            // still resumes on viewModelScope's main dispatcher to publish state.
+            .flowOn(computeDispatcher)
             .collect { state ->
                 _uiState.value = state
                 persistWeeklyReview(state)

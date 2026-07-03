@@ -20,16 +20,29 @@ import java.time.LocalTime
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+/** Pre-derived per-day view data, computed off-main in the combine transform. */
+private data class DaySummary(
+    val date: LocalDate,
+    val target: PlanPreferences,
+    val totals: MacroTotals,
+    val plannedTotals: MacroTotals,
+    val hasPlannedEntries: Boolean,
+    val slots: ImmutableList<MealSlotWithEntries>,
+)
 
 data class FoodLogUiState(
     val selectedDate: LocalDate,
@@ -61,6 +74,9 @@ class FoodLogViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     dateProvider: DateProvider,
+    // Off-main dispatcher for the combine transforms (groupBy/macroTotals, PlanHistory resolution
+    // over the week window, MealSuggester). Injectable for tests; default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val clock: () -> LocalTime = { LocalTime.now() },
 ) : ViewModel() {
 
@@ -82,30 +98,39 @@ class FoodLogViewModel(
                     planRepository.observePlanOn(date),
                     logRepository.observeSlots(),
                 ) { day, prefs, dayPlan, slots ->
-                    Quadruple(day, prefs, dayPlan, slots)
-                }
-            }.collect { (day, prefs, dayPlan, slots) ->
-                val dayTarget = prefs.copy(
-                    targetCalories = dayPlan.calories,
-                    targetProteinG = dayPlan.proteinG,
-                    targetCarbsG = dayPlan.carbsG,
-                    targetFatG = dayPlan.fatG,
-                    calorieZoneLowerBound = dayPlan.zoneLowerBound,
-                    calorieZoneUpperBound = dayPlan.zoneUpperBound,
-                )
-                val slotMap = day.meals.groupBy { it.slotId }
-                val slottedEntries = slots.map { slot ->
-                    val entries = slotMap[slot.id].orEmpty()
-                    MealSlotWithEntries(slot = slot, entries = entries, totals = entries.macroTotals())
-                }.toImmutableList()
-                _uiState.update {
-                    it.copy(
-                        selectedDate = day.date,
+                    // Do the per-day derivation (grouping/macro summing) inside the transform so it
+                    // runs on computeDispatcher (below); the collector only publishes the result.
+                    val dayTarget = prefs.copy(
+                        targetCalories = dayPlan.calories,
+                        targetProteinG = dayPlan.proteinG,
+                        targetCarbsG = dayPlan.carbsG,
+                        targetFatG = dayPlan.fatG,
+                        calorieZoneLowerBound = dayPlan.zoneLowerBound,
+                        calorieZoneUpperBound = dayPlan.zoneUpperBound,
+                    )
+                    val slotMap = day.meals.groupBy { it.slotId }
+                    val slottedEntries = slots.map { slot ->
+                        val entries = slotMap[slot.id].orEmpty()
+                        MealSlotWithEntries(slot = slot, entries = entries, totals = entries.macroTotals())
+                    }.toImmutableList()
+                    DaySummary(
+                        date = day.date,
                         target = dayTarget,
                         totals = day.totals,
                         plannedTotals = day.plannedTotals,
                         hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
+                    )
+                }
+            }.flowOn(computeDispatcher).collect { s ->
+                _uiState.update {
+                    it.copy(
+                        selectedDate = s.date,
+                        target = s.target,
+                        totals = s.totals,
+                        plannedTotals = s.plannedTotals,
+                        hasPlannedEntries = s.hasPlannedEntries,
+                        slots = s.slots,
                     )
                 }
             }
@@ -128,7 +153,7 @@ class FoodLogViewModel(
                     library = foods.map { it.toSuggestionFood() },
                     fractionOfDayElapsed = MealSuggestionCardMapper.eatingDayFraction(clock()),
                 )
-            }.collect { card -> _uiState.update { it.copy(mealSuggestion = card) } }
+            }.flowOn(computeDispatcher).collect { card -> _uiState.update { it.copy(mealSuggestion = card) } }
         }
 
         viewModelScope.launch {
@@ -156,7 +181,7 @@ class FoodLogViewModel(
                         zoneUpperBound = z.zoneUpperBound,
                     )
                 }.toImmutableList()
-            }.collect { summaries -> _uiState.update { it.copy(weekSummary = summaries) } }
+            }.flowOn(computeDispatcher).collect { summaries -> _uiState.update { it.copy(weekSummary = summaries) } }
         }
     }
 

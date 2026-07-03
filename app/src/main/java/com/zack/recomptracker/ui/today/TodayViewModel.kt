@@ -24,6 +24,8 @@ import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -82,6 +84,10 @@ class TodayViewModel(
     dateProvider: DateProvider,
     private val hcRepository: HealthConnectRepository,
     private val aiInsightCoordinator: AiInsightCoordinator,
+    // Off-main dispatcher for the CPU-bearing collectors (per-day grouping/macro summing, and the
+    // 14-day calendar-sparkline build with LocalDate.parse + sorting). _uiState is a
+    // MutableStateFlow, so updating from this dispatcher is safe. Default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val today = dateProvider.today()
     private val _uiState = MutableStateFlow(TodayUiState(date = today))
@@ -109,7 +115,8 @@ class TodayViewModel(
     }
 
     init {
-        viewModelScope.launch {
+        // Per-day grouping + macro summing runs in the collect body; launch off-main.
+        viewModelScope.launch(computeDispatcher) {
             combine(
                 logRepository.observeDay(today),
                 planRepository.preferences,
@@ -163,7 +170,9 @@ class TodayViewModel(
                 logRepository.applyHealthConnectSync(today, result)
             }
         }
-        viewModelScope.launch {
+        // 14-day sparkline build (LocalDate.parse + interpolation + sorting) runs in the collect
+        // body; launch off-main.
+        viewModelScope.launch(computeDispatcher) {
             logRepository.observeDailyLogs().collect { allLogs ->
                 val cutoff = today.minusDays(14)
                 val priorCutoff = today.minusDays(6)

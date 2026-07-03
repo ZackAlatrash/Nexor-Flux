@@ -72,7 +72,7 @@ class FoodLogViewModelTest {
     fun tearDown() { Dispatchers.resetMain() }
 
     private fun buildVm(now: java.time.LocalTime = java.time.LocalTime.of(15, 0)) =
-        FoodLogViewModel(logRepo, planRepo, dateProvider) { now }
+        FoodLogViewModel(logRepo, planRepo, dateProvider, computeDispatcher = dispatcher) { now }
 
     @Test
     fun `initial selectedDate is today`() = runTest {

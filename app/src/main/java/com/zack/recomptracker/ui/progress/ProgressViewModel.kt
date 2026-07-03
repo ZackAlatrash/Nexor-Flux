@@ -19,10 +19,13 @@ import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -56,6 +59,9 @@ class ProgressViewModel(
     private val adherenceCalculator: AdherenceCalculator,
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val userProfileStore: UserProfilePreferencesStore,
+    // Off-main dispatcher for the combine transform (groupBy, LocalDate.parse over 7–28-day
+    // windows, macro summing, trend math). Injectable for tests; default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val rangeDays = MutableStateFlow(28)
     private val _uiState = MutableStateFlow(ProgressUiState())
@@ -91,19 +97,21 @@ class ProgressViewModel(
                 val targetsByDate = PlanHistory.resolve(versions, dates)
                 // Exclude planned (not-yet-eaten) entries from progress charts.
                 val mealsByDate = meals.filterNot { it.planned }.groupBy { LocalDate.parse(it.date) }
+                // Sum each day's macros once, then index — avoids recomputing macroTotals per metric.
+                val totalsByDate = mealsByDate.mapValues { it.value.macroTotals() }
                 val logsByDate = logs.associateBy { LocalDate.parse(it.date) }
                 val liftByDate = performances
                     .groupBy { LocalDate.parse(it.date) }
                     .mapValues { (_, entries) -> entries.maxOf { it.estimatedOneRepMax() }.toFloat() }
                 val weightValues = dates.mapNotNull { logsByDate[it]?.bodyWeightKg?.toFloat() }
                 val waistValues = dates.mapNotNull { logsByDate[it]?.waistCm?.toFloat() }
-                val calValues = dates.map { mealsByDate[it].orEmpty().macroTotals().calories.toFloat() }
-                val proteinValues = dates.map { mealsByDate[it].orEmpty().macroTotals().proteinG.toFloat() }
-                val carbsValues = dates.map { mealsByDate[it].orEmpty().macroTotals().carbsG.toFloat() }
-                val fatValues = dates.map { mealsByDate[it].orEmpty().macroTotals().fatG.toFloat() }
+                val calValues = dates.map { (totalsByDate[it]?.calories ?: 0).toFloat() }
+                val proteinValues = dates.map { (totalsByDate[it]?.proteinG ?: 0.0).toFloat() }
+                val carbsValues = dates.map { (totalsByDate[it]?.carbsG ?: 0.0).toFloat() }
+                val fatValues = dates.map { (totalsByDate[it]?.fatG ?: 0.0).toFloat() }
                 val adherenceValues = dates.map {
                     adherenceCalculator.dailyAdherencePercent(
-                        calories = mealsByDate[it].orEmpty().macroTotals().calories,
+                        calories = totalsByDate[it]?.calories ?: 0,
                         targetCalories = targetsByDate[it]?.calories ?: 0,
                     ).toFloat()
                 }
@@ -202,7 +210,10 @@ class ProgressViewModel(
                         weeklyGymSessionsTarget = profile.weeklyGymSessions,
                     ),
                 )
-            }.collect { _uiState.value = it }
+            }
+                // Move the whole transform off the main thread; collect resumes on main to publish.
+                .flowOn(computeDispatcher)
+                .collect { _uiState.value = it }
         }
     }
 

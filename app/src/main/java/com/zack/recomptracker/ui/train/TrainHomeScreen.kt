@@ -69,6 +69,7 @@ import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiExpandToggle
 import com.zack.recomptracker.ui.component.AiInsightCard
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
@@ -410,7 +411,6 @@ private fun TodayCoachingCard(
 
     // Collapsed by default so the card stays a slim pill; re-collapses when the verdict changes (a new day).
     var collapsed by rememberSaveable(verdict) { mutableStateOf(true) }
-    val chevronRot by animateFloatAsState(if (collapsed) 0f else 90f, tween(300), label = "today-chev")
 
     AiInsightCard(
         borderMode = AiBorderMode.Ready,
@@ -440,12 +440,7 @@ private fun TodayCoachingCard(
                 Spacer(Modifier.weight(1f))
                 AiBadge()
             }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = if (collapsed) "Expand today's coaching" else "Collapse today's coaching",
-                tint = appColors.textVeryMuted,
-                modifier = Modifier.size(20.dp).rotate(chevronRot),
-            )
+            AiExpandToggle(collapsed = collapsed)
         }
 
         if (!collapsed) {

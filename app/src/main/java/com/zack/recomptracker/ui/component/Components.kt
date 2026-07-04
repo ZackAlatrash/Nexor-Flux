@@ -213,6 +213,11 @@ fun MessageText(message: String?, kind: MessageKind = MessageKind.INFO, modifier
     }
 }
 
+/**
+ * Shared confirm / discard dialog. A thin preset over [GlassAlertDialog] (frosted panel + Liquid
+ * buttons) so every confirmation across the app reads as one glass surface. Signature is unchanged,
+ * so existing call sites keep working; new confirm flows should use this rather than a raw dialog.
+ */
 @Composable
 fun ConfirmDialog(
     title: String,
@@ -222,22 +227,13 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = confirmLabel,
-                    color = if (isDestructive) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.primary,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = title,
+        body = body,
+        confirmLabel = confirmLabel,
+        onConfirm = onConfirm,
+        isDestructive = isDestructive,
     )
 }
 

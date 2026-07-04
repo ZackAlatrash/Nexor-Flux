@@ -21,6 +21,8 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.data.usage.RoomUsageTracker
+import com.zack.recomptracker.data.usage.UsageTracker
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
@@ -84,6 +86,7 @@ import com.zack.recomptracker.ui.train.ExerciseStatsViewModel
 import com.zack.recomptracker.ui.train.SessionDetailViewModel
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainViewModel
+import com.zack.recomptracker.ui.usage.UsageStatsViewModel
 import com.zack.recomptracker.ui.train.component.MuscleArt
 import com.zack.recomptracker.data.remote.OpenFoodFactsApi
 import com.zack.recomptracker.data.repository.BarcodeRepository
@@ -173,6 +176,16 @@ class AppContainer(context: Context) {
     val trendCalculator = TrendCalculator()
     val adherenceCalculator = AdherenceCalculator()
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * Fully-local, privacy-first usage tracking (Room, no external SDK). Fire-and-forget on
+     * [Dispatchers.IO] via [appScope]; read back on the in-app Usage screen. Lazy so the DAO is
+     * only touched on first use. Exposed to composables via `LocalAppContainer.current.usageTracker`.
+     */
+    val usageTracker: UsageTracker by lazy {
+        RoomUsageTracker(dao = database.usageEventDao(), scope = appScope)
+    }
+
     val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
     val workoutRepository = WorkoutRepository(database.workoutDao())
     val workoutSessionRepository = WorkoutSessionRepository(
@@ -747,6 +760,9 @@ private class AppViewModelFactory(
                 sessionRepository = container.workoutSessionRepository,
                 exerciseLibraryRepository = container.exerciseLibraryRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
+            )
+            UsageStatsViewModel::class.java -> UsageStatsViewModel(
+                dao = container.database.usageEventDao(),
             )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

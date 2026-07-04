@@ -66,7 +66,9 @@ import com.zack.recomptracker.ai.ChatMessage
 import com.zack.recomptracker.ai.CoachState
 import com.zack.recomptracker.ai.PendingCoachAction
 import com.zack.recomptracker.ai.Role
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
@@ -85,6 +87,9 @@ private val suggestions = listOf(
 
 @Composable
 fun CoachScreen(viewModel: CoachViewModel) {
+    // Local usage tracking: one COACH_OPENED per time the coach chat screen enters composition.
+    val usageTracker = LocalAppContainer.current.usageTracker
+    LaunchedEffect(Unit) { usageTracker.track(UsageEvents.COACH_OPENED) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }

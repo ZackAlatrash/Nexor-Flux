@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,6 +50,9 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.shapes.Capsule
 import com.zack.recomptracker.ai.AiInsightState
+import com.zack.recomptracker.data.usage.NoOpUsageTracker
+import com.zack.recomptracker.data.usage.UsageEvents
+import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -149,6 +154,12 @@ private fun ReadyCard(
     var collapsed by rememberSaveable(title) { mutableStateOf(true) }
     val verdictSize = if (variant == InsightCardVariant.HERO) 20.sp else 16.sp
 
+    // Local usage tracking (label = card kind = title). SHOWN fires once per Ready appearance;
+    // TAPPED fires on expand; DISMISSED fires on collapse. Fire-and-forget — never blocks the UI.
+    // No-op under @Preview (LocalInspectionMode), where no AppContainer is provided.
+    val usageTracker = if (LocalInspectionMode.current) NoOpUsageTracker else LocalAppContainer.current.usageTracker
+    LaunchedEffect(title) { usageTracker.track(UsageEvents.INSIGHT_SHOWN, label = title) }
+
     AiInsightCard(
         borderMode = AiBorderMode.Ready,
         modifier = modifier.animateContentSize(spring()),
@@ -161,7 +172,14 @@ private fun ReadyCard(
             collapsed = collapsed,
             collapsedVerdict = verdict,
             confidence = confidence,
-            onToggle = { collapsed = !collapsed },
+            onToggle = {
+                val nowCollapsed = !collapsed
+                collapsed = nowCollapsed
+                usageTracker.track(
+                    if (nowCollapsed) UsageEvents.INSIGHT_DISMISSED else UsageEvents.INSIGHT_TAPPED,
+                    label = title,
+                )
+            },
         )
         if (!collapsed) {
             Spacer(Modifier.height(10.dp))

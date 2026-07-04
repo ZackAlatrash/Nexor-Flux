@@ -51,8 +51,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zack.recomptracker.core.util.formatPercent
 import com.zack.recomptracker.core.util.formatSignedOneDecimal
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
+import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.component.AiBadge
 import coil.compose.AsyncImage
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
@@ -113,12 +115,20 @@ fun HomeDashboardScreen(
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
     val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
 
+    // Local usage tracking: WEEKLY_CHECKIN_OPENED on every path that opens the weekly briefing
+    // (badge/card tap or a Today's-Coaching action). Fire-and-forget — never blocks the UI.
+    val usageTracker = LocalAppContainer.current.usageTracker
+    val openWeeklyReview: () -> Unit = {
+        usageTracker.track(UsageEvents.WEEKLY_CHECKIN_OPENED)
+        weeklyReviewViewModel.open()
+    }
+
     HomeDashboardContent(
         state = state,
         avatarPhotoUri = headerAvatar.photoUri,
         avatarInitials = headerAvatar.initials,
         showWeeklyReviewBadge = badge,
-        onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+        onOpenWeeklyReview = openWeeklyReview,
         onOpenSettings = onOpenSettings,
         onOpenFoodLog = onOpenFoodLog,
         onOpenBody = onOpenBody,
@@ -126,7 +136,7 @@ fun HomeDashboardScreen(
         coachTodayText = coachTodayState.displayText,
         onCoachAction = { type ->
             when (type) {
-                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW -> weeklyReviewViewModel.open()
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW -> openWeeklyReview()
                 // Weight and steps are both logged in the body check-in.
                 com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT,
                 com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS -> onOpenBody()

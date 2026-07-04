@@ -21,9 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -490,69 +487,6 @@ fun GlassInputField(
     }
 }
 
-// ── Violet Slider ─────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun VioletSlider(
-    label: String,
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    range: IntRange = 1..10,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = LocalAppColors.current.textDim,
-            )
-            val accent = LocalAppAccent.current
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(accent.accent.copy(alpha = 0.14f))
-                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 1.dp),
-            ) {
-                Text(
-                    text = value.toString(),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = accent.inkLight,
-                )
-            }
-        }
-        val accent = LocalAppAccent.current
-        Slider(
-            value = value.toFloat(),
-            onValueChange = { onValueChange(it.toInt().coerceIn(range.first, range.last)) },
-            valueRange = range.first.toFloat()..range.last.toFloat(),
-            steps = (range.last - range.first - 1).coerceAtLeast(0),
-            colors = SliderDefaults.colors(
-                thumbColor = accent.accentLighter,
-                activeTrackColor = accent.accentLight,
-                inactiveTrackColor = Color(0x12FFFFFF),
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("${range.first}", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
-            Text("5", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
-            Text("${range.last}", fontSize = 8.sp, color = LocalAppColors.current.textFaint)
-        }
-    }
-}
-
 // ── Violet Toggle ─────────────────────────────────────────────────────────────
 
 @Composable
@@ -704,25 +638,4 @@ fun ScoreStepper(
             )
         }
     }
-}
-
-
-// ── Ambient Orb Helper ────────────────────────────────────────────────────────
-
-@Composable
-fun AmbientOrb(
-    offsetX: Int,
-    offsetY: Int,
-    size: Int = 300,
-    modifier: Modifier = Modifier,
-) {
-    val orbBrush = Brush.radialGradient(
-        listOf(LocalAppAccent.current.accent.copy(alpha = 0.20f), Color.Transparent)
-    )
-    Box(
-        modifier = modifier
-            .size(size.dp)
-            .offset(x = offsetX.dp, y = offsetY.dp)
-            .background(orbBrush),
-    )
 }

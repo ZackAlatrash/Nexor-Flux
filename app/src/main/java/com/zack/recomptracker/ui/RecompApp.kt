@@ -184,7 +184,12 @@ fun RecompApp(
                         GlassOrbBackground(accentTheme = accentTheme, darkMode = darkMode)
                     }
 
-                    // Previous gradient + aurora background (kept for reference):
+                    // Previous gradient + aurora background, kept for reference. The AuroraBackground
+                    // implementation was REMOVED (no live call site): its per-frame withFrameNanos
+                    // loop redrew the captured backdrop every frame, forcing every glass surface to
+                    // re-blur continuously — a severe perf regression. GlassOrbBackground (static,
+                    // tilt-throttled) replaced it. Do NOT reinstate an always-animating background
+                    // behind the shared backdrop.
                     // Box(
                     //     modifier = Modifier
                     //         .layerBackdrop(contentBackdrop)

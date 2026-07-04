@@ -73,6 +73,7 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.ExerciseCard
+import com.zack.recomptracker.ui.train.component.PrBanner
 import com.zack.recomptracker.ui.train.component.exerciseImageUrl
 import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
@@ -115,6 +116,7 @@ fun ActiveSessionScreen(
     val prevMap by viewModel.prevMap.collectAsStateWithLifecycle()
     val exerciseVisuals by viewModel.exerciseVisuals.collectAsStateWithLifecycle()
     val detailExercise by viewModel.detailExercise.collectAsStateWithLifecycle()
+    val prEvent by viewModel.prEvent.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
@@ -436,6 +438,15 @@ fun ActiveSessionScreen(
                 onDismiss = { pendingReplacement = null },
             )
         }
+
+        // ── Mid-workout PR banner ───────────────────────────────────────────────────
+        // Transient celebration overlaid at the top; auto-dismisses and never intercepts touches,
+        // so logging keeps working underneath while it slides in/out.
+        PrBanner(
+            headline = prEvent?.headline,
+            onDismiss = { viewModel.dismissPrEvent() },
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 

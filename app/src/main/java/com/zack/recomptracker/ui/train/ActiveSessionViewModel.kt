@@ -6,8 +6,10 @@ import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.workout.Exercise
+import com.zack.recomptracker.domain.workout.ExerciseStatsCalculator
 import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.SessionSet
+import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +25,19 @@ import java.time.temporal.ChronoUnit
 
 /** Per-exercise visual info resolved from the library for the active session. */
 data class ExerciseVisual(val imagePath: String?, val primaryMuscles: List<String>)
+
+/**
+ * One-shot "you just set a PR" signal for the mid-workout banner. Emitted when a set is marked
+ * complete and its Epley e1RM beats the best-ever e1RM for that exercise. [headline] is the
+ * already-formatted callout line (via [PrCalloutFormatter]); [exerciseId] identifies the lift so the
+ * banner fires at most once per exercise per session.
+ */
+data class PrEvent(
+    val exerciseId: Long,
+    val exerciseName: String,
+    val e1rmKg: Double,
+    val headline: String,
+)
 
 class ActiveSessionViewModel(
     private val sessionRepository: WorkoutSessionRepository,
@@ -64,6 +79,24 @@ class ActiveSessionViewModel(
     private val _detailExercise = MutableStateFlow<Exercise?>(null)
     val detailExercise: StateFlow<Exercise?> = _detailExercise
 
+    /**
+     * One-shot PR banner signal. Null when no banner is pending; set when a completing set beats the
+     * prior best e1RM for its exercise. The screen consumes it and calls [dismissPrEvent] to clear —
+     * a transient StateFlow (not persistent state), so it never re-shows on recomposition.
+     */
+    private val _prEvent = MutableStateFlow<PrEvent?>(null)
+    val prEvent: StateFlow<PrEvent?> = _prEvent
+
+    /**
+     * Best-ever e1RM per exerciseId from COMPLETED history, loaded lazily as exercises appear this
+     * session. The in-progress session isn't a completed session yet, so this reflects history BEFORE
+     * the current set. Updated in-memory when a PR fires so a later set can't re-fire the same lift.
+     */
+    private val priorBestE1rmByExerciseId = mutableMapOf<Long, Double>()
+
+    /** Exercise ids that already fired their banner this session — the once-per-exercise guard. */
+    private val firedPrExerciseIds = mutableSetOf<Long>()
+
     init {
         viewModelScope.launch {
             session.collect { s ->
@@ -72,8 +105,25 @@ class ActiveSessionViewModel(
                 }
                 if (s != null) {
                     resolveVisuals(s)
+                    loadPriorBestE1rm(s)
                 }
             }
+        }
+    }
+
+    /**
+     * Load the best-ever e1RM (completed history) for any session exercise not yet cached. Cheap and
+     * idempotent — runs once per exercise id, so repeated session emissions (the per-second timer)
+     * don't re-query.
+     */
+    private suspend fun loadPriorBestE1rm(session: WorkoutSession) {
+        val missing = session.exercises.map { it.exerciseId }.distinct()
+            .filter { it !in priorBestE1rmByExerciseId }
+        missing.forEach { id ->
+            val history = runCatching { sessionRepository.getExerciseHistory(id) }.getOrNull().orEmpty()
+            val best = ExerciseStatsCalculator.calculate(history).bestOneRepMax
+            // Store 0.0 when there's no prior weighted history so the first weighted PR still fires.
+            priorBestE1rmByExerciseId[id] = best ?: 0.0
         }
     }
 
@@ -196,7 +246,43 @@ class ActiveSessionViewModel(
                     )
                 )
             }
+            if (newCompleted) {
+                detectPr(se, set)
+            }
         }
+    }
+
+    /**
+     * Fire the PR banner if [set]'s Epley e1RM beats the prior best for [se]'s exercise. At most once
+     * per exercise per session, only on a genuine new max. Updates the in-memory best so the same lift
+     * can't re-fire, and stores nothing persistent. Visible for unit testing.
+     */
+    internal suspend fun detectPr(se: SessionExercise, set: SessionSet) {
+        val exerciseId = se.exerciseId
+        if (exerciseId in firedPrExerciseIds) return
+        val e1rm = WorkoutProgressAnalyzer.estimatedOneRepMax(set.reps, set.weightKg) ?: return
+        // Ensure a prior-best is loaded even if the session collector hasn't cached it yet.
+        val priorBest = priorBestE1rmByExerciseId[exerciseId] ?: run {
+            val history = runCatching { sessionRepository.getExerciseHistory(exerciseId) }.getOrNull().orEmpty()
+            (ExerciseStatsCalculator.calculate(history).bestOneRepMax ?: 0.0)
+                .also { priorBestE1rmByExerciseId[exerciseId] = it }
+        }
+        if (e1rm <= priorBest) return
+
+        firedPrExerciseIds += exerciseId
+        priorBestE1rmByExerciseId[exerciseId] = e1rm
+        val headline = PrCalloutFormatter.format(se.exerciseName, buildPrevHint(set)).headline
+        _prEvent.value = PrEvent(
+            exerciseId = exerciseId,
+            exerciseName = se.exerciseName,
+            e1rmKg = e1rm,
+            headline = headline,
+        )
+    }
+
+    /** Clear the pending PR banner after the screen has shown it. */
+    fun dismissPrEvent() {
+        _prEvent.value = null
     }
 
     fun addSet(se: SessionExercise) {

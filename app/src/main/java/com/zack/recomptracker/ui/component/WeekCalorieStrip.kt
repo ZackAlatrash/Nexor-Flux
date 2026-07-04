@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.data.repository.DayCalorieSummary
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
@@ -46,6 +47,10 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private val STRIP_BAR_HEIGHT = 60.dp
+
+// Dash pattern for the target line — constant pixel lengths, no density dependency, so it's
+// built once per process instead of once per drawBehind pass.
+private val TargetLineDashEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
 
 @Composable
 fun WeekCalorieStrip(
@@ -78,7 +83,7 @@ fun WeekCalorieStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (appColors.isDark) Color(0x0D000000) else appColors.cardSurface, RoundedCornerShape(14.dp))
+            .background(appColors.cardSurface, RoundedCornerShape(14.dp))
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -95,7 +100,6 @@ fun WeekCalorieStrip(
                     .fillMaxHeight()
                     .drawBehind {
                         if (!hasZone) return@drawBehind
-                        val dash = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
                         val labelGap = 32.dp.toPx()
                         val yHigh   = size.height * (1f - zoneHighFrac)
                         val yLow    = size.height * (1f - zoneLowFrac)
@@ -114,7 +118,7 @@ fun WeekCalorieStrip(
                             start       = Offset(0f, yTarget),
                             end         = Offset(size.width - labelGap, yTarget),
                             strokeWidth = 1.dp.toPx(),
-                            pathEffect  = dash,
+                            pathEffect  = TargetLineDashEffect,
                         )
                     },
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -147,19 +151,22 @@ fun WeekCalorieStrip(
             }
         }
 
-        // Day-of-week labels
+        // Day-of-week labels — computed once per week/locale instead of 7x per recomposition.
+        val dayLabels = remember(weekData, Locale.getDefault()) {
+            weekData.map { summary ->
+                summary.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
+            }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            weekData.forEach { summary ->
+            weekData.forEachIndexed { index, summary ->
                 val sel = summary.date == selectedDate
                 Text(
-                    text = summary.date.dayOfWeek
-                        .getDisplayName(TextStyle.SHORT, Locale.getDefault())
-                        .take(2),
+                    text = dayLabels[index],
                     fontSize = if (sel) 9.sp else 8.sp,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                     color = if (sel) accent.inkLight else appColors.textDim,
@@ -191,8 +198,7 @@ fun WeekCalorieStrip(
             ) {
                 Text(
                     text = "Today",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
                     color = accent.inkLight,
                 )
             }

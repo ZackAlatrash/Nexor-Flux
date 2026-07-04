@@ -32,12 +32,10 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +68,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiExpandToggle
 import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
@@ -85,6 +84,14 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+
+// DateTimeFormatter is immutable + thread-safe — hoisted to file scope so it isn't rebuilt per
+// composition/recomposition (monthFormatter previously ran once per history change via remember,
+// still worth hoisting; historyDateFormatter previously rebuilt on every HistoryCard recomposition
+// inside the History tab's items{} list).
+private val monthYearFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
+private val historyDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
 
 @Composable
 fun TrainHomeScreen(
@@ -114,11 +121,10 @@ fun TrainHomeScreen(
     // History grouped by month (newest first). Computed once per history change rather than
     // on every recomposition — the sort + per-row date parse/format is otherwise re-run each pass.
     val historyGrouped = remember(state.history) {
-        val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
         state.history
             .sortedByDescending { it.date }
             .groupBy { session ->
-                runCatching { LocalDate.parse(session.date).format(monthFormatter).uppercase() }
+                runCatching { LocalDate.parse(session.date).format(monthYearFormatter).uppercase() }
                     .getOrElse { "UNKNOWN" }
             }
             .entries
@@ -653,7 +659,7 @@ private fun RoutineCard(
                     tint = accent.onAccent,
                     modifier = Modifier.size(15.dp),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = "Start",
                     style = AppType.body,
@@ -674,23 +680,16 @@ private fun RoutineCard(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete \"${template.name}\"?") },
-            text = { Text("This routine will be permanently deleted.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    onDeleteClick()
-                }) {
-                    Text("Delete", color = ErrorRed)
-                }
+        ConfirmDialog(
+            title = "Delete \"${template.name}\"?",
+            body = "This routine will be permanently deleted.",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteClick()
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { showDeleteDialog = false },
         )
     }
 }
@@ -738,12 +737,12 @@ private fun EmptyRoutinesCard(
                 onClick = onCreateRoutine,
                 tint = accent.accent,
                 surfaceColor = Color.White.copy(alpha = 0.08f),
-                buttonHeight = 44.dp,
+                buttonHeight = 48.dp,
                 modifier = Modifier.fillMaxWidth(0.65f),
             ) {
                 Text(
                     text = "Create routine",
-                    style = AppType.body,
+                    style = AppType.cardTitle,
                     color = accent.onAccent,
                 )
             }
@@ -767,9 +766,13 @@ private fun HistoryCard(
     val volume = WorkoutProgressAnalyzer.sessionVolume(allSets)
     val durationMin = session.durationSeconds?.let { it / 60 }
 
-    val dateFormatted = runCatching {
-        LocalDate.parse(session.date).format(DateTimeFormatter.ofPattern("MMM d"))
-    }.getOrElse { session.date }
+    // Row composable inside items(sessions) — memoize per session.date so a recomposition that
+    // doesn't change the date (e.g. a sibling row's state) doesn't re-run the parse/format.
+    val dateFormatted = remember(session.date) {
+        runCatching {
+            LocalDate.parse(session.date).format(historyDateFormatter)
+        }.getOrElse { session.date }
+    }
 
     FrostedCard(
         modifier = modifier.clickable { onClick() },

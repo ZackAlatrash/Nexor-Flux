@@ -24,11 +24,10 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import com.zack.recomptracker.domain.workout.MuscleCategory
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlin.math.ceil
@@ -117,7 +116,7 @@ private fun androidx.compose.foundation.layout.RowScope.BodyFigure(
             val t = BodyMapGeometry.fit(bounds.left, bounds.top, bounds.right, bounds.bottom, size.width, size.height)
             drawFigure(paths, highlightSlugs, tint, faintColor, intensities, t)
         }
-        Text(text = label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = labelColor, modifier = Modifier.padding(top = 4.dp))
+        Text(text = label, style = AppType.metaLabel, color = labelColor, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

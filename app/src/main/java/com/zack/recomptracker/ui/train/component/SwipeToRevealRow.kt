@@ -64,9 +64,13 @@ fun SwipeToRevealRow(
     val density = LocalDensity.current
     val revealPx = with(density) { RevealWidth.toPx() }
     val offsetX = remember { Animatable(0f) }
-    // derivedStateOf so this only recomposes when the boolean flips — the per-frame offset is
+    // derivedStateOf so these only recompose when the boolean flips — the per-frame offset is
     // read in the layout/placement phase below, never during composition.
     val isOpen by remember { derivedStateOf { offsetX.value <= -1f } }
+    // Whether the row is revealing at all (mid-drag or settled open). Gates composition of the
+    // Remove pill below: at rest (offset == 0) the pill slot is skipped entirely, so ~24 hidden
+    // glass pills across a session's set rows never enter composition until actually swiped.
+    val isRevealing by remember { derivedStateOf { offsetX.value != 0f } }
 
     Layout(
         modifier = modifier
@@ -99,27 +103,34 @@ fun SwipeToRevealRow(
                     )
                 }
             }
-            // Slot 1 — the fixed-size red liquid-glass Remove pill.
-            Box(contentAlignment = Alignment.Center) {
-                LiquidGlassButton(
-                    onClick = {
-                        scope.launch {
-                            offsetX.animateTo(0f)
-                            onRemove()
-                        }
-                    },
-                    enabled = isOpen,
-                    tint = ErrorRed,
-                    surfaceColor = Color.White.copy(alpha = 0.08f),
-                    buttonHeight = 40.dp,
-                    modifier = Modifier.width(RemoveButtonWidth),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Remove",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp),
-                    )
+            // Slot 1 — the fixed-size Remove pill, composed only while revealing. The reveal
+            // distance is driven by the constant [RevealWidth] in the layout phase below (never
+            // by measuring this slot), so omitting it at rest doesn't change anchor positions.
+            if (isRevealing) {
+                Box(contentAlignment = Alignment.Center) {
+                    LiquidGlassButton(
+                        onClick = {
+                            scope.launch {
+                                offsetX.animateTo(0f)
+                                onRemove()
+                            }
+                        },
+                        enabled = isOpen,
+                        tint = ErrorRed,
+                        surfaceColor = Color.White.copy(alpha = 0.08f),
+                        buttonHeight = 40.dp,
+                        // Revealed behind a row mid-drag — backdrop glass there is invisible in
+                        // practice, so the cheap look-alike is indistinguishable and far cheaper.
+                        lite = true,
+                        modifier = Modifier.width(RemoveButtonWidth),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Remove",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
         },
@@ -127,12 +138,16 @@ fun SwipeToRevealRow(
         val contentPlaceable = measurables[0].measure(constraints)
         val rowHeight = contentPlaceable.height
         val pillWidthPx = with(density) { RevealWidth.roundToPx() }
-        val pillPlaceable = measurables[1].measure(Constraints.fixed(pillWidthPx, rowHeight))
+        // Slot 1 (the pill) is only present in [measurables] while isRevealing is true. Measure/
+        // place it when it exists; the reveal distance itself (revealPx, used for the drag clamp
+        // and offsetX math above) is always RevealWidth regardless — never derived from this
+        // measurement — so the reveal anchor is identical whether or not the pill is composed.
+        val pillPlaceable = measurables.getOrNull(1)?.measure(Constraints.fixed(pillWidthPx, rowHeight))
 
         layout(contentPlaceable.width, rowHeight) {
             val dx = offsetX.value.roundToInt()
             contentPlaceable.placeRelative(dx, 0)
-            pillPlaceable.placeRelative(contentPlaceable.width + dx, 0)
+            pillPlaceable?.placeRelative(contentPlaceable.width + dx, 0)
         }
     }
 }

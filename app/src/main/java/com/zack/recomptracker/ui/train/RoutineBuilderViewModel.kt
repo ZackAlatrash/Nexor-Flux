@@ -143,20 +143,30 @@ class RoutineBuilderViewModel(
         current.copy(exercises = updated)
     }
 
+    /**
+     * Updates just set [setIndex] of exercise [exIndex]. Called on every reps/weight keystroke
+     * in the Routine Builder, so it touches only the targeted exercise and set — every other
+     * [BuilderExercise] and [BuilderSet] in the tree keeps its original object reference, letting
+     * Compose skip recomposing the untouched exercise cards/set rows entirely. (The previous
+     * implementation ran a nested `mapIndexed` over every exercise and every set on each
+     * keystroke; the *values* it produced for untouched elements were already identical, but the
+     * indexed-access rewrite below makes "only the target changes" explicit and avoids invoking a
+     * lambda per untouched element.)
+     */
     fun setTarget(exIndex: Int, setIndex: Int, reps: Int?, weightKg: Double?) =
         _state.update { current ->
-            val updated = current.exercises.mapIndexed { i, ex ->
-                if (i == exIndex) {
-                    val newSets = ex.sets.mapIndexed { j, s ->
-                        if (j == setIndex) s.copy(targetReps = reps, targetWeightKg = weightKg)
-                        else s
-                    }
-                    ex.copy(sets = newSets)
-                } else {
-                    ex
-                }
-            }
-            current.copy(exercises = updated)
+            val exercises = current.exercises
+            if (exIndex !in exercises.indices) return@update current
+            val targetExercise = exercises[exIndex]
+            val sets = targetExercise.sets
+            if (setIndex !in sets.indices) return@update current
+
+            val updatedSet = sets[setIndex].copy(targetReps = reps, targetWeightKg = weightKg)
+            val updatedSets = sets.toMutableList().apply { this[setIndex] = updatedSet }
+            val updatedExercise = targetExercise.copy(sets = updatedSets)
+            val updatedExercises = exercises.toMutableList().apply { this[exIndex] = updatedExercise }
+
+            current.copy(exercises = updatedExercises)
         }
 
     // ── Save ─────────────────────────────────────────────────────────────────

@@ -31,11 +31,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -65,6 +62,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +74,8 @@ import com.zack.recomptracker.ui.component.InsightCardHeader
 import com.zack.recomptracker.ui.component.WeekCalorieStrip
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
+import com.zack.recomptracker.ui.component.GlassAlertDialog
+import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
@@ -325,28 +325,25 @@ fun FoodContent(
     }
 
     if (showAddSlotDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddSlotDialog = false; newSlotName = "" },
-            title = { Text("New meal slot") },
-            text = {
-                OutlinedTextField(
-                    value = newSlotName,
-                    onValueChange = { newSlotName = it },
-                    label = { Text("Slot name") },
-                    singleLine = true,
-                )
+        GlassAlertDialog(
+            onDismiss = { showAddSlotDialog = false; newSlotName = "" },
+            title = "New meal slot",
+            confirmLabel = "Add",
+            confirmEnabled = newSlotName.isNotBlank(),
+            onConfirm = {
+                actions.onAddSlot(newSlotName)
+                newSlotName = ""
+                showAddSlotDialog = false
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    actions.onAddSlot(newSlotName)
-                    newSlotName = ""
-                    showAddSlotDialog = false
-                }) { Text("Add") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddSlotDialog = false; newSlotName = "" }) { Text("Cancel") }
-            },
-        )
+            dismissLabel = "Cancel",
+        ) {
+            GlassInputField(
+                label = "Slot name",
+                value = newSlotName,
+                onValueChange = { newSlotName = it },
+                keyboardType = KeyboardType.Text,
+            )
+        }
     }
 
 }
@@ -382,9 +379,9 @@ private fun FoodScreenHeader(
         if (isFuture) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(accent.accent.copy(alpha = 0.20f))
-                    .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(5.dp))
+                    .border(1.dp, accent.accent.copy(alpha = 0.40f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 7.dp, vertical = 2.dp),
             ) {
                 Text(
@@ -444,13 +441,12 @@ private fun ReconcilePlannedBanner(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = "Planned meals not confirmed",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                style = AppType.cardSubtitle.copy(fontWeight = FontWeight.Bold),
                 color = appColors.textPrimary,
             )
             Text(
                 text = "You planned $plannedCalories kcal for this day. Did you eat it?",
-                fontSize = 10.sp,
+                style = AppType.metaLabel,
                 color = appColors.textMuted,
             )
         }
@@ -479,7 +475,7 @@ private fun StalePlannedHint(count: Int) {
         Text("🗓", fontSize = 13.sp)
         Text(
             text = "$count planned ${if (count == 1) "meal" else "meals"} on past days await confirmation — use ‹ to review.",
-            fontSize = 10.sp,
+            style = AppType.metaLabel,
             color = appColors.textMuted,
         )
     }
@@ -696,7 +692,7 @@ private fun NutritionStrip(
                     )
                     Text(
                         text = calSubText,
-                        fontSize = 11.sp,
+                        style = AppType.label,
                         color = mutedText,
                     )
                 }
@@ -727,8 +723,7 @@ private fun NutritionStrip(
                 Text(
                     text = if (cal > 0) "+$plannedCal kcal planned · ${cal + plannedCal} projected"
                            else "$plannedCal kcal planned",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.metaLabel,
                     color = plannedText,
                 )
             }
@@ -800,6 +795,9 @@ private fun MacroProgressItem(
     val resolvedLabel  = if (labelColor  != Color.Unspecified) labelColor  else appColors.textMuted
     val resolvedValue  = if (valueColor  != Color.Unspecified) valueColor  else appColors.textPrimary
     val resolvedRemain = if (remainColor != Color.Unspecified) remainColor else appColors.textVeryMuted
+    val fillBrush = remember(accent.accent, accent.accentLight) {
+        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight))
+    }
     val animatedFrac by animateFloatAsState(
         targetValue = frac,
         animationSpec = tween(durationMillis = 900),
@@ -836,7 +834,7 @@ private fun MacroProgressItem(
                     .fillMaxWidth(animatedFrac)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
+                        fillBrush,
                         RoundedCornerShape(3.dp),
                     ),
             )
@@ -897,8 +895,7 @@ private fun LockedSlotCard(
                         val t = slotWithEntries.totals
                         "${t.calories} kcal · ${t.proteinG.roundToInt()}P · ${t.carbsG.roundToInt()}C · ${t.fatG.roundToInt()}F"
                     } else "empty",
-                    fontSize = 10.sp,
-                    fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal,
+                    style = AppType.metaLabel.copy(fontWeight = if (hasEntries) FontWeight.SemiBold else FontWeight.Normal),
                     color = if (hasEntries) accent.accentLight else appColors.textMuted,
                 )
             }
@@ -936,6 +933,7 @@ private fun LockedSlotCard(
                         tint = accent.accent,
                         surfaceColor = Color.White.copy(alpha = 0.08f),
                         buttonHeight = 32.dp,
+                        lite = true,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
@@ -1016,7 +1014,7 @@ private fun LockedSlotCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(modifier = Modifier.weight(1f).height(1.dp).background(appColors.cardBorder))
-                Text("nothing logged yet", fontSize = 10.sp, color = appColors.textFaint)
+                Text("nothing logged yet", style = AppType.metaLabel, color = appColors.textFaint)
                 Box(modifier = Modifier.weight(1f).height(1.dp).background(appColors.cardBorder))
             }
         }
@@ -1139,7 +1137,7 @@ private fun SlotEntryRow(
                             .border(1.dp, accent.accent.copy(alpha = 0.34f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                     ) {
-                        Text("Planned", fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = accent.inkLight)
+                        Text("Planned", style = AppType.metaLabel.copy(fontWeight = FontWeight.SemiBold), color = accent.inkLight)
                     }
                 }
             }
@@ -1254,31 +1252,29 @@ private fun MacroEditDialog(
     var p   by remember(entry.id) { mutableStateOf(entry.proteinG.toInt().toString()) }
     var c   by remember(entry.id) { mutableStateOf(entry.carbsG.toInt().toString()) }
     var f   by remember(entry.id) { mutableStateOf(entry.fatG.toInt().toString()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit ${entry.name}") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                NumberField("Calories", cal, { cal = it }, suffix = "kcal")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NumberField("Protein", p, { p = it }, Modifier.weight(1f), "g")
-                    NumberField("Carbs",   c, { c = it }, Modifier.weight(1f), "g")
-                    NumberField("Fat",     f, { f = it }, Modifier.weight(1f), "g")
-                }
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = "Edit ${entry.name}",
+        confirmLabel = "Save",
+        onConfirm = {
+            onSave(
+                cal.toIntOrNull() ?: entry.calories,
+                p.toDoubleOrNull() ?: entry.proteinG,
+                c.toDoubleOrNull() ?: entry.carbsG,
+                f.toDoubleOrNull() ?: entry.fatG,
+            )
+        },
+        dismissLabel = "Cancel",
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            NumberField("Calories", cal, { cal = it }, suffix = "kcal")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NumberField("Protein", p, { p = it }, Modifier.weight(1f), "g")
+                NumberField("Carbs",   c, { c = it }, Modifier.weight(1f), "g")
+                NumberField("Fat",     f, { f = it }, Modifier.weight(1f), "g")
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onSave(
-                    cal.toIntOrNull() ?: entry.calories,
-                    p.toDoubleOrNull() ?: entry.proteinG,
-                    c.toDoubleOrNull() ?: entry.carbsG,
-                    f.toDoubleOrNull() ?: entry.fatG,
-                )
-            }) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+        }
+    }
 }
 
 // ── Edit Mode Slot Card ────────────────────────────────────────────────────────
@@ -1343,47 +1339,38 @@ private fun EditModeSlotCard(
 
         // ── Actions ───────────────────────────────────────────────────────────
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(accent.tintedSurface)
-                    .border(1.dp, accent.tintedBorder, RoundedCornerShape(8.dp))
-                    .clickable { showRename = true; renameValue = slotWithEntries.slot.name }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            LiquidActionButton(
+                text = "Rename",
+                onClick = { showRename = true; renameValue = slotWithEntries.slot.name },
+                small = true,
+                lite = true,
+            )
+            LiquidGlassButton(
+                onClick = { showDeleteConfirm = true },
+                buttonHeight = 32.dp,
+                lite = true,
+                tint = ErrorRed,
             ) {
-                Text("Rename", style = AppType.label, color = accent.inkLight)
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x1AFB7185))
-                    .border(1.dp, Color(0x33FB7185), RoundedCornerShape(8.dp))
-                    .clickable { showDeleteConfirm = true }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text("Delete", style = AppType.label, color = ErrorRed)
+                Text("Delete", style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = ErrorRed)
             }
         }
     }
 
     if (showRename) {
-        AlertDialog(
-            onDismissRequest = { showRename = false },
-            title = { Text("Rename slot") },
-            text = {
-                OutlinedTextField(
-                    value         = renameValue,
-                    onValueChange = { renameValue = it },
-                    singleLine    = true,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { onRename(renameValue); showRename = false }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRename = false }) { Text("Cancel") }
-            },
-        )
+        GlassAlertDialog(
+            onDismiss = { showRename = false },
+            title = "Rename slot",
+            confirmLabel = "Save",
+            onConfirm = { onRename(renameValue); showRename = false },
+            dismissLabel = "Cancel",
+        ) {
+            GlassInputField(
+                label = "Slot name",
+                value = renameValue,
+                onValueChange = { renameValue = it },
+                keyboardType = KeyboardType.Text,
+            )
+        }
     }
     if (showDeleteConfirm) {
         val entryCount = slotWithEntries.entries.size

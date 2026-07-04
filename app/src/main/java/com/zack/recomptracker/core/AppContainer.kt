@@ -198,6 +198,17 @@ class AppContainer(context: Context) {
         backgroundScheduler = WorkManagerBackgroundSyncScheduler(context.applicationContext),
     )
 
+    // Knowledge base: read + JSON-parsed once from assets (~116 KB). The read/parse is done off the
+    // main thread (see the appScope.launch in init) — mirroring the exercise-library and MuscleArt
+    // loads — so it can never block cold start. Until the parse completes, and if it fails (missing
+    // or invalid corpus, so a bad ingestion run can never crash the app), the injector delegates to a
+    // no-op that emits no REFERENCE block; the swap is invisible to consumers because they only call
+    // referenceBlock() at generation time (a chat turn / insight / briefing), long after startup.
+    // Shared by the cloud coach chat and the weekly briefing so both ground prose in the same corpus.
+    // Declared BEFORE the init block that hands it to the IO coroutine, like every other property
+    // an init-launched load touches — property initializers and init blocks run in source order.
+    private val knowledgeInjector = DeferredKnowledgeInjector()
+
     init {
         appScope.launch {
             runCatching {
@@ -217,6 +228,22 @@ class AppContainer(context: Context) {
         }
         appScope.launch(Dispatchers.IO) {
             runCatching { MuscleArt.load(context.applicationContext) }
+        }
+        // Read + parse the ~116 KB knowledge corpus off the main thread, then swap the deferred
+        // injector's delegate to the real retriever. On failure it stays a no-op (coach/briefing run
+        // without knowledge injection). Consumers only read referenceBlock() at generation time, so
+        // the brief startup window before this completes is never observed.
+        appScope.launch(Dispatchers.IO) {
+            runCatching {
+                val raw = context.applicationContext.assets
+                    .open("knowledge/corpus.json")
+                    .bufferedReader()
+                    .use { it.readText() }
+                RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
+            }.onSuccess { knowledgeInjector.setDelegate(it) }
+                .onFailure {
+                    Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
+                }
         }
     }
 
@@ -261,21 +288,6 @@ class AppContainer(context: Context) {
         coachMemory = coachMemoryStore,
     )
     val coachHandoffStore = CoachHandoffStore()
-
-    // Knowledge base: loaded once from assets. Degrades to a no-op if the corpus is missing or
-    // invalid, so a bad ingestion run can never crash the app. Loaded synchronously here — fine for
-    // the small seed corpus; TODO: move to async init if the corpus grows beyond ~50 chunks.
-    // Shared by the cloud coach chat and the weekly briefing so both ground prose in the same corpus.
-    private val knowledgeInjector: KnowledgeInjector = runCatching {
-        val raw = context.applicationContext.assets
-            .open("knowledge/corpus.json")
-            .bufferedReader()
-            .use { it.readText() }
-        RetrievalKnowledgeInjector(KeywordKnowledgeRetriever(KnowledgeCorpus.fromJson(raw).chunks))
-    }.getOrElse {
-        Log.w("RecompKnowledge", "Knowledge corpus load failed — coach will run without knowledge injection", it)
-        NoOpKnowledgeInjector
-    }
 
     // Multi-week coach memory: one shared journey ledger. The digest records fired signals + weekly
     // verdicts into it; the briefing and chat prompts read its narrative. See Phase 5 / §10.
@@ -540,6 +552,19 @@ class AppContainer(context: Context) {
 
     val coachCoordinator: CoachCoordinator = cloudCoachCoordinator
     val viewModelFactory: ViewModelProvider.Factory = AppViewModelFactory(this)
+
+    /**
+     * A [KnowledgeInjector] whose backing delegate is installed asynchronously once the corpus has
+     * been parsed off the main thread (see the init block). Starts as [NoOpKnowledgeInjector] so it
+     * is safe to call before the parse finishes — it just returns no REFERENCE block — and stays a
+     * no-op if the load fails. The delegate is read/written through @Volatile for cross-thread
+     * visibility; referenceBlock() itself stays non-suspend so every existing consumer is unchanged.
+     */
+    private class DeferredKnowledgeInjector : KnowledgeInjector {
+        @Volatile private var delegate: KnowledgeInjector = NoOpKnowledgeInjector
+        fun setDelegate(injector: KnowledgeInjector) { delegate = injector }
+        override fun referenceBlock(query: String): String = delegate.referenceBlock(query)
+    }
 }
 
 private class AppViewModelFactory(

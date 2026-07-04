@@ -28,12 +28,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
-import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -135,6 +133,7 @@ fun BarcodeScannerScreen(
                 ) {
                     Text(
                         "Camera permission is required to scan barcodes.",
+                        style = AppType.body,
                         color = Color.White,
                     )
                     LiquidPrimaryButton(
@@ -193,7 +192,7 @@ fun BarcodeScannerScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         CircularProgressIndicator(color = Color.White)
-                        Text("Looking up product…", color = Color.White)
+                        Text("Looking up product…", style = AppType.body, color = Color.White)
                     }
                 }
             }

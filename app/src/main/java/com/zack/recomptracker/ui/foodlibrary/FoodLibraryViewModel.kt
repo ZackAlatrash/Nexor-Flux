@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -262,6 +264,10 @@ class FoodLibraryViewModel(
     private val foodCatalogRepository: FoodCatalogRepository,
     private val barcodeRepository: com.zack.recomptracker.data.repository.BarcodeRepository,
     private val recipeRepository: RecipeRepository,
+    // Off-main dispatcher for the library filtering (withComputedFields(): fuzzy filters over the
+    // personal + NEVO catalog on every data emission). The collectors below run on it so the
+    // filter work stays off the main thread. Injectable for tests; default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
@@ -299,7 +305,10 @@ class FoodLibraryViewModel(
         if (initialized) return
         initialized = true
         val today = dateProvider.today()
-        viewModelScope.launch {
+        // Run the filtering collectors off the main thread — withComputedFields() filters the
+        // personal + catalog food lists on every emission. _uiState is a MutableStateFlow, so
+        // updating it from computeDispatcher is safe.
+        viewModelScope.launch(computeDispatcher) {
             combine(
                 logRepository.observeSavedFoods(),
                 foodCatalogRepository.observeCatalogFoods(),
@@ -335,12 +344,12 @@ class FoodLibraryViewModel(
                 }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(computeDispatcher) {
             logRepository.observeRecentFoods().collect { recents ->
                 _uiState.update { it.copy(recentEntries = recents).withComputedFields() }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(computeDispatcher) {
             recipeRepository.observeAll().collect { recipes ->
                 _uiState.update { it.copy(allRecipes = recipes).withComputedFields() }
             }

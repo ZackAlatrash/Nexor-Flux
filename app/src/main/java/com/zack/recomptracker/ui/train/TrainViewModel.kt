@@ -14,6 +14,8 @@ import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -40,6 +42,10 @@ class TrainViewModel(
     private val logRepository: LogRepository,
     private val userProfileStore: UserProfilePreferencesStore,
     dateProvider: DateProvider,
+    // Off-main dispatcher for the stats/plan/readiness transforms (TrainStatsBuilder, LocalDate.parse
+    // over history + logs, TrainingReadinessMapper, TrainingPlanBuilder). Injectable for tests;
+    // default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val tab = MutableStateFlow(TrainTab.ROUTINES)
     private val today: LocalDate = dateProvider.today()
@@ -125,7 +131,10 @@ class TrainViewModel(
             readiness = pr.readiness,
             recoveryLoggedToday = pr.recoveryLoggedToday,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TrainUiState())
+    }
+        // Runs every upstream transform (core stats + plan/readiness) off the main thread.
+        .flowOn(computeDispatcher)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TrainUiState())
 
     private data class Quad(
         val routines: List<WorkoutTemplate>,

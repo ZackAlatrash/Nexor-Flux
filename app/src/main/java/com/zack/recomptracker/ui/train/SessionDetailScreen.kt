@@ -53,6 +53,9 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.roundToInt
 
+// Immutable + thread-safe — hoisted to file scope instead of rebuilt on every composition.
+private val sessionDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+
 @Composable
 fun SessionDetailScreen(
     viewModel: SessionDetailViewModel,
@@ -75,7 +78,7 @@ fun SessionDetailScreen(
 
     // Format date
     val dateFormatted = runCatching {
-        LocalDate.parse(state.date).format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+        LocalDate.parse(state.date).format(sessionDateFormatter)
     }.getOrElse { state.date }
 
     val durationMin = state.durationSeconds / 60
@@ -164,8 +167,7 @@ private fun ExerciseDetailCard(
                 ) {
                     Text(
                         text = "PR",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppType.metaLabel,
                         color = accent.accentLighter,
                     )
                 }

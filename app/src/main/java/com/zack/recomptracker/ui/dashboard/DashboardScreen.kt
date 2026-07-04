@@ -35,8 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -279,13 +277,22 @@ fun HomeDashboardContent(
                 contentAlignment = Alignment.Center,
             ) {
                 // Accent glow halo behind the pill — brighter when a fresh review is waiting.
+                // A remembered radial gradient (colour fading to transparent) fakes the soft
+                // edge a blur pass would produce, without an offscreen render each frame. Sized
+                // ~26dp taller than the 48dp pill so the glow spreads beyond it, same as before.
+                val weeklyReviewGlowBrush = remember(accent.accent, showWeeklyReviewBadge) {
+                    Brush.radialGradient(
+                        listOf(
+                            accent.accent.copy(alpha = if (showWeeklyReviewBadge) 0.55f else 0.32f),
+                            Color.Transparent,
+                        ),
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .blur(radius = 26.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                        .clip(RoundedCornerShape(100))
-                        .background(accent.accent.copy(alpha = if (showWeeklyReviewBadge) 0.55f else 0.32f)),
+                        .height(100.dp)
+                        .background(weeklyReviewGlowBrush),
                 )
                 LiquidGlassButton(
                     onClick = onOpenWeeklyReview,
@@ -513,6 +520,9 @@ private fun MacroBarItem(
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val fillBrush = remember(accent.accent, accent.accentLight) {
+        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight))
+    }
     val animatedFrac by animateFloatAsState(
         targetValue = fraction,
         animationSpec = ChartDefaults.AnimSpec.progressBar,
@@ -542,7 +552,7 @@ private fun MacroBarItem(
                     .fillMaxWidth(animatedFrac)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
+                        fillBrush,
                         RoundedCornerShape(3.dp),
                     ),
             )
@@ -793,17 +803,18 @@ private fun MacroChartStat(
 private fun MotivationalCard(message: String) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val backgroundBrush = remember(accent.accentDark) {
+        Brush.linearGradient(
+            colors = listOf(accent.accentDark.copy(alpha = 0.14f), accent.accentDark.copy(alpha = 0.06f)),
+            start = Offset(0f, 0f),
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(accent.accentDark.copy(alpha = 0.14f), accent.accentDark.copy(alpha = 0.06f)),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-                ),
-            )
+            .background(backgroundBrush)
             .border(1.dp, accent.accent.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {

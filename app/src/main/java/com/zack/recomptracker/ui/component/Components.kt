@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,7 +32,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -213,31 +211,29 @@ fun MessageText(message: String?, kind: MessageKind = MessageKind.INFO, modifier
     }
 }
 
+/**
+ * Shared confirm / discard dialog. A thin preset over [GlassAlertDialog] (frosted panel + Liquid
+ * buttons) so every confirmation across the app reads as one glass surface. Signature is unchanged,
+ * so existing call sites keep working; new confirm flows should use this rather than a raw dialog.
+ */
 @Composable
 fun ConfirmDialog(
     title: String,
     body: String,
     confirmLabel: String = "Delete",
+    dismissLabel: String = "Cancel",
     isDestructive: Boolean = true,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = confirmLabel,
-                    color = if (isDestructive) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.primary,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = title,
+        body = body,
+        confirmLabel = confirmLabel,
+        dismissLabel = dismissLabel,
+        onConfirm = onConfirm,
+        isDestructive = isDestructive,
     )
 }
 

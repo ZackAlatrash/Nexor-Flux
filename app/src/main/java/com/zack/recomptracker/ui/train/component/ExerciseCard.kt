@@ -36,13 +36,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -182,8 +181,7 @@ fun ExerciseCard(
             ) {
                 Text(
                     text = exerciseName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.cardTitle,
                     color = appColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -191,7 +189,7 @@ fun ExerciseCard(
                 if (subtitle.isNotEmpty()) {
                     Text(
                         text = subtitle,
-                        fontSize = 11.sp,
+                        style = AppType.cardSubtitle,
                         color = appColors.textMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

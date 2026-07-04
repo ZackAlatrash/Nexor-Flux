@@ -28,16 +28,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +77,8 @@ import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.FoodAmountPanel
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassAlertDialog
+import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.NumberField
@@ -421,24 +421,21 @@ fun FoodLibraryScreen(
         CreateFoodSheet(state = state, viewModel = viewModel)
     }
     if (state.showSaveMealDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissSaveMealDialog,
-            title = { Text("Save as recipe") },
-            text = {
-                OutlinedTextField(
-                    value = state.saveMealName,
-                    onValueChange = viewModel::onSaveMealNameChanged,
-                    label = { Text("Meal name") },
-                    singleLine = true,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmSaveMeal) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissSaveMealDialog) { Text("Cancel") }
-            },
-        )
+        GlassAlertDialog(
+            onDismiss = viewModel::dismissSaveMealDialog,
+            title = "Save as recipe",
+            confirmLabel = "Save",
+            confirmEnabled = state.saveMealName.isNotBlank(),
+            onConfirm = viewModel::confirmSaveMeal,
+            dismissLabel = "Cancel",
+        ) {
+            GlassInputField(
+                label = "Meal name",
+                value = state.saveMealName,
+                onValueChange = viewModel::onSaveMealNameChanged,
+                keyboardType = KeyboardType.Text,
+            )
+        }
     }
     if (state.showQuickAddDialog) {
         QuickAddSheet(state = state, viewModel = viewModel)
@@ -492,7 +489,7 @@ private fun GlassSearchField(
         value = query,
         onValueChange = onQueryChanged,
         singleLine = true,
-        textStyle = TextStyle(fontSize = 14.sp, color = appColors.textPrimary.copy(alpha = 0xBF / 255f)),
+        textStyle = AppType.body.copy(color = appColors.textPrimary.copy(alpha = 0xBF / 255f)),
         cursorBrush = SolidColor(accent.accentLighter),
         modifier = modifier
             .fillMaxWidth()
@@ -514,7 +511,7 @@ private fun GlassSearchField(
                 )
                 Box(modifier = Modifier.weight(1f).padding(vertical = 7.dp)) {
                     if (query.isEmpty()) {
-                        Text(placeholder, fontSize = 14.sp, color = appColors.textFaint)
+                        Text(placeholder, style = AppType.body, color = appColors.textFaint)
                     }
                     innerField()
                 }
@@ -623,7 +620,7 @@ private fun GlassFoodRow(
                             .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     ) {
-                        Text(item.sourceLabel, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.inkBase.copy(alpha = 0.70f))
+                        Text(item.sourceLabel, style = AppType.metaLabel, color = accent.inkBase.copy(alpha = 0.70f))
                     }
                 }
             }
@@ -651,7 +648,12 @@ private fun GlassFoodRow(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 13.sp, color = accent.inkLight)
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    tint = accent.inkLight,
+                    modifier = Modifier.size(14.dp),
+                )
             }
         }
         // Add button
@@ -667,7 +669,12 @@ private fun GlassFoodRow(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = accent.onAccent)
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add",
+                tint = accent.onAccent,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
@@ -702,7 +709,7 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
                         .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Meal", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.inkBase.copy(alpha = 0.70f))
+                    Text("Meal", style = AppType.metaLabel, color = accent.inkBase.copy(alpha = 0.70f))
                 }
             }
             Text(
@@ -728,7 +735,12 @@ private fun GlassMealRow(meal: SavedMealEntity, onLog: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = accent.onAccent)
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add",
+                tint = accent.onAccent,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
@@ -768,7 +780,7 @@ private fun GlassRecipeRow(
                         .border(1.dp, accent.tintedBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
-                    Text("Recipe", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = accent.inkBase.copy(alpha = 0.70f))
+                    Text("Recipe", style = AppType.metaLabel, color = accent.inkBase.copy(alpha = 0.70f))
                 }
             }
             Text(
@@ -792,7 +804,12 @@ private fun GlassRecipeRow(
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onEdit),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✎", fontSize = 13.sp, color = accent.inkLight)
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    tint = accent.inkLight,
+                    modifier = Modifier.size(14.dp),
+                )
             }
         }
         Box(
@@ -803,7 +820,12 @@ private fun GlassRecipeRow(
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onLog),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Light, color = accent.onAccent)
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add",
+                tint = accent.onAccent,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
@@ -925,7 +947,7 @@ private fun RecipeAmountSheet(state: FoodLibraryUiState, viewModel: FoodLibraryV
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -970,7 +992,7 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -982,18 +1004,18 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
                 )
                 Text("Macros are per 100 g", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
-            OutlinedTextField(
+            GlassInputField(
+                label = "Name",
                 value = state.newFoodName,
                 onValueChange = viewModel::onNewFoodNameChanged,
-                label = { Text("Name") },
-                singleLine = true,
+                keyboardType = KeyboardType.Text,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            GlassInputField(
+                label = "Serving (e.g. 100g, 1 scoop)",
                 value = state.newFoodServing,
                 onValueChange = viewModel::onNewFoodServingChanged,
-                label = { Text("Serving (e.g. 100g, 1 scoop)") },
-                singleLine = true,
+                keyboardType = KeyboardType.Text,
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1005,11 +1027,11 @@ private fun CreateFoodSheet(state: FoodLibraryUiState, viewModel: FoodLibraryVie
                 NumberField("Fat", state.newFoodFat, viewModel::onNewFoodFatChanged, Modifier.weight(1f), "g")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
+                GlassInputField(
+                    label = "Serving name (opt.)",
                     value = state.newFoodServingName,
                     onValueChange = viewModel::onNewFoodServingNameChanged,
-                    label = { Text("Serving name (opt.)") },
-                    singleLine = true,
+                    keyboardType = KeyboardType.Text,
                     modifier = Modifier.weight(1f),
                 )
                 NumberField("Serving grams", state.newFoodServingGrams, viewModel::onNewFoodServingGramsChanged, Modifier.weight(1f), "g")
@@ -1031,7 +1053,7 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -1039,11 +1061,11 @@ private fun QuickAddSheet(state: FoodLibraryUiState, viewModel: FoodLibraryViewM
                 Text("Quick add", style = AppType.screenTitleCompact, color = appColors.textPrimary)
                 Text("Log calories without creating a food", style = AppType.cardSubtitle, color = appColors.textMuted)
             }
-            OutlinedTextField(
+            GlassInputField(
+                label = "Name (optional)",
                 value = state.quickAddName,
                 onValueChange = viewModel::onQuickAddNameChanged,
-                label = { Text("Name (optional)") },
-                singleLine = true,
+                keyboardType = KeyboardType.Text,
                 modifier = Modifier.fillMaxWidth(),
             )
             NumberField("Calories", state.quickAddCalories, viewModel::onQuickAddCaloriesChanged, suffix = "kcal")

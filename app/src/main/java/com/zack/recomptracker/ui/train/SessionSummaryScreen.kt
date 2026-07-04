@@ -30,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -54,7 +53,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassAlertDialog
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
 import com.zack.recomptracker.ui.train.component.muscleGroupLabel
@@ -385,39 +386,19 @@ fun SessionSummaryScreen(
 
     // ── Discard confirm dialog ────────────────────────────────────────────────
     if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            title = {
-                Text(
-                    text = "Discard workout?",
-                    color = appColors.textPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            },
-            text = {
-                Text(
-                    text = "This session will be permanently deleted and won't count toward your history.",
-                    color = appColors.textMuted,
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDiscardDialog = false
-                        scope.launch {
-                            viewModel.discard()
-                            onDone()
-                        }
-                    },
-                ) {
-                    Text(text = "Discard", color = ErrorRed, fontWeight = FontWeight.SemiBold)
+        ConfirmDialog(
+            title = "Discard workout?",
+            body = "This session will be permanently deleted and won't count toward your history.",
+            confirmLabel = "Discard",
+            isDestructive = true,
+            onConfirm = {
+                showDiscardDialog = false
+                scope.launch {
+                    viewModel.discard()
+                    onDone()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDiscardDialog = false }) {
-                    Text(text = "Cancel", color = appColors.textMuted)
-                }
-            },
+            onDismiss = { showDiscardDialog = false },
         )
     }
 
@@ -442,38 +423,23 @@ private fun DurationEditDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit, // total seconds
 ) {
-    val appColors = LocalAppColors.current
-    val accent = LocalAppAccent.current
     val (initialHours, initialMinutes) = durationToHm(currentSeconds)
     var hours by remember { mutableStateOf(initialHours) }
     var minutes by remember { mutableStateOf(initialMinutes) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Edit duration",
-                color = appColors.textPrimary,
-                fontWeight = FontWeight.SemiBold,
-            )
-        },
-        text = {
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = "Edit duration",
+        confirmLabel = "Set",
+        onConfirm = { onConfirm(hmToSeconds(hours, minutes)) },
+        dismissLabel = "Cancel",
+        content = {
             DurationWheelPicker(
                 hours = hours,
                 minutes = minutes,
                 onHoursChange = { hours = it },
                 onMinutesChange = { minutes = it },
             )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(hmToSeconds(hours, minutes)) }) {
-                Text(text = "Set", color = accent.inkLight, fontWeight = FontWeight.SemiBold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = "Cancel", color = appColors.textMuted)
-            }
         },
     )
 }
@@ -532,8 +498,7 @@ private fun PrBadge() {
     ) {
         Text(
             text = "PR",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppType.metaLabel,
             color = accent.inkLight,
         )
     }

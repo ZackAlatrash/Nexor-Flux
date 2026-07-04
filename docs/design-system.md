@@ -113,7 +113,7 @@ Material `Button` or a `Surface`-as-button.
 
 ## Inputs — `ui/component/GlassComponents.kt`
 
-`GlassInputField` (labelled single-line), `GlassTextArea`, `ScoreStepper`, `VioletSlider`,
+`GlassInputField` (labelled single-line), `GlassTextArea`, `ScoreStepper`,
 `VioletToggle`. Prefer these over `OutlinedTextField`/`Switch` for visual consistency. (Complex
 readonly dropdowns / suffixed number fields may stay Material where a clean swap isn't possible.)
 

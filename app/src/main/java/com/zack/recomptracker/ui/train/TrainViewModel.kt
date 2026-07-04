@@ -8,6 +8,8 @@ import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.domain.workout.MuscleCategory
+import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
 import com.zack.recomptracker.domain.workout.TrainStatsBuilder
 import com.zack.recomptracker.domain.workout.TrainingPlanBuilder
 import com.zack.recomptracker.domain.workout.WorkoutSession
@@ -21,6 +23,17 @@ import kotlinx.coroutines.launch
 
 enum class TrainTab { ROUTINES, HISTORY, STATS }
 
+/**
+ * Compact per-muscle recovery read for the Train-home Training Readiness area. Derived (no new
+ * input/schema) from recent completed training via [MuscleTrainingAggregator]: [recoveryScore] runs
+ * `0f` (freshly hammered, still recovering) → `1f` (fully fresh); [band] is the coarse UI banding.
+ */
+data class MuscleRecovery(
+    val category: MuscleCategory,
+    val recoveryScore: Float,
+    val band: MuscleTrainingAggregator.RecoveryBand,
+)
+
 data class TrainUiState(
     val tab: TrainTab = TrainTab.ROUTINES,
     val routines: List<WorkoutTemplate> = emptyList(),
@@ -31,6 +44,12 @@ data class TrainUiState(
     val plan: TrainingPlanBuilder.TrainingPlan? = null,
     /** Recovery-readiness card state (headline + adapt hint); null = hide. */
     val readiness: TrainingReadinessMapper.Readiness? = null,
+    /**
+     * Per-muscle-group recovery (fresh vs still recovering), an added layer under the whole-body
+     * readiness card. Ordered fresh-last so the UI can lead with what still needs rest. Empty history
+     * → every group fresh.
+     */
+    val muscleRecovery: List<MuscleRecovery> = emptyList(),
     /** Whether today's recovery (soreness/sleep/energy) has been logged — drives the "Log recovery" action. */
     val recoveryLoggedToday: Boolean = false,
 )
@@ -56,7 +75,12 @@ class TrainViewModel(
         sessionRepository.observeCompletedSessions(),
         exerciseLibraryRepository.observeAll(),
     ) { routines, active, history, library ->
-        Quad(routines, active, history, TrainStatsBuilder.build(history, library))
+        // Per-muscle recovery is derived from the same history+library already loaded here (no new
+        // repo/dependency). Ordered so still-recovering groups come first for the compact UI strip.
+        val recovery = MuscleTrainingAggregator.aggregate(history, library, today)
+            .map { MuscleRecovery(it.category, it.recoveryScore, it.recoveryBand) }
+            .sortedBy { it.recoveryScore }
+        CoreState(routines, active, history, TrainStatsBuilder.build(history, library), recovery)
     }
 
     /**
@@ -127,6 +151,7 @@ class TrainViewModel(
             activeSession = c.active,
             history = c.history,
             statsCategories = c.stats,
+            muscleRecovery = c.muscleRecovery,
             plan = pr.plan,
             readiness = pr.readiness,
             recoveryLoggedToday = pr.recoveryLoggedToday,
@@ -136,11 +161,12 @@ class TrainViewModel(
         .flowOn(computeDispatcher)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TrainUiState())
 
-    private data class Quad(
+    private data class CoreState(
         val routines: List<WorkoutTemplate>,
         val active: WorkoutSession?,
         val history: List<WorkoutSession>,
         val stats: List<TrainStatsBuilder.CategoryStats>,
+        val muscleRecovery: List<MuscleRecovery>,
     )
 
     private data class PlanBundle(

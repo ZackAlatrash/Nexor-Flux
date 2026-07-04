@@ -19,11 +19,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.GlassTextArea
 import com.zack.recomptracker.ui.component.SectionLabel
@@ -90,29 +89,17 @@ fun RoutineBuilderScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
 
     if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            title = { Text("Discard changes?", color = appColors.textPrimary) },
-            text = {
-                Text(
-                    "You have unsaved changes to this routine.",
-                    color = appColors.textMuted,
-                )
+        ConfirmDialog(
+            title = "Discard changes?",
+            body = "You have unsaved changes to this routine.",
+            confirmLabel = "Discard",
+            dismissLabel = "Keep editing",
+            isDestructive = true,
+            onConfirm = {
+                showDiscardDialog = false
+                onClose()
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDiscardDialog = false
-                    onClose()
-                }) {
-                    Text("Discard", color = com.zack.recomptracker.ui.theme.ErrorRed)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDiscardDialog = false }) {
-                    Text("Keep editing", color = accent.inkLight)
-                }
-            },
-            containerColor = appColors.frostedSurface,
+            onDismiss = { showDiscardDialog = false },
         )
     }
 

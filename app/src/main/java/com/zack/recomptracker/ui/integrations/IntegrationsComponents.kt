@@ -22,12 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.data.health.HealthConnectAvailability
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 import com.zack.recomptracker.domain.foodimport.identity
+import com.zack.recomptracker.ui.component.GlassAlertDialog
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.VioletToggle
@@ -176,51 +175,47 @@ internal fun HistoricalFoodReviewDialog(
     onDismiss: () -> Unit,
     onImport: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Review historical foods") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100 g baseline.",
-                    style = AppType.cardSubtitle,
-                    color = LocalAppColors.current.textMuted,
-                    lineHeight = 17.sp,
-                )
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 360.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = "Review historical foods",
+        confirmLabel = "Import selected",
+        confirmEnabled = selected.isNotEmpty(),
+        onConfirm = onImport,
+        dismissLabel = "Cancel",
+    ) {
+        Text(
+            "Health Connect does not include the original serving weight. Verify each row: selected macros will be treated as the app's 100 g baseline.",
+            style = AppType.cardSubtitle,
+            color = LocalAppColors.current.textMuted,
+            lineHeight = 17.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyColumn(
+            modifier = Modifier.heightIn(max = 360.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            items(candidates.size) { index ->
+                val candidate = candidates[index]
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    items(candidates.size) { index ->
-                        val candidate = candidates[index]
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Checkbox(
-                                checked = candidate.identity() in selected,
-                                onCheckedChange = { onToggle(candidate) },
-                            )
-                            Column {
-                                Text(candidate.name, style = AppType.body.copy(fontWeight = FontWeight.SemiBold))
-                                Text(
-                                    "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
-                                    style = AppType.label,
-                                    color = LocalAppColors.current.textMuted,
-                                )
-                            }
-                        }
+                    Checkbox(
+                        checked = candidate.identity() in selected,
+                        onCheckedChange = { onToggle(candidate) },
+                    )
+                    Column {
+                        Text(candidate.name, style = AppType.body.copy(fontWeight = FontWeight.SemiBold))
+                        Text(
+                            "${candidate.calories} kcal · ${candidate.proteinG.toInt()}P ${candidate.carbsG.toInt()}C ${candidate.fatG.toInt()}F",
+                            style = AppType.label,
+                            color = LocalAppColors.current.textMuted,
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onImport, enabled = selected.isNotEmpty()) { Text("Import selected") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+        }
+    }
 }
 
 // ── Shared sub-components ─────────────────────────────────────────────────────

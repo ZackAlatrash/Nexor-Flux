@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,7 +32,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -223,6 +221,7 @@ fun ConfirmDialog(
     title: String,
     body: String,
     confirmLabel: String = "Delete",
+    dismissLabel: String = "Cancel",
     isDestructive: Boolean = true,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
@@ -232,6 +231,7 @@ fun ConfirmDialog(
         title = title,
         body = body,
         confirmLabel = confirmLabel,
+        dismissLabel = dismissLabel,
         onConfirm = onConfirm,
         isDestructive = isDestructive,
     )

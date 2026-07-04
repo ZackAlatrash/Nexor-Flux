@@ -32,12 +32,10 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +68,7 @@ import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiExpandToggle
 import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
@@ -681,23 +680,16 @@ private fun RoutineCard(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete \"${template.name}\"?") },
-            text = { Text("This routine will be permanently deleted.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    onDeleteClick()
-                }) {
-                    Text("Delete", color = ErrorRed)
-                }
+        ConfirmDialog(
+            title = "Delete \"${template.name}\"?",
+            body = "This routine will be permanently deleted.",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteClick()
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { showDeleteDialog = false },
         )
     }
 }

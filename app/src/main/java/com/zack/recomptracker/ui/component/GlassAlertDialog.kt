@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -110,7 +112,13 @@ fun GlassAlertDialog(
 
             if (content != null) {
                 Spacer(Modifier.height(16.dp))
-                content()
+                // A Dialog has no Material Surface, so a bare Text in the content slot would fall
+                // back to the default (dark) LocalContentColor and vanish on the panel. Provide the
+                // panel's primary ink so unstyled content text stays legible; styled children
+                // (GlassInputField, explicitly-coloured Text) override it as usual.
+                CompositionLocalProvider(LocalContentColor provides appColors.textPrimary) {
+                    content()
+                }
             }
 
             Spacer(Modifier.height(20.dp))

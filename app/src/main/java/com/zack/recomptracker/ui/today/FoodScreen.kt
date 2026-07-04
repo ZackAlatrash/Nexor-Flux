@@ -31,11 +31,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -65,6 +62,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +74,8 @@ import com.zack.recomptracker.ui.component.InsightCardHeader
 import com.zack.recomptracker.ui.component.WeekCalorieStrip
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.ConfirmDialog
+import com.zack.recomptracker.ui.component.GlassAlertDialog
+import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.NumberField
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
@@ -325,28 +325,25 @@ fun FoodContent(
     }
 
     if (showAddSlotDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddSlotDialog = false; newSlotName = "" },
-            title = { Text("New meal slot") },
-            text = {
-                OutlinedTextField(
-                    value = newSlotName,
-                    onValueChange = { newSlotName = it },
-                    label = { Text("Slot name") },
-                    singleLine = true,
-                )
+        GlassAlertDialog(
+            onDismiss = { showAddSlotDialog = false; newSlotName = "" },
+            title = "New meal slot",
+            confirmLabel = "Add",
+            confirmEnabled = newSlotName.isNotBlank(),
+            onConfirm = {
+                actions.onAddSlot(newSlotName)
+                newSlotName = ""
+                showAddSlotDialog = false
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    actions.onAddSlot(newSlotName)
-                    newSlotName = ""
-                    showAddSlotDialog = false
-                }) { Text("Add") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddSlotDialog = false; newSlotName = "" }) { Text("Cancel") }
-            },
-        )
+            dismissLabel = "Cancel",
+        ) {
+            GlassInputField(
+                label = "Slot name",
+                value = newSlotName,
+                onValueChange = { newSlotName = it },
+                keyboardType = KeyboardType.Text,
+            )
+        }
     }
 
 }
@@ -1255,31 +1252,29 @@ private fun MacroEditDialog(
     var p   by remember(entry.id) { mutableStateOf(entry.proteinG.toInt().toString()) }
     var c   by remember(entry.id) { mutableStateOf(entry.carbsG.toInt().toString()) }
     var f   by remember(entry.id) { mutableStateOf(entry.fatG.toInt().toString()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit ${entry.name}") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                NumberField("Calories", cal, { cal = it }, suffix = "kcal")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NumberField("Protein", p, { p = it }, Modifier.weight(1f), "g")
-                    NumberField("Carbs",   c, { c = it }, Modifier.weight(1f), "g")
-                    NumberField("Fat",     f, { f = it }, Modifier.weight(1f), "g")
-                }
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = "Edit ${entry.name}",
+        confirmLabel = "Save",
+        onConfirm = {
+            onSave(
+                cal.toIntOrNull() ?: entry.calories,
+                p.toDoubleOrNull() ?: entry.proteinG,
+                c.toDoubleOrNull() ?: entry.carbsG,
+                f.toDoubleOrNull() ?: entry.fatG,
+            )
+        },
+        dismissLabel = "Cancel",
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            NumberField("Calories", cal, { cal = it }, suffix = "kcal")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NumberField("Protein", p, { p = it }, Modifier.weight(1f), "g")
+                NumberField("Carbs",   c, { c = it }, Modifier.weight(1f), "g")
+                NumberField("Fat",     f, { f = it }, Modifier.weight(1f), "g")
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onSave(
-                    cal.toIntOrNull() ?: entry.calories,
-                    p.toDoubleOrNull() ?: entry.proteinG,
-                    c.toDoubleOrNull() ?: entry.carbsG,
-                    f.toDoubleOrNull() ?: entry.fatG,
-                )
-            }) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+        }
+    }
 }
 
 // ── Edit Mode Slot Card ────────────────────────────────────────────────────────
@@ -1362,23 +1357,20 @@ private fun EditModeSlotCard(
     }
 
     if (showRename) {
-        AlertDialog(
-            onDismissRequest = { showRename = false },
-            title = { Text("Rename slot") },
-            text = {
-                OutlinedTextField(
-                    value         = renameValue,
-                    onValueChange = { renameValue = it },
-                    singleLine    = true,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { onRename(renameValue); showRename = false }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRename = false }) { Text("Cancel") }
-            },
-        )
+        GlassAlertDialog(
+            onDismiss = { showRename = false },
+            title = "Rename slot",
+            confirmLabel = "Save",
+            onConfirm = { onRename(renameValue); showRename = false },
+            dismissLabel = "Cancel",
+        ) {
+            GlassInputField(
+                label = "Slot name",
+                value = renameValue,
+                onValueChange = { renameValue = it },
+                keyboardType = KeyboardType.Text,
+            )
+        }
     }
     if (showDeleteConfirm) {
         val entryCount = slotWithEntries.entries.size

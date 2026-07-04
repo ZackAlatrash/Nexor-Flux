@@ -30,15 +30,12 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +77,7 @@ import com.zack.recomptracker.ui.component.AmountPreviewStat
 import com.zack.recomptracker.ui.component.AmountStepper
 import com.zack.recomptracker.ui.component.FoodAmountPanel
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassAlertDialog
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
@@ -423,24 +421,21 @@ fun FoodLibraryScreen(
         CreateFoodSheet(state = state, viewModel = viewModel)
     }
     if (state.showSaveMealDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissSaveMealDialog,
-            title = { Text("Save as recipe") },
-            text = {
-                OutlinedTextField(
-                    value = state.saveMealName,
-                    onValueChange = viewModel::onSaveMealNameChanged,
-                    label = { Text("Meal name") },
-                    singleLine = true,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmSaveMeal) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissSaveMealDialog) { Text("Cancel") }
-            },
-        )
+        GlassAlertDialog(
+            onDismiss = viewModel::dismissSaveMealDialog,
+            title = "Save as recipe",
+            confirmLabel = "Save",
+            confirmEnabled = state.saveMealName.isNotBlank(),
+            onConfirm = viewModel::confirmSaveMeal,
+            dismissLabel = "Cancel",
+        ) {
+            GlassInputField(
+                label = "Meal name",
+                value = state.saveMealName,
+                onValueChange = viewModel::onSaveMealNameChanged,
+                keyboardType = KeyboardType.Text,
+            )
+        }
     }
     if (state.showQuickAddDialog) {
         QuickAddSheet(state = state, viewModel = viewModel)

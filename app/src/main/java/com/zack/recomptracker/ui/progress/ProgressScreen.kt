@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.TrendingFlat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.GeneratedInsightCard
@@ -91,6 +96,12 @@ fun ProgressScreen(viewModel: ProgressViewModel, onBack: () -> Unit) {
                     onRetry = viewModel::retryProgressInsight,
                     variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
                 )
+            }
+
+            // Per-muscle weekly-volume read — feeds the recomp narrative under the verdict card.
+            // Renders nothing when there's no completed-set history.
+            if (state.muscleVolumeReads.isNotEmpty()) {
+                item { MuscleVolumeReadCard(state.muscleVolumeReads) }
             }
 
             // Range selector
@@ -156,6 +167,64 @@ private fun RangeSelector(selected: Int, onSelect: (Int) -> Unit) {
                 )
             }
         }
+    }
+}
+
+// ── Per-muscle volume read ────────────────────────────────────────────────────
+
+/**
+ * Compact read of which muscle groups trained more / flat / less than the prior week — a small
+ * block under the recomp verdict, not a hero surface. Only muscles with actual volume reach here
+ * (filtered in the ViewModel); an empty list means this card isn't rendered at all.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun MuscleVolumeReadCard(reads: List<MuscleVolumeRead>) {
+    NeutralCard {
+        SectionLabel("Muscle volume vs last week")
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            reads.forEach { read ->
+                MuscleTrendPill(read)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MuscleTrendPill(read: MuscleVolumeRead) {
+    val appColors = LocalAppColors.current
+    val (icon, tint, label) = when (read.trend) {
+        MuscleTrainingAggregator.VolumeTrend.UP ->
+            Triple(Icons.AutoMirrored.Filled.TrendingUp, Color(0xFF86efac), "up")
+        MuscleTrainingAggregator.VolumeTrend.DOWN ->
+            Triple(Icons.AutoMirrored.Filled.TrendingDown, Color(0xFFf87171), "down")
+        MuscleTrainingAggregator.VolumeTrend.FLAT ->
+            Triple(Icons.Filled.TrendingFlat, appColors.textMuted, "flat")
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(CornerSmall))
+            .background(appColors.cardSurface)
+            .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerSmall))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(
+            text = read.muscle,
+            style = AppType.cardSubtitle,
+            color = appColors.textPrimary,
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(15.dp),
+        )
     }
 }
 

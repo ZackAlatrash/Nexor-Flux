@@ -617,6 +617,8 @@ private class AppViewModelFactory(
                 // Q6a: Trends PROGRESS_TREND card now binds directly to the cloud coordinator.
                 aiInsightCoordinator = container.cloudInsightCoordinator,
                 userProfileStore = container.userProfilePreferencesStore,
+                workoutSessionRepository = container.workoutSessionRepository,
+                exerciseLibraryRepository = container.exerciseLibraryRepository,
             )
             PlanViewModel::class.java -> PlanViewModel(
                 planRepository = container.planRepository,

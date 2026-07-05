@@ -298,6 +298,12 @@ object RebalanceEngine {
             round10(RebalanceDefaults.MAX_CAL_REDUCTION_PCT * baseCalories),
             RebalanceDefaults.MAX_CAL_REDUCTION_ABS,
         )
+        // The calorie lever is additionally floored so the effective target never dips below
+        // MIN_EFFECTIVE_CAL. Flooring the lever used for CAPACITY (not just the final clamp) routes
+        // sub-floor bases (floorCap == 0, no steps) to the no-adjustment note instead of a zero offer,
+        // and keeps recoveredKcal consistent with the resolver's floored effective target.
+        val floorCap = (baseCalories - RebalanceDefaults.MIN_EFFECTIVE_CAL).coerceAtLeast(0)
+        val calLeverCap = minOf(calCap, floorCap)
         val stepsAvailable = recentAvgSteps != null && baseStepGoal != null
         val stepsCap = if (stepsAvailable) {
             round500(RebalanceDefaults.MAX_EXTRA_STEPS_PCT_OF_AVG * recentAvgSteps!!)
@@ -308,12 +314,12 @@ object RebalanceEngine {
 
         // Per-day capacity (raw kcal) by mode. Steps unavailable → calorie-only for every mode.
         val perDayCap: Double = when {
-            !stepsAvailable -> calCap.toDouble()
-            mode == RebalanceMode.EAT_LESS -> calCap.toDouble()
+            !stepsAvailable -> calLeverCap.toDouble()
+            mode == RebalanceMode.EAT_LESS -> calLeverCap.toDouble()
             mode == RebalanceMode.MOVE_MORE ->
-                if (stepsCap > 0) stepKcalRaw(stepsCap) else calCap.toDouble() // fall back to EAT_LESS
+                if (stepsCap > 0) stepKcalRaw(stepsCap) else calLeverCap.toDouble() // fall back to EAT_LESS
             else -> // BALANCED
-                RebalanceDefaults.BALANCED_LEVER_FRACTION * calCap +
+                RebalanceDefaults.BALANCED_LEVER_FRACTION * calLeverCap +
                     stepKcalRaw(RebalanceDefaults.BALANCED_LEVER_FRACTION * stepsCap)
         }
 
@@ -331,18 +337,14 @@ object RebalanceEngine {
             mode == RebalanceMode.MOVE_MORE ->
                 if (stepsCap > 0) 0.0 to (perDay / RebalanceDefaults.KCAL_PER_STEP) else perDay to 0.0
             else -> { // BALANCED: calories first (up to their 0.6 lever), remainder into steps
-                val calLever = RebalanceDefaults.BALANCED_LEVER_FRACTION * calCap
+                val calLever = RebalanceDefaults.BALANCED_LEVER_FRACTION * calLeverCap
                 val r = minOf(perDay, calLever)
                 val remainderKcal = perDay - r
                 r to (remainderKcal / RebalanceDefaults.KCAL_PER_STEP)
             }
         }
 
-        // R is also clamped so the effective target never dips below MIN_EFFECTIVE_CAL: this keeps
-        // recoveredKcal (the audit number) consistent with the resolver's floored effective target on
-        // very low base plans. The resolver keeps its own floor as belt-and-braces.
-        val floorCap = (baseCalories - RebalanceDefaults.MIN_EFFECTIVE_CAL).coerceAtLeast(0)
-        val reduction = round10(rRaw).coerceIn(0, minOf(calCap, floorCap))
+        val reduction = round10(rRaw).coerceIn(0, calLeverCap)
         val extraSteps = round100(eRaw).coerceIn(0, stepsCap)
         val recovered = days * (reduction + stepKcal(extraSteps))
         return Sizing(days = days, reduction = reduction, extraSteps = extraSteps, recovered = recovered)

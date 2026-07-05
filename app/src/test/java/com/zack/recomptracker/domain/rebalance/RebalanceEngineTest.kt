@@ -462,16 +462,33 @@ class RebalanceEngineTest {
     // ── low-base clamp ──────────────────────────────────────────────────────────────
 
     @Test
-    fun `low base clamps reduction so recovered kcal matches the floored target`() {
-        // base 1300, eaten 1750 -> over 450 (HIGH), S = 450, targetRecover = round(337.5) = 338;
-        // calCap = min(round10(195)=200, 300) = 200 -> D = 2, perDay = 169, round10 -> 170; but the
-        // 1200-kcal floor allows only 1300 - 1200 = 100 of reduction -> R = 100, recovered = 2*100 = 200.
+    fun `low base sizes against the floored lever and still hits the recovery target`() {
+        // base 1300, eaten 1750 -> over 450 (HIGH), S = 450, targetRecover = round(337.5) = 338.
+        // calCap = min(round10(195)=200, 300) = 200 but floorCap = 1300 - 1200 = 100, so the calorie
+        // lever (and perDayCap) is 100 -> D = 4 (smallest with D*100 >= 338), perDay = ceil(338/4) = 85,
+        // round10 -> 90 -> R = 90, recovered = 4*90 = 360 (>= targetRecover, unlike the pre-fix
+        // under-recovery where D=2/R=100 recovered only 200 of 338).
         val decision = evaluate(input(base = 1300, eatenOverrides = mapOf(yesterday to 1750)))
         val plan = (decision as RebalanceDecision.Offer).plan
-        assertTrue("R=${plan.dailyCalorieReduction} must be <= 100", plan.dailyCalorieReduction <= 100)
-        assertEquals(100, plan.dailyCalorieReduction)
+        assertEquals(4, plan.lengthDays)
+        assertEquals(90, plan.dailyCalorieReduction)
+        assertTrue("R=${plan.dailyCalorieReduction} must be <= floorCap 100", plan.dailyCalorieReduction <= 100)
         assertEquals(plan.lengthDays * plan.dailyCalorieReduction, plan.recoveredKcal)
-        assertEquals(200, plan.recoveredKcal)
+        assertEquals(360, plan.recoveredKcal)
+    }
+
+    @Test
+    fun `base at or below the effective floor yields the no-adjustment note instead of a zero offer`() {
+        // base 1150 <= MIN_EFFECTIVE_CAL -> floorCap = 0 -> calorie lever 0; no steps -> perDayCap = 0,
+        // so sizing is impossible and the decision routes to the supportive NO_ADJUSTMENT note
+        // (previously this emitted a meaningless Offer with R=0/E=0/recovered=0).
+        // eaten 1650 -> over 500 (HIGH via abs), S = 500, impact 500/7 >= 50 passes.
+        val decision = evaluate(input(base = 1150, eatenOverrides = mapOf(yesterday to 1650)))
+        assertTrue(decision is RebalanceDecision.NoAdjustment)
+        val plan = (decision as RebalanceDecision.NoAdjustment).plan
+        assertEquals(RebalanceStatus.NO_ADJUSTMENT, plan.status)
+        assertEquals(0, plan.dailyCalorieReduction)
+        assertEquals(0, plan.extraDailySteps)
     }
 
     private fun declinedRecord(decidedOn: LocalDate, trigger: LocalDate) = RebalancePlan(

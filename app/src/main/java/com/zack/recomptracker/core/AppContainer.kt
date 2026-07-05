@@ -95,6 +95,7 @@ import com.zack.recomptracker.data.repository.StreakRepository
 import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
 import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import com.zack.recomptracker.ai.CoachPhrasingService
+import com.zack.recomptracker.ai.RebalanceCopyService
 import com.zack.recomptracker.ai.WeeklyBriefingGenerator
 import com.zack.recomptracker.ai.WeeklyCoachNote
 import com.zack.recomptracker.data.coach.CoachContextBuilder
@@ -132,6 +133,9 @@ import com.zack.recomptracker.domain.insight.NutritionTargets
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.data.rebalance.DataStoreRebalanceStore
+import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
+import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.PerformancePoint
 import com.zack.recomptracker.domain.trend.RecoveryPoint
@@ -438,6 +442,44 @@ class AppContainer(context: Context) {
     }
 
     /**
+     * Assembles the flattened [RebalanceEvaluationInput] for the once-daily rebalance run — the
+     * `computeWeeklyReviewData` one-shot pattern: plain suspend reads folded into date-keyed maps for
+     * the pure [com.zack.recomptracker.domain.rebalance.RebalanceEngine]. The judged window is the
+     * trailing 7 days ending **yesterday** (today is never judged, spec §5). Base targets/eaten/counts
+     * are read over that window; steps are pulled from the daily logs (house pattern:
+     * `observeDailyLogs().first()` filtered to the window); the step goal + fitness goal come from the
+     * profile; the sticky mode + existing state from the persisted rebalance store.
+     */
+    private suspend fun buildRebalanceInput(): RebalanceEvaluationInput {
+        val today = dateProvider.today()
+        val start = today.minusDays(7)
+        val end = today.minusDays(1)
+        val window = (0..6).map { start.plusDays(it.toLong()) } // today-7 .. today-1 inclusive
+        val eatenByDate = logRepository.getWeekCalories(start, end)
+        val mealCountByDate = logRepository.getWeekMealCounts(start, end)
+        val baseTargetsByDate = planRepository.targetsByDate(window)
+        val stepsByDate = logRepository.observeDailyLogs().first()
+            .mapNotNull { l ->
+                val d = runCatching { LocalDate.parse(l.date) }.getOrNull()
+                if (d != null && d in start..end && l.steps != null) d to l.steps!! else null
+            }
+            .toMap()
+        val profile = userProfilePreferencesStore.preferences.first()
+        val state = rebalanceStore.current()
+        return RebalanceEvaluationInput(
+            today = today,
+            baseTargetsByDate = baseTargetsByDate,
+            eatenByDate = eatenByDate,
+            mealCountByDate = mealCountByDate,
+            stepsByDate = stepsByDate,
+            baseStepGoal = profile.dailyStepGoal,
+            goal = profile.goal,
+            mode = state.mode,
+            existing = state,
+        )
+    }
+
+    /**
      * SUPPORTING "what the coach noticed this week" note for the briefing (D45): the deterministic
      * engine's WEEKLY-surface winner, mapped to number-safe text. A passive READ — it runs the same
      * catalog the digest does but selects with an empty seen-ledger (no cooldown side effects, no push,
@@ -520,6 +562,17 @@ class AppContainer(context: Context) {
     /** Stage-2 phrasing decoration for the featured signal, on demand when a surface opens. */
     val coachPhrasingService = CoachPhrasingService(openAiCompatClient) { cloudConfigFlow.value }
 
+    // ── Weekly Rebalance (deterministic engine → DataStore state; cloud phrasing on open) ──
+    /** Persisted rebalance state + the once-daily evaluation gate (own `rebalance` DataStore). */
+    val rebalanceStore = DataStoreRebalanceStore(context.applicationContext)
+
+    /**
+     * Cloud phrasing DECORATION for the rebalance card — the [CoachPhrasingService] shape, read per
+     * call so a settings change takes effect immediately. Consumed by the card VM (Task 7); the
+     * deterministic engine has already decided every number, this only rephrases the fallback copy.
+     */
+    internal val rebalanceCopyService = RebalanceCopyService(openAiCompatClient) { cloudConfigFlow.value }
+
     // ── Phase-5 push layer ───────────────────────────────────────────────────────────
     val pushHistoryStore = com.zack.recomptracker.data.coach.PushHistoryStore(
         context.applicationContext, dateProvider,
@@ -548,6 +601,22 @@ class AppContainer(context: Context) {
         notificationPreferences = coachNotificationPreferences,
         experiments = coachExperimentStore,
     )
+
+    /**
+     * Weekly Rebalance spine: once-daily reconcile-then-evaluate + the accept/decline/customize
+     * transitions and the cancel-on-plan-edit hook. Input assembly is [buildRebalanceInput]; the goal
+     * is read fresh at customize time (never stored on the plan). [start] launches the version observer
+     * below alongside the other appScope observers. `usageTracker` is held for Task 8 (events unwired).
+     */
+    val rebalanceCoordinator = RebalanceCoordinator(
+        store = rebalanceStore,
+        buildInput = { buildRebalanceInput() },
+        currentGoal = { userProfilePreferencesStore.preferences.first().goal },
+        planVersions = planRepository.observeVersions(),
+        dateProvider = dateProvider,
+        usageTracker = usageTracker,
+        scope = appScope,
+    ).also { it.start() }
 
     // ── Cloud coordinators handed out to ViewModels (cloud-only, Phase 8) ────────────
     val aiInsightCoordinator: AiInsightCoordinator = cloudInsightCoordinator

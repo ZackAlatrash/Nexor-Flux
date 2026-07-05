@@ -78,6 +78,20 @@ class LogRepository(
     }
 
     /**
+     * One-shot read of the eaten (non-planned) meal-entry COUNT per day across a date range — the
+     * weekly-rebalance engine's logged-day signal (a day is "logged" iff it has ≥1 meal entry, spec
+     * §5.1). Mirrors [getWeekCalories]'s eaten-only convention: planned entries are excluded, so a day
+     * holding only unconfirmed plans reads as unlogged (matching how its surplus is computed).
+     */
+    suspend fun getWeekMealCounts(start: LocalDate, end: LocalDate): Map<LocalDate, Int> {
+        val entries = mealEntryDao.getBetween(start.toString(), end.toString())
+        return entries
+            .filterNot { it.planned }
+            .groupBy { LocalDate.parse(it.date) }
+            .mapValues { (_, dayEntries) -> dayEntries.size }
+    }
+
+    /**
      * One-shot read of per-day macro totals across a date range — used by the AI coach's
      * get_weekly_trends tool so it can answer protein/carb/fat questions without 7 separate
      * get_today_summary calls.

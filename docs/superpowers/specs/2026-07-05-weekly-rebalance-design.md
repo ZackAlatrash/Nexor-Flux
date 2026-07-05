@@ -151,6 +151,10 @@ Recovery target: `targetRecover = round(S × RECOVERY_FRACTION)` with `RECOVERY_
 (deliberately not 100%). Per-day capacity by mode:
 `EAT_LESS = MAX_CAL_REDUCTION` · `MOVE_MORE = stepKcal(MAX_EXTRA_STEPS)` (0 → falls back to EAT_LESS) ·
 `BALANCED = 0.6×MAX_CAL_REDUCTION + stepKcal(0.6×MAX_EXTRA_STEPS)`.
+**When steps are unavailable (null step data or null step goal) the plan is calorie-only for EVERY mode**
+— perDayCap is the full `MAX_CAL_REDUCTION` and E = 0 (the 0.6 split applies only when steps exist).
+`R` is additionally capped at `base − MIN_EFFECTIVE_CAL` so `recoveredKcal` never overstates what the
+floored effective target actually delivers.
 
 Duration `D` = smallest value in 2..5 with `D × perDayCap ≥ targetRecover`. Then `perDay = ceil(targetRecover / D)`,
 split by mode (calories filled first for BALANCED, remainder into steps), `R` rounded to 10, `E` to 100,
@@ -223,7 +227,9 @@ NONE ──(qualifying event, gates pass)──► OFFERED ──accept──►
 - **Presentation is live:** the card binds to `RebalanceStore.state` (Flow); progress/day-X derive on read.
 - **Accept:** status→ACTIVE, `decidedAt` stamped, `startDate = today + 1`, base snapshot captured. Card flips.
 - **Decline:** plan → history (DECLINED), card disappears, cooldown starts.
-- **Customize:** recomputes R/E/D for the OFFERED plan from stored `surplusKcal`/`recentAvgSteps`/`baseCalories`; sticky `mode` saved.
+- **Customize:** recomputes R/E/D for the OFFERED plan from stored `surplusKcal`/`recentAvgSteps`/`baseCalories`,
+  **goal-aware** — the coordinator passes the user's current `FitnessGoal` so a RECOMP offer keeps its halved
+  fraction and 3-day cap (the goal is deliberately not stored on the plan record); sticky `mode` saved.
 - **Cancel-on-plan-edit:** coordinator collects `planRepository.observeVersions().drop(1)`; a new
   `PlanVersion` row (written iff `PlanTargets` changed — HC-sync saves don't) while ACTIVE → ENDED_EARLY
   (`"plan_edited"`). `resetDefaults()` also writes a version → also cancels (correct).

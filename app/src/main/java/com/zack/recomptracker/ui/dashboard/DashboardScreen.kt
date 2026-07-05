@@ -93,12 +93,17 @@ private val SUPPORTED_COACH_ACTIONS = setOf(
     com.zack.recomptracker.domain.coach.CoachActionType.OPEN_TRAINING,
 )
 
+// `internal` (not `fun`): the Weekly Rebalance card's ViewModel carries the `internal`
+// `RebalanceCopyService` (see its kdoc), so this screen entry point must stay `internal` too —
+// its only caller, `AppNavGraph`, is same-module. `HomeDashboardContent` below stays public/
+// preview-friendly since `RebalanceCardUiState` itself has no internal types in its API.
 @Composable
-fun HomeDashboardScreen(
+internal fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
     weeklyReviewViewModel: WeeklyReviewViewModel,
     streakViewModel: StreakViewModel,
     coachTodayViewModel: CoachTodayViewModel,
+    rebalanceViewModel: RebalanceViewModel,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStreaks: () -> Unit,
@@ -109,6 +114,8 @@ fun HomeDashboardScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val coachTodayState by coachTodayViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { coachTodayViewModel.onShown() }
+    val rebalanceCardState by rebalanceViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { rebalanceViewModel.onShown() }
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
@@ -148,6 +155,12 @@ fun HomeDashboardScreen(
         },
         onDismissCoach = coachTodayViewModel::dismiss,
         onTrackExperiment = coachTodayViewModel::onTrackExperiment,
+        rebalanceCardState = rebalanceCardState,
+        onRebalanceAccept = rebalanceViewModel::onAccept,
+        onRebalanceDecline = rebalanceViewModel::onDecline,
+        onRebalanceDismiss = rebalanceViewModel::onDismiss,
+        onRebalanceCustomize = rebalanceViewModel::onCustomize,
+        rebalanceToday = state.rebalanceToday,
         streaks = streakState.streaks,
         stepGoal = streakState.stepGoal,
         activity = streakState.activity,
@@ -194,6 +207,12 @@ fun HomeDashboardContent(
     onCoachAction: (com.zack.recomptracker.domain.coach.CoachActionType) -> Unit = {},
     onDismissCoach: () -> Unit = {},
     onTrackExperiment: (com.zack.recomptracker.domain.coach.CoachSignal) -> Unit = {},
+    rebalanceCardState: RebalanceCardUiState = RebalanceCardUiState(),
+    onRebalanceAccept: () -> Unit = {},
+    onRebalanceDecline: () -> Unit = {},
+    onRebalanceDismiss: () -> Unit = {},
+    onRebalanceCustomize: (com.zack.recomptracker.domain.rebalance.RebalanceMode) -> Unit = {},
+    rebalanceToday: com.zack.recomptracker.domain.rebalance.PlanDayInfo? = null,
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -249,6 +268,20 @@ fun HomeDashboardContent(
                         )
                     }
                 }
+                // Weekly Rebalance — the offer/progress/note card, directly adjacent to Today's
+                // Coaching (spec §3). Silent (renders nothing) when no face clears the bar;
+                // RebalanceCard early-returns.
+                if (rebalanceCardState.face != RebalanceCardUiState.Face.NONE) {
+                    item {
+                        RebalanceCard(
+                            state = rebalanceCardState,
+                            onAccept = onRebalanceAccept,
+                            onDecline = onRebalanceDecline,
+                            onDismiss = onRebalanceDismiss,
+                            onCustomize = onRebalanceCustomize,
+                        )
+                    }
+                }
                 item { MotivationalCard(state.motivationalMessage) }
                 item { TodayCard(state, onClick = onOpenFoodLog) }
                 item {
@@ -260,11 +293,18 @@ fun HomeDashboardContent(
                 }
                 item { SevenDayChartCard(state) }
                 item {
+                    // Step-ring DISPLAY boost only (spec §6): on an active plan day with extra steps,
+                    // show the boosted goal. Judgment (streaks) stays on the base goal elsewhere —
+                    // this only changes what number the ring itself renders.
+                    val boostedStepGoal = rebalanceToday?.plan
+                        ?.takeIf { it.extraDailySteps > 0 && it.baseStepGoal != null }
+                        ?.let { it.baseStepGoal!! + it.extraDailySteps }
+                        ?: stepGoal
                     StreakGoalRing(
                         result = streaks.steps,
                         type = StreakType.STEPS,
                         todayValue = state.todaySteps,
-                        goalValue = stepGoal,
+                        goalValue = boostedStepGoal,
                     )
                 }
                 if (activity.weeklyGymSessionsTarget != null || activity.weeklyTrainingFrequency > 0.0) {

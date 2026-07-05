@@ -69,6 +69,7 @@ import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
+import com.zack.recomptracker.ui.dashboard.RebalanceViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
@@ -716,6 +717,12 @@ private class AppViewModelFactory(
                 phrase = container.coachPhrasingService::phrase,
                 onVisibleRefresh = container.coachDigestCoordinator::runIfDue,
                 experiments = container.coachExperimentStore,
+                dateProvider = container.dateProvider,
+            )
+            RebalanceViewModel::class.java -> RebalanceViewModel(
+                store = container.rebalanceStore,
+                coordinator = container.rebalanceCoordinator,
+                copyService = container.rebalanceCopyService,
                 dateProvider = container.dateProvider,
             )
             OnboardingViewModel::class.java -> OnboardingViewModel(

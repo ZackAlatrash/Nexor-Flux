@@ -1,0 +1,344 @@
+package com.zack.recomptracker.ui.dashboard
+
+import com.zack.recomptracker.ai.RebalanceCopyService
+import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.preferences.FitnessGoal
+import com.zack.recomptracker.data.rebalance.FakeRebalanceStore
+import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
+import com.zack.recomptracker.data.remote.ChatRequestMessage
+import com.zack.recomptracker.data.remote.CloudConfig
+import com.zack.recomptracker.data.remote.OpenAiCompatClient
+import com.zack.recomptracker.data.remote.ParsedChatResponse
+import com.zack.recomptracker.domain.plan.PlanTargets
+import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
+import com.zack.recomptracker.domain.rebalance.RebalanceMode
+import com.zack.recomptracker.domain.rebalance.RebalancePlan
+import com.zack.recomptracker.domain.rebalance.RebalanceState
+import com.zack.recomptracker.domain.rebalance.RebalanceStatus
+import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * Mirrors [CoachTodayViewModelTest]'s shape: [StandardTestDispatcher] + `Dispatchers.setMain`, a
+ * canned [RebalanceEvaluationInput] a test can tweak, and a REAL [RebalanceCoordinator] wired to
+ * [FakeRebalanceStore] + trivial fakes for `buildInput`/`currentGoal`/`planVersions` — lighter than
+ * hand-rolling a fake coordinator, since the transitions under test (accept-shaped day math,
+ * decline, the cancel-on-edit hook) are exactly what
+ * `com.zack.recomptracker.data.rebalance.RebalanceCoordinatorTest` already exercises against the
+ * real class. Copy-service success/failure is faked by subclassing [OpenAiCompatClient] (it is
+ * `open`) — the same pattern `RebalanceCopyServiceTest` uses, no mocking library needed.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class RebalanceViewModelTest {
+
+    private val dispatcher = StandardTestDispatcher()
+    private val today = LocalDate.of(2026, 7, 8) // Wednesday
+
+    private class FixedDateProvider(private val date: LocalDate) : DateProvider {
+        override fun today(): LocalDate = date
+    }
+
+    private fun targets(cal: Int) = PlanTargets(cal, 160, 300, 70, cal - 100, cal + 100)
+
+    /** A canned high-yesterday input, mirroring `RebalanceCoordinatorTest`'s `cannedInput`. */
+    private fun cannedInput(
+        refToday: LocalDate = today,
+        base: Int = 2500,
+        yesterdayEaten: Int = 3100,
+        goal: FitnessGoal? = FitnessGoal.MODERATE_CUT,
+        mode: RebalanceMode = RebalanceMode.BALANCED,
+        existing: RebalanceState = RebalanceState(mode = mode),
+    ): RebalanceEvaluationInput {
+        val window = (1..7).map { refToday.minusDays(it.toLong()) }
+        val yesterday = refToday.minusDays(1)
+        return RebalanceEvaluationInput(
+            today = refToday,
+            baseTargetsByDate = window.associateWith { targets(base) },
+            eatenByDate = window.associateWith { if (it == yesterday) yesterdayEaten else base },
+            mealCountByDate = window.associateWith { 3 },
+            stepsByDate = emptyMap(),
+            baseStepGoal = null,
+            goal = goal,
+            mode = mode,
+            existing = existing,
+        )
+    }
+
+    private var idSeq = 0
+    private val newId: () -> String = { "id-${idSeq++}" }
+    private val nowIso: () -> String = { "2026-07-08T09:00:00Z" }
+
+    /** Emits a fixed chunk (or nothing) when asked to phrase; tracks whether it was invoked. */
+    private class FakeClient(private val chunk: String? = null) : OpenAiCompatClient() {
+        var wasCalled: Boolean = false
+            private set
+
+        override fun streamCompletion(
+            config: CloudConfig,
+            systemPrompt: String,
+            userPrompt: String,
+        ): Flow<String> = flow {
+            wasCalled = true
+            chunk?.let { emit(it) }
+        }
+
+        override suspend fun completion(
+            config: CloudConfig,
+            messages: List<ChatRequestMessage>,
+            toolSchemasJson: List<String>,
+        ): ParsedChatResponse = ParsedChatResponse("", emptyList())
+    }
+
+    /** A [RebalanceCopyService] that never has cloud config — deterministically returns the fallback. */
+    private fun fallbackOnlyCopyService(): RebalanceCopyService =
+        RebalanceCopyService(client = FakeClient()) { null }
+
+    private fun coordinator(
+        store: FakeRebalanceStore,
+        scope: CoroutineScope,
+        buildInput: suspend () -> RebalanceEvaluationInput = { cannedInput(existing = store.current()) },
+        currentGoal: suspend () -> FitnessGoal? = { FitnessGoal.MODERATE_CUT },
+        planVersions: Flow<List<PlanVersion>> = MutableSharedFlow(),
+        dateProvider: DateProvider = FixedDateProvider(today),
+    ) = RebalanceCoordinator(
+        store = store,
+        buildInput = buildInput,
+        currentGoal = currentGoal,
+        planVersions = planVersions,
+        dateProvider = dateProvider,
+        usageTracker = null,
+        scope = scope,
+        newId = newId,
+        nowIso = nowIso,
+    )
+
+    private fun offeredPlan(mode: RebalanceMode = RebalanceMode.BALANCED) = RebalancePlan(
+        id = "offer", triggerDateIso = today.minusDays(1).toString(),
+        startDateIso = today.toString(), endDateIso = today.plusDays(2).toString(),
+        lengthDays = 3, mode = mode, baseCalories = 2500, dailyCalorieReduction = 200,
+        extraDailySteps = 0, baseStepGoal = null, recentAvgSteps = null,
+        surplusKcal = 600, recoveredKcal = 600, status = RebalanceStatus.OFFERED,
+        createdAtIso = "2026-07-08T09:00:00Z",
+    )
+
+    private fun activePlan(
+        startDateIso: String,
+        endDateIso: String,
+        lengthDays: Int,
+        dailyCalorieReduction: Int = 200,
+        extraDailySteps: Int = 0,
+    ) = RebalancePlan(
+        id = "active", triggerDateIso = today.minusDays(3).toString(),
+        startDateIso = startDateIso, endDateIso = endDateIso, lengthDays = lengthDays,
+        mode = RebalanceMode.BALANCED, baseCalories = 2500,
+        dailyCalorieReduction = dailyCalorieReduction, extraDailySteps = extraDailySteps,
+        baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 600,
+        status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-05T09:00:00Z",
+        decidedAtIso = "2026-07-05T09:00:00Z",
+    )
+
+    @Before fun setUp() { Dispatchers.setMain(dispatcher) }
+    @After fun tearDown() { Dispatchers.resetMain() }
+
+    @Test
+    fun `offer state renders the offer face with fallback copy`() = runTest(dispatcher) {
+        val store = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.OFFER, state.face)
+        assertEquals("Your weekly goal is still within reach.", state.headline)
+        assertTrue(
+            "offer body mentions the daily reduction",
+            state.body.contains("200 kcal less a day"),
+        )
+        assertEquals(3, state.ofY)
+    }
+
+    @Test
+    fun `accept flips to the progress face with day math`() = runTest(dispatcher) {
+        // Active 3-day plan: start = yesterday, end = tomorrow → today is day 2 of 3 (the shape
+        // RebalanceCoordinator.accept() produces once a day has passed since acceptance).
+        val plan = activePlan(
+            startDateIso = today.minusDays(1).toString(),
+            endDateIso = today.plusDays(1).toString(),
+            lengthDays = 3,
+            dailyCalorieReduction = 200,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = plan))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.PROGRESS, state.face)
+        assertEquals(2, state.dayX)
+        assertEquals(3, state.ofY)
+        assertEquals(2f / 3f, state.progressFraction, 0.0001f)
+        assertEquals(2300, state.effectiveCalories) // 2500 - 200
+        assertTrue(state.body.contains("2 of 3 days in"))
+    }
+
+    @Test
+    fun `active plan before its start date shows the starts-tomorrow face`() = runTest(dispatcher) {
+        // Accepted late: start = tomorrow, so today falls before the window (spec §10).
+        val plan = activePlan(
+            startDateIso = today.plusDays(1).toString(),
+            endDateIso = today.plusDays(3).toString(),
+            lengthDays = 3,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = plan))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.PROGRESS, state.face)
+        assertEquals(0, state.dayX)
+        assertEquals(
+            "Your rebalance starts tomorrow — today stays your normal plan.",
+            state.body,
+        )
+    }
+
+    @Test
+    fun `decline clears the card`() = runTest(dispatcher) {
+        val store = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+        assertEquals(RebalanceCardUiState.Face.OFFER, vm.uiState.value.face)
+
+        vm.onDecline()
+        advanceUntilIdle()
+
+        assertEquals(RebalanceCardUiState.Face.NONE, vm.uiState.value.face)
+        assertEquals(RebalanceStatus.DECLINED, store.current().history.single().status)
+    }
+
+    @Test
+    fun `no-adjustment note face dismisses via the coordinator`() = runTest(dispatcher) {
+        val note = offeredPlan().copy(
+            id = "note", status = RebalanceStatus.NO_ADJUSTMENT,
+            dailyCalorieReduction = 0, extraDailySteps = 0,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = note))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+        assertEquals(RebalanceCardUiState.Face.NOTE, vm.uiState.value.face)
+
+        vm.onDismiss()
+        advanceUntilIdle()
+
+        assertEquals(RebalanceCardUiState.Face.NONE, vm.uiState.value.face)
+        assertEquals(RebalanceStatus.NO_ADJUSTMENT, store.current().history.single().status)
+        assertNull(store.current().active)
+    }
+
+    @Test
+    fun `plan-edited ended notice is auto-dismissed and never shown`() = runTest(dispatcher) {
+        val versions = MutableSharedFlow<List<PlanVersion>>(replay = 0)
+        val active = activePlan(
+            startDateIso = today.minusDays(2).toString(),
+            endDateIso = today.plusDays(2).toString(),
+            lengthDays = 5,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = active))
+        val scope = CoroutineScope(dispatcher)
+        val coord = coordinator(store, scope = scope, planVersions = versions)
+        coord.start()
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        // Initial (drop(1)) emission never cancels; a real version change does → "plan_edited".
+        versions.emit(emptyList())
+        advanceUntilIdle()
+        versions.emit(listOf(PlanVersion(today, targets(2400))))
+        advanceUntilIdle()
+
+        assertEquals(
+            "the plan really did end as plan_edited (sanity check on the fixture)",
+            "plan_edited",
+            store.current().history.single().endedReason,
+        )
+        assertEquals(
+            "the card never shows the plan-edited note — the VM silently dismisses it",
+            RebalanceCardUiState.Face.NONE,
+            vm.uiState.value.face,
+        )
+        assertNull("the ended notice was auto-dismissed, not left pending", coord.endedNotice.value)
+    }
+
+    @Test
+    fun `phrased copy replaces the fallback when the service succeeds and stays on failure`() = runTest(dispatcher) {
+        // Succeeding service: config present, client streams a phrased sentence.
+        val store = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord = coordinator(store, scope = backgroundScope)
+        val succeedingClient = FakeClient(chunk = "A rephrased, warmer offer.")
+        val succeedingService = RebalanceCopyService(client = succeedingClient) {
+            CloudConfig(baseUrl = "https://example.test", apiKey = "key", model = "test-model")
+        }
+        val vm = RebalanceViewModel(store, coord, succeedingService, FixedDateProvider(today))
+        advanceUntilIdle()
+
+        assertTrue("phrasing client was actually invoked", succeedingClient.wasCalled)
+        assertEquals("A rephrased, warmer offer.", vm.uiState.value.body)
+
+        // Failing service (no config) → the fallback is what's shown and stays (never overwritten).
+        val store2 = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord2 = coordinator(store2, scope = backgroundScope)
+        val vm2 = RebalanceViewModel(store2, coord2, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+        assertTrue(vm2.uiState.value.body.contains("200 kcal less a day"))
+    }
+
+    @Test
+    fun `onShown triggers the coordinator once`() = runTest(dispatcher) {
+        val store = FakeRebalanceStore()
+        var buildCalls = 0
+        val coord = coordinator(
+            store,
+            scope = backgroundScope,
+            buildInput = { buildCalls++; cannedInput(existing = store.current()) },
+        )
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+
+        vm.onShown()
+        advanceUntilIdle()
+        vm.onShown()
+        advanceUntilIdle()
+
+        assertEquals("the VM's own guard fires runIfDue at most once per instance", 1, buildCalls)
+    }
+
+    @Test
+    fun `empty state renders NONE`() = runTest(dispatcher) {
+        val store = FakeRebalanceStore()
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        assertEquals(RebalanceCardUiState.Face.NONE, vm.uiState.value.face)
+        assertEquals("", vm.uiState.value.body)
+    }
+}

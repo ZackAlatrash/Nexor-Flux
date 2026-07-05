@@ -48,7 +48,7 @@ import kotlinx.coroutines.sync.withLock
  * @param planVersions `planRepository.observeVersions()`. A version row is written iff the permanent
  *   [com.zack.recomptracker.domain.plan.PlanTargets] actually changed (HC-sync saves don't), so keying
  *   the cancel hook on versions — not on every plan save — cancels an active plan only on a real edit.
- * @param usageTracker analytics sink for the `REBALANCE_*` events (spec §9); fire-and-forget, same
+ * @param usageTracker analytics sink for the `REBALANCE_*` events (spec §7); fire-and-forget, same
  *   convention as every other `usageTracker.track(...)` call site in the app.
  * @param scope the app scope the version-observer cancel hook runs on.
  */
@@ -137,7 +137,7 @@ class RebalanceCoordinator(
 
         // (2) Evaluate for a fresh offer against the reconciled state. Only Offer / NoAdjustment write
         //     the active slot; Silent persists nothing. Only a concrete Offer counts as "offered" for
-        //     analytics — a NoAdjustment note is supportive copy, not an offer (spec §9 lists five
+        //     analytics — a NoAdjustment note is supportive copy, not an offer (spec §7 lists five
         //     events; NoAdjustment fires none of them).
         val evalInput = input.copy(existing = reconciled)
         when (val decision = RebalanceEngine.evaluate(evalInput, newId, nowIso)) {

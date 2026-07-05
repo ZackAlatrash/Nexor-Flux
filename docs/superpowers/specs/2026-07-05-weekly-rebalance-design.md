@@ -268,6 +268,10 @@ Malformed/blank payload decodes to `RebalanceState()` — never throws. Every tr
 Backup: add `val rebalanceState: RebalanceState? = null` to `BackupPayload` (additive; old backups
 decode as null → clean state) and read/write it in `BackupRepository`. Rationale: an active rebalance
 reshapes how logged days are judged; dropping it on restore would re-judge those days and could re-offer immediately.
+The rebalance domain models carry `@Serializable` solely so `BackupPayload`'s kotlinx codec can nest them
+(house precedent: `domain/foodimport`, `domain/coach`); the DataStore path keeps the hand-rolled codec.
+`resetEverything()` also clears the rebalance store explicitly — the cancel-on-plan-edit hook alone is
+not guaranteed to fire on reset (the version write there is conditional).
 
 ## 10. Edge cases
 

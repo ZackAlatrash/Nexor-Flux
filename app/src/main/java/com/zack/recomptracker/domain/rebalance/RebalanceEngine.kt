@@ -181,18 +181,17 @@ object RebalanceEngine {
     /**
      * Recomputes an OFFERED plan's R/E/D/recovered for [newMode] from the facts stored on the offer
      * (`surplusKcal`, `recentAvgSteps`, `baseCalories`, `baseStepGoal`). No data re-read; OFFERED only.
-     * Goal-derived caps (recomp fraction/length) are already baked into the stored `surplusKcal`-vs-length
-     * relationship, so Customize re-sizes with the standard fraction implied by the offer.
+     * The goal is NOT stored on the plan, so the caller must pass the user's current [goal] — it keeps
+     * the re-size goal-aware (RECOMP's halved fraction and 3-day length cap, spec §5.6). Null goal →
+     * full cut behavior, matching [evaluate].
      */
-    fun customize(offer: RebalancePlan, newMode: RebalanceMode): RebalancePlan {
-        // Reconstruct targetRecover from the stored surplus. The offer was sized with the cut fraction
-        // (recomp offers are already length-capped and stored the same way); re-size with the same math.
+    fun customize(offer: RebalancePlan, newMode: RebalanceMode, goal: FitnessGoal?): RebalancePlan {
         val sizing = size(
             surplus = offer.surplusKcal,
             baseCalories = offer.baseCalories,
             recentAvgSteps = offer.recentAvgSteps,
             baseStepGoal = offer.baseStepGoal,
-            goal = null, // stored facts already reflect the goal; treat as a plain cut re-size
+            goal = goal,
             mode = newMode,
         ) ?: return offer.copy(mode = newMode) // too-large under this mode: keep facts, just switch mode
 
@@ -339,7 +338,11 @@ object RebalanceEngine {
             }
         }
 
-        val reduction = round10(rRaw).coerceIn(0, calCap)
+        // R is also clamped so the effective target never dips below MIN_EFFECTIVE_CAL: this keeps
+        // recoveredKcal (the audit number) consistent with the resolver's floored effective target on
+        // very low base plans. The resolver keeps its own floor as belt-and-braces.
+        val floorCap = (baseCalories - RebalanceDefaults.MIN_EFFECTIVE_CAL).coerceAtLeast(0)
+        val reduction = round10(rRaw).coerceIn(0, minOf(calCap, floorCap))
         val extraSteps = round100(eRaw).coerceIn(0, stepsCap)
         val recovered = days * (reduction + stepKcal(extraSteps))
         return Sizing(days = days, reduction = reduction, extraSteps = extraSteps, recovered = recovered)

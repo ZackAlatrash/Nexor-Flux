@@ -375,7 +375,7 @@ class RebalanceEngineTest {
         ) as RebalanceDecision.Offer).plan
         assertEquals(0, offer.extraDailySteps)
 
-        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE)
+        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, FitnessGoal.MODERATE_CUT)
         assertEquals(RebalanceMode.MOVE_MORE, moved.mode)
         assertEquals(RebalanceStatus.OFFERED, moved.status)
         assertEquals(offer.surplusKcal, moved.surplusKcal)     // facts unchanged
@@ -383,4 +383,103 @@ class RebalanceEngineTest {
         assertTrue("MOVE_MORE recompute should use steps", moved.extraDailySteps > 0)
         assertEquals(0, moved.dailyCalorieReduction)
     }
+
+    @Test
+    fun `customize on a recomp offer keeps the halved fraction and 3-day cap`() {
+        // RECOMP, S = 2000 (yesterday +2000): targetRecover = round(2000*0.375) = 750; calorie-only
+        // perDayCap = 300; recomp maxDays = 3 -> D = 3 (2*300 < 750 <= 3*300); perDay = 250; R = 250.
+        val offer = (evaluate(
+            input(eatenOverrides = mapOf(yesterday to 4500), goal = FitnessGoal.RECOMP),
+        ) as RebalanceDecision.Offer).plan
+        assertEquals(3, offer.lengthDays)
+        assertEquals(250, offer.dailyCalorieReduction)
+
+        // Re-sizing for a new mode must keep the recomp fraction and cap. A cut re-size (fraction 0.75,
+        // maxDays 5) would instead give targetRecover = 1500 -> D = 5, R = 300.
+        val customized = RebalanceEngine.customize(offer, RebalanceMode.EAT_LESS, FitnessGoal.RECOMP)
+        assertEquals(RebalanceMode.EAT_LESS, customized.mode)
+        assertTrue("recomp customize length must stay <= 3", customized.lengthDays <= 3)
+        assertEquals(3, customized.lengthDays)
+        assertEquals(250, customized.dailyCalorieReduction)
+        assertEquals(750, customized.recoveredKcal) // 3 * (250 + 0)
+    }
+
+    // ── exact boundaries ────────────────────────────────────────────────────────────
+
+    @Test
+    fun `single day over of exactly 400 triggers`() {
+        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 2900))) // over == 400 exactly
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertEquals(400, plan.surplusKcal)
+    }
+
+    @Test
+    fun `weekend surplus of exactly 600 triggers`() {
+        // +300 each: neither day is individually HIGH (< 400 abs, < 625 pct) — only the weekend rule fires.
+        val monday = LocalDate.of(2026, 7, 6)
+        val sat = LocalDate.of(2026, 7, 4)
+        val sun = LocalDate.of(2026, 7, 5)
+        val decision = evaluate(
+            input(refToday = monday, eatenOverrides = mapOf(sat to 2800, sun to 2800)), // 300 + 300 == 600
+        )
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertEquals(sun.toString(), plan.triggerDateIso)
+        assertEquals(600, plan.surplusKcal)
+    }
+
+    @Test
+    fun `surplus of exactly 350 passes the weekly impact gate`() {
+        // base 1400, eaten 1750 -> over 350: HIGH via pct (350 >= 0.25*1400) and S == 50*7 exactly.
+        val decision = evaluate(input(base = 1400, eatenOverrides = mapOf(yesterday to 1750)))
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertEquals(350, plan.surplusKcal)
+    }
+
+    @Test
+    fun `cooldown of exactly three days does not block`() {
+        val declined = declinedRecord(decidedOn = today.minusDays(3), trigger = LocalDate.of(2026, 6, 30))
+        val decision = evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100),
+                existing = RebalanceState(history = listOf(declined)),
+            ),
+        )
+        assertTrue("3 days since the decision is outside the cooldown", decision is RebalanceDecision.Offer)
+    }
+
+    @Test
+    fun `cooldown of two days blocks`() {
+        val declined = declinedRecord(decidedOn = today.minusDays(2), trigger = LocalDate.of(2026, 6, 30))
+        val decision = evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100),
+                existing = RebalanceState(history = listOf(declined)),
+            ),
+        )
+        assertTrue(decision is RebalanceDecision.Silent)
+    }
+
+    // ── low-base clamp ──────────────────────────────────────────────────────────────
+
+    @Test
+    fun `low base clamps reduction so recovered kcal matches the floored target`() {
+        // base 1300, eaten 1750 -> over 450 (HIGH), S = 450, targetRecover = round(337.5) = 338;
+        // calCap = min(round10(195)=200, 300) = 200 -> D = 2, perDay = 169, round10 -> 170; but the
+        // 1200-kcal floor allows only 1300 - 1200 = 100 of reduction -> R = 100, recovered = 2*100 = 200.
+        val decision = evaluate(input(base = 1300, eatenOverrides = mapOf(yesterday to 1750)))
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertTrue("R=${plan.dailyCalorieReduction} must be <= 100", plan.dailyCalorieReduction <= 100)
+        assertEquals(100, plan.dailyCalorieReduction)
+        assertEquals(plan.lengthDays * plan.dailyCalorieReduction, plan.recoveredKcal)
+        assertEquals(200, plan.recoveredKcal)
+    }
+
+    private fun declinedRecord(decidedOn: LocalDate, trigger: LocalDate) = RebalancePlan(
+        id = "d", triggerDateIso = trigger.toString(), startDateIso = trigger.plusDays(1).toString(),
+        endDateIso = trigger.plusDays(3).toString(), lengthDays = 3, mode = RebalanceMode.BALANCED,
+        baseCalories = 2500, dailyCalorieReduction = 200, extraDailySteps = 0,
+        baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 600,
+        status = RebalanceStatus.DECLINED, createdAtIso = decidedOn.toString() + "T09:00:00Z",
+        decidedAtIso = decidedOn.toString() + "T09:00:00Z", endedReason = "expired",
+    )
 }

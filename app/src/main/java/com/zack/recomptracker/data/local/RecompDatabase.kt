@@ -17,6 +17,7 @@ import com.zack.recomptracker.data.local.dao.RecipeDao
 import com.zack.recomptracker.data.local.dao.SavedFoodDao
 import com.zack.recomptracker.data.local.dao.SavedMealDao
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
+import com.zack.recomptracker.data.local.dao.UsageEventDao
 import com.zack.recomptracker.data.local.dao.WorkoutDao
 import com.zack.recomptracker.data.local.dao.WorkoutSessionDao
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
@@ -33,6 +34,7 @@ import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.SessionExerciseEntity
 import com.zack.recomptracker.data.local.entity.SessionSetEntity
+import com.zack.recomptracker.data.local.entity.UsageEventEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.local.entity.WorkoutEntity
 import com.zack.recomptracker.data.local.entity.WorkoutExerciseEntity
@@ -58,8 +60,9 @@ import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
         SessionExerciseEntity::class,
         SessionSetEntity::class,
         PlanVersionEntity::class,
+        UsageEventEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -76,6 +79,7 @@ abstract class RecompDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutSessionDao(): WorkoutSessionDao
     abstract fun planVersionDao(): PlanVersionDao
+    abstract fun usageEventDao(): UsageEventDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -293,6 +297,19 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Additive: new local usage-tracking table only. No existing table is touched.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS usage_events (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "timestampEpochMs INTEGER NOT NULL, " +
+                        "type TEXT NOT NULL, " +
+                        "label TEXT)",
+                )
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -323,7 +340,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
             .build()
     }
 }

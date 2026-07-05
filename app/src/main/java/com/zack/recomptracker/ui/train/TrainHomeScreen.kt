@@ -59,6 +59,8 @@ import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.streak.StreakHeroBanner
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
+import com.zack.recomptracker.ui.train.component.MuscleRecoveryStrip
+import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
 import com.zack.recomptracker.domain.workout.TrainingPlanBuilder
 import com.zack.recomptracker.ui.train.component.heatColor
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
@@ -197,6 +199,19 @@ fun TrainHomeScreen(
                         }
                     },
                     onLogRecovery = onLogRecovery,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                )
+            }
+        }
+
+        // ── Per-muscle recovery (added layer under the whole-body readiness card) ─
+        // Compact strip of the muscle groups still recovering; renders nothing when all fresh.
+        if (state.muscleRecovery.any { it.band != MuscleTrainingAggregator.RecoveryBand.FRESH }) {
+            item {
+                MuscleRecoveryStrip(
+                    recovery = state.muscleRecovery,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),

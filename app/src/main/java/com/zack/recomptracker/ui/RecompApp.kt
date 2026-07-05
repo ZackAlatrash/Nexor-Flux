@@ -40,6 +40,7 @@ import androidx.navigation.compose.rememberNavController
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.zack.recomptracker.core.AppContainer
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTab
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTabs
@@ -67,6 +68,16 @@ private val topLevelRoutes = setOf(
     Routes.Food,
     Routes.Train,
 )
+
+// Maps a top-level route to its usage-tracking tab name, or null for a non-tab route.
+private fun String.tabNameOrNull(): String? = when (this) {
+    TopLevelDestination.Home.route -> "home"
+    TopLevelDestination.Body.route -> "body"
+    Routes.Food -> "food"
+    TopLevelDestination.Coach.route -> "coach"
+    Routes.Train -> "train"
+    else -> null
+}
 
 // Maps a route string to a 0-based tab index.
 private fun routeToTabIndex(route: String?): Int = when (route) {
@@ -116,6 +127,14 @@ fun RecompApp(
         val navController = rememberNavController()
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+        // Local usage tracking: one TAB_VIEW per top-level tab as it becomes current (covers taps,
+        // swipes, and deep-links uniformly, once each). Fire-and-forget — never blocks navigation.
+        LaunchedEffect(currentRoute) {
+            currentRoute?.tabNameOrNull()?.let { tab ->
+                container.usageTracker.track(UsageEvents.TAB_VIEW, label = tab)
+            }
+        }
 
         // Notification-tap deep-link: navigate to the mapped tab, then clear the pending action so a
         // recomposition/rotation doesn't re-navigate. Guarded on onboardingComplete so we never route

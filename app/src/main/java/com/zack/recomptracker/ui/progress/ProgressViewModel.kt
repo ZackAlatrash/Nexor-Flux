@@ -12,12 +12,15 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +41,18 @@ data class ChartSeries(
     val trendIsGood: Boolean = true,
 )
 
+/**
+ * A concise per-muscle weekly-volume read for the recomp verdict area: which groups trained more,
+ * flat, or less than the prior week. Derived from [MuscleTrainingAggregator]; groups with zero
+ * volume in both weeks are dropped upstream, so this only lists muscles that were actually trained.
+ */
+data class MuscleVolumeRead(
+    val muscle: String,
+    val trend: MuscleTrainingAggregator.VolumeTrend,
+    /** `weeklyVolume - priorWeeklyVolume` (kg·reps); sign matches [trend]. */
+    val volumeDelta: Double,
+)
+
 data class ProgressUiState(
     val rangeDays: Int = 28,
     val weight: ChartSeries = ChartSeries("Weight", "kg", emptyList()),
@@ -49,6 +64,9 @@ data class ProgressUiState(
     val adherence: ChartSeries = ChartSeries("Adherence", "%", emptyList()),
     val logging: ChartSeries = ChartSeries("Logging", "%", emptyList()),
     val lifts: ChartSeries = ChartSeries("Marker lift e1RM", "kg", emptyList()),
+    // Top per-muscle weekly-volume movers (trained groups only), ranked by |delta| desc. Empty when
+    // there's no completed-set history — the UI then renders nothing.
+    val muscleVolumeReads: List<MuscleVolumeRead> = emptyList(),
     val insightContext: ProgressInsightContext? = null,
 )
 
@@ -59,6 +77,8 @@ class ProgressViewModel(
     private val adherenceCalculator: AdherenceCalculator,
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val userProfileStore: UserProfilePreferencesStore,
+    private val workoutSessionRepository: WorkoutSessionRepository,
+    private val exerciseLibraryRepository: ExerciseLibraryRepository,
     // Off-main dispatcher for the combine transform (groupBy, LocalDate.parse over 7–28-day
     // windows, macro summing, trend math). Injectable for tests; default keeps AppContainer unchanged.
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -88,10 +108,17 @@ class ProgressViewModel(
                 logRepository.observeMealEntries(),
                 logRepository.observePerformances(),
                 planRepository.observeVersions(),
-                // Pair rangeDays with the profile so the 5-slot combine still carries the gym target.
-                combine(rangeDays, userProfileStore.preferences) { r, p -> r to p },
-            ) { logs, meals, performances, versions, rangeAndProfile ->
-                val (range, profile) = rangeAndProfile
+                // The 5-slot combine is full, so fold rangeDays + profile + the training inputs
+                // (completed sessions + exercise library, needed for per-muscle volume) into one
+                // nested combine and unpack it below.
+                combine(
+                    rangeDays,
+                    userProfileStore.preferences,
+                    workoutSessionRepository.observeCompletedSessions(),
+                    exerciseLibraryRepository.observeAll(),
+                ) { r, p, sessions, library -> TrainingInputs(r, p, sessions, library) },
+            ) { logs, meals, performances, versions, trainingInputs ->
+                val (range, profile, sessions, library) = trainingInputs
                 val today = dateProvider.today()
                 val dates = (range - 1 downTo 0).map { today.minusDays(it.toLong()) }
                 val targetsByDate = PlanHistory.resolve(versions, dates)
@@ -139,6 +166,14 @@ class ProgressViewModel(
                 val trainingSessionsPerWeek =
                     if (workoutDays.isEmpty()) null
                     else ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
+
+                // Per-muscle weekly volume + trend. Runs here inside the combine transform, which is
+                // already moved off-main by flowOn(computeDispatcher) below — so the aggregate's
+                // LocalDate.parse / volume summing never touches the main thread. Keep only trained
+                // groups (non-zero volume in either week) and rank the biggest movers first.
+                val muscleVolumeReads = muscleVolumeReadsFrom(
+                    MuscleTrainingAggregator.aggregate(sessions, library, today),
+                )
 
                 ProgressUiState(
                     rangeDays = range,
@@ -200,6 +235,7 @@ class ProgressViewModel(
                         "Lifts e1RM", "kg", liftValues,
                         currentValue = liftValues.lastOrNull(),
                     ),
+                    muscleVolumeReads = muscleVolumeReads,
                     insightContext = buildProgressInsightContext(
                         rangeDays = range,
                         weightValues = weightValues,
@@ -224,4 +260,36 @@ class ProgressViewModel(
     }
 
     private fun LiftPerformanceEntity.estimatedOneRepMax(): Double = weight * (1.0 + reps.coerceAtLeast(1) / 30.0)
+
+    /**
+     * Bundles the four flows folded into the nested combine (the top-level combine's 5 slots are
+     * full). Destructured back out in the transform above.
+     */
+    private data class TrainingInputs(
+        val rangeDays: Int,
+        val profile: com.zack.recomptracker.data.preferences.UserProfilePreferences,
+        val sessions: List<com.zack.recomptracker.domain.workout.WorkoutSession>,
+        val library: List<com.zack.recomptracker.domain.workout.Exercise>,
+    )
+
+    companion object {
+        /**
+         * Maps the aggregator's per-muscle summaries to the concise UI read: keep only muscles with
+         * volume in either week (drop never-trained groups), then rank by the biggest week-over-week
+         * change so the top movers surface first. Pure so it's unit-testable without the ViewModel.
+         */
+        fun muscleVolumeReadsFrom(
+            summaries: List<MuscleTrainingAggregator.MuscleSummary>,
+        ): List<MuscleVolumeRead> =
+            summaries
+                .filter { it.weeklyVolume > 0.0 || it.priorWeeklyVolume > 0.0 }
+                .sortedByDescending { kotlin.math.abs(it.volumeDelta) }
+                .map {
+                    MuscleVolumeRead(
+                        muscle = it.category.displayName,
+                        trend = it.volumeTrend,
+                        volumeDelta = it.volumeDelta,
+                    )
+                }
+    }
 }

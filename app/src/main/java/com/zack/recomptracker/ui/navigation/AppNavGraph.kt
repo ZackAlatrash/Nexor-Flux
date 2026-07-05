@@ -67,6 +67,8 @@ import com.zack.recomptracker.ui.train.SessionSummaryScreen
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
 import com.zack.recomptracker.ui.train.TrainViewModel
+import com.zack.recomptracker.ui.usage.UsageStatsScreen
+import com.zack.recomptracker.ui.usage.UsageStatsViewModel
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import java.time.LocalDate
 import kotlinx.serialization.encodeToString
@@ -97,6 +99,7 @@ object Routes {
     const val CoachMemory  = "coach_memory"
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
+    const val Usage        = "usage"
     const val Train          = "train"
     const val ActiveSession  = "active_session"
     const val ExercisePicker = "exercise_picker"
@@ -512,6 +515,7 @@ fun AppNavGraph(
                 onAiCoach = { navController.navigate(Routes.AiCoach) },
                 onIntegrations = { navController.navigate(Routes.Integrations) },
                 onDataBackup = { navController.navigate(Routes.DataBackup) },
+                onUsage = { navController.navigate(Routes.Usage) },
                 onBack = { navController.popBackStack() },
             )
         }
@@ -730,6 +734,16 @@ fun AppNavGraph(
         ) {
             DataBackupScreen(
                 viewModel<SettingsViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.Usage,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            UsageStatsScreen(
+                viewModel = viewModel<UsageStatsViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

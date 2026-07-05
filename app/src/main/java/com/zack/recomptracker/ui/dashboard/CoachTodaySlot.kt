@@ -17,13 +17,18 @@ import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.zack.recomptracker.data.usage.NoOpUsageTracker
+import com.zack.recomptracker.data.usage.UsageEvents
+import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.domain.coach.CoachAction
 import com.zack.recomptracker.domain.coach.CoachActionType
 import com.zack.recomptracker.domain.coach.CoachSignal
@@ -67,6 +72,23 @@ fun CoachTodaySlot(
 ) {
     if (signal == null) return
     val appColors = LocalAppColors.current
+
+    // Local usage tracking (label = signal kind). SHOWN fires once per rendered slot item; ACTION
+    // fires when the slot's action / "Track this" is taken. Fire-and-forget — never blocks the UI.
+    // No-op under @Preview (LocalInspectionMode), where no AppContainer is provided.
+    val slotLabel = signal.kind.name
+    val usageTracker = if (LocalInspectionMode.current) NoOpUsageTracker
+        else LocalAppContainer.current.usageTracker
+    LaunchedEffect(slotLabel) { usageTracker.track(UsageEvents.TODAY_SLOT_SHOWN, label = slotLabel) }
+    val trackedOnAction: (CoachActionType) -> Unit = { type ->
+        usageTracker.track(UsageEvents.TODAY_SLOT_ACTION, label = slotLabel)
+        onAction(type)
+    }
+    val trackedOnTrackExperiment: (CoachSignal) -> Unit = { s ->
+        usageTracker.track(UsageEvents.TODAY_SLOT_ACTION, label = slotLabel)
+        onTrackExperiment(s)
+    }
+
     val action = signal.action
     val showButton = action.type != CoachActionType.NONE &&
         action.label.isNotBlank() &&
@@ -81,13 +103,13 @@ fun CoachTodaySlot(
                 displayText = displayText,
                 showButton = false,
                 action = CoachAction.None,
-                onAction = onAction,
+                onAction = trackedOnAction,
             )
             if (action.type == CoachActionType.TRACK_EXPERIMENT && action.label.isNotBlank()) {
                 Spacer(Modifier.height(10.dp))
                 LiquidActionButton(
                     text = action.label,
-                    onClick = { onTrackExperiment(signal) },
+                    onClick = { trackedOnTrackExperiment(signal) },
                     isPrimary = true,
                     small = true,
                 )
@@ -110,7 +132,7 @@ fun CoachTodaySlot(
                 displayText = displayText,
                 showButton = showButton,
                 action = action,
-                onAction = onAction,
+                onAction = trackedOnAction,
             )
         }
     } else {
@@ -129,7 +151,7 @@ fun CoachTodaySlot(
                 displayText = displayText,
                 showButton = showButton,
                 action = action,
-                onAction = onAction,
+                onAction = trackedOnAction,
             )
         }
     }

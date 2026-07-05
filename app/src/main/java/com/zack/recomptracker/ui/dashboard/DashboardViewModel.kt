@@ -158,17 +158,22 @@ class DashboardViewModel(
                 logRepository.observeMealEntriesSince(windowStart),
                 logRepository.observePerformances(),
                 planRepository.preferences,
-                planRepository.observeVersions(),
-                rebalanceStore.state,
-            ) { values ->
-                @Suppress("UNCHECKED_CAST")
+                // The 5-slot combine is full, so fold the plan-version history + rebalance state
+                // into one nested typed combine and unpack it below (mirrors ProgressViewModel's
+                // TrainingInputs pattern) — no unchecked casts.
+                combine(
+                    planRepository.observeVersions(),
+                    rebalanceStore.state,
+                ) { versions, rebalanceState -> DashboardStreams(versions, rebalanceState) },
+            ) { logs, allMeals, performances, preferences, streams ->
+                val (versions, rebalanceState) = streams
                 buildState(
-                    logs = values[0] as List<DailyLogEntity>,
-                    allMeals = values[1] as List<MealEntryEntity>,
-                    performances = values[2] as List<LiftPerformanceEntity>,
-                    preferences = values[3] as PlanPreferences,
-                    versions = values[4] as List<PlanVersion>,
-                    rebalanceState = values[5] as RebalanceState,
+                    logs = logs,
+                    allMeals = allMeals,
+                    performances = performances,
+                    preferences = preferences,
+                    versions = versions,
+                    rebalanceState = rebalanceState,
                 )
             }
             .debounce(300L)
@@ -351,6 +356,15 @@ class DashboardViewModel(
     private fun DailyLogEntity.localDate(): LocalDate = LocalDate.parse(date)
     private fun MealEntryEntity.localDate(): LocalDate = LocalDate.parse(date)
     private fun LiftPerformanceEntity.localDate(): LocalDate = LocalDate.parse(date)
+
+    /**
+     * Bundles the two flows folded into the nested combine (the top-level combine's 5 slots are
+     * full). Destructured back out in the transform above.
+     */
+    private data class DashboardStreams(
+        val versions: List<PlanVersion>,
+        val rebalanceState: RebalanceState,
+    )
 
     companion object {
         val MOTIVATIONAL_MESSAGES: List<String> = listOf(

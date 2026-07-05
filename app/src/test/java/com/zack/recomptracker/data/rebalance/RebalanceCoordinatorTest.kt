@@ -15,7 +15,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
@@ -33,35 +32,6 @@ class RebalanceCoordinatorTest {
 
     private class MutableDateProvider(var day: LocalDate) : DateProvider {
         override fun today(): LocalDate = day
-    }
-
-    /** In-memory [RebalanceStore] fake — MutableStateFlow-backed, records the evaluation gate date. */
-    private class FakeRebalanceStore(
-        seed: RebalanceState = RebalanceState(),
-        private var lastEvaluated: LocalDate? = null,
-    ) : RebalanceStore {
-        private val flow = MutableStateFlow(seed)
-        var saveCalls = 0
-
-        override val state: Flow<RebalanceState> = flow
-
-        override suspend fun current(): RebalanceState = flow.value
-
-        override suspend fun save(state: RebalanceState) {
-            // Mirror the production history cap so tests exercise the same trimming.
-            flow.value = state.copy(
-                history = state.history
-                    .sortedBy { it.createdAtIso }
-                    .takeLast(RebalanceState.HISTORY_CAP),
-            )
-            saveCalls++
-        }
-
-        override suspend fun lastEvaluated(): LocalDate? = lastEvaluated
-
-        override suspend fun markEvaluated(date: LocalDate) {
-            lastEvaluated = date
-        }
     }
 
     private fun targets(cal: Int) = PlanTargets(cal, 160, 300, 70, cal - 100, cal + 100)

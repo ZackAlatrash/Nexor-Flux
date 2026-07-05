@@ -2,6 +2,7 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.domain.activity.ActivityMetrics
@@ -39,19 +40,15 @@ class StreakRepository(
         logRepository.observeMealEntries(),
         workoutSessionRepository.observeCompletedSessions(),
         planRepository.observeVersions(),
-        userProfileStore.preferences,
-        rebalanceStore.state,
-    ) { values ->
-        @Suppress("UNCHECKED_CAST")
-        val dailyLogs = values[0] as List<DailyLogEntity>
-        @Suppress("UNCHECKED_CAST")
-        val meals = values[1] as List<com.zack.recomptracker.data.local.entity.MealEntryEntity>
-        @Suppress("UNCHECKED_CAST")
-        val sessions = values[2] as List<com.zack.recomptracker.domain.workout.WorkoutSession>
-        @Suppress("UNCHECKED_CAST")
-        val versions = values[3] as List<PlanVersion>
-        val profile = values[4] as com.zack.recomptracker.data.preferences.UserProfilePreferences
-        val rebalanceState = values[5] as RebalanceState
+        // The 5-slot combine is full, so fold profile + rebalance state into one nested typed
+        // combine and unpack it below (mirrors ProgressViewModel's TrainingInputs pattern) — no
+        // unchecked casts.
+        combine(
+            userProfileStore.preferences,
+            rebalanceStore.state,
+        ) { profile, rebalanceState -> StreakStreams(profile, rebalanceState) },
+    ) { dailyLogs, meals, sessions, versions, streams ->
+        val (profile, rebalanceState) = streams
         val eatenByDate = meals
             .filterNot { it.planned }
             .groupBy { LocalDate.parse(it.date) }
@@ -92,6 +89,15 @@ class StreakRepository(
             averageDailySteps7 = ActivitySummary.averageDailySteps(stepsByDate, today),
         )
     }
+
+    /**
+     * Bundles the two flows folded into the nested combine (the top-level combine's 5 slots are
+     * full). Destructured back out in the transform above.
+     */
+    private data class StreakStreams(
+        val profile: UserProfilePreferences,
+        val rebalanceState: RebalanceState,
+    )
 }
 
 /**

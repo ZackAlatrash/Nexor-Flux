@@ -111,7 +111,7 @@ object CoachContextAssembler {
             training = buildTraining(inputs, windowStart, today),
             streaks = buildStreaks(inputs.streaks),
             history = buildHistory(inputs.weeklyReviews),
-            rebalance = buildRebalance(inputs.rebalanceState, today),
+            rebalance = buildRebalance(inputs, today, effectiveTargets),
         )
     }
 
@@ -301,16 +301,30 @@ object CoachContextAssembler {
      * The active-rebalance block, present only when today falls inside the current plan's window.
      * Uses the pure resolver so day-X/of-Y and the effective calories agree with what every other
      * consumer shows. Null (absent) when no plan covers today — the coach then has nothing to mention.
+     *
+     * Effective calories come from [EffectiveTargets] — the same resolver every other consumer uses —
+     * rather than a local `baseCalories - reduction` recomputation, so the formula lives in one place.
+     * [effectiveTargets] (already resolved in [assemble] via [EffectiveTargets.resolveAll]) supplies
+     * today's value directly; the [EffectiveTargets.resolve] call is a defensive fallback for the
+     * (never-hit in practice) case where today's date is missing from [CoachContextInputs.targetsByDate].
      */
-    private fun buildRebalance(state: RebalanceState, today: LocalDate): RebalanceContext? {
+    private fun buildRebalance(
+        inputs: CoachContextInputs,
+        today: LocalDate,
+        effectiveTargets: Map<LocalDate, PlanTargets>,
+    ): RebalanceContext? {
+        val state = inputs.rebalanceState
         val info = EffectiveTargets.planDayInfo(today, state) ?: return null
         val plan = info.plan
+        val baseToday = inputs.targetsByDate[today]
+        val effectiveCalories = effectiveTargets[today]?.calories
+            ?: baseToday?.let { EffectiveTargets.resolve(it, today, state).calories }
+            ?: (plan.baseCalories - plan.dailyCalorieReduction)
+                .coerceAtLeast(com.zack.recomptracker.domain.rebalance.RebalanceDefaults.MIN_EFFECTIVE_CAL)
         return RebalanceContext(
-            active = true,
             dayX = info.dayX,
             ofY = info.ofY,
-            effectiveCalories = (plan.baseCalories - plan.dailyCalorieReduction)
-                .coerceAtLeast(com.zack.recomptracker.domain.rebalance.RebalanceDefaults.MIN_EFFECTIVE_CAL),
+            effectiveCalories = effectiveCalories,
             extraSteps = plan.extraDailySteps,
         )
     }

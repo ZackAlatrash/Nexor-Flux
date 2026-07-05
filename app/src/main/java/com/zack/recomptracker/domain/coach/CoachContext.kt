@@ -116,16 +116,17 @@ data class HistoryContext(
  * Snapshot of the currently-active weekly rebalance, present only when one is ACTIVE and covers
  * today. All fields deterministic; the coach uses these so its advice never contradicts the card.
  *
- * @property active always true when this block is present (a convenience flag for prompt assembly).
- * @property dayX today's 1-based position in the plan window, when today is a plan day.
+ * The block is only ever constructed with every field present — absence is expressed by
+ * [CoachContext.rebalance] being null, not by nullable/partial fields here.
+ *
+ * @property dayX today's 1-based position in the plan window.
  * @property ofY total plan length in days.
  * @property effectiveCalories today's effective (reduced) calorie target.
  * @property extraSteps the plan's extra daily step boost (0 for a calorie-only plan).
  */
 data class RebalanceContext(
-    val active: Boolean,
-    val dayX: Int?,
-    val ofY: Int?,
-    val effectiveCalories: Int?,
-    val extraSteps: Int?,
+    val dayX: Int,
+    val ofY: Int,
+    val effectiveCalories: Int,
+    val extraSteps: Int,
 )

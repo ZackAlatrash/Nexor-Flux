@@ -22,12 +22,16 @@ import kotlinx.coroutines.withTimeout
  *  - Plain streaming completion — NO tool schemas, immune to the OpenRouter tool_calls regression
  *    tracked for the cloud coach (see `docs/ai-coach.md`).
  *
+ * `internal` (unlike the public [CoachPhrasingService]) because [copy]'s signature exposes the
+ * internal [RebalanceCopySlot]/[RebalanceCopyFacts] types — single-module app, so `internal` is
+ * still visible to ui/ and core/.
+ *
  * @param client the shared OpenAI-compatible client (streaming, single-turn, no tools).
  * @param config a lambda/StateFlow accessor for the current [CloudConfig]; `null` means no cloud is
  *   configured, so phrasing is skipped and the fallback is returned. Read per call so a settings
  *   change takes effect immediately.
  */
-class RebalanceCopyService(
+internal class RebalanceCopyService(
     private val client: OpenAiCompatClient,
     private val config: () -> CloudConfig?,
 ) {

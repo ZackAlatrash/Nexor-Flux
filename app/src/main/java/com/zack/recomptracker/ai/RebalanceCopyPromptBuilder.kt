@@ -5,13 +5,13 @@ package com.zack.recomptracker.ai
  * note. See `docs/superpowers/specs/2026-07-05-weekly-rebalance-design.md` §3 (user experience) and
  * §8 (cloud copy service + fallback templates).
  */
-enum class RebalanceCopySlot { OFFER_HEADLINE, OFFER_BODY, PROGRESS_LINE, GRACEFUL_END, COMPLETION, NO_ADJUSTMENT }
+internal enum class RebalanceCopySlot { OFFER_HEADLINE, OFFER_BODY, PROGRESS_LINE, GRACEFUL_END, COMPLETION, NO_ADJUSTMENT }
 
 /**
  * Pre-formatted deterministic facts for one copy request. The engine has already decided every
  * number; [RebalanceCopyPromptBuilder]/[RebalanceCopyService] only ever rephrase them — see spec §8.
  */
-data class RebalanceCopyFacts(
+internal data class RebalanceCopyFacts(
     val lengthDays: Int,
     val dailyCalorieReduction: Int,
     val extraDailySteps: Int,
@@ -29,7 +29,7 @@ data class RebalanceCopyFacts(
  * [RebalanceCopyService]. They must never be edited without updating spec §8, since [fallback] is
  * asserted verbatim in `RebalanceCopyServiceTest`.
  */
-object RebalanceCopyPromptBuilder {
+internal object RebalanceCopyPromptBuilder {
 
     /**
      * Returns the deterministic fallback text for [slot], substituting [facts]. Verbatim from spec

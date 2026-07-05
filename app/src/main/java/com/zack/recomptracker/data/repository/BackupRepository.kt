@@ -90,5 +90,9 @@ class BackupRepository(
             }
         }
         planRepository.save(defaultPreferences)
+        // Clear the weekly-rebalance state too. The save above only conditionally writes a plan
+        // version row, so the coordinator's cancel-on-plan-edit hook is not guaranteed to fire — an
+        // ACTIVE rebalance (and stale history/cooldowns) must not survive a full reset.
+        rebalanceStore.save(RebalanceState())
     }
 }

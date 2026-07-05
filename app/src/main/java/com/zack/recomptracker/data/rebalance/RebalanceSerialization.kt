@@ -56,6 +56,7 @@ internal object RebalanceSerialization {
     private fun decodeState(root: JsonObject): RebalanceState {
         val active = (root["active"] as? JsonObject)?.let { decodePlan(it) ?: return RebalanceState() }
         val history = (root["history"] as? JsonArray)?.map { el ->
+            // `map` is inline, so these non-local returns exit decodeState itself; a non-inline call would silently change semantics.
             val obj = el as? JsonObject ?: return RebalanceState()
             decodePlan(obj) ?: return RebalanceState()
         } ?: emptyList()

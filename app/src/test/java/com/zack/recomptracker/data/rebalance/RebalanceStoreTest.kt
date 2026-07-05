@@ -3,6 +3,8 @@ package com.zack.recomptracker.data.rebalance
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
@@ -125,6 +127,23 @@ class RebalanceStoreTest {
     }
 
     @Test
+    fun `history cap keeps insertion order on identical createdAtIso ties`() = runTest {
+        // The two oldest records share a createdAtIso. sortedBy is a stable sort, so tied records
+        // keep their input order and the cap deterministically drops the one that came first.
+        val tieFirst = terminalPlan(id = "tie-first", createdAtIso = "2026-06-01T08:00:00")
+        val tieSecond = terminalPlan(id = "tie-second", createdAtIso = "2026-06-01T08:00:00")
+        val newer = (3..13).map { n ->
+            terminalPlan(id = "p$n", createdAtIso = "2026-06-%02dT08:00:00".format(n))
+        }
+
+        store.save(RebalanceState(history = listOf(tieFirst, tieSecond) + newer))
+
+        val saved = store.current().history
+        assertEquals(RebalanceState.HISTORY_CAP, saved.size)
+        assertEquals(listOf("tie-second") + (3..13).map { "p$it" }, saved.map { it.id })
+    }
+
+    @Test
     fun `save preserves the active plan alongside a capped history`() = runTest {
         val active = terminalPlan(id = "active", createdAtIso = "2026-07-05T08:00:00", status = RebalanceStatus.ACTIVE)
         val records = (1..13).map { n ->
@@ -154,5 +173,14 @@ class RebalanceStoreTest {
         store.markEvaluated(LocalDate.of(2026, 7, 4))
         store.markEvaluated(LocalDate.of(2026, 7, 5))
         assertEquals(LocalDate.of(2026, 7, 5), store.lastEvaluated())
+    }
+
+    @Test
+    fun `lastEvaluated returns null on a corrupt stored date`() = runTest {
+        // Garbage written straight to the preference key must read back as null, never throw.
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("last_evaluated")] = "not-a-date"
+        }
+        assertNull(store.lastEvaluated())
     }
 }

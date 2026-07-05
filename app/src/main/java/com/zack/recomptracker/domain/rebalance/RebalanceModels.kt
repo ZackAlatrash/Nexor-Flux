@@ -79,4 +79,11 @@ object RebalanceDefaults {
     const val UNRECOVERABLE_SLACK_KCAL = 75
     const val MIN_LENGTH_DAYS = 2
     const val MAX_LENGTH_DAYS = 5
+
+    /**
+     * Half-width of the effective calorie zone: zone = effective ± this. Mirrors
+     * `PlanPreferences.CALORIE_ZONE_MARGIN` (100), duplicated here because that constant lives in
+     * the data layer and pure `domain/` code must not depend on it.
+     */
+    const val ZONE_MARGIN = 100
 }

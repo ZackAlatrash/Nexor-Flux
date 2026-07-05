@@ -35,7 +35,7 @@ object RebalanceEngine {
         if (input.existing.active != null) return RebalanceDecision.Silent
 
         val yesterday = input.today.minusDays(1)
-        val window: List<LocalDate> = (1..7).map { input.today.minusDays(it.toLong()) }
+        val window: List<LocalDate> = trailingWindow(input.today)
 
         // Gate 2: data trust — ≥ MIN_LOGGED_DAYS_WINDOW of the 7 window days logged.
         val loggedDays = window.filter { isLogged(input, it) }
@@ -210,6 +210,9 @@ object RebalanceEngine {
 
     // ── Trigger helpers ─────────────────────────────────────────────────────────────
 
+    /** Trailing 7 days ending yesterday relative to [reference]. */
+    private fun trailingWindow(reference: LocalDate): List<LocalDate> = (1..7).map { reference.minusDays(it.toLong()) }
+
     private fun isLogged(input: RebalanceEvaluationInput, d: LocalDate): Boolean =
         (input.mealCountByDate[d] ?: 0) >= 1
 
@@ -313,6 +316,7 @@ object RebalanceEngine {
         }
 
         // Per-day capacity (raw kcal) by mode. Steps unavailable → calorie-only for every mode.
+        // Mode branches here must stay in lockstep with the raw-split `when` below (identical conditions).
         val perDayCap: Double = when {
             !stepsAvailable -> calLeverCap.toDouble()
             mode == RebalanceMode.EAT_LESS -> calLeverCap.toDouble()
@@ -331,6 +335,7 @@ object RebalanceEngine {
         val perDay = ceil(targetRecover.toDouble() / days)
 
         // Split into raw R/E by mode, then round + cap.
+        // Mode branches here must stay in lockstep with the perDayCap `when` above (identical conditions).
         val (rRaw, eRaw) = when {
             !stepsAvailable -> perDay to 0.0
             mode == RebalanceMode.EAT_LESS -> perDay to 0.0
@@ -368,7 +373,7 @@ object RebalanceEngine {
         eatenByDate: Map<LocalDate, Int>,
     ): Boolean {
         // S_now: positive-part surplus vs BASE over the trailing 7 days ending yesterday.
-        val window = (1..7).map { today.minusDays(it.toLong()) }
+        val window = trailingWindow(today)
         val sNow = window.sumOf { d ->
             val base = baseTargetsByDate[d]?.calories ?: return@sumOf 0
             val eaten = eatenByDate[d] ?: return@sumOf 0

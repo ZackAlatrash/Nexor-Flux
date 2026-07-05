@@ -229,6 +229,29 @@ class RebalanceEngineTest {
     }
 
     @Test
+    fun `move more with negligible step history falls back to a calorie plan`() {
+        // Steps are technically available (data + goal both present) but the average is tiny:
+        // recentAvgSteps = 100 -> stepsCap = round500(0.25*100) = round500(25) = 0, so MOVE_MORE's
+        // stepsCap > 0 branch fails and falls back to the calorie-only lever, same as the
+        // no-steps-available worked example: S=600, targetRecover=450, calorie lever cap 300 -> D=2,
+        // perDay=225, R=round10(225)=230; E stays 0.
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 100 }
+        val decision = evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100), // S=600
+                steps = stepsMap,
+                baseStepGoal = 8000,
+                mode = RebalanceMode.MOVE_MORE,
+            ),
+        )
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertEquals(0, plan.extraDailySteps)
+        assertEquals(2, plan.lengthDays)
+        assertEquals(230, plan.dailyCalorieReduction)
+        assertTrue("dailyCalorieReduction must be > 0", plan.dailyCalorieReduction > 0)
+    }
+
+    @Test
     fun `BALANCED split uses both levers`() {
         val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
         val decision = evaluate(

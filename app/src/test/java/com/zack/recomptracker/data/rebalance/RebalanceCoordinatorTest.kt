@@ -2,6 +2,8 @@ package com.zack.recomptracker.data.rebalance
 
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.preferences.FitnessGoal
+import com.zack.recomptracker.data.usage.UsageEvents
+import com.zack.recomptracker.data.usage.UsageTracker
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
@@ -32,6 +34,14 @@ class RebalanceCoordinatorTest {
 
     private class MutableDateProvider(var day: LocalDate) : DateProvider {
         override fun today(): LocalDate = day
+    }
+
+    /** Records every [track] call in order, for assertions on which `REBALANCE_*` events fired. */
+    private class RecordingUsageTracker : UsageTracker {
+        val events = mutableListOf<String>()
+        override fun track(type: String, label: String?) {
+            events.add(type)
+        }
     }
 
     private fun targets(cal: Int) = PlanTargets(cal, 160, 300, 70, cal - 100, cal + 100)
@@ -74,6 +84,7 @@ class RebalanceCoordinatorTest {
         currentGoal: suspend () -> FitnessGoal? = { FitnessGoal.MODERATE_CUT },
         planVersions: Flow<List<PlanVersion>> = MutableSharedFlow(),
         dateProvider: DateProvider = MutableDateProvider(today),
+        usageTracker: UsageTracker = RecordingUsageTracker(),
         scope: CoroutineScope,
     ) = RebalanceCoordinator(
         store = store,
@@ -81,7 +92,7 @@ class RebalanceCoordinatorTest {
         currentGoal = currentGoal,
         planVersions = planVersions,
         dateProvider = dateProvider,
-        usageTracker = null,
+        usageTracker = usageTracker,
         scope = scope,
         newId = newId,
         nowIso = nowIso,
@@ -343,5 +354,196 @@ class RebalanceCoordinatorTest {
         b.join()
 
         assertEquals("exactly one evaluation despite two concurrent runs", 1, calls.get())
+    }
+
+    // ── analytics (Task 8) ──────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a fresh offer fires REBALANCE_OFFERED`() = runTest {
+        val store = FakeRebalanceStore()
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput() },
+            usageTracker = tracker,
+            scope = this,
+        )
+
+        coordinator.runIfDue()
+
+        assertEquals(RebalanceStatus.OFFERED, store.current().active!!.status)
+        assertEquals(listOf(UsageEvents.REBALANCE_OFFERED), tracker.events)
+    }
+
+    @Test
+    fun `a NO_ADJUSTMENT note fires no analytics event`() = runTest {
+        // Same too-large-surplus setup as "dismiss note archives the no-adjustment record".
+        val store = FakeRebalanceStore()
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(yesterdayEaten = 12_000, existing = store.current()) },
+            usageTracker = tracker,
+            scope = this,
+        )
+
+        coordinator.runIfDue()
+
+        assertEquals(RebalanceStatus.NO_ADJUSTMENT, store.current().active!!.status)
+        assertTrue("NoAdjustment is not one of the five REBALANCE_* events", tracker.events.isEmpty())
+    }
+
+    @Test
+    fun `accept fires REBALANCE_ACCEPTED`() = runTest {
+        val store = FakeRebalanceStore()
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput() },
+            usageTracker = tracker,
+            scope = this,
+        )
+        coordinator.runIfDue()
+        tracker.events.clear() // isolate accept()'s own event from the OFFERED one above
+
+        coordinator.accept()
+
+        assertEquals(listOf(UsageEvents.REBALANCE_ACCEPTED), tracker.events)
+    }
+
+    @Test
+    fun `decline fires REBALANCE_DECLINED`() = runTest {
+        val store = FakeRebalanceStore()
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(existing = store.current()) },
+            usageTracker = tracker,
+            scope = this,
+        )
+        coordinator.runIfDue()
+        tracker.events.clear()
+
+        coordinator.decline()
+
+        assertEquals(listOf(UsageEvents.REBALANCE_DECLINED), tracker.events)
+    }
+
+    @Test
+    fun `dismissNote fires no analytics event`() = runTest {
+        val store = FakeRebalanceStore()
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(yesterdayEaten = 12_000, existing = store.current()) },
+            usageTracker = tracker,
+            scope = this,
+        )
+        coordinator.runIfDue()
+        tracker.events.clear()
+
+        coordinator.dismissNote()
+
+        assertTrue("dismissNote is not one of the five REBALANCE_* events", tracker.events.isEmpty())
+    }
+
+    @Test
+    fun `reconcile completing a plan fires REBALANCE_COMPLETED`() = runTest {
+        // Mirrors "runIfDue reconciles before evaluating and does not immediately re-offer after completion".
+        val activePast = RebalancePlan(
+            id = "active", triggerDateIso = "2026-07-01", startDateIso = "2026-07-04",
+            endDateIso = "2026-07-06", lengthDays = 3, mode = RebalanceMode.EAT_LESS,
+            baseCalories = 2500, dailyCalorieReduction = 200, extraDailySteps = 0,
+            baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 600,
+            status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-03T09:00:00Z",
+            decidedAtIso = "2026-07-03T09:00:00Z",
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = activePast))
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(existing = store.current()) },
+            usageTracker = tracker,
+            scope = this,
+        )
+
+        coordinator.runIfDue()
+
+        assertEquals(RebalanceStatus.COMPLETED, store.current().history.first().status)
+        assertTrue(
+            "completion fires REBALANCE_COMPLETED (Silent evaluate adds nothing else)",
+            tracker.events.contains(UsageEvents.REBALANCE_COMPLETED),
+        )
+        assertTrue(
+            "reconcile-completed never also fires REBALANCE_OFFERED/ENDED_EARLY",
+            tracker.events.none { it == UsageEvents.REBALANCE_OFFERED || it == UsageEvents.REBALANCE_ENDED_EARLY },
+        )
+    }
+
+    @Test
+    fun `reconcile ending a plan as unrecoverable fires REBALANCE_ENDED_EARLY`() = runTest {
+        // Mirrors RebalanceReconcileTest's "active plan that is clearly unrecoverable ends early":
+        // start=07-06, end=07-10, r=100 e=0, yesterday eaten 5500 vs base 2500 -> slack > 75.
+        val activePlan = RebalancePlan(
+            id = "active", triggerDateIso = "2026-07-01", startDateIso = "2026-07-06",
+            endDateIso = "2026-07-10", lengthDays = 5, mode = RebalanceMode.EAT_LESS,
+            baseCalories = 2500, dailyCalorieReduction = 100, extraDailySteps = 0,
+            baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 600,
+            status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-01T09:00:00Z",
+            decidedAtIso = "2026-07-01T09:00:00Z",
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = activePlan))
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(yesterdayEaten = 5500, existing = store.current()) },
+            usageTracker = tracker,
+            scope = this,
+        )
+
+        coordinator.runIfDue()
+
+        val ended = store.current().history.first()
+        assertEquals(RebalanceStatus.ENDED_EARLY, ended.status)
+        assertEquals("unrecoverable", ended.endedReason)
+        assertTrue(
+            "unrecoverable end-early fires REBALANCE_ENDED_EARLY",
+            tracker.events.contains(UsageEvents.REBALANCE_ENDED_EARLY),
+        )
+    }
+
+    @Test
+    fun `plan_edited cancel hook fires REBALANCE_ENDED_EARLY`() = runTest {
+        // Mirrors "a new plan version while active ends the plan as plan_edited".
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val scope = CoroutineScope(dispatcher)
+        val versions = MutableSharedFlow<List<PlanVersion>>(replay = 0)
+        val activePlan = RebalancePlan(
+            id = "active", triggerDateIso = "2026-07-01", startDateIso = "2026-07-06",
+            endDateIso = "2026-07-10", lengthDays = 5, mode = RebalanceMode.EAT_LESS,
+            baseCalories = 2500, dailyCalorieReduction = 200, extraDailySteps = 0,
+            baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 1000,
+            status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-05T09:00:00Z",
+            decidedAtIso = "2026-07-05T09:00:00Z",
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = activePlan))
+        val tracker = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput() },
+            planVersions = versions,
+            usageTracker = tracker,
+            scope = scope,
+        )
+        coordinator.start()
+        runCurrent()
+        versions.emit(emptyList()) // initial emission, dropped
+        runCurrent()
+
+        versions.emit(listOf(PlanVersion(today, targets(2400))))
+        runCurrent()
+
+        assertEquals(RebalanceStatus.ENDED_EARLY, store.current().history.first().status)
+        assertEquals(listOf(UsageEvents.REBALANCE_ENDED_EARLY), tracker.events)
     }
 }

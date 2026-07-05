@@ -9,6 +9,7 @@ import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
 import com.zack.recomptracker.data.remote.ParsedChatResponse
+import com.zack.recomptracker.data.usage.NoOpUsageTracker
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
@@ -123,7 +124,7 @@ class RebalanceViewModelTest {
         currentGoal = currentGoal,
         planVersions = planVersions,
         dateProvider = dateProvider,
-        usageTracker = null,
+        usageTracker = NoOpUsageTracker,
         scope = scope,
         newId = newId,
         nowIso = nowIso,

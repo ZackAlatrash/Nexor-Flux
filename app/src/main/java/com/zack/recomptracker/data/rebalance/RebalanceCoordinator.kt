@@ -3,6 +3,7 @@ package com.zack.recomptracker.data.rebalance
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.preferences.FitnessGoal
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.data.usage.UsageTracker
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.RebalanceDecision
@@ -10,6 +11,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceEngine
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.Instant
 import java.time.LocalDate
@@ -46,8 +48,8 @@ import kotlinx.coroutines.sync.withLock
  * @param planVersions `planRepository.observeVersions()`. A version row is written iff the permanent
  *   [com.zack.recomptracker.domain.plan.PlanTargets] actually changed (HC-sync saves don't), so keying
  *   the cancel hook on versions — not on every plan save — cancels an active plan only on a real edit.
- * @param usageTracker analytics sink; **events are wired in Task 8** — the param is held now, fired
- *   nowhere yet.
+ * @param usageTracker analytics sink for the `REBALANCE_*` events (spec §9); fire-and-forget, same
+ *   convention as every other `usageTracker.track(...)` call site in the app.
  * @param scope the app scope the version-observer cancel hook runs on.
  */
 class RebalanceCoordinator(
@@ -56,7 +58,7 @@ class RebalanceCoordinator(
     private val currentGoal: suspend () -> FitnessGoal?,
     private val planVersions: Flow<List<PlanVersion>>,
     private val dateProvider: DateProvider,
-    private val usageTracker: UsageTracker?,
+    private val usageTracker: UsageTracker,
     private val scope: CoroutineScope,
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val nowIso: () -> String = { Instant.now().toString() },
@@ -120,14 +122,29 @@ class RebalanceCoordinator(
         )
         val reconciled = rec.state
         if (reconciled != input.existing) store.save(reconciled)
-        rec.ended?.let { _endedNotice.value = it }
+        rec.ended?.let { ended ->
+            _endedNotice.value = ended
+            // Reconcile only ever surfaces COMPLETED (ran its full course) or ENDED_EARLY
+            // ("unrecoverable") here — the OFFERED-expiry branch (endedReason "expired") returns
+            // `ended = null` and is deliberately not an analytics event (see class doc: only the
+            // five REBALANCE_* events, nothing for expiry).
+            when (ended.status) {
+                RebalanceStatus.COMPLETED -> usageTracker.track(UsageEvents.REBALANCE_COMPLETED)
+                RebalanceStatus.ENDED_EARLY -> usageTracker.track(UsageEvents.REBALANCE_ENDED_EARLY)
+                else -> Unit
+            }
+        }
 
         // (2) Evaluate for a fresh offer against the reconciled state. Only Offer / NoAdjustment write
-        //     the active slot; Silent persists nothing.
+        //     the active slot; Silent persists nothing. Only a concrete Offer counts as "offered" for
+        //     analytics — a NoAdjustment note is supportive copy, not an offer (spec §9 lists five
+        //     events; NoAdjustment fires none of them).
         val evalInput = input.copy(existing = reconciled)
         when (val decision = RebalanceEngine.evaluate(evalInput, newId, nowIso)) {
-            is RebalanceDecision.Offer ->
+            is RebalanceDecision.Offer -> {
                 store.save(reconciled.copy(active = decision.plan))
+                usageTracker.track(UsageEvents.REBALANCE_OFFERED)
+            }
             is RebalanceDecision.NoAdjustment ->
                 store.save(reconciled.copy(active = decision.plan))
             RebalanceDecision.Silent -> Unit
@@ -154,6 +171,7 @@ class RebalanceCoordinator(
             endDateIso = end.toString(),
         )
         store.save(state.copy(active = active))
+        usageTracker.track(UsageEvents.REBALANCE_ACCEPTED)
     }
 
     /** Decline the current OFFERED plan (no-op otherwise): move it to history as DECLINED, clear active. */
@@ -162,19 +180,21 @@ class RebalanceCoordinator(
         val offer = state.active ?: return
         if (offer.status != RebalanceStatus.OFFERED) return
         val declined = offer.copy(status = RebalanceStatus.DECLINED, decidedAtIso = nowIso())
-        store.save(state.copy(active = null, history = state.history + declined))
+        archive(state, declined, notify = false)
+        usageTracker.track(UsageEvents.REBALANCE_DECLINED)
     }
 
     /**
      * Dismiss the current NO_ADJUSTMENT note (no-op otherwise): move it to history (status stays
-     * NO_ADJUSTMENT, `decidedAt` stamped), clear active.
+     * NO_ADJUSTMENT, `decidedAt` stamped), clear active. Not an analytics event — a NO_ADJUSTMENT note
+     * was never an offer (see [runOnce]'s Offer-only REBALANCE_OFFERED comment).
      */
     suspend fun dismissNote() {
         val state = store.current()
         val note = state.active ?: return
         if (note.status != RebalanceStatus.NO_ADJUSTMENT) return
         val archived = note.copy(decidedAtIso = nowIso())
-        store.save(state.copy(active = null, history = state.history + archived))
+        archive(state, archived, notify = false)
     }
 
     /** Clears the in-memory ended notice (the card dismissed its completion / graceful-end face). */
@@ -215,8 +235,20 @@ class RebalanceCoordinator(
             endedReason = "plan_edited",
             endDateIso = lastEffective.toString(),
         )
-        store.save(state.copy(active = null, history = state.history + ended))
-        _endedNotice.value = ended
+        archive(state, ended, notify = true)
+        usageTracker.track(UsageEvents.REBALANCE_ENDED_EARLY)
+    }
+
+    /**
+     * Shared "move the active slot to a terminal record" shape used by [decline], [dismissNote], and
+     * [onPlanVersionsChanged]: clears [RebalanceState.active], appends [terminal] to
+     * [RebalanceState.history], and persists via [store]. When [notify] is true also surfaces
+     * [terminal] as the one-time [endedNotice] (the ended-plan card face) — [decline]/[dismissNote]
+     * pass `false` since their archived record was a user-driven dismissal, not an ended-plan notice.
+     */
+    private suspend fun archive(state: RebalanceState, terminal: RebalancePlan, notify: Boolean) {
+        store.save(state.copy(active = null, history = state.history + terminal))
+        if (notify) _endedNotice.value = terminal
     }
 
     private companion object {

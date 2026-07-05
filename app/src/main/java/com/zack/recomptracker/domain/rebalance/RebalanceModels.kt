@@ -1,9 +1,13 @@
 package com.zack.recomptracker.domain.rebalance
 
+import kotlinx.serialization.Serializable
+
 /** Customize preference for how a plan splits its recovery between calories and steps. */
+@Serializable
 enum class RebalanceMode { EAT_LESS, BALANCED, MOVE_MORE }
 
 /** Lifecycle status of a [RebalancePlan]. [NO_ADJUSTMENT] is a supportive note, not a plan. */
+@Serializable
 enum class RebalanceStatus { OFFERED, ACTIVE, COMPLETED, ENDED_EARLY, DECLINED, NO_ADJUSTMENT }
 
 /**
@@ -24,6 +28,7 @@ enum class RebalanceStatus { OFFERED, ACTIVE, COMPLETED, ENDED_EARLY, DECLINED, 
  * @property recoveredKcal D * (R + stepKcal(E)).
  * @property endedReason "completed" | "unrecoverable" | "plan_edited" | "expired".
  */
+@Serializable
 data class RebalancePlan(
     val id: String,
     val triggerDateIso: String,
@@ -47,7 +52,13 @@ data class RebalancePlan(
 /**
  * Persisted weekly-rebalance state: at most one offered/active plan, a capped history of terminal
  * records, and the sticky Customize [mode] preference.
+ *
+ * `@Serializable` exists solely so [com.zack.recomptracker.domain.export.BackupPayload] can carry this
+ * type directly (spec §9) via `kotlinx.serialization`. The DataStore-persisted round-trip still goes
+ * through the hand-rolled [com.zack.recomptracker.data.rebalance.RebalanceSerialization] codec, which
+ * this annotation does not touch or replace.
  */
+@Serializable
 data class RebalanceState(
     val active: RebalancePlan? = null,
     val history: List<RebalancePlan> = emptyList(),

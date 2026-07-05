@@ -11,6 +11,7 @@ import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -27,6 +28,13 @@ data class BackupPayload(
     val mealSlots: List<MealSlotEntity> = emptyList(),
     val recipes: List<RecipeBackup> = emptyList(),
     val planVersions: List<PlanVersionEntity> = emptyList(),
+    /**
+     * The persisted weekly-rebalance state (spec §9). Additive + nullable: an old backup (no key in
+     * the JSON) decodes as `null`; [BackupRepository] restores that to a clean [RebalanceState()] —
+     * dropping an in-flight rebalance on restore would otherwise re-judge already-reconciled days and
+     * risk an immediate re-offer.
+     */
+    val rebalanceState: RebalanceState? = null,
 )
 
 /** A recipe plus its ingredients, for backup export/restore. */

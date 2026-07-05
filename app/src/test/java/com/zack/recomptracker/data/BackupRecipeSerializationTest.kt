@@ -6,8 +6,13 @@ import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.domain.export.BackupPayload
 import com.zack.recomptracker.domain.export.RecipeBackup
+import com.zack.recomptracker.domain.rebalance.RebalanceMode
+import com.zack.recomptracker.domain.rebalance.RebalancePlan
+import com.zack.recomptracker.domain.rebalance.RebalanceState
+import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -104,5 +109,50 @@ class BackupRecipeSerializationTest {
             "savedFoods":[],"savedMeals":[],"liftPerformances":[],"weeklyReviews":[]}"""
         val decoded = json.decodeFromString(BackupPayload.serializer(), old)
         assertTrue(decoded.planVersions.isEmpty())
+    }
+
+    @Test
+    fun `rebalance state with an active plan and history round-trips through the backup payload`() {
+        val active = RebalancePlan(
+            id = "active-1", triggerDateIso = "2026-07-01", startDateIso = "2026-07-06",
+            endDateIso = "2026-07-10", lengthDays = 5, mode = RebalanceMode.BALANCED,
+            baseCalories = 2500, dailyCalorieReduction = 200, extraDailySteps = 1500,
+            baseStepGoal = 8000, recentAvgSteps = 7200, surplusKcal = 600, recoveredKcal = 1000,
+            status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-05T09:00:00Z",
+            decidedAtIso = "2026-07-05T09:00:00Z",
+        )
+        val declined = RebalancePlan(
+            id = "declined-1", triggerDateIso = "2026-06-01", startDateIso = "2026-06-02",
+            endDateIso = "2026-06-04", lengthDays = 3, mode = RebalanceMode.EAT_LESS,
+            baseCalories = 2400, dailyCalorieReduction = 150, extraDailySteps = 0,
+            baseStepGoal = null, recentAvgSteps = null, surplusKcal = 500, recoveredKcal = 0,
+            status = RebalanceStatus.DECLINED, createdAtIso = "2026-06-01T09:00:00Z",
+            decidedAtIso = "2026-06-01T10:00:00Z",
+        )
+        val rebalanceState = RebalanceState(
+            active = active,
+            history = listOf(declined),
+            mode = RebalanceMode.MOVE_MORE,
+        )
+        val payload = payloadWith(emptyList()).copy(rebalanceState = rebalanceState)
+
+        val decoded = json.decodeFromString(
+            BackupPayload.serializer(),
+            json.encodeToString(BackupPayload.serializer(), payload),
+        )
+
+        assertEquals(rebalanceState, decoded.rebalanceState)
+        assertEquals(RebalanceStatus.ACTIVE, decoded.rebalanceState!!.active!!.status)
+        assertEquals(1, decoded.rebalanceState!!.history.size)
+        assertEquals(RebalanceStatus.DECLINED, decoded.rebalanceState!!.history[0].status)
+        assertEquals(RebalanceMode.MOVE_MORE, decoded.rebalanceState!!.mode)
+    }
+
+    @Test
+    fun `old backup without a rebalanceState field decodes to null`() {
+        val old = """{"exportedAt":"t","preferences":{},"dailyLogs":[],"mealEntries":[],
+            "savedFoods":[],"savedMeals":[],"liftPerformances":[],"weeklyReviews":[]}"""
+        val decoded = json.decodeFromString(BackupPayload.serializer(), old)
+        assertNull(decoded.rebalanceState)
     }
 }

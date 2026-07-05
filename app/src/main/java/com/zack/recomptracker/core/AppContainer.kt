@@ -170,7 +170,6 @@ class AppContainer(context: Context) {
         weeklyReviewDao = database.weeklyReviewDao(),
         mealSlotDao = database.mealSlotDao(),
     )
-    val backupRepository = BackupRepository(database, planRepository)
     val foodCatalogRepository = FoodCatalogRepository(database)
     val openFoodFactsApi = OpenFoodFactsApi()
     val barcodeRepository = BarcodeRepository(openFoodFactsApi)
@@ -202,6 +201,7 @@ class AppContainer(context: Context) {
     // Declared here (ahead of the consumers that read effective targets — StreakRepository, the coach
     // context builder/adapter/executor, the VM factory) so each can be threaded the same store.
     val rebalanceStore = DataStoreRebalanceStore(context.applicationContext)
+    val backupRepository = BackupRepository(database, planRepository, rebalanceStore)
     val streakRepository = StreakRepository(
         logRepository = logRepository,
         workoutSessionRepository = workoutSessionRepository,
@@ -612,7 +612,8 @@ class AppContainer(context: Context) {
      * Weekly Rebalance spine: once-daily reconcile-then-evaluate + the accept/decline/customize
      * transitions and the cancel-on-plan-edit hook. Input assembly is [buildRebalanceInput]; the goal
      * is read fresh at customize time (never stored on the plan). [start] launches the version observer
-     * below alongside the other appScope observers. `usageTracker` is held for Task 8 (events unwired).
+     * below alongside the other appScope observers. `usageTracker` fires the `REBALANCE_*` events
+     * (fire-and-forget, spec §9's analytics line).
      */
     val rebalanceCoordinator = RebalanceCoordinator(
         store = rebalanceStore,

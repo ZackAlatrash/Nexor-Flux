@@ -28,6 +28,16 @@ object UsageEvents {
     const val WEEKLY_CHECKIN_OPENED = "weekly_checkin_opened"
     /** A bottom-nav tab was selected (label = tab name). */
     const val TAB_VIEW = "tab_view"
+    /** A concrete weekly-rebalance offer was persisted to the active slot (not a no-adjustment note). */
+    const val REBALANCE_OFFERED = "rebalance_offered"
+    /** The user accepted a weekly-rebalance offer. */
+    const val REBALANCE_ACCEPTED = "rebalance_accepted"
+    /** The user declined a weekly-rebalance offer. */
+    const val REBALANCE_DECLINED = "rebalance_declined"
+    /** An active weekly-rebalance plan reconciled to COMPLETED (ran its full course). */
+    const val REBALANCE_COMPLETED = "rebalance_completed"
+    /** An active weekly-rebalance plan ended before its course finished (unrecoverable or a base-plan edit). */
+    const val REBALANCE_ENDED_EARLY = "rebalance_ended_early"
 }
 
 /**

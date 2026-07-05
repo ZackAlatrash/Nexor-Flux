@@ -18,12 +18,15 @@ import com.zack.recomptracker.domain.coach.MetricPoint
 import com.zack.recomptracker.domain.coach.NutritionContext
 import com.zack.recomptracker.domain.coach.PlanContext
 import com.zack.recomptracker.domain.coach.ProfileContext
+import com.zack.recomptracker.domain.coach.RebalanceContext
 import com.zack.recomptracker.domain.coach.StreakSnapshot
 import com.zack.recomptracker.domain.coach.StreaksContext
 import com.zack.recomptracker.domain.coach.TrainingContext
 import com.zack.recomptracker.domain.coach.TrainingDerivations
 import com.zack.recomptracker.domain.coach.WeeklyReviewSnapshot
 import com.zack.recomptracker.domain.plan.PlanTargets
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
@@ -53,6 +56,8 @@ data class CoachContextInputs(
     val weeklyReviews: List<WeeklyReviewInput>,
     /** Per-day plan targets over the window — from PlanRepository.targetsByDate. */
     val targetsByDate: Map<LocalDate, PlanTargets>,
+    /** Persisted weekly-rebalance state — resolves the effective per-day targets + the rebalance block. */
+    val rebalanceState: RebalanceState = RebalanceState(),
 )
 
 /**
@@ -93,15 +98,20 @@ object CoachContextAssembler {
             .filter { (date, _) -> inWindow(date, windowStart, today) }
             .sortedBy { it.first }
 
+        // Per-day adherence context is graded against the EFFECTIVE (rebalance-reduced) targets, so it
+        // reflects the agreed plan. Behaviour-neutral with an empty state (resolve returns base).
+        val effectiveTargets = EffectiveTargets.resolveAll(inputs.targetsByDate, inputs.rebalanceState)
+
         return CoachContext(
             asOf = today,
             plan = buildPlan(inputs, today),
             profile = buildProfile(inputs, today),
-            nutrition = buildNutrition(inputs, today, windowStart),
+            nutrition = buildNutrition(inputs, today, windowStart, effectiveTargets),
             body = buildBody(logsInWindow, today),
             training = buildTraining(inputs, windowStart, today),
             streaks = buildStreaks(inputs.streaks),
             history = buildHistory(inputs.weeklyReviews),
+            rebalance = buildRebalance(inputs.rebalanceState, today),
         )
     }
 
@@ -143,6 +153,7 @@ object CoachContextAssembler {
         inputs: CoachContextInputs,
         today: LocalDate,
         windowStart: LocalDate,
+        effectiveTargets: Map<LocalDate, PlanTargets>,
     ): NutritionContext {
         val eatenInWindow = inputs.eatenMeals
             .mapNotNull { meal -> parseDate(meal.date)?.let { it to meal } }
@@ -158,7 +169,7 @@ object CoachContextAssembler {
         val loggedDays = eatenByDate.keys.size
 
         val nutritionDays = eatenByDate.mapNotNull { (date, totals) ->
-            val target = inputs.targetsByDate[date]?.calories ?: return@mapNotNull null
+            val target = effectiveTargets[date]?.calories ?: return@mapNotNull null
             NutritionDay(date = date, calories = totals.calories, targetCalories = target)
         }
         val adherence = if (nutritionDays.isEmpty()) null else adherenceCalculator.calculate(nutritionDays)
@@ -284,6 +295,25 @@ object CoachContextAssembler {
             .sortedBy { it.weekStart }
             .map { WeeklyReviewSnapshot(it.weekStart, it.verdict, it.signature) },
     )
+
+    // ── Weekly rebalance ─────────────────────────────────────────────────────────
+    /**
+     * The active-rebalance block, present only when today falls inside the current plan's window.
+     * Uses the pure resolver so day-X/of-Y and the effective calories agree with what every other
+     * consumer shows. Null (absent) when no plan covers today — the coach then has nothing to mention.
+     */
+    private fun buildRebalance(state: RebalanceState, today: LocalDate): RebalanceContext? {
+        val info = EffectiveTargets.planDayInfo(today, state) ?: return null
+        val plan = info.plan
+        return RebalanceContext(
+            active = true,
+            dayX = info.dayX,
+            ofY = info.ofY,
+            effectiveCalories = (plan.baseCalories - plan.dailyCalorieReduction)
+                .coerceAtLeast(com.zack.recomptracker.domain.rebalance.RebalanceDefaults.MIN_EFFECTIVE_CAL),
+            extraSteps = plan.extraDailySteps,
+        )
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
 

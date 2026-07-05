@@ -10,6 +10,7 @@ import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
@@ -17,6 +18,9 @@ import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.PlanDayInfo
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -83,6 +87,11 @@ data class DashboardUiState(
     ),
     val motivationalMessage: String = "",   // display-only, at end
     val adjustmentInput: AdjustmentInput? = null,
+    /**
+     * "Rebalance · Day X of Y" info for today when an active rebalance covers it, else null.
+     * Data only — Task 7 renders the card; this ViewModel just supplies the position.
+     */
+    val rebalanceToday: PlanDayInfo? = null,
 )
 
 /** Profile visual for the dashboard header avatar. */
@@ -111,6 +120,10 @@ class DashboardViewModel(
     private val adjustmentEngine: AdjustmentEngine,
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val userProfileStore: UserProfilePreferencesStore,
+    // Rebalance state overlays effective (reduced) targets on the today ring, adherence tile,
+    // in-zone-7, and 7-day chart, and supplies today's "Rebalance · Day X of Y" info. The
+    // AdjustmentEngine input stays on BASE targets (a 2–5 day blip must not perturb the verdict).
+    private val rebalanceStore: RebalanceStore,
     // Off-main dispatcher for the combine transform + debounce (list filters, LocalDate.parse over
     // 14–28-day windows, trend/adherence/adjustment math). Injectable so tests can pass their
     // TestDispatcher; default keeps AppContainer/call sites unchanged.
@@ -146,8 +159,17 @@ class DashboardViewModel(
                 logRepository.observePerformances(),
                 planRepository.preferences,
                 planRepository.observeVersions(),
-            ) { logs, meals, performances, preferences, versions ->
-                buildState(logs, meals, performances, preferences, versions)
+                rebalanceStore.state,
+            ) { values ->
+                @Suppress("UNCHECKED_CAST")
+                buildState(
+                    logs = values[0] as List<DailyLogEntity>,
+                    allMeals = values[1] as List<MealEntryEntity>,
+                    performances = values[2] as List<LiftPerformanceEntity>,
+                    preferences = values[3] as PlanPreferences,
+                    versions = values[4] as List<PlanVersion>,
+                    rebalanceState = values[5] as RebalanceState,
+                )
             }
             .debounce(300L)
             // Run the combine transform and debounce off the main thread; the terminal collect
@@ -166,6 +188,7 @@ class DashboardViewModel(
         performances: List<LiftPerformanceEntity>,
         preferences: PlanPreferences,
         versions: List<PlanVersion>,
+        rebalanceState: RebalanceState,
     ): DashboardUiState {
         val today = dateProvider.today()
         // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
@@ -178,17 +201,32 @@ class DashboardViewModel(
         val logsLast28  = logs.filter { it.localDate() in last28Start..today }
         val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
         val mealsByDate = mealsLast14.groupBy { it.localDate() }
+        // BASE per-day targets (what the permanent plan says) — feeds the AdjustmentEngine input.
         val dayTargets = PlanHistory.resolve(
             versions,
             (0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) },
         )
+        // EFFECTIVE per-day targets (reduced on rebalance days) — feeds the display surfaces: the
+        // adherence tile, in-zone-7, and today's ring. Behaviour-neutral with an empty state.
+        val effectiveTargets = EffectiveTargets.resolveAll(dayTargets, rebalanceState)
 
+        // Adherence for the AdjustmentEngine stays on BASE targets: a 2–5 day rebalance blip must
+        // never perturb the long-horizon recomp verdict (spec §6, AdjustmentEngine inputs = base).
         val nutritionDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())
             NutritionDay(
                 date = date,
                 calories = mealsByDate[date].orEmpty().macroTotals().calories,
                 targetCalories = dayTargets[date]?.calories ?: preferences.targetCalories,
+            )
+        }
+        // Effective adherence drives the DISPLAYED tile (graded against the agreed reduced targets).
+        val effectiveNutritionDays = (0..13).map { offset ->
+            val date = last14Start.plusDays(offset.toLong())
+            NutritionDay(
+                date = date,
+                calories = mealsByDate[date].orEmpty().macroTotals().calories,
+                targetCalories = effectiveTargets[date]?.calories ?: preferences.targetCalories,
             )
         }
         val loggedDates = logsLast28.map { it.date }.toSet() + mealsLast14.map { it.date }.toSet()
@@ -203,7 +241,9 @@ class DashboardViewModel(
 
         val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
         val waistTrend   = trendCalculator.trendPerWeek(waistPoints)
+        // BASE adherence for the AdjustmentEngine; EFFECTIVE adherence for the displayed tile.
         val adherence    = adherenceCalculator.calculate(nutritionDays)
+        val displayAdherence = adherenceCalculator.calculate(effectiveNutritionDays)
         val loggedDaysInWindow = nutritionDays.count { it.calories > 0 }
         val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
@@ -246,13 +286,28 @@ class DashboardViewModel(
         }.toImmutableList()
         val inZoneDays7 = (0..6).count { offset ->
             val date = last7Start.plusDays(offset.toLong())
-            val z = dayTargets[date] ?: preferences.toPlanTargets()
+            // Judged against the EFFECTIVE zone (reduced on a rebalance day, base otherwise).
+            val z = effectiveTargets[date] ?: preferences.toPlanTargets()
             val cals = mealsByDate[date].orEmpty().macroTotals().calories
             z.zoneLowerBound > 0 && cals > 0 && cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
         }
 
+        // Today's ring shows the EFFECTIVE target: overlay today's reduced calories/macros/zone onto
+        // the exposed preferences (the ring + macro rows read state.preferences). Base today target is
+        // the resolved plan for today, falling back to current prefs when the ledger isn't seeded yet.
+        val baseToday = dayTargets[today] ?: preferences.toPlanTargets()
+        val effectiveToday = EffectiveTargets.resolve(baseToday, today, rebalanceState)
+        val effectivePreferences = preferences.copy(
+            targetCalories = effectiveToday.calories,
+            targetProteinG = effectiveToday.proteinG,
+            targetCarbsG = effectiveToday.carbsG,
+            targetFatG = effectiveToday.fatG,
+            calorieZoneLowerBound = effectiveToday.zoneLowerBound,
+            calorieZoneUpperBound = effectiveToday.zoneUpperBound,
+        )
+
         return DashboardUiState(
-            preferences = preferences,
+            preferences = effectivePreferences,
             todayTotals = todayTotals,
             todaySteps = todaySteps,
             sevenDayWeightAverage = logs
@@ -262,13 +317,15 @@ class DashboardViewModel(
                 ?.average(),
             weightTrendKgPerWeek = weightTrend,
             waistTrendCmPerWeek = waistTrend,
-            adherencePercent = adherence,
+            // Displayed tile = effective adherence; the base `adherence` fed the AdjustmentEngine above.
+            adherencePercent = displayAdherence,
             loggedDaysInWindow = loggedDaysInWindow,
             last7DaysCalories = last7DaysCalories,
             inZoneDays7 = inZoneDays7,
             motivationalMessage = todayMessage,
             result = result,
             adjustmentInput = adjustmentInput,
+            rebalanceToday = EffectiveTargets.planDayInfo(today, rebalanceState),
         )
     }
 

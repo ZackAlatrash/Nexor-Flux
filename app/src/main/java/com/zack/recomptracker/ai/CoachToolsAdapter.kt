@@ -9,6 +9,9 @@ import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.preferences.ageYears
 import com.zack.recomptracker.data.preferences.displayName
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -48,6 +51,9 @@ class CoachToolsAdapter(
     private val handoffStore: CoachHandoffStore,
     private val journey: CoachJourney = NoopCoachJourney,
     private val coachMemory: com.zack.recomptracker.data.coach.CoachMemory = com.zack.recomptracker.data.coach.NoopCoachMemory,
+    // One-shot read of the persisted rebalance state. The "Plan:" line prints EFFECTIVE (reduced)
+    // targets on a rebalance day; default empty state is behaviour-neutral (values-only, no structure).
+    private val rebalanceState: suspend () -> RebalanceState = { RebalanceState() },
 ) : CoachReadTools {
 
     override suspend fun execute(name: String, args: Map<String, String>): String =
@@ -57,13 +63,14 @@ class CoachToolsAdapter(
         val prefs = planRepository.preferences.first()
         val profile = userProfileStore.preferences.first()
         val today = dateProvider.today()
+        val state = rebalanceState()
         val todaySummary = withContext(Dispatchers.IO) { toolExecutor.execute("get_today_summary", emptyMap()) }
         val journeyNarrative = journey.journeyNarrative()
         val memoryBlock = coachMemory.all()
             .takeIf { it.isNotEmpty() }
             ?.joinToString("\n") { "- ${it.text}" }
             .orEmpty()
-        val base = buildPrompt(prefs, profile, today, todaySummary, journeyNarrative, memoryBlock)
+        val base = buildPrompt(prefs, profile, today, state, todaySummary, journeyNarrative, memoryBlock)
         val handoff = handoffStore.consume()
         return if (handoff.isNullOrBlank()) base else base + "\n\n" + handoff
     }
@@ -72,16 +79,21 @@ class CoachToolsAdapter(
         prefs: PlanPreferences,
         profile: UserProfilePreferences,
         today: java.time.LocalDate,
+        rebalanceState: RebalanceState,
         todaySummary: String,
         journeyNarrative: String,
         memoryBlock: String,
     ): String = buildString {
         val yesterday = today.minusDays(1)
         val dayName = today.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercaseChar() }
+        // EFFECTIVE targets for today (reduced on a rebalance day; base otherwise — values only).
+        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), today, rebalanceState)
+        val planDay = EffectiveTargets.planDayInfo(today, rebalanceState)
+        val rebalanceSuffix = planDay?.let { " | Rebalance: day ${it.dayX} of ${it.ofY}" }.orEmpty()
         appendLine("You are a knowledgeable, supportive nutrition and body-recomposition coach inside a tracking app.")
         appendLine("Today: $today ($dayName) | Yesterday: $yesterday")
         appendLine()
-        appendLine("Plan: ${prefs.targetCalories} kcal | P ${prefs.targetProteinG}g | C ${prefs.targetCarbsG}g | F ${prefs.targetFatG}g")
+        appendLine("Plan: ${effective.calories} kcal | P ${effective.proteinG}g | C ${effective.carbsG}g | F ${effective.fatG}g$rebalanceSuffix")
         val profileParts = buildList {
             profile.goal?.let { add("Goal: ${it.displayName()}") }
             profile.biologicalSex?.let { add("Sex: ${it.displayName()}") }

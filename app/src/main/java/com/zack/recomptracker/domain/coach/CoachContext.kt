@@ -19,6 +19,8 @@ data class CoachContext(
     val training: TrainingContext,
     val streaks: StreaksContext,
     val history: HistoryContext,
+    /** Active weekly-rebalance snapshot, or null when none is active (so the coach can't contradict the card). */
+    val rebalance: RebalanceContext? = null,
 )
 
 /** A single dated numeric reading (weight, waist, sleep, …). Null value = not logged that day. */
@@ -107,4 +109,23 @@ data class StreaksContext(
 data class WeeklyReviewSnapshot(val weekStart: LocalDate, val verdict: String, val signature: String)
 data class HistoryContext(
     val weeklyReviews: List<WeeklyReviewSnapshot> = emptyList(),
+)
+
+// ── Weekly rebalance (active plan the coach must stay consistent with) ────────────
+/**
+ * Snapshot of the currently-active weekly rebalance, present only when one is ACTIVE and covers
+ * today. All fields deterministic; the coach uses these so its advice never contradicts the card.
+ *
+ * @property active always true when this block is present (a convenience flag for prompt assembly).
+ * @property dayX today's 1-based position in the plan window, when today is a plan day.
+ * @property ofY total plan length in days.
+ * @property effectiveCalories today's effective (reduced) calorie target.
+ * @property extraSteps the plan's extra daily step boost (0 for a calorie-only plan).
+ */
+data class RebalanceContext(
+    val active: Boolean,
+    val dayX: Int?,
+    val ofY: Int?,
+    val effectiveCalories: Int?,
+    val extraSteps: Int?,
 )

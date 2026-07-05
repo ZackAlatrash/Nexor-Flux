@@ -197,6 +197,10 @@ class AppContainer(context: Context) {
         dailyLogDao = database.dailyLogDao(),
     )
     val streakCalculator = StreakCalculator()
+    // Persisted weekly-rebalance state + the once-daily evaluation gate (own `rebalance` DataStore).
+    // Declared here (ahead of the consumers that read effective targets — StreakRepository, the coach
+    // context builder/adapter/executor, the VM factory) so each can be threaded the same store.
+    val rebalanceStore = DataStoreRebalanceStore(context.applicationContext)
     val streakRepository = StreakRepository(
         logRepository = logRepository,
         workoutSessionRepository = workoutSessionRepository,
@@ -204,6 +208,7 @@ class AppContainer(context: Context) {
         userProfileStore = userProfilePreferencesStore,
         dateProvider = dateProvider,
         calculator = streakCalculator,
+        rebalanceStore = rebalanceStore,
     )
     val planHistoryInitializer = PlanHistoryInitializer.from(database.planVersionDao(), planRepository)
     val healthSyncCoordinator = HealthSyncCoordinator(
@@ -303,6 +308,7 @@ class AppContainer(context: Context) {
         workoutRepository = workoutRepository,
         exerciseLibraryRepository = exerciseLibraryRepository,
         coachMemory = coachMemoryStore,
+        rebalanceState = { rebalanceStore.current() },
     )
     val coachHandoffStore = CoachHandoffStore()
 
@@ -523,6 +529,7 @@ class AppContainer(context: Context) {
             handoffStore = coachHandoffStore,
             journey = coachJourneyStore,
             coachMemory = coachMemoryStore,
+            rebalanceState = { rebalanceStore.current() },
         ),
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
@@ -537,6 +544,7 @@ class AppContainer(context: Context) {
         streakRepository = streakRepository,
         userProfileStore = userProfilePreferencesStore,
         dateProvider = dateProvider,
+        rebalanceStore = rebalanceStore,
     )
     val coachContextCache = CoachContextCache(coachContextBuilder, dateProvider).also { cache ->
         // A plan or profile edit must invalidate the proactive-engine context snapshot so the next
@@ -563,9 +571,6 @@ class AppContainer(context: Context) {
     val coachPhrasingService = CoachPhrasingService(openAiCompatClient) { cloudConfigFlow.value }
 
     // ── Weekly Rebalance (deterministic engine → DataStore state; cloud phrasing on open) ──
-    /** Persisted rebalance state + the once-daily evaluation gate (own `rebalance` DataStore). */
-    val rebalanceStore = DataStoreRebalanceStore(context.applicationContext)
-
     /**
      * Cloud phrasing DECORATION for the rebalance card — the [CoachPhrasingService] shape, read per
      * call so a settings change takes effect immediately. Consumed by the card VM (Task 7); the
@@ -658,6 +663,7 @@ private class AppViewModelFactory(
             FoodLogViewModel::class.java -> FoodLogViewModel(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
+                rebalanceStore = container.rebalanceStore,
                 dateProvider = container.dateProvider,
             )
             TodayViewModel::class.java -> TodayViewModel(
@@ -677,6 +683,7 @@ private class AppViewModelFactory(
                 adjustmentEngine = container.adjustmentEngine,
                 aiInsightCoordinator = container.aiInsightCoordinator,
                 userProfileStore = container.userProfilePreferencesStore,
+                rebalanceStore = container.rebalanceStore,
             )
             ProgressViewModel::class.java -> ProgressViewModel(
                 logRepository = container.logRepository,
@@ -688,6 +695,7 @@ private class AppViewModelFactory(
                 userProfileStore = container.userProfilePreferencesStore,
                 workoutSessionRepository = container.workoutSessionRepository,
                 exerciseLibraryRepository = container.exerciseLibraryRepository,
+                rebalanceStore = container.rebalanceStore,
             )
             PlanViewModel::class.java -> PlanViewModel(
                 planRepository = container.planRepository,

@@ -7,6 +7,7 @@ import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.data.repository.DayCalorieSummary
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
@@ -15,6 +16,8 @@ import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.data.repository.toSuggestionFood
 import com.zack.recomptracker.domain.food.MealSuggester
 import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.PlanDayInfo
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.collections.immutable.ImmutableList
@@ -42,6 +45,8 @@ private data class DaySummary(
     val plannedTotals: MacroTotals,
     val hasPlannedEntries: Boolean,
     val slots: ImmutableList<MealSlotWithEntries>,
+    /** Day-X-of-Y info when the viewed day falls in a rebalance window, else null. */
+    val rebalanceDay: PlanDayInfo?,
 )
 
 data class FoodLogUiState(
@@ -55,6 +60,11 @@ data class FoodLogUiState(
     val hasPlannedEntries: Boolean = false,
     val slots: ImmutableList<MealSlotWithEntries> = persistentListOf(),
     val slotsEditMode: Boolean = false,
+    /**
+     * "Rebalance · Day X of Y" info for the selected day when a rebalance covers it, else null.
+     * Data only — Task 7 renders the chip; this ViewModel just supplies the position.
+     */
+    val rebalanceDay: PlanDayInfo? = null,
     /** Active "save as recipe" selection, or null when not selecting. */
     val recipeSelection: RecipeSelection? = null,
     val weekSummary: ImmutableList<DayCalorieSummary> = persistentListOf(),
@@ -73,6 +83,9 @@ data class FoodLogUiState(
 class FoodLogViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
+    // Rebalance state overlays effective (reduced) targets on the viewed day + week strip and supplies
+    // the "Rebalance · Day X of Y" chip position. Behaviour-neutral with an empty state.
+    private val rebalanceStore: RebalanceStore,
     dateProvider: DateProvider,
     // Off-main dispatcher for the combine transforms (groupBy/macroTotals, PlanHistory resolution
     // over the week window, MealSuggester). Injectable for tests; default keeps AppContainer unchanged.
@@ -97,16 +110,20 @@ class FoodLogViewModel(
                     planRepository.preferences,
                     planRepository.observePlanOn(date),
                     logRepository.observeSlots(),
-                ) { day, prefs, dayPlan, slots ->
+                    rebalanceStore.state,
+                ) { day, prefs, dayPlan, slots, rebalanceState ->
                     // Do the per-day derivation (grouping/macro summing) inside the transform so it
                     // runs on computeDispatcher (below); the collector only publishes the result.
+                    // Overlay the rebalance-effective target for the viewed day (base when no plan
+                    // covers it), so the day header reflects the agreed reduced target during a plan.
+                    val effective = EffectiveTargets.resolve(dayPlan, date, rebalanceState)
                     val dayTarget = prefs.copy(
-                        targetCalories = dayPlan.calories,
-                        targetProteinG = dayPlan.proteinG,
-                        targetCarbsG = dayPlan.carbsG,
-                        targetFatG = dayPlan.fatG,
-                        calorieZoneLowerBound = dayPlan.zoneLowerBound,
-                        calorieZoneUpperBound = dayPlan.zoneUpperBound,
+                        targetCalories = effective.calories,
+                        targetProteinG = effective.proteinG,
+                        targetCarbsG = effective.carbsG,
+                        targetFatG = effective.fatG,
+                        calorieZoneLowerBound = effective.zoneLowerBound,
+                        calorieZoneUpperBound = effective.zoneUpperBound,
                     )
                     val slotMap = day.meals.groupBy { it.slotId }
                     val slottedEntries = slots.map { slot ->
@@ -120,6 +137,7 @@ class FoodLogViewModel(
                         plannedTotals = day.plannedTotals,
                         hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
+                        rebalanceDay = EffectiveTargets.planDayInfo(date, rebalanceState),
                     )
                 }
             }.flowOn(computeDispatcher).collect { s ->
@@ -131,6 +149,7 @@ class FoodLogViewModel(
                         plannedTotals = s.plannedTotals,
                         hasPlannedEntries = s.hasPlannedEntries,
                         slots = s.slots,
+                        rebalanceDay = s.rebalanceDay,
                     )
                 }
             }
@@ -169,10 +188,13 @@ class FoodLogViewModel(
                 logRepository.observeWeekCalories(today.minusDays(6), today),
                 planRepository.observeVersions(),
                 planRepository.preferences,
-            ) { weekMap, versions, prefs ->
+                rebalanceStore.state,
+            ) { weekMap, versions, prefs, rebalanceState ->
                 val fallback = prefs.toPlanTargets()
                 weekDates.map { d ->
-                    val z = PlanHistory.planOnOrFallback(versions, d, fallback)
+                    val base = PlanHistory.planOnOrFallback(versions, d, fallback)
+                    // Effective (reduced) target on a rebalance day; base on every other day.
+                    val z = EffectiveTargets.resolve(base, d, rebalanceState)
                     DayCalorieSummary(
                         date = d,
                         calories = weekMap[d] ?: 0,

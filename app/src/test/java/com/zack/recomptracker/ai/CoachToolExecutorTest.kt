@@ -500,6 +500,53 @@ class CoachToolExecutorTest {
     }
 
     @Test
+    fun `get_weekly_trends grades against the effective target during an active rebalance`() = runTest {
+        val today = LocalDate.of(2026, 6, 5)
+        val start = today.minusDays(6)
+        // One logged day today, eaten exactly at the REDUCED target (2300) — 100% only if the tool
+        // resolves the effective target; against the base 2550 it would score below 100.
+        val macroMap = mapOf(today to MacroTotals(calories = 2300))
+        val prefs = PlanPreferences(targetCalories = 2550)
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.targetsByDate(any())).thenAnswer { inv ->
+            @Suppress("UNCHECKED_CAST")
+            val dates = inv.arguments[0] as List<LocalDate>
+            dates.associateWith { prefs.toPlanTargets() }
+        }
+        // 3-day rebalance covering today (−250 kcal → effective 2300).
+        val plan = com.zack.recomptracker.domain.rebalance.RebalancePlan(
+            id = "p",
+            triggerDateIso = today.minusDays(2).toString(),
+            startDateIso = today.minusDays(2).toString(),
+            endDateIso = today.toString(),
+            lengthDays = 3,
+            mode = com.zack.recomptracker.domain.rebalance.RebalanceMode.EAT_LESS,
+            baseCalories = 2550,
+            dailyCalorieReduction = 250,
+            extraDailySteps = 0,
+            baseStepGoal = null,
+            recentAvgSteps = null,
+            surplusKcal = 600,
+            recoveredKcal = 600,
+            status = com.zack.recomptracker.domain.rebalance.RebalanceStatus.ACTIVE,
+            createdAtIso = "2026-06-01T09:00:00Z",
+        )
+        val executor = CoachToolExecutor(
+            logRepo, planRepo, fixedDateProvider,
+            rebalanceState = {
+                com.zack.recomptracker.domain.rebalance.RebalanceState(active = plan)
+            },
+        )
+        val result = executor.execute("get_weekly_trends", emptyMap())
+
+        assertTrue("eaten at the reduced target is fully adherent", result.contains("\"adherence_percent\":100"))
+        assertTrue("still one logged day", result.contains("\"days_logged\":1"))
+    }
+
+    @Test
     fun `get_today_summary with date arg uses that date`() = runTest {
         val pastDate = LocalDate.of(2026, 6, 4)
         val dayLog = emptyDayLog(pastDate)

@@ -27,6 +27,8 @@ import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.domain.food.MealSuggester
 import com.zack.recomptracker.domain.food.SuggestionFocus
 import com.zack.recomptracker.domain.food.SuggestionResult
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.Exercise
@@ -44,6 +46,9 @@ class CoachToolExecutor(
     private val workoutRepository: WorkoutRepository? = null,
     private val exerciseLibraryRepository: ExerciseLibraryRepository? = null,
     private val coachMemory: CoachMemory? = null,
+    // One-shot read of the persisted rebalance state. get_weekly_trends grades adherence against the
+    // EFFECTIVE (reduced) targets on rebalance days; default empty state is behaviour-neutral.
+    private val rebalanceState: suspend () -> RebalanceState = { RebalanceState() },
 ) {
     private val adherenceCalculator = AdherenceCalculator()
     private val trendCalculator = TrendCalculator()
@@ -113,7 +118,12 @@ class CoachToolExecutor(
             """{"date":"$date","calories":$cals,"protein_g":$prot,"carbs_g":$carbs,"fat_g":$fat}"""
         }
         val weekDates = (0..6).map { start.plusDays(it.toLong()) }
-        val targetsByDate = planRepository.targetsByDate(weekDates)
+        // Grade against EFFECTIVE targets: on a rebalance day the reduced target applies, base
+        // otherwise (behaviour-neutral with an empty state).
+        val targetsByDate = EffectiveTargets.resolveAll(
+            planRepository.targetsByDate(weekDates),
+            rebalanceState(),
+        )
         val nutritionDays = weekDates.map { date ->
             NutritionDay(
                 date = date,

@@ -12,6 +12,7 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
@@ -20,6 +21,8 @@ import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineDispatcher
@@ -79,6 +82,9 @@ class ProgressViewModel(
     private val userProfileStore: UserProfilePreferencesStore,
     private val workoutSessionRepository: WorkoutSessionRepository,
     private val exerciseLibraryRepository: ExerciseLibraryRepository,
+    // Rebalance state overlays effective (reduced) targets on the adherence chart's target line so it
+    // reflects what was actually in effect. Behaviour-neutral with an empty state.
+    private val rebalanceStore: RebalanceStore,
     // Off-main dispatcher for the combine transform (groupBy, LocalDate.parse over 7–28-day
     // windows, macro summing, trend math). Injectable for tests; default keeps AppContainer unchanged.
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -109,19 +115,27 @@ class ProgressViewModel(
                 logRepository.observePerformances(),
                 planRepository.observeVersions(),
                 // The 5-slot combine is full, so fold rangeDays + profile + the training inputs
-                // (completed sessions + exercise library, needed for per-muscle volume) into one
-                // nested combine and unpack it below.
+                // (completed sessions + exercise library, needed for per-muscle volume) + the
+                // rebalance state into one nested combine and unpack it below.
                 combine(
                     rangeDays,
                     userProfileStore.preferences,
                     workoutSessionRepository.observeCompletedSessions(),
                     exerciseLibraryRepository.observeAll(),
-                ) { r, p, sessions, library -> TrainingInputs(r, p, sessions, library) },
+                    rebalanceStore.state,
+                ) { r, p, sessions, library, rebalanceState ->
+                    TrainingInputs(r, p, sessions, library, rebalanceState)
+                },
             ) { logs, meals, performances, versions, trainingInputs ->
-                val (range, profile, sessions, library) = trainingInputs
+                val (range, profile, sessions, library, rebalanceState) = trainingInputs
                 val today = dateProvider.today()
                 val dates = (range - 1 downTo 0).map { today.minusDays(it.toLong()) }
-                val targetsByDate = PlanHistory.resolve(versions, dates)
+                // Adherence chart's target line resolves to EFFECTIVE (reduced) targets on rebalance
+                // days, base otherwise — behaviour-neutral with an empty state.
+                val targetsByDate = EffectiveTargets.resolveAll(
+                    PlanHistory.resolve(versions, dates),
+                    rebalanceState,
+                )
                 // Exclude planned (not-yet-eaten) entries from progress charts.
                 val mealsByDate = meals.filterNot { it.planned }.groupBy { LocalDate.parse(it.date) }
                 // Sum each day's macros once, then index — avoids recomputing macroTotals per metric.
@@ -270,6 +284,7 @@ class ProgressViewModel(
         val profile: com.zack.recomptracker.data.preferences.UserProfilePreferences,
         val sessions: List<com.zack.recomptracker.domain.workout.WorkoutSession>,
         val library: List<com.zack.recomptracker.domain.workout.Exercise>,
+        val rebalanceState: RebalanceState,
     )
 
     companion object {

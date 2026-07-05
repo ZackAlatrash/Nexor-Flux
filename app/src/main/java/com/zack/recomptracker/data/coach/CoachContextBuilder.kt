@@ -1,6 +1,7 @@
 package com.zack.recomptracker.data.coach
 
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.StreakRepository
@@ -26,6 +27,7 @@ class CoachContextBuilder(
     private val streakRepository: StreakRepository,
     private val userProfileStore: UserProfilePreferencesStore,
     private val dateProvider: DateProvider,
+    private val rebalanceStore: RebalanceStore,
 ) {
     suspend fun build(): CoachContext {
         val today = dateProvider.today()
@@ -54,6 +56,9 @@ class CoachContextBuilder(
         val windowDates = (0 until CoachContextAssembler.WINDOW_DAYS)
             .map { today.minusDays(it.toLong()) }
         val targetsByDate = planRepository.targetsByDate(windowDates)
+        // One-shot read (like every other source here) — the assembler resolves effective targets
+        // and the rebalance block from it.
+        val rebalanceState = rebalanceStore.current()
 
         return CoachContextAssembler.assemble(
             CoachContextInputs(
@@ -67,6 +72,7 @@ class CoachContextBuilder(
                 streaks = streaks,
                 weeklyReviews = weeklyReviews,
                 targetsByDate = targetsByDate,
+                rebalanceState = rebalanceState,
             ),
         )
     }

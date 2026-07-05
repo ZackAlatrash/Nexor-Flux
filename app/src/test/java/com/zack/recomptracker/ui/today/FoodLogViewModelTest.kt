@@ -71,8 +71,17 @@ class FoodLogViewModelTest {
     @After
     fun tearDown() { Dispatchers.resetMain() }
 
-    private fun buildVm(now: java.time.LocalTime = java.time.LocalTime.of(15, 0)) =
-        FoodLogViewModel(logRepo, planRepo, dateProvider, computeDispatcher = dispatcher) { now }
+    private fun buildVm(
+        now: java.time.LocalTime = java.time.LocalTime.of(15, 0),
+        rebalanceState: com.zack.recomptracker.domain.rebalance.RebalanceState =
+            com.zack.recomptracker.domain.rebalance.RebalanceState(),
+    ) = FoodLogViewModel(
+        logRepo,
+        planRepo,
+        com.zack.recomptracker.data.rebalance.FakeRebalanceStore(rebalanceState),
+        dateProvider,
+        computeDispatcher = dispatcher,
+    ) { now }
 
     @Test
     fun `initial selectedDate is today`() = runTest {
@@ -236,6 +245,51 @@ class FoodLogViewModelTest {
         assertEquals(2400, todaySummary.targetCalories)
         assertEquals(2300, todaySummary.zoneLowerBound)
         assertEquals(2500, todaySummary.zoneUpperBound)
+    }
+
+    @Test
+    fun `active rebalance reduces the viewed-day target and sets the day-X chip`() = runTest {
+        // A 3-day rebalance covering today (day 2 of 3), reducing calories by 250 from the 2550 default.
+        val plan = com.zack.recomptracker.domain.rebalance.RebalancePlan(
+            id = "p",
+            triggerDateIso = today.minusDays(2).toString(),
+            startDateIso = today.minusDays(1).toString(),
+            endDateIso = today.plusDays(1).toString(),
+            lengthDays = 3,
+            mode = com.zack.recomptracker.domain.rebalance.RebalanceMode.EAT_LESS,
+            baseCalories = 2550,
+            dailyCalorieReduction = 250,
+            extraDailySteps = 0,
+            baseStepGoal = null,
+            recentAvgSteps = null,
+            surplusKcal = 600,
+            recoveredKcal = 600,
+            status = com.zack.recomptracker.domain.rebalance.RebalanceStatus.ACTIVE,
+            createdAtIso = "2026-06-02T09:00:00Z",
+        )
+        val vm = buildVm(
+            rebalanceState = com.zack.recomptracker.domain.rebalance.RebalanceState(active = plan),
+        )
+        advanceUntilIdle()
+
+        // Effective target = 2550 − 250 = 2300, zone re-centred to 2200..2400.
+        assertEquals(2300, vm.uiState.value.target.targetCalories)
+        assertEquals(2200, vm.uiState.value.target.calorieZoneLowerBound)
+        assertEquals(2400, vm.uiState.value.target.calorieZoneUpperBound)
+        // Day-X chip populated: today is day 2 of 3.
+        val chip = vm.uiState.value.rebalanceDay
+        org.junit.Assert.assertNotNull(chip)
+        assertEquals(2, chip!!.dayX)
+        assertEquals(3, chip.ofY)
+    }
+
+    @Test
+    fun `no rebalance leaves the viewed-day target at base and the chip null`() = runTest {
+        val vm = buildVm() // empty rebalance state
+        advanceUntilIdle()
+        // Falls through to the base plan (default prefs 2550, zone 2400..2600).
+        assertEquals(2550, vm.uiState.value.target.targetCalories)
+        org.junit.Assert.assertNull(vm.uiState.value.rebalanceDay)
     }
 
     @Test

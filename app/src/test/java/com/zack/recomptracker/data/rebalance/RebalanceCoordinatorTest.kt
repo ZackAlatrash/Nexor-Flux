@@ -342,6 +342,36 @@ class RebalanceCoordinatorTest {
         assertEquals("still OFFERED after customize", RebalanceStatus.OFFERED, after.active!!.status)
     }
 
+    @Test
+    fun `customize keeps the un-changed dial from the freshly-read offer`() = runTest {
+        // The two dials call customize independently; changing one must preserve the other's current
+        // value (read fresh from the offer, not from stale UI state). Regression guard for the fast
+        // dual-tap lost update.
+        val store = FakeRebalanceStore()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(existing = store.current()) },
+            scope = this,
+        )
+        coordinator.runIfDue()
+        val offer = store.current().active!!
+        val initialMode = offer.mode
+        assertEquals(RebalanceIntensity.STANDARD, offer.intensity)
+
+        // Change ONLY the intensity → the mix is preserved, not reset to a default.
+        coordinator.customize(intensity = RebalanceIntensity.FULL)
+        val afterIntensity = store.current().active!!
+        assertEquals("mix preserved when only intensity changes", initialMode, afterIntensity.mode)
+        assertEquals(RebalanceIntensity.FULL, afterIntensity.intensity)
+
+        // Now change ONLY the mix → the FULL intensity is preserved.
+        coordinator.customize(mode = RebalanceMode.MOVE_MORE)
+        val afterMode = store.current().active!!
+        assertEquals("mix updated", RebalanceMode.MOVE_MORE, afterMode.mode)
+        assertEquals("intensity preserved when only the mix changes", RebalanceIntensity.FULL, afterMode.intensity)
+        assertEquals("sticky mode persisted on state", RebalanceMode.MOVE_MORE, store.current().mode)
+    }
+
     // ── cancel-on-plan-edit hook ────────────────────────────────────────────────────────
 
     @Test

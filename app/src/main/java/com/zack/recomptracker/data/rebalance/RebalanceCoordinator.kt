@@ -85,6 +85,14 @@ class RebalanceCoordinator(
     private val runLock = Mutex()
 
     /**
+     * Serialises [customize] so two fast taps on the offer's dials can't interleave their store
+     * read-modify-write. Without it, tapping both dials within one DataStore round-trip lets the second
+     * write clobber the first (a silently-dropped selection). See [customize] for the paired fix that
+     * also stops the un-changed dial being sourced from stale UI state.
+     */
+    private val customizeLock = Mutex()
+
+    /**
      * Launches the cancel-on-plan-edit hook: a new [PlanVersion] row while a plan is ACTIVE ends it
      * early (`"plan_edited"`). `drop(1)` skips the flow's initial (current-value) emission so app
      * startup never cancels an active plan — only an *actual* edit does.
@@ -240,18 +248,28 @@ class RebalanceCoordinator(
     }
 
     /**
-     * Customize the current OFFERED plan to [mode] + [intensity] (no-op otherwise): recompute R/E/D
-     * from the facts stored on the offer via [RebalanceEngine.customize]. Persists the recomputed plan
-     * AND the sticky [com.zack.recomptracker.domain.rebalance.RebalanceState.mode] so future offers size
-     * with [mode]. Intensity is deliberately **not** sticky (spec §2) — it lives on the plan only and
-     * resets to STANDARD on the next fresh offer, so it is never written to state.
+     * Customize the current OFFERED plan's mix ([mode]) and/or intensity ([intensity]) dials (no-op
+     * otherwise): recompute R/E/D from the facts stored on the offer via [RebalanceEngine.customize].
+     * Persists the recomputed plan AND the sticky
+     * [com.zack.recomptracker.domain.rebalance.RebalanceState.mode] so future offers size with the mix.
+     * Intensity is deliberately **not** sticky (spec §2) — it lives on the plan only and resets to
+     * STANDARD on the next fresh offer, so it is never written to state.
+     *
+     * The two dials call this independently, so each argument defaults to `null` = "leave this dial as
+     * it is": the un-changed dial is read from the freshly-loaded offer, never from (possibly stale) UI
+     * state, and the whole read-modify-write runs under [customizeLock]. Together those stop a fast
+     * dual-tap from silently dropping one selection.
      */
-    suspend fun customize(mode: RebalanceMode, intensity: RebalanceIntensity) {
-        val state = store.current()
-        val offer = state.active ?: return
-        if (offer.status != RebalanceStatus.OFFERED) return
-        val recomputed = RebalanceEngine.customize(offer, mode, intensity)
-        store.save(state.copy(active = recomputed, mode = mode))
+    suspend fun customize(mode: RebalanceMode? = null, intensity: RebalanceIntensity? = null) {
+        customizeLock.withLock {
+            val state = store.current()
+            val offer = state.active ?: return
+            if (offer.status != RebalanceStatus.OFFERED) return
+            val newMode = mode ?: offer.mode
+            val newIntensity = intensity ?: offer.intensity
+            val recomputed = RebalanceEngine.customize(offer, newMode, newIntensity)
+            store.save(state.copy(active = recomputed, mode = newMode))
+        }
     }
 
     /**

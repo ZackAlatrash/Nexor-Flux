@@ -241,21 +241,20 @@ internal class RebalanceViewModel(
     }
 
     /**
-     * Change the offer's **mix** dial (spec §2). Keeps the current intensity — the two dials compose, so
-     * a mode change must not silently reset how much of the surplus is being clawed back.
+     * Change the offer's **mix** dial (spec §2). Only the mix is sent; the coordinator preserves the
+     * current intensity from the freshly-read offer, so a mode change never resets how much of the
+     * surplus is being clawed back (and a fast dual-tap can't drop the other dial's value).
      */
     fun onCustomize(mode: RebalanceMode) {
-        val intensity = _uiState.value.intensity
-        viewModelScope.launch { coordinator.customize(mode, intensity) }
+        viewModelScope.launch { coordinator.customize(mode = mode) }
     }
 
     /**
-     * Change the offer's **intensity** dial (spec §2). Keeps the current mode. Wired to the second dial
-     * in a later UI task; delegating here keeps the offer overlay's call sites compiling now.
+     * Change the offer's **intensity** dial (spec §2). Only the intensity is sent; the coordinator
+     * preserves the current mix from the freshly-read offer (see [onCustomize]).
      */
     fun onCustomizeIntensity(intensity: RebalanceIntensity) {
-        val mode = _uiState.value.mode
-        viewModelScope.launch { coordinator.customize(mode, intensity) }
+        viewModelScope.launch { coordinator.customize(intensity = intensity) }
     }
 
     /** Collapse the OFFER card to its minimized peek. Pure UI — never declines the offer. */
@@ -295,10 +294,14 @@ internal class RebalanceViewModel(
 
         private fun offerFace(plan: RebalancePlan, window: List<RebalanceDayBar>?): DerivedFace {
             val facts = copyFacts(plan, dayX = 0, ofY = plan.lengthDays)
+            // Always populate the recovery line so the offer card never changes height when a dial
+            // flips the plan between full and partial recovery: partial → the honest "recovers X of Y",
+            // full → a positive confirmation. Deterministic UI copy (same pattern as
+            // [STARTS_TOMORROW_LINE]); the partial half is the §11 [RebalanceCopySlot.OFFER_PARTIAL_LINE].
             val partialLine = if (plan.partial) {
                 RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_PARTIAL_LINE, facts)
             } else {
-                ""
+                fullRecoveryLine(facts)
             }
             val uiState = RebalanceCardUiState(
                 face = RebalanceCardUiState.Face.OFFER,
@@ -378,6 +381,18 @@ internal class RebalanceViewModel(
 
         private fun effectiveCalories(plan: RebalancePlan): Int =
             RebalancePlanMath.effectiveCalories(plan)
+
+        /**
+         * The recovery-summary line for a plan that reclaims the whole surplus (not
+         * [RebalancePlan.partial]) — the positive counterpart to [RebalanceCopySlot.OFFER_PARTIAL_LINE].
+         * Deterministic UI copy like [STARTS_TOMORROW_LINE], kept to one/two short lines so its slot in
+         * the offer card is a stable height across dial changes.
+         */
+        private fun fullRecoveryLine(facts: RebalanceCopyFacts): String {
+            val dayWord = if (facts.ofY == 1) "day" else "days"
+            return "Recovers your full ${facts.surplusKcal} kcal over ${facts.ofY} $dayWord — " +
+                "comfortably on track."
+        }
 
         private fun copyFacts(plan: RebalancePlan, dayX: Int, ofY: Int) = RebalanceCopyFacts(
             lengthDays = plan.lengthDays,

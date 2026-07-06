@@ -165,7 +165,9 @@ private fun ColumnScope.OfferBody(
     Text(text = state.headline, style = AppType.screenTitleCompact, color = appColors.textPrimary)
 
     Spacer(Modifier.height(4.dp))
-    Text(text = state.body, style = AppType.body, color = appColors.textSecondary)
+    // minLines pins the body height so the card doesn't grow/shrink when a dial change swaps the plan's
+    // day-count or adds a "+N steps" clause — the copy otherwise wraps to a different number of lines.
+    Text(text = state.body, style = AppType.body, color = appColors.textSecondary, minLines = 3)
 
     Spacer(Modifier.height(12.dp))
     WeeklyBarsChart(bars = state.weeklyBars)
@@ -177,16 +179,17 @@ private fun ColumnScope.OfferBody(
         days = state.ofY,
     )
 
-    if (state.partial && state.partialLine.isNotBlank()) {
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = state.partialLine,
-            style = AppType.cardSubtitle,
-            color = appColors.textMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    // The recovery line is always present (the VM fills it for full recovery too); minLines reserves its
+    // tallest (2-line) height so flipping a dial between full ↔ partial recovery never resizes the card.
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = state.partialLine,
+        style = AppType.cardSubtitle,
+        color = appColors.textMuted,
+        textAlign = TextAlign.Center,
+        minLines = 2,
+        modifier = Modifier.fillMaxWidth(),
+    )
 
     Spacer(Modifier.height(16.dp))
     SectionLabel(text = "How much to recover")

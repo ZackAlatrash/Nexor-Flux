@@ -14,9 +14,13 @@ class ProgressInsightPromptTest {
         waistTrendCmPerWeek: Double? = -0.30,
         liftTrendKgPerWeek: Double? = 0.5,
         adherencePercent: Double? = 91.0,
+        trainingSessionsPerWeek: Double? = 3.0,
+        weeklyGymSessionsTarget: Int? = 4,
     ) = ProgressInsightContext(
         rangeDays, weightTrendKgPerWeek, waistTrendCmPerWeek,
         liftTrendKgPerWeek, adherencePercent, weightPointCount = 10, waistPointCount = 10,
+        trainingSessionsPerWeek = trainingSessionsPerWeek,
+        weeklyGymSessionsTarget = weeklyGymSessionsTarget,
     )
 
     @Test
@@ -102,5 +106,48 @@ class ProgressInsightPromptTest {
     @Test
     fun `forbids the model doing its own math`() {
         assertTrue("do not do any math" in builder.buildProgressTrendPrompt(ctx()))
+    }
+
+    @Test
+    fun `training frequency shows actual and target with an on-target label`() {
+        val prompt = builder.buildProgressTrendPrompt(
+            ctx(trainingSessionsPerWeek = 3.8, weeklyGymSessionsTarget = 4),
+        )
+        assertTrue("Training frequency: 3.8/wk vs 4/wk target (on target)" in prompt)
+    }
+
+    @Test
+    fun `training frequency flags below-target sessions`() {
+        val prompt = builder.buildProgressTrendPrompt(
+            ctx(trainingSessionsPerWeek = 2.5, weeklyGymSessionsTarget = 4),
+        )
+        assertTrue("2.5/wk vs 4/wk target (below target)" in prompt)
+    }
+
+    @Test
+    fun `training frequency without a target shows the bare rate`() {
+        val prompt = builder.buildProgressTrendPrompt(
+            ctx(trainingSessionsPerWeek = 3.0, weeklyGymSessionsTarget = null),
+        )
+        assertTrue("Training frequency: 3.0/wk" in prompt)
+    }
+
+    @Test
+    fun `null training frequency renders no data`() {
+        val prompt = builder.buildProgressTrendPrompt(ctx(trainingSessionsPerWeek = null))
+        assertTrue("Training frequency: no data" in prompt)
+    }
+
+    @Test
+    fun `verdict must name the single limiting factor`() {
+        val prompt = builder.buildProgressTrendPrompt(ctx())
+        assertTrue(prompt.contains("limiting factor", ignoreCase = true))
+    }
+
+    @Test
+    fun `verdict must end in exactly one action`() {
+        val prompt = builder.buildProgressTrendPrompt(ctx())
+        assertTrue("END WITH EXACTLY ONE ACTION" in prompt)
+        assertTrue(prompt.contains("lever", ignoreCase = true))
     }
 }

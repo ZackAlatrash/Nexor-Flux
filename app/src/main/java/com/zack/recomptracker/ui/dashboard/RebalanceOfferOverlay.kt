@@ -1,0 +1,294 @@
+package com.zack.recomptracker.ui.dashboard
+
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
+import com.zack.recomptracker.domain.rebalance.RebalanceMode
+import com.zack.recomptracker.ui.component.AiBadge
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiDialogCard
+import com.zack.recomptracker.ui.component.DismissButton
+import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
+import com.zack.recomptracker.ui.liquidglass.LiquidSegmentedToggle
+import com.zack.recomptracker.ui.review.BriefingGhostButton
+import com.zack.recomptracker.ui.review.BriefingPrimaryButton
+import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.LocalAppColors
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+
+private val ModalCorner = 24.dp
+
+/**
+ * Mix-dial labels, in [RebalanceMode] enum order (spec §2, §12) — mirrors the constant that lived
+ * in `RebalanceCard.kt` (deleted in Task 7). Not shared from there on purpose: this Dialog surface
+ * must not depend on anything in that file. "Both" (not "Balanced") per spec §2's locked naming —
+ * "Balanced" collided with the old mix middle option before the intensity dial existed.
+ */
+private val MIX_OPTIONS = listOf("Eat less", "Both", "Move more")
+
+/** Intensity-dial labels, in [RebalanceIntensity] enum order (spec §2, §12). */
+private val INTENSITY_OPTIONS = listOf("Light", "Standard", "Full")
+
+/**
+ * The floating Weekly Rebalance OFFER popup — a `Dialog` reusing the app's AI-card + edge-glow
+ * stack (exactly like [com.zack.recomptracker.ui.review.WeeklyBriefingOverlay]). Renders nothing
+ * unless [state]'s face is [RebalanceCardUiState.Face.OFFER] and the card is not [minimized] (a
+ * minimize collapses this Dialog down to [RebalanceReopenPill] instead of dismissing the offer).
+ *
+ * A `Dialog` is a separate Android window with no `LocalBackdrop`, so every surface here is built
+ * from [AiDialogCard] + the backdrop-free `Briefing*` buttons — never [com.zack.recomptracker.ui.component.AiInsightCard],
+ * `FrostedCard`, `TintedCard`, `LiquidActionButton`, `LiquidPrimaryButton`, or `GlassBottomSheet`.
+ *
+ * @param onAccept "Start rebalance" — accepts the offered plan.
+ * @param onDecline "Keep my normal plan" — declines the offer.
+ * @param onMinimize collapses the Dialog to the reopenable pill (tap-outside-to-dismiss + the
+ *   header's close affordance both route here — minimizing never declines).
+ * @param onCustomizeMode invoked with the newly-selected [RebalanceMode] from the always-visible
+ *   "How to recover it" dial.
+ * @param onCustomizeIntensity invoked with the newly-selected [RebalanceIntensity] from the
+ *   always-visible "How much to recover" dial.
+ */
+@Composable
+internal fun RebalanceOfferOverlay(
+    state: RebalanceCardUiState,
+    minimized: Boolean,
+    phrasing: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    onMinimize: () -> Unit,
+    onCustomizeMode: (RebalanceMode) -> Unit,
+    onCustomizeIntensity: (RebalanceIntensity) -> Unit,
+) {
+    if (state.face != RebalanceCardUiState.Face.OFFER || minimized) return
+
+    Dialog(onDismissRequest = onMinimize, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val animationsEnabled = rememberAnimationsEnabled()
+        var shown by remember { mutableStateOf(!animationsEnabled) }
+        LaunchedEffect(Unit) { shown = true }
+        val scale by animateFloatAsState(
+            targetValue = if (shown) 1f else 0.94f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
+            label = "offerScale",
+        )
+        val cardAlpha by animateFloatAsState(
+            targetValue = if (shown) 1f else 0f,
+            animationSpec = tween(200),
+            label = "offerAlpha",
+        )
+
+        val borderMode = if (phrasing) AiBorderMode.Generating else AiBorderMode.Ready
+        AiDialogCard(
+            borderMode = borderMode,
+            cornerRadius = ModalCorner,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 28.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = cardAlpha
+                },
+        ) {
+            OfferBody(
+                state = state,
+                onAccept = onAccept,
+                onDecline = onDecline,
+                onMinimize = onMinimize,
+                onCustomizeMode = onCustomizeMode,
+                onCustomizeIntensity = onCustomizeIntensity,
+            )
+        }
+    }
+}
+
+/**
+ * The OFFER card's contents, extracted from [RebalanceOfferOverlay] so it can be previewed without
+ * the `Dialog` wrapper (a `Dialog` doesn't render in the IDE preview surface).
+ *
+ * Layout (spec §2, §12 — locked prototype order): header, headline, body, weekly bars, lever
+ * tiles, an honest partial-recovery line when [RebalanceCardUiState.partial], the two always-visible
+ * liquid-glass dials ("How much to recover" / "How to recover it"), a recompute-instantly caption,
+ * the accept/decline buttons, then the tap-outside caption. There is no "Adjust the balance"
+ * expand/collapse — both dials are always on screen.
+ */
+@Composable
+private fun ColumnScope.OfferBody(
+    state: RebalanceCardUiState,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    onMinimize: () -> Unit,
+    onCustomizeMode: (RebalanceMode) -> Unit,
+    onCustomizeIntensity: (RebalanceIntensity) -> Unit,
+) {
+    val appColors = LocalAppColors.current
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel(text = "Weekly Rebalance")
+            AiBadge()
+        }
+        DismissButton(onDismiss = onMinimize, contentDescription = "Decide later")
+    }
+
+    Spacer(Modifier.height(6.dp))
+    Text(text = state.headline, style = AppType.screenTitleCompact, color = appColors.textPrimary)
+
+    Spacer(Modifier.height(4.dp))
+    // minLines pins the body height so the card doesn't grow/shrink when a dial change swaps the plan's
+    // day-count or adds a "+N steps" clause — the copy otherwise wraps to a different number of lines.
+    Text(text = state.body, style = AppType.body, color = appColors.textSecondary, minLines = 3)
+
+    Spacer(Modifier.height(12.dp))
+    WeeklyBarsChart(bars = state.weeklyBars)
+
+    Spacer(Modifier.height(12.dp))
+    LeverTiles(
+        reduction = (state.baseCalories - state.effectiveCalories).coerceAtLeast(0),
+        extraSteps = state.extraSteps,
+        days = state.ofY,
+    )
+
+    // The recovery line is always present (the VM fills it for full recovery too); minLines reserves its
+    // tallest (2-line) height so flipping a dial between full ↔ partial recovery never resizes the card.
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = state.partialLine,
+        style = AppType.cardSubtitle,
+        color = appColors.textMuted,
+        textAlign = TextAlign.Center,
+        minLines = 2,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    Spacer(Modifier.height(16.dp))
+    SectionLabel(text = "How much to recover")
+    Spacer(Modifier.height(6.dp))
+    LiquidSegmentedToggle(
+        options = INTENSITY_OPTIONS,
+        selectedIndex = state.intensity.ordinal,
+        onSelect = { index -> onCustomizeIntensity(RebalanceIntensity.entries[index]) },
+        compact = true,
+    )
+
+    Spacer(Modifier.height(12.dp))
+    SectionLabel(text = "How to recover it")
+    Spacer(Modifier.height(6.dp))
+    LiquidSegmentedToggle(
+        options = MIX_OPTIONS,
+        selectedIndex = state.mode.toIndex(),
+        onSelect = { index -> onCustomizeMode(index.toMode()) },
+        compact = true,
+    )
+
+    Spacer(Modifier.height(10.dp))
+    Text(
+        text = "Recomputes instantly — nothing restarts.",
+        style = AppType.metaLabel,
+        color = appColors.textMuted,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    Spacer(Modifier.height(14.dp))
+    BriefingPrimaryButton(text = "Start rebalance", onClick = onAccept, modifier = Modifier.fillMaxWidth())
+    BriefingGhostButton(
+        text = "Keep my normal plan",
+        onClick = onDecline,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = "Tap outside to decide later",
+        style = AppType.metaLabel,
+        color = appColors.textMuted,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+}
+
+private fun RebalanceMode.toIndex(): Int = when (this) {
+    RebalanceMode.EAT_LESS -> 0
+    RebalanceMode.BALANCED -> 1
+    RebalanceMode.MOVE_MORE -> 2
+}
+
+private fun Int.toMode(): RebalanceMode = when (this) {
+    0 -> RebalanceMode.EAT_LESS
+    2 -> RebalanceMode.MOVE_MORE
+    else -> RebalanceMode.BALANCED
+}
+
+// ── Preview (dark theme) ────────────────────────────────────────────────────
+
+@Preview(showBackground = true, backgroundColor = 0xFF0D0818)
+@Composable
+private fun PreviewOfferBody() {
+    val bars: ImmutableList<RebalanceDayBar> = persistentListOf(
+        RebalanceDayBar("Mon", 2650, 2200, isPlanDay = false, isOver = true),
+        RebalanceDayBar("Tue", 2100, 2200, isPlanDay = false, isOver = false),
+        RebalanceDayBar("Wed", 2800, 2200, isPlanDay = false, isOver = true),
+        RebalanceDayBar("Thu", 2900, 2200, isPlanDay = false, isOver = true),
+        RebalanceDayBar("Fri", 2050, 2200, isPlanDay = false, isOver = false),
+        RebalanceDayBar("Sat", 3100, 2200, isPlanDay = false, isOver = true),
+        RebalanceDayBar("Sun", 1950, 2200, isPlanDay = false, isOver = false),
+        RebalanceDayBar("Mon", 2050, 2200, isPlanDay = true, isOver = false),
+        RebalanceDayBar("Tue", 2050, 2200, isPlanDay = true, isOver = false),
+        RebalanceDayBar("Wed", 2050, 2200, isPlanDay = true, isOver = false),
+    )
+    val state = RebalanceCardUiState(
+        face = RebalanceCardUiState.Face.OFFER,
+        headline = "You've been running a surplus",
+        body = "Your last 3 days averaged 550 kcal over target. A short rebalance brings you back on track.",
+        dayX = 0,
+        ofY = 3,
+        effectiveCalories = 1950,
+        extraSteps = 1200,
+        mode = RebalanceMode.BALANCED,
+        intensity = RebalanceIntensity.STANDARD,
+        partial = true,
+        partialLine = "Recovers about 1100 of 1400 — a big one, but this keeps you moving the right way.",
+        baseCalories = 2200,
+        weeklyBars = bars,
+    )
+    AiDialogCard(borderMode = AiBorderMode.Ready, cornerRadius = ModalCorner) {
+        OfferBody(
+            state = state,
+            onAccept = {},
+            onDecline = {},
+            onMinimize = {},
+            onCustomizeMode = {},
+            onCustomizeIntensity = {},
+        )
+    }
+}

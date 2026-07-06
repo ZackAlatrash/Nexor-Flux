@@ -4,7 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.util.toNullableDouble
-import com.zack.recomptracker.core.util.toNullableInt
+import com.zack.recomptracker.domain.body.StepsValidation
+import com.zack.recomptracker.domain.body.validateStepsInput
 import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import java.time.LocalDate
@@ -24,6 +25,8 @@ data class BodyEditUiState(
     val waistCm: String = "",
     val waistSkinfoldMm: String = "",
     val steps: String = "",
+    /** True once the user types in the steps field — only then does saving mark steps manual. */
+    val stepsEdited: Boolean = false,
     val sleepHours: String = "",
     val energyScore: Int = 5,
     val hungerScore: Int = 5,
@@ -72,7 +75,7 @@ class BodyEditViewModel(
     fun onBodyWeightChanged(v: String) = edit { copy(bodyWeightKg = v) }
     fun onWaistChanged(v: String) = edit { copy(waistCm = v) }
     fun onWaistSkinfoldChanged(v: String) = edit { copy(waistSkinfoldMm = v) }
-    fun onStepsChanged(v: String) = edit { copy(steps = v) }
+    fun onStepsChanged(v: String) = edit { copy(steps = v, stepsEdited = true) }
     fun onSleepChanged(v: String) = edit { copy(sleepHours = v) }
     fun onEnergyChanged(v: Int) = edit { copy(energyScore = v.coerceIn(1, 10)) }
     fun onHungerChanged(v: Int) = edit { copy(hungerScore = v.coerceIn(1, 10)) }
@@ -82,10 +85,12 @@ class BodyEditViewModel(
 
     fun saveMetrics() {
         val s = _uiState.value
-        val steps = s.steps.toNullableInt()
-        if (s.steps.isNotBlank() && steps == null) {
-            _uiState.update { it.copy(message = "Steps must be a whole number.") }
-            return
+        val steps = when (val v = validateStepsInput(s.steps)) {
+            is StepsValidation.Invalid -> {
+                _uiState.update { it.copy(message = v.message) }
+                return
+            }
+            is StepsValidation.Valid -> v.steps
         }
         viewModelScope.launch {
             logRepository.saveDailyMetrics(
@@ -95,6 +100,7 @@ class BodyEditViewModel(
                     waistCm = s.waistCm.toNullableDouble(),
                     waistSkinfoldMm = s.waistSkinfoldMm.toNullableDouble(),
                     steps = steps,
+                    stepsEdited = s.stepsEdited,
                     sleepHours = s.sleepHours.toNullableDouble(),
                     energyScore = s.energyScore,
                     hungerScore = s.hungerScore,

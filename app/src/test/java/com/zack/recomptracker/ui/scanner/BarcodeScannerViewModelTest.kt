@@ -161,13 +161,15 @@ class BarcodeScannerViewModelTest {
 
     @Test
     fun `onLogModeChanged GRAMS to SERVING converts amount correctly`() = runTest {
-        // servingGrams = 30.0; starting at 150g → 150/30 = 5.0 → "5"
+        // A product with a serving defaults to SERVING mode on detection, so switch to
+        // GRAMS first. servingGrams = 30.0; 150g → 150/30 = 5.0 → "5".
         val product = BarcodeProduct("Test", 100, 10.0, 20.0, 5.0, "1 portion", 30.0, true)
         whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
         val vm = viewModel()
         vm.onBarcodeDetected("abc")
         testDispatcher.scheduler.advanceUntilIdle()
 
+        vm.onLogModeChanged(LogMode.GRAMS)
         vm.onAmountChanged("150")
         vm.onLogModeChanged(LogMode.SERVING)
 
@@ -178,13 +180,16 @@ class BarcodeScannerViewModelTest {
 
     @Test
     fun `onLogModeChanged GRAMS to SERVING trims trailing zeros`() = runTest {
-        // servingGrams = 30.0; starting at 100g → 100/30 = 3.333... → "3.33"
+        // A product with a serving defaults to SERVING mode on detection, so switch to
+        // GRAMS first. servingGrams = 30.0; 100g → 100/30 = 3.333... → "3.33".
         val product = BarcodeProduct("Test", 100, 10.0, 20.0, 5.0, "1 portion", 30.0, true)
         whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
         val vm = viewModel()
         vm.onBarcodeDetected("abc")
         testDispatcher.scheduler.advanceUntilIdle()
 
+        vm.onLogModeChanged(LogMode.GRAMS)
+        vm.onAmountChanged("100")
         vm.onLogModeChanged(LogMode.SERVING)
 
         val state = vm.uiState.value.scanState as ScanState.ProductFound
@@ -230,6 +235,86 @@ class BarcodeScannerViewModelTest {
         org.mockito.kotlin.verify(logRepository).addMealToSlot(captor.capture(), org.mockito.kotlin.isNull())
         assertEquals(120, captor.firstValue.calories)          // 200 * (60/100)
         assertEquals(60.0, captor.firstValue.amountGrams!!, 0.01)
+    }
+
+    @Test
+    fun `confirmLog logs to the selected past date, not today`() = runTest {
+        val product = BarcodeProduct("Oats", 200, 8.0, 30.0, 4.0, null, null, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        whenever(logRepository.addMealToSlot(any(), any())).thenReturn(1L)
+        val yesterday = dateProvider.today().minusDays(1)
+        val vm = viewModel()
+        vm.init(slotId = 1L, slotName = "Breakfast", logDate = yesterday)
+        vm.onBarcodeDetected("oats123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.confirmLog()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<com.zack.recomptracker.data.repository.MealEntryInput>()
+        org.mockito.kotlin.verify(logRepository).addMealToSlot(captor.capture(), any())
+        assertEquals(yesterday, captor.firstValue.date)
+        assertEquals(false, captor.firstValue.planned)
+    }
+
+    @Test
+    fun `confirmLog onto a future date plans the entry`() = runTest {
+        val product = BarcodeProduct("Oats", 200, 8.0, 30.0, 4.0, null, null, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        whenever(logRepository.addMealToSlot(any(), any())).thenReturn(1L)
+        val tomorrow = dateProvider.today().plusDays(1)
+        val vm = viewModel()
+        vm.init(slotId = 1L, slotName = "Breakfast", logDate = tomorrow)
+        vm.onBarcodeDetected("oats123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.confirmLog()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<com.zack.recomptracker.data.repository.MealEntryInput>()
+        org.mockito.kotlin.verify(logRepository).addMealToSlot(captor.capture(), any())
+        assertEquals(tomorrow, captor.firstValue.date)
+        assertEquals(true, captor.firstValue.planned)
+    }
+
+    @Test
+    fun `confirmLog defaults to today when no date provided`() = runTest {
+        val product = BarcodeProduct("Oats", 200, 8.0, 30.0, 4.0, null, null, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        whenever(logRepository.addMealToSlot(any(), any())).thenReturn(1L)
+        val vm = viewModel()
+        vm.init(slotId = 1L, slotName = "Breakfast")
+        vm.onBarcodeDetected("oats123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.confirmLog()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<com.zack.recomptracker.data.repository.MealEntryInput>()
+        org.mockito.kotlin.verify(logRepository).addMealToSlot(captor.capture(), any())
+        assertEquals(dateProvider.today(), captor.firstValue.date)
+        assertEquals(false, captor.firstValue.planned)
+    }
+
+    @Test
+    fun `confirmLogAndSave logs to the selected past date, not today`() = runTest {
+        val product = BarcodeProduct("Hagelslag", 408, 5.3, 72.4, 11.2, "15g", 15.0, true)
+        whenever(barcodeRepository.lookupBarcode(any())).thenReturn(BarcodeResult.Found(product))
+        whenever(logRepository.addMealToSlot(any(), any())).thenReturn(1L)
+        whenever(logRepository.saveFood(any())).thenReturn(1L)
+        val yesterday = dateProvider.today().minusDays(1)
+        val vm = viewModel()
+        vm.init(slotId = 1L, slotName = "Breakfast", logDate = yesterday)
+        vm.onBarcodeDetected("8710522955")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.confirmLogAndSave()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<com.zack.recomptracker.data.repository.MealEntryInput>()
+        org.mockito.kotlin.verify(logRepository).addMealToSlot(captor.capture(), any())
+        assertEquals(yesterday, captor.firstValue.date)
+        assertEquals(false, captor.firstValue.planned)
     }
 
     @Test

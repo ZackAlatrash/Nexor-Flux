@@ -1,18 +1,20 @@
 package com.zack.recomptracker.ui.today
 
-import com.zack.recomptracker.ai.StubInsightCoordinator
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.domain.plan.PlanTargets
+import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -55,15 +57,31 @@ class FoodLogViewModelTest {
         whenever(logRepo.observeSlots()).thenReturn(flowOf(emptyList()))
         whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
         whenever(logRepo.observeStalePlannedCount(any(), any())).thenReturn(flowOf(0))
+        val chicken = SavedFoodEntity(
+            name = "Chicken", servingName = "serving", calories = 165,
+            proteinG = 31.0, carbsG = 0.0, fatG = 4.0, householdServingGrams = 100.0,
+        )
+        whenever(logRepo.observeSavedFoods()).thenReturn(flowOf(listOf(chicken)))
         whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences()))
+        // No plan history by default → every day resolves to the current preferences.
+        whenever(planRepo.observeVersions()).thenReturn(flowOf(emptyList()))
+        whenever(planRepo.observePlanOn(any())).thenReturn(flowOf(PlanPreferences().toPlanTargets()))
     }
 
     @After
     fun tearDown() { Dispatchers.resetMain() }
 
-    private val aiCoordinator = StubInsightCoordinator(MutableStateFlow(false), CoroutineScope(dispatcher))
-
-    private fun buildVm() = FoodLogViewModel(logRepo, planRepo, dateProvider, aiCoordinator)
+    private fun buildVm(
+        now: java.time.LocalTime = java.time.LocalTime.of(15, 0),
+        rebalanceState: com.zack.recomptracker.domain.rebalance.RebalanceState =
+            com.zack.recomptracker.domain.rebalance.RebalanceState(),
+    ) = FoodLogViewModel(
+        logRepo,
+        planRepo,
+        com.zack.recomptracker.data.rebalance.FakeRebalanceStore(rebalanceState),
+        dateProvider,
+        computeDispatcher = dispatcher,
+    ) { now }
 
     @Test
     fun `initial selectedDate is today`() = runTest {
@@ -152,6 +170,129 @@ class FoodLogViewModelTest {
     }
 
     @Test
+    fun `past day target reflects the plan in effect on that day, not current prefs`() = runTest {
+        val yesterday = today.minusDays(1)
+        // Current prefs differ from the historical plan that was in effect yesterday.
+        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 3000)))
+        val historicalPlan = PlanTargets(
+            calories = 2000, proteinG = 150, carbsG = 200, fatG = 60,
+            zoneLowerBound = 1900, zoneUpperBound = 2100,
+        )
+        whenever(planRepo.observePlanOn(yesterday)).thenReturn(flowOf(historicalPlan))
+        whenever(logRepo.observeDay(yesterday)).thenReturn(flowOf(emptyDayLog(yesterday)))
+
+        val vm = buildVm()
+        advanceUntilIdle()
+        vm.selectDate(yesterday)
+        advanceUntilIdle()
+
+        val target = vm.uiState.value.target
+        assertEquals(2000, target.targetCalories)
+        assertEquals(150, target.targetProteinG)
+        assertEquals(1900, target.calorieZoneLowerBound)
+        assertEquals(2100, target.calorieZoneUpperBound)
+    }
+
+    @Test
+    fun `week strip resolves each day's historical target from plan versions`() = runTest {
+        val olderPlan = PlanTargets(
+            calories = 2000, proteinG = 150, carbsG = 200, fatG = 60,
+            zoneLowerBound = 1900, zoneUpperBound = 2100,
+        )
+        val newerPlan = PlanTargets(
+            calories = 2600, proteinG = 180, carbsG = 260, fatG = 80,
+            zoneLowerBound = 2500, zoneUpperBound = 2700,
+        )
+        // Newer plan takes effect today; earlier week days fall under the older plan.
+        val versions = listOf(
+            PlanVersion(effectiveFrom = PlanHistory.BASELINE_DATE, targets = olderPlan),
+            PlanVersion(effectiveFrom = today, targets = newerPlan),
+        )
+        whenever(planRepo.observeVersions()).thenReturn(flowOf(versions))
+        whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))
+
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        val week = vm.uiState.value.weekSummary
+        assertEquals(7, week.size)
+        val todaySummary = week.first { it.date == today }
+        val pastSummary = week.first { it.date == today.minusDays(6) }
+        assertEquals(2600, todaySummary.targetCalories)
+        assertEquals(2700, todaySummary.zoneUpperBound)
+        assertEquals(2000, pastSummary.targetCalories)
+        assertEquals(1900, pastSummary.zoneLowerBound)
+    }
+
+    @Test
+    fun `week strip falls back to current prefs when plan ledger is not yet seeded`() = runTest {
+        // Unseeded ledger (empty versions, the default) + non-default current prefs.
+        val prefs = PlanPreferences(
+            targetCalories = 2400,
+            calorieZoneLowerBound = 2300,
+            calorieZoneUpperBound = 2500,
+        )
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.observeVersions()).thenReturn(flowOf(emptyList()))
+
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        val week = vm.uiState.value.weekSummary
+        assertEquals(7, week.size)
+        val todaySummary = week.first { it.date == today }
+        // Falls back to current prefs' zone rather than collapsing to 0.
+        assertEquals(2400, todaySummary.targetCalories)
+        assertEquals(2300, todaySummary.zoneLowerBound)
+        assertEquals(2500, todaySummary.zoneUpperBound)
+    }
+
+    @Test
+    fun `active rebalance reduces the viewed-day target and sets the day-X chip`() = runTest {
+        // A 3-day rebalance covering today (day 2 of 3), reducing calories by 250 from the 2550 default.
+        val plan = com.zack.recomptracker.domain.rebalance.RebalancePlan(
+            id = "p",
+            triggerDateIso = today.minusDays(2).toString(),
+            startDateIso = today.minusDays(1).toString(),
+            endDateIso = today.plusDays(1).toString(),
+            lengthDays = 3,
+            mode = com.zack.recomptracker.domain.rebalance.RebalanceMode.EAT_LESS,
+            baseCalories = 2550,
+            dailyCalorieReduction = 250,
+            extraDailySteps = 0,
+            baseStepGoal = null,
+            recentAvgSteps = null,
+            surplusKcal = 600,
+            recoveredKcal = 600,
+            status = com.zack.recomptracker.domain.rebalance.RebalanceStatus.ACTIVE,
+            createdAtIso = "2026-06-02T09:00:00Z",
+        )
+        val vm = buildVm(
+            rebalanceState = com.zack.recomptracker.domain.rebalance.RebalanceState(active = plan),
+        )
+        advanceUntilIdle()
+
+        // Effective target = 2550 − 250 = 2300, zone re-centred to 2200..2400.
+        assertEquals(2300, vm.uiState.value.target.targetCalories)
+        assertEquals(2200, vm.uiState.value.target.calorieZoneLowerBound)
+        assertEquals(2400, vm.uiState.value.target.calorieZoneUpperBound)
+        // Day-X chip populated: today is day 2 of 3.
+        val chip = vm.uiState.value.rebalanceDay
+        org.junit.Assert.assertNotNull(chip)
+        assertEquals(2, chip!!.dayX)
+        assertEquals(3, chip.ofY)
+    }
+
+    @Test
+    fun `no rebalance leaves the viewed-day target at base and the chip null`() = runTest {
+        val vm = buildVm() // empty rebalance state
+        advanceUntilIdle()
+        // Falls through to the base plan (default prefs 2550, zone 2400..2600).
+        assertEquals(2550, vm.uiState.value.target.targetCalories)
+        org.junit.Assert.assertNull(vm.uiState.value.rebalanceDay)
+    }
+
+    @Test
     fun `confirmMeal delegates to repository`() = runTest {
         val vm = buildVm()
         advanceUntilIdle()
@@ -183,5 +324,21 @@ class FoodLogViewModelTest {
         advanceUntilIdle()
 
         verify(logRepo).confirmPlannedForDate(today)
+    }
+
+    @Test
+    fun `shows a protein meal-suggestion card for today past the gate`() = runTest {
+        val vm = buildVm() // 15:00
+        advanceUntilIdle()
+        val card = vm.uiState.value.mealSuggestion
+        org.junit.Assert.assertNotNull(card)
+        assertEquals(com.zack.recomptracker.domain.food.SuggestionFocus.PROTEIN, card!!.focus)
+    }
+
+    @Test
+    fun `hides the meal-suggestion card before the day-fraction gate`() = runTest {
+        val vm = buildVm(now = java.time.LocalTime.of(9, 0))
+        advanceUntilIdle()
+        org.junit.Assert.assertNull(vm.uiState.value.mealSuggestion)
     }
 }

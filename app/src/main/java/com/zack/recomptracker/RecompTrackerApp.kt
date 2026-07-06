@@ -1,6 +1,9 @@
 package com.zack.recomptracker
 
 import android.app.Application
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
@@ -10,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class RecompTrackerApp : Application(), ImageLoaderFactory {
@@ -30,6 +34,34 @@ class RecompTrackerApp : Application(), ImageLoaderFactory {
         appScope.launch {
             container.database
             _dbReady.value = true
+        }
+        // Foreground auto-sync: when Health Connect is enabled + permitted, refresh steps on
+        // EVERY foreground (they rise all day, so no debounce) and the full steps/weight/sleep
+        // sync on the debounced schedule, so streaks stay live without opening Settings.
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    container.healthSyncCoordinator.syncStepsNow()
+                    container.healthSyncCoordinator.syncIfDue()
+                    // Refresh the proactive-coach "Today's Coaching" winner once/day (debounced
+                    // inside the coordinator). Deterministic CPU/DB work — no cloud call here.
+                    container.coachDigestCoordinator.runIfDue()
+                }
+            },
+        )
+        // Ensure periodic background sync is scheduled for users who enabled Health Connect
+        // before this build (enqueue is idempotent — KEEP policy).
+        appScope.launch {
+            if (container.planRepository.preferences.first().healthConnectEnabled) {
+                container.healthSyncCoordinator.enableBackgroundSync()
+            }
+        }
+        // Ensure the periodic coach digest is scheduled for users who already enabled AI insights
+        // (enqueue is idempotent — KEEP policy).
+        appScope.launch {
+            if (container.uiPreferences.aiInsightsEnabled.first()) {
+                container.coachDigestCoordinator.enableBackgroundDigest()
+            }
         }
     }
 

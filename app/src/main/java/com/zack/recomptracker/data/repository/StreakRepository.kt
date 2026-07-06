@@ -2,8 +2,15 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
-import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.rebalance.RebalanceStore
+import com.zack.recomptracker.domain.activity.ActivityMetrics
+import com.zack.recomptracker.domain.activity.ActivitySummary
+import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import com.zack.recomptracker.domain.streak.StreakDayMark
 import com.zack.recomptracker.domain.streak.StreakResult
@@ -23,14 +30,25 @@ class StreakRepository(
     private val userProfileStore: UserProfilePreferencesStore,
     private val dateProvider: DateProvider,
     private val calculator: StreakCalculator,
+    // Rebalance state feeds the calorie-streak union zone (a temporary rebalance can only widen the
+    // in-zone band, never break a streak the user would otherwise keep). A live Flow, mirroring how
+    // this class already consumes planRepository.observeVersions(); an empty state is behaviour-neutral.
+    private val rebalanceStore: RebalanceStore,
 ) {
     fun streaks(): Flow<Streaks> = combine(
         logRepository.observeDailyLogs(),
         logRepository.observeMealEntries(),
         workoutSessionRepository.observeCompletedSessions(),
-        planRepository.preferences,
-        userProfileStore.preferences,
-    ) { dailyLogs, meals, sessions, prefs, profile ->
+        planRepository.observeVersions(),
+        // The 5-slot combine is full, so fold profile + rebalance state into one nested typed
+        // combine and unpack it below (mirrors ProgressViewModel's TrainingInputs pattern) — no
+        // unchecked casts.
+        combine(
+            userProfileStore.preferences,
+            rebalanceStore.state,
+        ) { profile, rebalanceState -> StreakStreams(profile, rebalanceState) },
+    ) { dailyLogs, meals, sessions, versions, streams ->
+        val (profile, rebalanceState) = streams
         val eatenByDate = meals
             .filterNot { it.planned }
             .groupBy { LocalDate.parse(it.date) }
@@ -39,19 +57,56 @@ class StreakRepository(
             dailyLogs = dailyLogs,
             eatenCaloriesByDate = eatenByDate,
             completedSessionDates = sessions.map { LocalDate.parse(it.date) },
-            prefs = prefs,
+            versions = versions,
             dailyStepGoal = profile.dailyStepGoal,
             today = dateProvider.today(),
             calculator = calculator,
+            rebalanceState = rebalanceState,
         )
     }
+
+    /**
+     * Derived activity figures (training frequency vs target, 7-day average steps) for the
+     * Dashboard/Train activity surfaces. Shares the [ActivitySummary] derivations with the
+     * streak build so the numbers never disagree.
+     */
+    fun activity(): Flow<ActivityMetrics> = combine(
+        logRepository.observeDailyLogs(),
+        workoutSessionRepository.observeCompletedSessions(),
+        userProfileStore.preferences,
+    ) { dailyLogs, sessions, profile ->
+        val today = dateProvider.today()
+        val workoutDays = ActivitySummary.workoutDays(
+            completedSessionDates = sessions.map { LocalDate.parse(it.date) },
+            trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
+        )
+        val stepsByDate = dailyLogs.mapNotNull { log ->
+            log.steps?.let { LocalDate.parse(log.date) to it }
+        }.toMap()
+        ActivityMetrics(
+            weeklyTrainingFrequency = ActivitySummary.weeklyTrainingFrequency(workoutDays, today),
+            weeklyGymSessionsTarget = profile.weeklyGymSessions,
+            averageDailySteps7 = ActivitySummary.averageDailySteps(stepsByDate, today),
+        )
+    }
+
+    /**
+     * Bundles the two flows folded into the nested combine (the top-level combine's 5 slots are
+     * full). Destructured back out in the transform above.
+     */
+    private data class StreakStreams(
+        val profile: UserProfilePreferences,
+        val rebalanceState: RebalanceState,
+    )
 }
 
 /**
  * Pure assembly of the three streaks — unit-tested directly. Maps raw history into
  * qualifying-day sets, runs [StreakCalculator], and attaches a 7-day strip for the UI.
  *
- * Calorie success = eaten calories within the calorie zone (the dashboard's "in zone" rule).
+ * Calorie success = eaten calories within the calorie zone (the dashboard's "in zone" rule),
+ *                   judged against the lenient union of the base and rebalance-effective zones so a
+ *                   temporary rebalance can only widen the band, never break a would-be streak.
  * Steps success   = steps >= dailyStepGoal (no streak when the goal is unset).
  * Workout success = a completed session OR a daily log with trained = true.
  */
@@ -59,25 +114,33 @@ internal fun buildStreaks(
     dailyLogs: List<DailyLogEntity>,
     eatenCaloriesByDate: Map<LocalDate, Int>,
     completedSessionDates: List<LocalDate>,
-    prefs: PlanPreferences,
+    versions: List<PlanVersion>,
     dailyStepGoal: Int?,
     today: LocalDate,
     calculator: StreakCalculator,
+    rebalanceState: RebalanceState = RebalanceState(),
 ): Streaks {
-    val workoutDays: Set<LocalDate> = (
-        completedSessionDates +
-            dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) }
-        ).toSet()
+    val workoutDays: Set<LocalDate> = ActivitySummary.workoutDays(
+        completedSessionDates = completedSessionDates,
+        trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
+    )
 
-    val calorieDays: Set<LocalDate> = eatenCaloriesByDate
-        .filterValues { cals ->
-            cals > 0 &&
-                prefs.calorieZoneLowerBound > 0 &&
-                cals >= prefs.calorieZoneLowerBound &&
-                cals <= prefs.calorieZoneUpperBound
-        }
-        .keys
+    val calorieDays: Set<LocalDate> = if (versions.isEmpty()) {
+        emptySet()
+    } else {
+        eatenCaloriesByDate
+            .filter { (date, cals) ->
+                val base = PlanHistory.planOn(versions, date)
+                // Union of base + effective zones: on a rebalance day this widens the band; on any
+                // other day it is exactly the base zone (behaviour-neutral with an empty state).
+                val zone = EffectiveTargets.unionZone(base, date, rebalanceState)
+                cals > 0 && base.zoneLowerBound > 0 && cals in zone
+            }
+            .keys
+    }
 
+    // Steps streak judges against the base dailyStepGoal ALWAYS — a temporary rebalance step boost is
+    // display/progress only and must never break (or manufacture) a streak. See EffectiveTargets.effectiveStepGoal.
     val stepDays: Set<LocalDate> = if (dailyStepGoal != null && dailyStepGoal > 0) {
         dailyLogs
             .filter { (it.steps ?: 0) >= dailyStepGoal }

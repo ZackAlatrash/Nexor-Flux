@@ -19,10 +19,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import com.zack.recomptracker.domain.coach.CoachActionType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +40,7 @@ import androidx.navigation.compose.rememberNavController
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.zack.recomptracker.core.AppContainer
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.ui.liquidglass.LocalBackdrop
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTab
 import com.zack.recomptracker.ui.liquidglass.LiquidBottomTabs
@@ -64,6 +69,16 @@ private val topLevelRoutes = setOf(
     Routes.Train,
 )
 
+// Maps a top-level route to its usage-tracking tab name, or null for a non-tab route.
+private fun String.tabNameOrNull(): String? = when (this) {
+    TopLevelDestination.Home.route -> "home"
+    TopLevelDestination.Body.route -> "body"
+    Routes.Food -> "food"
+    TopLevelDestination.Coach.route -> "coach"
+    Routes.Train -> "train"
+    else -> null
+}
+
 // Maps a route string to a 0-based tab index.
 private fun routeToTabIndex(route: String?): Int = when (route) {
     TopLevelDestination.Home.route -> 0
@@ -82,8 +97,29 @@ private val tabRoutes = listOf(
     Routes.Train,
 )
 
+/**
+ * Maps a tapped push's [CoachActionType] to the top-level route it should open — mirrors the dashboard
+ * `onCoachAction` mapping (LOG_WEIGHT/LOG_STEPS→Body, meals→Food, training→Train, weekly review→Home).
+ * `null`/NONE means "no navigation".
+ */
+private fun CoachActionType?.toDeepLinkRoute(): String? = when (this) {
+    CoachActionType.LOG_WEIGHT, CoachActionType.LOG_STEPS -> TopLevelDestination.Body.route
+    CoachActionType.CONFIRM_PLANNED_MEALS, CoachActionType.OPEN_FOOD_LOG -> Routes.Food
+    CoachActionType.OPEN_TRAINING -> Routes.Train
+    // The weekly review + plan target live on the Home dashboard; land there.
+    CoachActionType.OPEN_WEEKLY_REVIEW, CoachActionType.APPLY_TARGET -> TopLevelDestination.Home.route
+    // TRACK_EXPERIMENT is not navigation — the Today slot records the experiment in-place — and a
+    // discovery card never pushes, so a deep-link mapping would be dead. NONE/null → no navigation.
+    CoachActionType.TRACK_EXPERIMENT, CoachActionType.NONE, null -> null
+}
+
 @Composable
-fun RecompApp(container: AppContainer, darkMode: Boolean) {
+fun RecompApp(
+    container: AppContainer,
+    darkMode: Boolean,
+    deepLinkAction: State<CoachActionType?> = remember { mutableStateOf(null) },
+    onDeepLinkHandled: () -> Unit = {},
+) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
     RecompTrackerTheme(accentTheme = accentTheme, darkMode = darkMode) {
@@ -91,6 +127,28 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
         val navController = rememberNavController()
         val toastController = remember { ToastController() }
         val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+        // Local usage tracking: one TAB_VIEW per top-level tab as it becomes current (covers taps,
+        // swipes, and deep-links uniformly, once each). Fire-and-forget — never blocks navigation.
+        LaunchedEffect(currentRoute) {
+            currentRoute?.tabNameOrNull()?.let { tab ->
+                container.usageTracker.track(UsageEvents.TAB_VIEW, label = tab)
+            }
+        }
+
+        // Notification-tap deep-link: navigate to the mapped tab, then clear the pending action so a
+        // recomposition/rotation doesn't re-navigate. Guarded on onboardingComplete so we never route
+        // over the onboarding flow.
+        val pendingAction by deepLinkAction
+        LaunchedEffect(pendingAction) {
+            val route = pendingAction.toDeepLinkRoute() ?: return@LaunchedEffect
+            navController.navigate(route) {
+                popUpTo(TopLevelDestination.Home.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onDeepLinkHandled()
+        }
 
         // Null until the flag is read, so the NavHost is not composed with the wrong start
         // destination (which would flash Home before redirecting to onboarding, or vice versa).
@@ -145,7 +203,12 @@ fun RecompApp(container: AppContainer, darkMode: Boolean) {
                         GlassOrbBackground(accentTheme = accentTheme, darkMode = darkMode)
                     }
 
-                    // Previous gradient + aurora background (kept for reference):
+                    // Previous gradient + aurora background, kept for reference. The AuroraBackground
+                    // implementation was REMOVED (no live call site): its per-frame withFrameNanos
+                    // loop redrew the captured backdrop every frame, forcing every glass surface to
+                    // re-blur continuously — a severe perf regression. GlassOrbBackground (static,
+                    // tilt-throttled) replaced it. Do NOT reinstate an always-animating background
+                    // behind the shared backdrop.
                     // Box(
                     //     modifier = Modifier
                     //         .layerBackdrop(contentBackdrop)

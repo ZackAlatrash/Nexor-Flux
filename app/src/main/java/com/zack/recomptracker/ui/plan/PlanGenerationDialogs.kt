@@ -4,18 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.domain.plan.GeneratedPlan
+import com.zack.recomptracker.ui.component.GlassAlertDialog
+import com.zack.recomptracker.ui.component.GlassInputField
 
 @Composable
 fun PlanPreviewDialog(
@@ -23,29 +21,29 @@ fun PlanPreviewDialog(
     onApply: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Generated plan") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                BreakdownRow("Weight used", "%.1f kg".format(java.util.Locale.US, plan.weightKgUsed))
-                BreakdownRow("BMR", "${plan.bmr} kcal")
-                BreakdownRow("TDEE (×${plan.activityFactor})", "${plan.tdee} kcal")
-                BreakdownRow("Goal adjustment", "${plan.goalDeltaPercent}%")
-                Text(
-                    "Target: ${plan.targetCalories} kcal",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                BreakdownRow("Protein", "${plan.proteinG} g")
-                BreakdownRow("Carbs", "${plan.carbsG} g")
-                BreakdownRow("Fat", "${plan.fatG} g")
-                BreakdownRow("Calorie zone", "${plan.zoneLower}–${plan.zoneUpper} kcal")
-            }
-        },
-        confirmButton = { TextButton(onClick = onApply) { Text("Apply") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = "Generated plan",
+        confirmLabel = "Apply",
+        onConfirm = onApply,
+        dismissLabel = "Cancel",
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BreakdownRow("Weight used", "%.1f kg".format(java.util.Locale.US, plan.weightKgUsed))
+            BreakdownRow("BMR", "${plan.bmr} kcal")
+            BreakdownRow("TDEE (×${plan.activityFactor})", "${plan.tdee} kcal")
+            BreakdownRow("Goal adjustment", "${plan.goalDeltaPercent}%")
+            Text(
+                "Target: ${plan.targetCalories} kcal",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            BreakdownRow("Protein", "${plan.proteinG} g")
+            BreakdownRow("Carbs", "${plan.carbsG} g")
+            BreakdownRow("Fat", "${plan.fatG} g")
+            BreakdownRow("Calorie zone", "${plan.zoneLower}–${plan.zoneUpper} kcal")
+        }
+    }
 }
 
 @Composable
@@ -63,31 +61,28 @@ fun WeightEntryDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Enter your weight") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("No logged bodyweight found. Enter your current weight to generate a plan.")
-                OutlinedTextField(
-                    value = state.weightInput,
-                    onValueChange = onValueChange,
-                    label = { Text("Weight (kg)") },
-                    singleLine = true,
-                    isError = state.error != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(),
+    GlassAlertDialog(
+        onDismiss = onDismiss,
+        title = "Enter your weight",
+        confirmLabel = "Continue",
+        onConfirm = onConfirm,
+        dismissLabel = "Cancel",
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("No logged bodyweight found. Enter your current weight to generate a plan.")
+            GlassInputField(
+                label = "Weight (kg)",
+                value = state.weightInput,
+                onValueChange = onValueChange,
+                keyboardType = KeyboardType.Decimal,
+            )
+            if (state.error != null) {
+                Text(
+                    state.error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
                 )
-                if (state.error != null) {
-                    Text(
-                        state.error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
             }
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Continue") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+        }
+    }
 }

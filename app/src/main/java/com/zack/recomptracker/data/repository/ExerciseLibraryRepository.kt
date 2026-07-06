@@ -7,6 +7,7 @@ import com.zack.recomptracker.domain.workout.ExerciseLibraryJson
 import com.zack.recomptracker.domain.workout.toEntity
 import java.io.InputStream
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
@@ -14,12 +15,20 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
     open fun observeAll(): Flow<List<Exercise>> =
         exerciseDao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
+    /** The full library as a snapshot — used by the coach for word-based fuzzy matching. */
+    open suspend fun all(): List<Exercise> =
+        exerciseDao.observeAll().first().map { it.toDomain() }
+
     open suspend fun search(query: String): List<Exercise> =
         exerciseDao.search(query.trim()).map { it.toDomain() }
 
     open suspend fun getById(id: Long): Exercise? = exerciseDao.getById(id)?.toDomain()
 
-    open suspend fun addCustomExercise(name: String): Long {
+    open suspend fun addCustomExercise(
+        name: String,
+        primaryMuscles: List<String> = emptyList(),
+        secondaryMuscles: List<String> = emptyList(),
+    ): Long {
         val entity = ExerciseEntity(
             source = "user",
             sourceVersion = "1",
@@ -30,8 +39,8 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
             level = null,
             mechanic = null,
             equipment = null,
-            primaryMuscles = "[]",
-            secondaryMuscles = "[]",
+            primaryMuscles = ExerciseLibraryJson.encodeList(primaryMuscles),
+            secondaryMuscles = ExerciseLibraryJson.encodeList(secondaryMuscles),
             instructions = "[]",
             images = "[]",
             userCreated = true,

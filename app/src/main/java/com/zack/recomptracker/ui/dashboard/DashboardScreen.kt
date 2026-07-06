@@ -1,5 +1,11 @@
 package com.zack.recomptracker.ui.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,11 +38,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -48,20 +54,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.key
 import com.zack.recomptracker.core.util.formatPercent
 import com.zack.recomptracker.core.util.formatSignedOneDecimal
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
+import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.component.AiBadge
-import com.zack.recomptracker.ui.component.AiBorderMode
-import com.zack.recomptracker.ui.component.AiInsightCard
-import com.zack.recomptracker.ui.component.GeneratedInsightCard
 import coil.compose.AsyncImage
 import com.zack.recomptracker.ui.component.charts.CalorieProgressBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
@@ -70,6 +72,7 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
+import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -79,65 +82,114 @@ import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.streak.StreakRow
+import com.zack.recomptracker.ui.toast.LocalToastController
+import com.zack.recomptracker.ui.toast.ToastMessage
+import com.zack.recomptracker.ui.toast.ToastType
+import kotlinx.coroutines.launch
+import com.zack.recomptracker.ui.streak.StreakGoalRing
 import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.domain.streak.Streaks
+import com.zack.recomptracker.domain.activity.ActivityMetrics
 import com.zack.recomptracker.ui.theme.AppType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Coach action types the dashboard can navigate for — a Today's-Coaching button shows only for these
+ *  (mirrors the `onCoachAction` mapping), so a signal never renders a dead button. */
+private val SUPPORTED_COACH_ACTIONS = setOf(
+    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW,
+    com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT,
+    com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS,
+    com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
+    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG,
+    com.zack.recomptracker.domain.coach.CoachActionType.OPEN_TRAINING,
+)
+
+// `internal` (not `fun`): the Weekly Rebalance card's ViewModel carries the `internal`
+// `RebalanceCopyService` (see its kdoc), so this screen entry point must stay `internal` too —
+// its only caller, `AppNavGraph`, is same-module. `HomeDashboardContent` below stays public/
+// preview-friendly since `RebalanceCardUiState` itself has no internal types in its API.
 @Composable
-fun HomeDashboardScreen(
+internal fun HomeDashboardScreen(
     viewModel: DashboardViewModel,
     weeklyReviewViewModel: WeeklyReviewViewModel,
     streakViewModel: StreakViewModel,
+    coachTodayViewModel: CoachTodayViewModel,
+    rebalanceViewModel: RebalanceViewModel,
     onOpenCoach: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStreaks: () -> Unit,
     onOpenFoodLog: () -> Unit,
     onOpenBody: () -> Unit,
+    onOpenTraining: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val coachTodayState by coachTodayViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { coachTodayViewModel.onShown() }
+    val rebalanceCardState by rebalanceViewModel.uiState.collectAsStateWithLifecycle()
+    val offerMinimized by rebalanceViewModel.offerMinimized.collectAsStateWithLifecycle()
+    val phrasing by rebalanceViewModel.phrasing.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { rebalanceViewModel.onShown() }
+    // Which face-scoped overlay/pill are open, owned here (the screen root Box) so the hoisted
+    // Dialogs/pill are siblings of HomeDashboardContent, mirroring WeeklyBriefingOverlay. The ribbon
+    // that opens the progress detail lives deep inside HomeDashboardContent → TodayCard, so the
+    // setter is threaded down as onRebalanceRibbonClick.
+    var progressDetailOpen by rememberSaveable { mutableStateOf(false) }
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
-    val patternInsightState by viewModel.patternInsightState.collectAsStateWithLifecycle()
-    val targetChangeInsightState by viewModel.targetChangeInsightState.collectAsStateWithLifecycle()
-    val noiseDefuserInsightState by viewModel.noiseDefuserInsightState.collectAsStateWithLifecycle()
-    val crossMetricInsightState by viewModel.crossMetricInsightState.collectAsStateWithLifecycle()
     val headerAvatar by viewModel.headerAvatar.collectAsStateWithLifecycle()
     val streakState by streakViewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(state.patternInsightContext?.key()) {
-        viewModel.onPatternInsightVisible()
+
+    // Local usage tracking: WEEKLY_CHECKIN_OPENED on every path that opens the weekly briefing
+    // (badge/card tap or a Today's-Coaching action). Fire-and-forget — never blocks the UI.
+    val usageTracker = LocalAppContainer.current.usageTracker
+    val openWeeklyReview: () -> Unit = {
+        usageTracker.track(UsageEvents.WEEKLY_CHECKIN_OPENED)
+        weeklyReviewViewModel.open()
     }
-    LaunchedEffect(state.targetChangeContext?.key()) {
-        viewModel.onTargetChangeVisible()
-    }
-    LaunchedEffect(state.noiseDefuserContext?.key()) {
-        viewModel.onNoiseDefuserVisible()
-    }
-    LaunchedEffect(state.crossMetricContext?.key()) {
-        viewModel.onCrossMetricVisible()
-    }
+
+    // A minimized offer's reopen pill takes over the Weekly Review pill's slot (the two never stack):
+    // when it's showing, hide the review pill and drop the reopen pill's stacking offset.
+    val reopenPillVisible = rebalanceCardState.face == RebalanceCardUiState.Face.OFFER && offerMinimized
+    val toastController = LocalToastController.current
+    val scope = rememberCoroutineScope()
 
     HomeDashboardContent(
         state = state,
         avatarPhotoUri = headerAvatar.photoUri,
         avatarInitials = headerAvatar.initials,
         showWeeklyReviewBadge = badge,
-        onOpenWeeklyReview = { weeklyReviewViewModel.open() },
+        onOpenWeeklyReview = openWeeklyReview,
+        hideWeeklyReviewPill = reopenPillVisible,
+        onExpandRebalance = { rebalanceViewModel.onExpandOffer() },
         onOpenSettings = onOpenSettings,
         onOpenFoodLog = onOpenFoodLog,
         onOpenBody = onOpenBody,
-        patternInsightState = patternInsightState,
-        onRetryPatternInsight = viewModel::retryPatternInsight,
-        targetChangeInsightState = targetChangeInsightState,
-        onRetryTargetChange = viewModel::retryTargetChange,
-        noiseDefuserInsightState = noiseDefuserInsightState,
-        onRetryNoiseDefuser = viewModel::retryNoiseDefuser,
-        crossMetricInsightState = crossMetricInsightState,
-        onRetryCrossMetric = viewModel::retryCrossMetric,
+        coachTodaySignal = coachTodayState.signal,
+        coachTodayText = coachTodayState.displayText,
+        onCoachAction = { type ->
+            when (type) {
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_WEEKLY_REVIEW -> openWeeklyReview()
+                // Weight and steps are both logged in the body check-in.
+                com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT,
+                com.zack.recomptracker.domain.coach.CoachActionType.LOG_STEPS -> onOpenBody()
+                com.zack.recomptracker.domain.coach.CoachActionType.CONFIRM_PLANNED_MEALS,
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_FOOD_LOG -> onOpenFoodLog()
+                com.zack.recomptracker.domain.coach.CoachActionType.OPEN_TRAINING -> onOpenTraining()
+                else -> Unit // unmapped action → no navigation (button not shown for these)
+            }
+        },
+        onDismissCoach = coachTodayViewModel::dismiss,
+        onTrackExperiment = coachTodayViewModel::onTrackExperiment,
+        rebalanceCardState = rebalanceCardState,
+        onRebalanceDismiss = rebalanceViewModel::onDismiss,
+        onRebalanceRibbonClick = { progressDetailOpen = true },
+        rebalanceToday = state.rebalanceToday,
         streaks = streakState.streaks,
+        stepGoal = streakState.stepGoal,
+        activity = streakState.activity,
         onOpenStreaks = onOpenStreaks,
     )
 
@@ -159,6 +211,46 @@ fun HomeDashboardScreen(
             onOpenSettings()
         },
     )
+
+    // Weekly Rebalance offer/progress overlays + the minimized-offer reopen pill, hoisted as
+    // siblings of HomeDashboardContent (like WeeklyBriefingOverlay above). Called UNCONDITIONALLY:
+    // each Dialog early-returns internally on its own face/open gate and the pill gates on `visible`
+    // via its own AnimatedVisibility, so keeping them mounted lets their dismiss/exit animations play
+    // — an outer `if` would cut those animations off (prior-review constraint).
+    RebalanceOfferOverlay(
+        state = rebalanceCardState,
+        minimized = offerMinimized,
+        phrasing = phrasing,
+        onAccept = {
+            val days = rebalanceCardState.ofY
+            rebalanceViewModel.onAccept()
+            scope.launch {
+                toastController.show(
+                    ToastMessage(
+                        text = if (days > 0) {
+                            "Rebalance started — lighter targets for the next $days days"
+                        } else {
+                            "Rebalance started"
+                        },
+                        type = ToastType.Success,
+                    ),
+                )
+            }
+        },
+        onDecline = { rebalanceViewModel.onDecline() },
+        onMinimize = { rebalanceViewModel.onMinimizeOffer() },
+        onCustomizeMode = { rebalanceViewModel.onCustomize(it) },
+        onCustomizeIntensity = { rebalanceViewModel.onCustomizeIntensity(it) },
+    )
+    RebalanceProgressDetailOverlay(
+        open = progressDetailOpen,
+        state = rebalanceCardState,
+        onClose = { progressDetailOpen = false },
+        onCancel = { rebalanceViewModel.onCancelActive() },
+    )
+    // The reopen pill is NOT hoisted here — it renders inside HomeDashboardContent's root Box (the
+    // Weekly Review pill's slot) so it shares the dashboard's liquid-glass backdrop; hoisting it to a
+    // sibling Box outside that scope made its LiquidGlassButton render backdrop-less (near-invisible).
 }
 
 @Composable
@@ -169,19 +261,24 @@ fun HomeDashboardContent(
     modifier: Modifier = Modifier,
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
+    hideWeeklyReviewPill: Boolean = false,
+    onExpandRebalance: () -> Unit = {},
     onOpenSettings: (() -> Unit)? = null,
     onOpenFoodLog: (() -> Unit)? = null,
     onOpenBody: (() -> Unit)? = null,
-    patternInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryPatternInsight: () -> Unit = {},
-    targetChangeInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryTargetChange: () -> Unit = {},
-    noiseDefuserInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryNoiseDefuser: () -> Unit = {},
-    crossMetricInsightState: AiInsightState = AiInsightState.Disabled,
-    onRetryCrossMetric: () -> Unit = {},
     streaks: Streaks = Streaks.EMPTY,
+    stepGoal: Int? = null,
+    activity: ActivityMetrics = ActivityMetrics(),
     onOpenStreaks: (() -> Unit)? = null,
+    coachTodaySignal: com.zack.recomptracker.domain.coach.CoachSignal? = null,
+    coachTodayText: String = "",
+    onCoachAction: (com.zack.recomptracker.domain.coach.CoachActionType) -> Unit = {},
+    onDismissCoach: () -> Unit = {},
+    onTrackExperiment: (com.zack.recomptracker.domain.coach.CoachSignal) -> Unit = {},
+    rebalanceCardState: RebalanceCardUiState = RebalanceCardUiState(),
+    onRebalanceDismiss: () -> Unit = {},
+    onRebalanceRibbonClick: () -> Unit = {},
+    rebalanceToday: com.zack.recomptracker.domain.rebalance.PlanDayInfo? = null,
 ) {
     val accent = LocalAppAccent.current
     val ambientOrbBrush1 = remember(accent.accent) {
@@ -223,56 +320,37 @@ fun HomeDashboardContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (state.patternInsightContext != null &&
-                    (patternInsightState is AiInsightState.Generating ||
-                        patternInsightState is AiInsightState.Ready ||
-                        patternInsightState is AiInsightState.Error)
-                ) {
+                // Today's Coaching — the single staged winner from the proactive spine. Silent
+                // (renders nothing) when no signal clears the bar; CoachTodaySlot early-returns.
+                if (coachTodaySignal != null) {
                     item {
-                        GeneratedInsightCard(
-                            title = "Coach spotted",
-                            state = patternInsightState,
-                            onRetry = onRetryPatternInsight,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.HERO,
-                            evidence = state.patternInsightContext?.fact?.statement,
-                            confidence = com.zack.recomptracker.ui.component.confidenceFrom(
-                                state.patternInsightContext?.fact?.priority ?: 0,
-                            ),
+                        CoachTodaySlot(
+                            signal = coachTodaySignal,
+                            displayText = coachTodayText,
+                            onAction = onCoachAction,
+                            onDismiss = onDismissCoach,
+                            onTrackExperiment = onTrackExperiment,
+                            isActionSupported = { it in SUPPORTED_COACH_ACTIONS },
                         )
                     }
                 }
-                state.crossMetricContext?.let {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Coach noticed a link",
-                            state = crossMetricInsightState,
-                            onRetry = onRetryCrossMetric,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                        )
-                    }
-                }
-                state.targetChangeContext?.let {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Why your target changed",
-                            state = targetChangeInsightState,
-                            onRetry = onRetryTargetChange,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                        )
-                    }
-                }
-                state.noiseDefuserContext?.let {
-                    item {
-                        GeneratedInsightCard(
-                            title = "Scale check",
-                            state = noiseDefuserInsightState,
-                            onRetry = onRetryNoiseDefuser,
-                            variant = com.zack.recomptracker.ui.component.InsightCardVariant.STANDARD,
-                        )
-                    }
+                // Weekly Rebalance NOTE — the only face that still renders inline (spec §3). The
+                // OFFER face is the hoisted popup + reopen pill and the PROGRESS face is the Today-card
+                // ribbon + detail overlay; both live outside this LazyColumn now. RebalanceNoteCard
+                // early-returns for any non-NOTE face, but gating the item here also keeps the item out
+                // of the list entirely so no empty slot spacing is left behind.
+                if (rebalanceCardState.face == RebalanceCardUiState.Face.NOTE) {
+                    item { RebalanceNoteCard(state = rebalanceCardState, onDismiss = onRebalanceDismiss) }
                 }
                 item { MotivationalCard(state.motivationalMessage) }
-                item { TodayCard(state, onClick = onOpenFoodLog) }
+                item {
+                    TodayCard(
+                        state,
+                        onClick = onOpenFoodLog,
+                        rebalanceCardState = rebalanceCardState,
+                        onRebalanceRibbonClick = onRebalanceRibbonClick,
+                    )
+                }
                 item {
                     StatTilesRow(
                         state.adherencePercent,
@@ -281,14 +359,33 @@ fun HomeDashboardContent(
                     )
                 }
                 item { SevenDayChartCard(state) }
+                item {
+                    // Step-ring DISPLAY boost only (spec §6): on an active plan day with extra steps,
+                    // show the boosted goal. Judgment (streaks) stays on the base goal elsewhere —
+                    // this only changes what number the ring itself renders.
+                    val boostedStepGoal = rebalanceToday?.plan
+                        ?.takeIf { it.extraDailySteps > 0 && it.baseStepGoal != null }
+                        ?.let { it.baseStepGoal!! + it.extraDailySteps }
+                        ?: stepGoal
+                    StreakGoalRing(
+                        result = streaks.steps,
+                        type = StreakType.STEPS,
+                        todayValue = state.todaySteps,
+                        goalValue = boostedStepGoal,
+                    )
+                }
+                if (activity.weeklyGymSessionsTarget != null || activity.weeklyTrainingFrequency > 0.0) {
+                    item { TrainingFrequencyTile(activity) }
+                }
                 if (onOpenStreaks != null) {
                     item { StreaksCard(streaks = streaks, onClick = onOpenStreaks) }
                 }
             }
         }
 
-        // Floating wide liquid-glass Weekly Review pill above the nav bar
-        if (onOpenWeeklyReview != null) {
+        // Floating wide liquid-glass Weekly Review pill above the nav bar. Hidden while a minimized
+        // rebalance offer's reopen pill occupies this slot (they never stack).
+        if (onOpenWeeklyReview != null && !hideWeeklyReviewPill) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -298,13 +395,22 @@ fun HomeDashboardContent(
                 contentAlignment = Alignment.Center,
             ) {
                 // Accent glow halo behind the pill — brighter when a fresh review is waiting.
+                // A remembered radial gradient (colour fading to transparent) fakes the soft
+                // edge a blur pass would produce, without an offscreen render each frame. Sized
+                // ~26dp taller than the 48dp pill so the glow spreads beyond it, same as before.
+                val weeklyReviewGlowBrush = remember(accent.accent, showWeeklyReviewBadge) {
+                    Brush.radialGradient(
+                        listOf(
+                            accent.accent.copy(alpha = if (showWeeklyReviewBadge) 0.55f else 0.32f),
+                            Color.Transparent,
+                        ),
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .blur(radius = 26.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                        .clip(RoundedCornerShape(100))
-                        .background(accent.accent.copy(alpha = if (showWeeklyReviewBadge) 0.55f else 0.32f)),
+                        .height(100.dp)
+                        .background(weeklyReviewGlowBrush),
                 )
                 LiquidGlassButton(
                     onClick = onOpenWeeklyReview,
@@ -318,6 +424,19 @@ fun HomeDashboardContent(
                         color = accent.onAccent,
                     )
                 }
+            }
+        }
+
+        // Rebalance reopen pill — occupies the Weekly Review pill's slot (the two never show at once,
+        // see hideWeeklyReviewPill). A plain `if` (not AnimatedVisibility) so the LiquidGlassButton's
+        // backdrop sampling isn't defeated by a graphics layer, and inside this Box so it shares the
+        // dashboard's live LocalBackdrop.
+        if (hideWeeklyReviewPill) {
+            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                RebalanceReopenPill(
+                    stackedAboveWeeklyReview = false,
+                    onExpand = onExpandRebalance,
+                )
             }
         }
     }
@@ -399,7 +518,12 @@ private fun HeaderProfileButton(
 // ── Card 1: TODAY ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun TodayCard(state: DashboardUiState, onClick: (() -> Unit)? = null) {
+private fun TodayCard(
+    state: DashboardUiState,
+    onClick: (() -> Unit)? = null,
+    rebalanceCardState: RebalanceCardUiState = RebalanceCardUiState(),
+    onRebalanceRibbonClick: () -> Unit = {},
+) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val prefs    = state.preferences
@@ -429,6 +553,30 @@ private fun TodayCard(state: DashboardUiState, onClick: (() -> Unit)? = null) {
     FrostedCard(
         modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
     ) {
+        // Weekly Rebalance progress ribbon — rides the Today card's space for an in-progress plan
+        // (spec §3). Wrapped in AnimatedVisibility (not RebalanceRibbon's job) so the fade/expand
+        // enter + fade/shrink exit play across composition; the ribbon has its own inner clickable,
+        // so a tap on it opens the detail overlay while taps elsewhere on the card still open Food Log.
+        val ribbonAnimations = rememberAnimationsEnabled()
+        AnimatedVisibility(
+            visible = rebalanceCardState.face == RebalanceCardUiState.Face.PROGRESS,
+            enter = if (ribbonAnimations) {
+                fadeIn(tween(220)) + expandVertically(tween(220), Alignment.Top)
+            } else {
+                fadeIn(tween(0))
+            },
+            exit = if (ribbonAnimations) {
+                fadeOut(tween(150)) + shrinkVertically(tween(170), Alignment.Top)
+            } else {
+                fadeOut(tween(0))
+            },
+        ) {
+            Column {
+                RebalanceRibbon(rebalanceCardState, onRebalanceRibbonClick)
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+
         // Header row
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -532,6 +680,9 @@ private fun MacroBarItem(
 ) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val fillBrush = remember(accent.accent, accent.accentLight) {
+        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight))
+    }
     val animatedFrac by animateFloatAsState(
         targetValue = fraction,
         animationSpec = ChartDefaults.AnimSpec.progressBar,
@@ -561,9 +712,39 @@ private fun MacroBarItem(
                     .fillMaxWidth(animatedFrac)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight)),
+                        fillBrush,
                         RoundedCornerShape(3.dp),
                     ),
+            )
+        }
+    }
+}
+
+// ── Card: TRAINING FREQUENCY ──────────────────────────────────────────────────
+
+@Composable
+private fun TrainingFrequencyTile(activity: ActivityMetrics) {
+    val appColors = LocalAppColors.current
+    FrostedCard {
+        SectionLabel("Training")
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = String.format(java.util.Locale.US, "%.1f×", activity.weeklyTrainingFrequency),
+                style = AppType.statValue,
+                color = appColors.textPrimary,
+            )
+            val caption = activity.weeklyGymSessionsTarget
+                ?.let { "/ wk · target $it" }
+                ?: "/ wk · last 4 weeks"
+            Text(
+                text = caption,
+                style = AppType.cardSubtitle,
+                color = appColors.textSecondary,
+                modifier = Modifier.padding(bottom = 2.dp),
             )
         }
     }
@@ -782,17 +963,18 @@ private fun MacroChartStat(
 private fun MotivationalCard(message: String) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
+    val backgroundBrush = remember(accent.accentDark) {
+        Brush.linearGradient(
+            colors = listOf(accent.accentDark.copy(alpha = 0.14f), accent.accentDark.copy(alpha = 0.06f)),
+            start = Offset(0f, 0f),
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(accent.accentDark.copy(alpha = 0.14f), accent.accentDark.copy(alpha = 0.06f)),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-                ),
-            )
+            .background(backgroundBrush)
             .border(1.dp, accent.accent.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
@@ -874,13 +1056,7 @@ private fun StatTile(
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
     val appColors = LocalAppColors.current
-    // Key on result.key() so the effect only restarts when verdict/reasons/change differ —
-    // not on every summary text update, which is not part of the dedup logic.
-    LaunchedEffect(state.result.key()) {
-        viewModel.onAiCardVisible(state.result)
-    }
     LazyColumn(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -922,18 +1098,6 @@ fun DashboardScreen(viewModel: DashboardViewModel, onBack: () -> Unit) {
         }
         item {
             VerdictHero(result = state.result)
-        }
-        // Doctrine "stay quiet": hide the AI verdict explanation on a clean on-track HOLD week.
-        if (state.showWeeklyVerdictCard) {
-            item {
-                AiInsightSection(
-                    result = state.result,
-                    aiState = aiState,
-                    onDownload = viewModel::requestModelDownload,
-                    onCancel = viewModel::cancelDownload,
-                    onRetry = viewModel::retryGeneration,
-                )
-            }
         }
         item {
             FrostedCard {
@@ -1035,198 +1199,6 @@ private fun ReasonChip(text: String) {
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(20.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
     )
-}
-
-@Composable
-private fun AiInsightSection(
-    result: AdjustmentResult,
-    aiState: AiInsightState,
-    onDownload: () -> Unit,
-    onCancel: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    val accent = LocalAppAccent.current
-    val appColors = LocalAppColors.current
-    if (result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
-        if (aiState != AiInsightState.Disabled) {
-            Text(
-                text = "AI explanations appear once a weekly verdict is ready.",
-                style = AppType.label,
-                color = appColors.textMuted,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-        }
-        return
-    }
-
-    when (aiState) {
-        AiInsightState.Disabled -> Unit
-
-        AiInsightState.ModelMissing -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Understand the reasoning behind this verdict.",
-                    style = AppType.body,
-                    color = appColors.textMuted,
-                )
-                Text(
-                    text = "Requires a ~2.6 GB download · Wi-Fi recommended",
-                    style = AppType.label,
-                    color = appColors.textMuted,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.material3.Button(onClick = onDownload) {
-                    Text("Download Model")
-                }
-            }
-        }
-
-        is AiInsightState.Downloading -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(10.dp))
-                val progress = aiState.progress
-                if (progress != null) {
-                    Text(
-                        text = "${"%.1f".format(progress * 2.6f)} GB of 2.6 GB",
-                        style = AppType.label,
-                        color = appColors.textMuted,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    Text("Downloading…", style = AppType.label, color = appColors.textMuted)
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
-                Spacer(Modifier.height(8.dp))
-                androidx.compose.material3.TextButton(onClick = onCancel) {
-                    Text("Cancel", style = AppType.label)
-                }
-            }
-        }
-
-        AiInsightState.DownloadFailed -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text("Download failed — check your connection.", style = AppType.body, color = appColors.textMuted)
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.material3.Button(onClick = onDownload) { Text("Retry") }
-            }
-        }
-
-        AiInsightState.ModelVerifying -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                androidx.compose.foundation.layout.Row(
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = accent.inkLight,
-                    )
-                    Text("Verifying download…", style = AppType.body, color = appColors.textMuted)
-                }
-            }
-        }
-
-        AiInsightState.ModelReady,
-        AiInsightState.LoadingModel -> {
-            AiInsightCard(borderMode = AiBorderMode.Preparing) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = accent.inkLight,
-                    )
-                    Text("Preparing model…", style = AppType.body, color = appColors.textMuted)
-                }
-            }
-        }
-
-        is AiInsightState.Generating -> {
-            AiInsightCard(borderMode = AiBorderMode.Generating) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = aiState.partialText,
-                    style = AppType.body,
-                    color = appColors.textPrimary,
-                    lineHeight = 20.sp,
-                )
-            }
-        }
-
-        is AiInsightState.Ready -> {
-            AiInsightCard(borderMode = AiBorderMode.Ready) {
-                AiCardHeader(title = "Why this verdict", showRefresh = true, onRefresh = onRetry)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = aiState.text,
-                    style = AppType.body,
-                    color = appColors.textPrimary,
-                    lineHeight = 20.sp,
-                )
-            }
-        }
-
-        is AiInsightState.Error -> {
-            AiInsightCard(borderMode = AiBorderMode.Static) {
-                AiCardHeader(title = "Why this verdict", showRefresh = false, onRefresh = {})
-                Spacer(Modifier.height(8.dp))
-                Text(aiState.message, style = AppType.body, color = appColors.textMuted)
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.material3.TextButton(onClick = onRetry) { Text("Try again") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AiCardHeader(
-    title: String,
-    showRefresh: Boolean,
-    onRefresh: () -> Unit,
-) {
-    val accent = LocalAppAccent.current
-    val appColors = LocalAppColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title.uppercase(),
-            style = AppType.sectionLabel,
-            color = appColors.textFaint,
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showRefresh) {
-                androidx.compose.material3.IconButton(onClick = onRefresh) {
-                    Text("↺", fontSize = 14.sp, color = accent.inkLight)
-                }
-            }
-            AiBadge()
-        }
-    }
 }
 
 @Composable

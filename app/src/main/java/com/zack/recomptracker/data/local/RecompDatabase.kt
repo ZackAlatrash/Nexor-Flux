@@ -12,10 +12,12 @@ import com.zack.recomptracker.data.local.dao.ExerciseDao
 import com.zack.recomptracker.data.local.dao.MealEntryDao
 import com.zack.recomptracker.data.local.dao.MealSlotDao
 import com.zack.recomptracker.data.local.dao.PerformanceDao
+import com.zack.recomptracker.data.local.dao.PlanVersionDao
 import com.zack.recomptracker.data.local.dao.RecipeDao
 import com.zack.recomptracker.data.local.dao.SavedFoodDao
 import com.zack.recomptracker.data.local.dao.SavedMealDao
 import com.zack.recomptracker.data.local.dao.WeeklyReviewDao
+import com.zack.recomptracker.data.local.dao.UsageEventDao
 import com.zack.recomptracker.data.local.dao.WorkoutDao
 import com.zack.recomptracker.data.local.dao.WorkoutSessionDao
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
@@ -24,6 +26,7 @@ import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
+import com.zack.recomptracker.data.local.entity.PlanVersionEntity
 import com.zack.recomptracker.data.local.entity.PlannedSetEntity
 import com.zack.recomptracker.data.local.entity.RecipeEntity
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
@@ -31,6 +34,7 @@ import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.SavedMealEntity
 import com.zack.recomptracker.data.local.entity.SessionExerciseEntity
 import com.zack.recomptracker.data.local.entity.SessionSetEntity
+import com.zack.recomptracker.data.local.entity.UsageEventEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.local.entity.WorkoutEntity
 import com.zack.recomptracker.data.local.entity.WorkoutExerciseEntity
@@ -55,8 +59,10 @@ import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
         WorkoutSessionEntity::class,
         SessionExerciseEntity::class,
         SessionSetEntity::class,
+        PlanVersionEntity::class,
+        UsageEventEntity::class,
     ],
-    version = 12,
+    version = 15,
     exportSchema = false,
 )
 abstract class RecompDatabase : RoomDatabase() {
@@ -72,6 +78,8 @@ abstract class RecompDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutSessionDao(): WorkoutSessionDao
+    abstract fun planVersionDao(): PlanVersionDao
+    abstract fun usageEventDao(): UsageEventDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -265,6 +273,43 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS plan_versions (" +
+                        "effectiveFrom TEXT PRIMARY KEY NOT NULL, " +
+                        "targetCalories INTEGER NOT NULL, " +
+                        "targetProteinG INTEGER NOT NULL, " +
+                        "targetCarbsG INTEGER NOT NULL, " +
+                        "targetFatG INTEGER NOT NULL, " +
+                        "calorieZoneLowerBound INTEGER NOT NULL, " +
+                        "calorieZoneUpperBound INTEGER NOT NULL, " +
+                        "createdAt TEXT NOT NULL)",
+                )
+            }
+        }
+
+        internal val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Steps provenance: lets a sync know whether a populated value was the user's
+                // manual entry (keep it) or a prior Health Connect read (safe to refresh).
+                db.execSQL("ALTER TABLE daily_logs ADD COLUMN stepsSource TEXT")
+            }
+        }
+
+        internal val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Additive: new local usage-tracking table only. No existing table is touched.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS usage_events (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "timestampEpochMs INTEGER NOT NULL, " +
+                        "type TEXT NOT NULL, " +
+                        "label TEXT)",
+                )
+            }
+        }
+
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -295,7 +340,7 @@ abstract class RecompDatabase : RoomDatabase() {
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
             .build()
     }
 }

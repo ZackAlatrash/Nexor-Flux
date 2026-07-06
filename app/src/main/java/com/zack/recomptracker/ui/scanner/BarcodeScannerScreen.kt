@@ -28,13 +28,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
-import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
 import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -49,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -59,15 +55,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.zack.recomptracker.data.local.entity.SavedFoodEntity
-import com.zack.recomptracker.ui.component.AmountPreviewStat
+import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.ui.component.BackButton
+import com.zack.recomptracker.ui.component.FoodAmountPanel
 import com.zack.recomptracker.ui.component.GlassBottomSheet
-import com.zack.recomptracker.ui.component.GlassInputField
-import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.MessageKind
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.theme.AppType
-import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -77,10 +71,15 @@ fun BarcodeScannerScreen(
     slotId: Long?,
     slotName: String,
     pickerMode: Boolean = false,
+    logDate: String = "",
     onFoodPicked: (String) -> Unit = {},
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(slotId, slotName, pickerMode) { viewModel.init(slotId, slotName, pickerMode) }
+    LaunchedEffect(slotId, slotName, pickerMode, logDate) {
+        val date = logDate.takeIf { it.isNotEmpty() }
+            ?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+        viewModel.init(slotId, slotName, pickerMode, date)
+    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.scanState) {
@@ -134,6 +133,7 @@ fun BarcodeScannerScreen(
                 ) {
                     Text(
                         "Camera permission is required to scan barcodes.",
+                        style = AppType.body,
                         color = Color.White,
                     )
                     LiquidPrimaryButton(
@@ -192,7 +192,7 @@ fun BarcodeScannerScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         CircularProgressIndicator(color = Color.White)
-                        Text("Looking up product…", color = Color.White)
+                        Text("Looking up product…", style = AppType.body, color = Color.White)
                     }
                 }
             }
@@ -219,6 +219,8 @@ fun BarcodeScannerScreen(
                         pickerMode = pickerMode,
                         onAmountChanged = viewModel::onAmountChanged,
                         onLogModeChanged = viewModel::onLogModeChanged,
+                        onStepGrams = viewModel::stepGrams,
+                        onStepServings = viewModel::stepServings,
                         onLogAndSave = viewModel::confirmLogAndSave,
                         onLogOnly = viewModel::confirmLog,
                         onCancel = viewModel::resetScan,
@@ -287,57 +289,44 @@ private fun ProductFoundSheet(
     pickerMode: Boolean = false,
     onAmountChanged: (String) -> Unit,
     onLogModeChanged: (LogMode) -> Unit,
+    onStepGrams: (Int) -> Unit,
+    onStepServings: (Double) -> Unit,
     onLogAndSave: () -> Unit,
     onLogOnly: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val product = state.product
-    val appColors = LocalAppColors.current
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    val servingMode = state.logMode == LogMode.SERVING && product.servingGrams != null
+    val subtitle = if (product.servingGrams != null) {
+        val servingLabel = product.servingName ?: "serving"
+        "1 $servingLabel = ${product.servingGrams.toInt()} g · ${product.caloriesPer100g} kcal / 100 g"
+    } else {
+        "${product.caloriesPer100g} kcal / 100 g"
+    }
+    FoodAmountPanel(
+        title = product.name,
+        subtitle = subtitle,
+        showServingToggle = state.canUseServings,
+        servingsSelected = servingMode,
+        onModeSelected = { servings -> onLogModeChanged(if (servings) LogMode.SERVING else LogMode.GRAMS) },
+        amountValue = state.amountInput,
+        onAmountChange = onAmountChanged,
+        onMinus = { if (servingMode) onStepServings(-FoodScaling.SERVING_STEP) else onStepGrams(-10) },
+        onPlus = { if (servingMode) onStepServings(FoodScaling.SERVING_STEP) else onStepGrams(10) },
+        amountSuffix = if (servingMode) {
+            state.resolvedGrams?.let { "servings · ${it.toInt()} g" } ?: "servings"
+        } else {
+            "g"
+        },
+        preview = state.previewMacros,
+        message = message,
+        messageKind = MessageKind.ERROR,
+        warning = if (!product.hasCompleteData) {
+            "Warning: some nutritional data is missing — check values before logging."
+        } else {
+            null
+        },
     ) {
-        Text(product.name, style = AppType.screenTitleCompact, color = appColors.textPrimary)
-        Text("Per 100 g", style = AppType.cardSubtitle, color = appColors.textMuted)
-        if (!product.hasCompleteData) {
-            Text(
-                "Warning: some nutritional data is missing — check values before logging.",
-                color = MaterialTheme.colorScheme.error,
-                style = AppType.cardSubtitle,
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AmountPreviewStat("kcal", product.caloriesPer100g.toString(), Modifier.weight(1f))
-            AmountPreviewStat("P", "${product.proteinPer100g}", Modifier.weight(1f))
-            AmountPreviewStat("C", "${product.carbsPer100g}", Modifier.weight(1f))
-            AmountPreviewStat("F", "${product.fatPer100g}", Modifier.weight(1f))
-        }
-        val servingMode = state.logMode == LogMode.SERVING && product.servingGrams != null
-        if (product.servingGrams != null) {
-            GlassSegmentedToggle(
-                options = listOf("Grams", "Serving"),
-                selectedIndex = if (state.logMode == LogMode.GRAMS) 0 else 1,
-                onSelect = { onLogModeChanged(if (it == 0) LogMode.GRAMS else LogMode.SERVING) },
-            )
-        }
-        GlassInputField(
-            label = if (servingMode) "Servings" else "Amount",
-            value = state.amountInput,
-            onValueChange = onAmountChanged,
-            unit = if (servingMode) null else "g",
-            keyboardType = KeyboardType.Number,
-        )
-        if (servingMode) {
-            val gramsInt = product.servingGrams.toInt()
-            Text(
-                "1 serving = ${gramsInt}g" + (product.servingName?.let { " · $it" } ?: ""),
-                style = AppType.metaLabel,
-                color = appColors.textMuted,
-            )
-        }
-        MessageText(message, MessageKind.ERROR)
         if (pickerMode) {
             LiquidPrimaryButton(text = "Add to Recipe", onClick = onLogOnly)
         } else {

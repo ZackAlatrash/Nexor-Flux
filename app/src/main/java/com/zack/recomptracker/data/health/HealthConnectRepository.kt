@@ -10,11 +10,15 @@ import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.Period
 import java.time.ZoneId
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -105,12 +109,46 @@ class HealthConnectRepository(context: Context) {
         foods
     }
 
-    private suspend fun readSteps(start: Instant, end: Instant): Int? {
-        val response = client.readRecords(
-            ReadRecordsRequest(StepsRecord::class, TimeRangeFilter.between(start, end))
+    /**
+     * Total steps per calendar day over the trailing [days] days (inclusive of today), grouped by
+     * the device's local date. Used to backfill streaks/trends on first connect so they reflect
+     * existing Health Connect history instead of starting from a single data point, and for the
+     * steps-only foreground refresh (days = 1). Aggregated by Health Connect (see [readSteps] for
+     * why raw-record summing is wrong). Days with no data are simply absent from the map. Returns
+     * an empty map on any failure.
+     */
+    suspend fun readStepsHistory(days: Long = 30): Map<LocalDate, Int> = runCatching {
+        val zone = ZoneId.systemDefault()
+        val start: LocalDateTime = LocalDate.now(zone).minusDays(days - 1).atStartOfDay()
+        val end: LocalDateTime = LocalDateTime.now(zone)
+        val response = client.aggregateGroupByPeriod(
+            AggregateGroupByPeriodRequest(
+                metrics = setOf(StepsRecord.COUNT_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, end),
+                timeRangeSlicer = Period.ofDays(1),
+            ),
         )
-        return if (response.records.isEmpty()) null
-        else response.records.sumOf { it.count }.toInt()
+        response.mapNotNull { bucket ->
+            val steps = bucket.result[StepsRecord.COUNT_TOTAL] ?: return@mapNotNull null
+            bucket.startTime.toLocalDate() to steps.toInt()
+        }.toMap()
+    }.getOrDefault(emptyMap())
+
+    /**
+     * Steps via Health Connect's aggregate API, NOT a raw-record sum. Multiple sources (Samsung
+     * Health / watch, Google's step tracking, the phone's own counter) each write their own
+     * StepsRecords for the same walk; summing raw records counts every duplicate, which showed
+     * 17k steps on a 4k day. The aggregate deduplicates across data origins. Null when Health
+     * Connect has no step data in the window.
+     */
+    private suspend fun readSteps(start: Instant, end: Instant): Int? {
+        val response = client.aggregate(
+            AggregateRequest(
+                metrics = setOf(StepsRecord.COUNT_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, end),
+            ),
+        )
+        return response[StepsRecord.COUNT_TOTAL]?.toInt()
     }
 
     private suspend fun readLatestWeight(start: Instant, end: Instant): Double? {

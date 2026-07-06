@@ -89,6 +89,7 @@ fun ProfileScreen(
     val heightInput by viewModel.heightInput.collectAsStateWithLifecycle()
     val stepGoalInput by viewModel.stepGoalInput.collectAsStateWithLifecycle()
     val currentWeightKg by viewModel.currentWeightKg.collectAsStateWithLifecycle()
+    val averageDailySteps7 by viewModel.averageDailySteps7.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
@@ -238,6 +239,14 @@ fun ProfileScreen(
                         keyboardType = KeyboardType.Number,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    averageDailySteps7?.let { avg ->
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "7-day average: ${String.format(java.util.Locale.US, "%,d", avg)} steps",
+                            style = AppType.metaLabel,
+                            color = appColors.textMuted,
+                        )
+                    }
                 }
             }
 

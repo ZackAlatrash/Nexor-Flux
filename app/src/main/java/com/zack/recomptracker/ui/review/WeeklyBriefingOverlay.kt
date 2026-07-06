@@ -12,21 +12,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,8 +33,8 @@ import com.zack.recomptracker.ai.WeeklyBriefing
 import com.zack.recomptracker.domain.review.SignalDirection
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiDialogCard
 import com.zack.recomptracker.ui.component.SectionLabel
-import com.zack.recomptracker.ui.component.aiEdgeGlow
 import androidx.compose.material3.MaterialTheme
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
@@ -104,39 +99,15 @@ fun WeeklyBriefingOverlay(
 }
 
 /** Backdrop-free AI glass card — a dark translucent surface with a top sheen, hairline edge, and
- *  the shared edge glow. Renders correctly inside a Dialog window (no backdrop layer). */
+ *  the shared edge glow. Renders correctly inside a Dialog window (no backdrop layer). Delegates to
+ *  the shared [AiDialogCard] recipe so this stays byte-identical to other Dialog-hosted AI surfaces. */
 @Composable
 private fun BriefingGlassCard(
     borderMode: AiBorderMode,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val appColors = LocalAppColors.current
-    val shape = RoundedCornerShape(ModalCorner)
-    // Neutral dark frosted surface (no accent/purple tint). Backdrop-free, so this is a translucent
-    // fill rather than a live-glass refraction; a top sheen + hairline + inner glow give it depth.
-    val surface = if (appColors.isDark) Color(0xFF101014).copy(alpha = 0.92f) else Color(0xFFF6F6F8).copy(alpha = 0.95f)
-    val hairline = Color.White.copy(alpha = if (appColors.isDark) 0.16f else 0.24f)
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(surface)
-            .drawBehind {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = 0.12f),
-                        0.14f to Color.Transparent,
-                    ),
-                )
-            }
-            .border(0.5.dp, hairline, shape)
-            .aiEdgeGlow(borderMode, ModalCorner)
-            .heightIn(max = 640.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        content = content,
-    )
+    AiDialogCard(borderMode = borderMode, modifier = modifier, cornerRadius = ModalCorner, content = content)
 }
 
 @Composable
@@ -250,6 +221,18 @@ private fun ColumnScope.ReadyBody(
         Text(briefing.narrative, style = AppType.body, color = appColors.textPrimary.copy(alpha = 0.90f), lineHeight = 20.sp)
     }
 
+    // Weekly Pattern Spotlight — deterministic pattern facts relocated from the dashboard card.
+    if (briefing.patternSpotlight.isNotEmpty()) {
+        Spacer(Modifier.height(16.dp))
+        BriefingDivider()
+        Spacer(Modifier.height(14.dp))
+        SectionLabel(text = "Weekly pattern spotlight")
+        Spacer(Modifier.height(8.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            briefing.patternSpotlight.forEach { PatternSpotlightRow(it) }
+        }
+    }
+
     // Signals
     if (briefing.signals.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
@@ -310,6 +293,26 @@ private fun ColumnScope.ReadyBody(
 }
 
 @Composable
+private fun PatternSpotlightRow(statement: String) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            text = "•",
+            style = AppType.body.copy(fontWeight = FontWeight.Bold),
+            color = accent.inkLight,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = statement,
+            style = AppType.body,
+            color = appColors.textPrimary.copy(alpha = 0.90f),
+            lineHeight = 19.sp,
+        )
+    }
+}
+
+@Composable
 private fun SignalRow(signal: SignalLine) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
@@ -366,7 +369,7 @@ private fun ApplyConfirm(target: Int, onConfirm: () -> Unit, onCancel: () -> Uni
 // ── Buttons & primitives (backdrop-free, Dialog-safe) ─────────────────────────
 
 @Composable
-private fun BriefingPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun BriefingPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     Box(
@@ -383,7 +386,7 @@ private fun BriefingPrimaryButton(text: String, onClick: () -> Unit, modifier: M
 }
 
 @Composable
-private fun BriefingGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun BriefingGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val appColors = LocalAppColors.current
     Box(
         modifier = modifier
@@ -396,7 +399,7 @@ private fun BriefingGhostButton(text: String, onClick: () -> Unit, modifier: Mod
 }
 
 @Composable
-private fun ConfirmChip(text: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ConfirmChip(text: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))

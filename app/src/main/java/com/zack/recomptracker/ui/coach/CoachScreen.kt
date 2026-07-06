@@ -66,7 +66,9 @@ import com.zack.recomptracker.ai.ChatMessage
 import com.zack.recomptracker.ai.CoachState
 import com.zack.recomptracker.ai.PendingCoachAction
 import com.zack.recomptracker.ai.Role
+import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiInsightCard
@@ -85,6 +87,9 @@ private val suggestions = listOf(
 
 @Composable
 fun CoachScreen(viewModel: CoachViewModel) {
+    // Local usage tracking: one COACH_OPENED per time the coach chat screen enters composition.
+    val usageTracker = LocalAppContainer.current.usageTracker
+    LaunchedEffect(Unit) { usageTracker.track(UsageEvents.COACH_OPENED) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -377,8 +382,18 @@ private fun ChatContent(
             bottom = 8.dp,
         ),
     ) {
-        items(history) { message ->
-            ChatBubble(message = message)
+        items(
+            items = history,
+            // Stable per-message id (assigned at construction, never reused) so scrolling only
+            // recomposes changed rows instead of re-recording every bubble. contentType lets the
+            // list reuse layout nodes within a role (user Surface vs. assistant glass card).
+            key = { it.id },
+            contentType = { it.role },
+        ) { message ->
+            // Settled history bubbles use the cheap `lite` glass look-alike: no per-frame
+            // drawBackdrop offscreen layer for the ~N assistant bubbles scrolling behind the
+            // focal live message. The live streaming item below keeps full glass (lite = false).
+            ChatBubble(message = message, lite = true)
         }
 
         // Single live in-progress item: prefers streaming response, falls back to thinking.
@@ -565,7 +580,7 @@ private fun ThinkingProcess(steps: List<String>) {
 }
 
 @Composable
-private fun ChatBubble(message: ChatMessage) {
+private fun ChatBubble(message: ChatMessage, lite: Boolean = false) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val isUser = message.role == Role.User
@@ -597,6 +612,7 @@ private fun ChatBubble(message: ChatMessage) {
             AiInsightCard(
                 borderMode = AiBorderMode.Static,
                 modifier = Modifier.widthIn(max = 300.dp),
+                lite = lite,
             ) {
                 MarkdownText(
                     text = message.text,

@@ -78,6 +78,20 @@ class LogRepository(
     }
 
     /**
+     * One-shot read of the eaten (non-planned) meal-entry COUNT per day across a date range — the
+     * weekly-rebalance engine's logged-day signal (a day is "logged" iff it has ≥1 meal entry, spec
+     * §5.1). Mirrors [getWeekCalories]'s eaten-only convention: planned entries are excluded, so a day
+     * holding only unconfirmed plans reads as unlogged (matching how its surplus is computed).
+     */
+    suspend fun getWeekMealCounts(start: LocalDate, end: LocalDate): Map<LocalDate, Int> {
+        val entries = mealEntryDao.getBetween(start.toString(), end.toString())
+        return entries
+            .filterNot { it.planned }
+            .groupBy { LocalDate.parse(it.date) }
+            .mapValues { (_, dayEntries) -> dayEntries.size }
+    }
+
+    /**
      * One-shot read of per-day macro totals across a date range — used by the AI coach's
      * get_weekly_trends tool so it can answer protein/carb/fat questions without 7 separate
      * get_today_summary calls.
@@ -100,13 +114,16 @@ class LogRepository(
     fun observeWeeklyReviews(): Flow<List<WeeklyReviewEntity>> = weeklyReviewDao.observeAll()
 
     suspend fun saveDailyMetrics(input: DailyMetricsInput) {
+        val existing = dailyLogDao.getByDate(input.date.toString())
+        val steps = resolveSavedSteps(input.stepsEdited, input.steps, existing?.steps, existing?.stepsSource)
         dailyLogDao.upsert(
             DailyLogEntity(
                 date = input.date.toString(),
                 bodyWeightKg = input.bodyWeightKg,
                 waistCm = input.waistCm,
                 waistSkinfoldMm = input.waistSkinfoldMm,
-                steps = input.steps,
+                steps = steps.steps,
+                stepsSource = steps.source,
                 sleepHours = input.sleepHours,
                 energyScore = input.energyScore?.coerceIn(1, 10),
                 hungerScore = input.hungerScore?.coerceIn(1, 10),
@@ -337,12 +354,30 @@ class LogRepository(
     suspend fun applyHealthConnectSync(date: LocalDate, result: HealthConnectReadResult) {
         if (result.steps == null && result.weightKg == null && result.sleepHours == null) return
         val existing = dailyLogDao.getByDate(date.toString())
-        val updated = (existing ?: DailyLogEntity(date = date.toString())).copy(
-            steps = existing?.steps ?: result.steps,
+        val base = existing ?: DailyLogEntity(date = date.toString())
+        val steps = reconcileSteps(base.steps, base.stepsSource, result.steps)
+        val updated = base.copy(
+            steps = steps.steps,
+            stepsSource = steps.source,
             bodyWeightKg = existing?.bodyWeightKg ?: result.weightKg,
             sleepHours = existing?.sleepHours ?: result.sleepHours,
         )
         if (updated != existing) dailyLogDao.upsert(updated)
+    }
+
+    /**
+     * Backfills steps for many past days from a Health Connect history read. Each day is reconciled
+     * by provenance ([reconcileSteps]) so a manually-entered day is never overwritten. Only changed
+     * rows are written.
+     */
+    suspend fun applyHealthConnectStepsHistory(stepsByDate: Map<LocalDate, Int>) {
+        stepsByDate.forEach { (date, steps) ->
+            val existing = dailyLogDao.getByDate(date.toString())
+            val base = existing ?: DailyLogEntity(date = date.toString())
+            val reconciled = reconcileSteps(base.steps, base.stepsSource, steps)
+            val updated = base.copy(steps = reconciled.steps, stepsSource = reconciled.source)
+            if (updated != existing) dailyLogDao.upsert(updated)
+        }
     }
 }
 

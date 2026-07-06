@@ -14,23 +14,23 @@ class AdherenceCalculatorTest {
 
     @Test
     fun calculateReturnsZeroWhenNoLoggedDays() {
-        val days = listOf(NutritionDay(start, calories = 0))
-        assertEquals(0.0, calculator.calculate(days, targetCalories = 2550), 0.001)
+        val days = listOf(NutritionDay(start, calories = 0, targetCalories = 2550))
+        assertEquals(0.0, calculator.calculate(days), 0.001)
     }
 
     @Test
     fun calculateReturnsZeroWhenTargetInvalid() {
-        val days = listOf(NutritionDay(start, calories = 2550))
-        assertEquals(0.0, calculator.calculate(days, targetCalories = 0), 0.001)
+        val days = listOf(NutritionDay(start, calories = 2550, targetCalories = 0))
+        assertEquals(0.0, calculator.calculate(days), 0.001)
     }
 
     @Test
     fun calculateIsOneHundredWhenAllLoggedDaysOnTarget() {
         val days = listOf(
-            NutritionDay(start, calories = 2550),
-            NutritionDay(start.plusDays(1), calories = 2550),
+            NutritionDay(start, calories = 2550, targetCalories = 2550),
+            NutritionDay(start.plusDays(1), calories = 2550, targetCalories = 2550),
         )
-        assertEquals(100.0, calculator.calculate(days, targetCalories = 2550), 0.001)
+        assertEquals(100.0, calculator.calculate(days), 0.001)
     }
 
     @Test
@@ -39,21 +39,21 @@ class AdherenceCalculatorTest {
         // Day 2: 20% over (3060) -> 80
         // Day 3: not logged -> excluded from the average entirely
         val days = listOf(
-            NutritionDay(start, calories = 2550),
-            NutritionDay(start.plusDays(1), calories = 3060),
-            NutritionDay(start.plusDays(2), calories = 0),
+            NutritionDay(start, calories = 2550, targetCalories = 2550),
+            NutritionDay(start.plusDays(1), calories = 3060, targetCalories = 2550),
+            NutritionDay(start.plusDays(2), calories = 0, targetCalories = 2550),
         )
         // (100 + 80) / 2 logged days = 90
-        assertEquals(90.0, calculator.calculate(days, targetCalories = 2550), 0.001)
+        assertEquals(90.0, calculator.calculate(days), 0.001)
     }
 
     @Test
     fun calculateDeDuplicatesByDate() {
         val days = listOf(
-            NutritionDay(start, calories = 2550),
-            NutritionDay(start, calories = 0),
+            NutritionDay(start, calories = 2550, targetCalories = 2550),
+            NutritionDay(start, calories = 0, targetCalories = 2550),
         )
-        assertEquals(100.0, calculator.calculate(days, targetCalories = 2550), 0.001)
+        assertEquals(100.0, calculator.calculate(days), 0.001)
     }
 
     // --- loggingConsistency: logged days / expected days ---
@@ -66,8 +66,8 @@ class AdherenceCalculatorTest {
     @Test
     fun loggingConsistencyCountsLoggedDaysOverExpected() {
         val days = listOf(
-            NutritionDay(start, calories = 2550),
-            NutritionDay(start.plusDays(1), calories = 2500),
+            NutritionDay(start, calories = 2550, targetCalories = 2550),
+            NutritionDay(start.plusDays(1), calories = 2500, targetCalories = 2550),
         )
         assertEquals(28.571, calculator.loggingConsistency(days, expectedDays = 7), 0.01)
     }
@@ -75,8 +75,8 @@ class AdherenceCalculatorTest {
     @Test
     fun loggingConsistencyIgnoresZeroCalorieDays() {
         val days = listOf(
-            NutritionDay(start, calories = 2550),
-            NutritionDay(start.plusDays(1), calories = 0),
+            NutritionDay(start, calories = 2550, targetCalories = 2550),
+            NutritionDay(start.plusDays(1), calories = 0, targetCalories = 2550),
         )
         assertEquals(50.0, calculator.loggingConsistency(days, expectedDays = 2), 0.001)
     }

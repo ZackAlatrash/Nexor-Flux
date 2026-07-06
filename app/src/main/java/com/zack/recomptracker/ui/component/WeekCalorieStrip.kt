@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zack.recomptracker.data.repository.DayCalorieSummary
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.LocalDate
@@ -47,14 +48,15 @@ import java.util.Locale
 
 private val STRIP_BAR_HEIGHT = 60.dp
 
+// Dash pattern for the target line — constant pixel lengths, no density dependency, so it's
+// built once per process instead of once per drawBehind pass.
+private val TargetLineDashEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
+
 @Composable
 fun WeekCalorieStrip(
     weekData: List<DayCalorieSummary>,
     selectedDate: LocalDate,
     today: LocalDate,
-    targetCalories: Int,
-    targetLow: Int,
-    targetHigh: Int,
     onDaySelected: (LocalDate) -> Unit,
     onTodayClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -63,17 +65,25 @@ fun WeekCalorieStrip(
 
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
-    val scaleMax = (targetHigh * 1.3f).toInt().coerceAtLeast(1)
-    val zoneLowFrac   = (targetLow.toFloat()     / scaleMax).coerceIn(0f, 1f)
-    val zoneHighFrac  = (targetHigh.toFloat()    / scaleMax).coerceIn(0f, 1f)
-    val targetFrac    = (targetCalories.toFloat() / scaleMax).coerceIn(0f, 1f)
+
+    // Shared vertical scale so bars stay visually comparable across the week,
+    // derived from the highest zone upper bound resolved for any day.
+    val maxZoneHigh = weekData.maxOf { it.zoneUpperBound }
+    val scaleMax = (maxZoneHigh * 1.3f).toInt().coerceAtLeast(1)
+
+    // The dashed target line + zone band overlay follow the currently-viewed day's plan.
+    val viewed = weekData.firstOrNull { it.date == selectedDate } ?: weekData.last()
+    val hasZone = viewed.zoneLowerBound > 0
+    val zoneLowFrac   = (viewed.zoneLowerBound.toFloat()  / scaleMax).coerceIn(0f, 1f)
+    val zoneHighFrac  = (viewed.zoneUpperBound.toFloat()  / scaleMax).coerceIn(0f, 1f)
+    val targetFrac    = (viewed.targetCalories.toFloat()  / scaleMax).coerceIn(0f, 1f)
 
     val yTargetDp = STRIP_BAR_HEIGHT * (1f - targetFrac)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (appColors.isDark) Color(0x0D000000) else appColors.cardSurface, RoundedCornerShape(14.dp))
+            .background(appColors.cardSurface, RoundedCornerShape(14.dp))
             .border(1.dp, appColors.cardBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -89,7 +99,7 @@ fun WeekCalorieStrip(
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .drawBehind {
-                        val dash = PathEffect.dashPathEffect(floatArrayOf(4f, 3f))
+                        if (!hasZone) return@drawBehind
                         val labelGap = 32.dp.toPx()
                         val yHigh   = size.height * (1f - zoneHighFrac)
                         val yLow    = size.height * (1f - zoneLowFrac)
@@ -108,7 +118,7 @@ fun WeekCalorieStrip(
                             start       = Offset(0f, yTarget),
                             end         = Offset(size.width - labelGap, yTarget),
                             strokeWidth = 1.dp.toPx(),
-                            pathEffect  = dash,
+                            pathEffect  = TargetLineDashEffect,
                         )
                     },
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -119,8 +129,6 @@ fun WeekCalorieStrip(
                         summary    = summary,
                         isSelected = summary.date == selectedDate,
                         scaleMax   = scaleMax,
-                        targetLow  = targetLow,
-                        targetHigh = targetHigh,
                         today      = today,
                         onSelected = { onDaySelected(summary.date) },
                         modifier   = Modifier.weight(1f),
@@ -129,31 +137,36 @@ fun WeekCalorieStrip(
             }
 
             // Single calorie target label, pinned to the right edge of the target line
-            Text(
-                text = "$targetCalories",
-                fontSize = 7.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = accent.inkBase.copy(alpha = 0.50f),
-                textAlign = TextAlign.End,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(y = yTargetDp - 9.dp),
-            )
+            if (hasZone) {
+                Text(
+                    text = "${viewed.targetCalories}",
+                    fontSize = 7.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = accent.inkBase.copy(alpha = 0.50f),
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(y = yTargetDp - 9.dp),
+                )
+            }
         }
 
-        // Day-of-week labels
+        // Day-of-week labels — computed once per week/locale instead of 7x per recomposition.
+        val dayLabels = remember(weekData, Locale.getDefault()) {
+            weekData.map { summary ->
+                summary.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
+            }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            weekData.forEach { summary ->
+            weekData.forEachIndexed { index, summary ->
                 val sel = summary.date == selectedDate
                 Text(
-                    text = summary.date.dayOfWeek
-                        .getDisplayName(TextStyle.SHORT, Locale.getDefault())
-                        .take(2),
+                    text = dayLabels[index],
                     fontSize = if (sel) 9.sp else 8.sp,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                     color = if (sel) accent.inkLight else appColors.textDim,
@@ -185,8 +198,7 @@ fun WeekCalorieStrip(
             ) {
                 Text(
                     text = "Today",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = AppType.label.copy(fontWeight = FontWeight.SemiBold),
                     color = accent.inkLight,
                 )
             }
@@ -199,8 +211,6 @@ private fun WeekBarItem(
     summary: DayCalorieSummary,
     isSelected: Boolean,
     scaleMax: Int,
-    targetLow: Int,
-    targetHigh: Int,
     today: LocalDate,
     onSelected: () -> Unit,
     modifier: Modifier = Modifier,
@@ -211,11 +221,16 @@ private fun WeekBarItem(
     val targetFrac = if (empty) 0.04f else (summary.calories.toFloat() / scaleMax).coerceIn(0f, 1f)
     val animFrac by animateFloatAsState(targetFrac, tween(400), label = "bar_${summary.date}")
 
-    val isPastMissed = !empty && summary.date < today && summary.calories < targetLow
+    // Per-day zone — judge each bar against the plan that was in effect on its own date.
+    val hasZone = summary.zoneLowerBound > 0
+    val targetLow = summary.zoneLowerBound
+    val targetHigh = summary.zoneUpperBound
+    val isPastMissed = !empty && hasZone && summary.date < today && summary.calories < targetLow
 
     val barColor = when {
         empty           -> if (isSelected) appColors.textPrimary.copy(alpha = 0.18f)
                           else appColors.textPrimary.copy(alpha = 0.10f)
+        !hasZone        -> accent.accentLighter.copy(alpha = 0.75f)
         summary.calories in targetLow..targetHigh -> accent.accentLight
         summary.calories > targetHigh             -> Color(0xFFF97316)
         isPastMissed    -> if (appColors.isDark) Color(0xFF7F1D1D)

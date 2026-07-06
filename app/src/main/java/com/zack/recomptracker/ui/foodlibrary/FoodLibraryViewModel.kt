@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -89,6 +91,17 @@ data class FoodLibraryUiState(
     val filteredFoods: List<FoodLibraryItem> = emptyList(),
     val filteredMeals: List<SavedMealEntity> = emptyList(),
     val recentFoods: List<SavedFoodEntity> = emptyList(),
+    // ── Meal impact preview (deterministic; today-only) ───────────────────────
+    // Today's eaten totals + plan targets, snapshotted for the amount sheet's impact strip.
+    // `impactEligible` is the day gate: only true when the viewed day is today (past/future
+    // days and edits still project onto *today's* remaining plan would be misleading, so we hide).
+    val impactEligible: Boolean = false,
+    val eatenCalories: Int = 0,
+    val eatenProteinG: Double = 0.0,
+    val eatenCarbsG: Double = 0.0,
+    val targetCalories: Int = 0,
+    val targetProteinG: Int = 0,
+    val targetCarbsG: Int = 0,
 ) {
     val canUseServings: Boolean
         get() = (pendingFood?.householdServingGrams ?: 0.0) >= 1.0 &&
@@ -118,6 +131,28 @@ data class FoodLibraryUiState(
             return FoodScaling.scale(
                 FoodMacros(food.calories, food.proteinG, food.carbsG, food.fatG),
                 grams,
+            )
+        }
+
+    /**
+     * Deterministic meal-impact preview for the pending food at the current amount, or null
+     * (⇒ hide the strip) when the viewed day isn't today, targets are absent, or the amount is
+     * invalid. Pure arithmetic via [MealImpact] — no AI.
+     */
+    val mealImpact: com.zack.recomptracker.domain.food.MealImpact.Result?
+        get() {
+            if (!impactEligible) return null
+            val preview = previewMacros ?: return null
+            return com.zack.recomptracker.domain.food.MealImpact.compute(
+                eatenCalories = eatenCalories,
+                eatenProtein = eatenProteinG,
+                eatenCarbs = eatenCarbsG,
+                targetCalories = targetCalories,
+                targetProtein = targetProteinG,
+                targetCarbs = targetCarbsG,
+                addCalories = preview.calories,
+                addProtein = preview.proteinG,
+                addCarbs = preview.carbsG,
             )
         }
 
@@ -229,6 +264,10 @@ class FoodLibraryViewModel(
     private val foodCatalogRepository: FoodCatalogRepository,
     private val barcodeRepository: com.zack.recomptracker.data.repository.BarcodeRepository,
     private val recipeRepository: RecipeRepository,
+    // Off-main dispatcher for the library filtering (withComputedFields(): fuzzy filters over the
+    // personal + NEVO catalog on every data emission). The collectors below run on it so the
+    // filter work stays off the main thread. Injectable for tests; default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FoodLibraryUiState())
@@ -266,7 +305,10 @@ class FoodLibraryViewModel(
         if (initialized) return
         initialized = true
         val today = dateProvider.today()
-        viewModelScope.launch {
+        // Run the filtering collectors off the main thread — withComputedFields() filters the
+        // personal + catalog food lists on every emission. _uiState is a MutableStateFlow, so
+        // updating it from computeDispatcher is safe.
+        viewModelScope.launch(computeDispatcher) {
             combine(
                 logRepository.observeSavedFoods(),
                 foodCatalogRepository.observeCatalogFoods(),
@@ -279,25 +321,35 @@ class FoodLibraryViewModel(
                     val catalogFoods = catalogFoods
                     val meals = meals
                     val prefs = prefs
-                    val eatenCalories = day.totals.calories
+                    val totals = day.totals
                 }
             }.collect { data ->
+                // Meal-impact strip is today-only: the snapshot observes today's eaten totals,
+                // so it's meaningful only when the viewed log date is today.
+                val viewingToday = logDate == today
                 _uiState.update { current ->
                     current.copy(
                         allFoods = data.foods,
                         allCatalogFoods = data.catalogFoods,
                         allMeals = data.meals,
-                        remainingCalories = (data.prefs.calorieZoneLowerBound - data.eatenCalories).coerceAtLeast(0),
+                        remainingCalories = (data.prefs.calorieZoneLowerBound - data.totals.calories).coerceAtLeast(0),
+                        impactEligible = viewingToday && !current.pickerMode,
+                        eatenCalories = data.totals.calories,
+                        eatenProteinG = data.totals.proteinG,
+                        eatenCarbsG = data.totals.carbsG,
+                        targetCalories = data.prefs.targetCalories,
+                        targetProteinG = data.prefs.targetProteinG,
+                        targetCarbsG = data.prefs.targetCarbsG,
                     ).withComputedFields()
                 }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(computeDispatcher) {
             logRepository.observeRecentFoods().collect { recents ->
                 _uiState.update { it.copy(recentEntries = recents).withComputedFields() }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(computeDispatcher) {
             recipeRepository.observeAll().collect { recipes ->
                 _uiState.update { it.copy(allRecipes = recipes).withComputedFields() }
             }

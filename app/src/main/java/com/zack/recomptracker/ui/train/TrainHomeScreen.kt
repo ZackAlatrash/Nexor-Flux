@@ -1,5 +1,8 @@
 package com.zack.recomptracker.ui.train
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,21 +32,22 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -55,13 +59,22 @@ import com.zack.recomptracker.ui.LocalAppContainer
 import com.zack.recomptracker.ui.streak.StreakHeroBanner
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.train.component.MuscleGroupIcon
+import com.zack.recomptracker.ui.train.component.MuscleRecoveryStrip
+import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
+import com.zack.recomptracker.domain.workout.TrainingPlanBuilder
+import com.zack.recomptracker.ui.train.component.heatColor
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutTemplate
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import com.zack.recomptracker.ui.FloatingNavHeight
+import com.zack.recomptracker.ui.component.AiBorderMode
+import com.zack.recomptracker.ui.component.AiExpandToggle
+import com.zack.recomptracker.ui.component.AiInsightCard
+import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.ScreenHeader
 import com.zack.recomptracker.ui.component.SectionLabel
+import com.zack.recomptracker.ui.liquidglass.LiquidActionButton
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -74,6 +87,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
+// DateTimeFormatter is immutable + thread-safe — hoisted to file scope so it isn't rebuilt per
+// composition/recomposition (monthFormatter previously ran once per history change via remember,
+// still worth hoisting; historyDateFormatter previously rebuilt on every HistoryCard recomposition
+// inside the History tab's items{} list).
+private val monthYearFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
+private val historyDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
+
 @Composable
 fun TrainHomeScreen(
     viewModel: TrainViewModel,
@@ -85,6 +106,7 @@ fun TrainHomeScreen(
     onResume: () -> Unit,
     onOpenSession: (Long) -> Unit = {},
     onOpenExerciseStats: (Long) -> Unit = {},
+    onLogRecovery: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -101,11 +123,10 @@ fun TrainHomeScreen(
     // History grouped by month (newest first). Computed once per history change rather than
     // on every recomposition — the sort + per-row date parse/format is otherwise re-run each pass.
     val historyGrouped = remember(state.history) {
-        val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(java.util.Locale.ENGLISH)
         state.history
             .sortedByDescending { it.date }
             .groupBy { session ->
-                runCatching { LocalDate.parse(session.date).format(monthFormatter).uppercase() }
+                runCatching { LocalDate.parse(session.date).format(monthYearFormatter).uppercase() }
                     .getOrElse { "UNKNOWN" }
             }
             .entries
@@ -147,6 +168,50 @@ fun TrainHomeScreen(
                 StreakHeroBanner(
                     result = workoutStreak,
                     type = StreakType.WORKOUT,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                )
+            }
+        }
+
+        // ── Today's coaching: one AI card = recovery read + plan + coach handoff ─
+        if (state.plan != null || state.readiness != null) {
+            item {
+                TodayCoachingCard(
+                    plan = state.plan,
+                    readiness = state.readiness,
+                    recoveryLoggedToday = state.recoveryLoggedToday,
+                    onStartRoutine = { routineId ->
+                        state.routines.firstOrNull { it.id == routineId }?.let { template ->
+                            scope.launch {
+                                viewModel.startSession(template)
+                                onStart()
+                            }
+                        }
+                    },
+                    onStartLight = { routineId ->
+                        state.routines.firstOrNull { it.id == routineId }?.let { template ->
+                            scope.launch {
+                                viewModel.startLightSession(template)
+                                onStart()
+                            }
+                        }
+                    },
+                    onLogRecovery = onLogRecovery,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                )
+            }
+        }
+
+        // ── Per-muscle recovery (added layer under the whole-body readiness card) ─
+        // Compact strip of the muscle groups still recovering; renders nothing when all fresh.
+        if (state.muscleRecovery.any { it.band != MuscleTrainingAggregator.RecoveryBand.FRESH }) {
+            item {
+                MuscleRecoveryStrip(
+                    recovery = state.muscleRecovery,
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),
@@ -323,6 +388,137 @@ fun TrainHomeScreen(
     }
 }
 
+// ── Today's coaching card (one AI card: recovery read + plan + coach handoff) ──
+
+/**
+ * The single Train-home "Today" card, styled as the app's AI insight card (liquid-glass edge glow +
+ * ✦). It merges what used to be two overlapping cards — the recovery readiness read and the
+ * deterministic training plan — so the screen never shows two cards restating the same "train / rest"
+ * verdict. **Collapsible**: a compact one-line pill by default (✦ + verdict), tap to expand to the
+ * big verdict, guidance, cadence, and the "Start <routine>" + context-smart action.
+ */
+@Composable
+private fun TodayCoachingCard(
+    plan: TrainingPlanBuilder.TrainingPlan?,
+    readiness: TrainingReadinessMapper.Readiness?,
+    recoveryLoggedToday: Boolean,
+    onStartRoutine: (Long) -> Unit,
+    onStartLight: (Long) -> Unit,
+    onLogRecovery: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
+    val isTrain = plan?.verdict == TrainingPlanBuilder.Verdict.TRAIN
+    val startRoutineId = plan?.recommendedRoutineId?.takeIf { isTrain }
+    val startRoutineName = plan?.recommendedRoutineName?.takeIf { isTrain }
+
+    // Verdict leads with the recovery read; falls back to the plan's reason when recovery is unlogged.
+    val verdict = readiness?.headline ?: plan?.reason ?: "Today"
+    val hint = readiness?.adaptHint
+    // Collapsed one-liner: verdict + guidance, e.g. "You're recovered — train as planned".
+    val summary = if (hint != null) "$verdict — $hint" else verdict
+
+    // Cadence footnote (the Start button already names the routine, so we don't repeat it here).
+    val cadence = plan?.let { p ->
+        buildString {
+            append("${p.sessionsThisWeek}")
+            p.weeklyTarget?.let { append("/$it") }
+            append(" this week")
+            p.daysSinceLastSession?.let { d -> if (d > 0) append(" · last trained ${d}d ago") }
+        }
+    }
+
+    // Collapsed by default so the card stays a slim pill; re-collapses when the verdict changes (a new day).
+    var collapsed by rememberSaveable(verdict) { mutableStateOf(true) }
+
+    AiInsightCard(
+        borderMode = AiBorderMode.Ready,
+        collapsed = collapsed,
+        contentPadding = if (collapsed) 12.dp else 16.dp,
+        modifier = modifier.animateContentSize(),
+    ) {
+        // Header row = the ✦ identity marker + the verdict itself + the glass toggle, one row. The
+        // verdict IS the title (big & bold when expanded, a one-line summary when collapsed); tapping
+        // anywhere on the row expands / collapses.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { collapsed = !collapsed },
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "✦", style = AppType.body, color = accent.inkLight)
+            Text(
+                text = if (collapsed) summary else verdict,
+                style = if (collapsed) AppType.body else AppType.statValue,
+                color = appColors.textPrimary,
+                maxLines = if (collapsed) 1 else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            AiExpandToggle(collapsed = collapsed)
+        }
+
+        if (!collapsed) {
+            hint?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(text = it, style = AppType.body, color = appColors.textSecondary)
+            }
+            cadence?.let {
+                Spacer(Modifier.height(if (hint != null) 4.dp else 8.dp))
+                Text(text = it, style = AppType.cardSubtitle, color = appColors.textMuted)
+            }
+            // Actions. Primary = Start the recommended routine on train days. Secondary is context-smart,
+            // shown only when it's genuinely useful (never a filler button):
+            //   - today's recovery not logged        → "Log recovery" (sharpen the read)
+            //   - train day + recovery below GOOD     → "Start light" (adapted, one fewer set/exercise)
+            //   - otherwise                           → nothing
+            val hasStart = startRoutineId != null && startRoutineName != null
+            val secondary: Pair<String, () -> Unit>? = when {
+                readiness == null -> null
+                !recoveryLoggedToday -> "Log recovery" to onLogRecovery
+                isTrain && readiness.level != TrainingReadinessMapper.Level.GOOD && startRoutineId != null ->
+                    "Start light" to { onStartLight(startRoutineId) }
+                else -> null
+            }
+            if (hasStart || secondary != null) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (hasStart) {
+                        LiquidActionButton(
+                            text = "Start $startRoutineName",
+                            onClick = { onStartRoutine(startRoutineId!!) },
+                            isPrimary = true,
+                            small = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (secondary != null) {
+                            LiquidActionButton(
+                                text = secondary.first,
+                                onClick = secondary.second,
+                                isPrimary = false,
+                                small = true,
+                            )
+                        }
+                    } else if (secondary != null) {
+                        LiquidActionButton(
+                            text = secondary.first,
+                            onClick = secondary.second,
+                            isPrimary = true,
+                            small = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ── Routine card ──────────────────────────────────────────────────────────────
 
 @Composable
@@ -478,7 +674,7 @@ private fun RoutineCard(
                     tint = accent.onAccent,
                     modifier = Modifier.size(15.dp),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = "Start",
                     style = AppType.body,
@@ -499,23 +695,16 @@ private fun RoutineCard(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete \"${template.name}\"?") },
-            text = { Text("This routine will be permanently deleted.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    onDeleteClick()
-                }) {
-                    Text("Delete", color = ErrorRed)
-                }
+        ConfirmDialog(
+            title = "Delete \"${template.name}\"?",
+            body = "This routine will be permanently deleted.",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteClick()
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { showDeleteDialog = false },
         )
     }
 }
@@ -563,12 +752,12 @@ private fun EmptyRoutinesCard(
                 onClick = onCreateRoutine,
                 tint = accent.accent,
                 surfaceColor = Color.White.copy(alpha = 0.08f),
-                buttonHeight = 44.dp,
+                buttonHeight = 48.dp,
                 modifier = Modifier.fillMaxWidth(0.65f),
             ) {
                 Text(
                     text = "Create routine",
-                    style = AppType.body,
+                    style = AppType.cardTitle,
                     color = accent.onAccent,
                 )
             }
@@ -592,9 +781,13 @@ private fun HistoryCard(
     val volume = WorkoutProgressAnalyzer.sessionVolume(allSets)
     val durationMin = session.durationSeconds?.let { it / 60 }
 
-    val dateFormatted = runCatching {
-        LocalDate.parse(session.date).format(DateTimeFormatter.ofPattern("MMM d"))
-    }.getOrElse { session.date }
+    // Row composable inside items(sessions) — memoize per session.date so a recomposition that
+    // doesn't change the date (e.g. a sibling row's state) doesn't re-run the parse/format.
+    val dateFormatted = remember(session.date) {
+        runCatching {
+            LocalDate.parse(session.date).format(historyDateFormatter)
+        }.getOrElse { session.date }
+    }
 
     FrostedCard(
         modifier = modifier.clickable { onClick() },
@@ -680,10 +873,17 @@ private fun StatsContent(
 
     val anyLogged = state.statsCategories.any { it.exercises.isNotEmpty() }
 
+    // Heat = each muscle's ABSOLUTE weekly set count. heatColor maps it to a training-status colour
+    // (undertrained → green → overtrained red); 0-set groups render faint on the body map.
+    val heat = state.plan?.let { plan ->
+        plan.weekly.associate { it.category to it.setsThisWeek.toFloat() }
+    } ?: emptyMap()
+
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         com.zack.recomptracker.ui.train.component.BodyMap(
             selected = selected,
             onMuscleTap = { category -> selected = if (selected == category) null else category },
+            intensities = heat,
             modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
         )
 
@@ -701,6 +901,9 @@ private fun StatsContent(
             return@Column
         }
 
+        // ── This week's muscle balance (collapsible; ranked lagging-first) ──
+        state.plan?.let { plan -> WeeklyBalanceSection(plan) }
+
         SectionLabel(
             text = "By muscle",
             modifier = Modifier.padding(bottom = 8.dp),
@@ -716,6 +919,164 @@ private fun StatsContent(
             )
         }
     }
+}
+
+/** Collapsible "This week" muscle-balance card (ranked lagging-first). Collapsed = a one-line
+ *  summary of the lagging groups; expanded = a mini volume bar + recency per muscle, plus a legend. */
+@Composable
+private fun WeeklyBalanceSection(plan: TrainingPlanBuilder.TrainingPlan) {
+    val appColors = LocalAppColors.current
+    val accent = LocalAppAccent.current
+    var expanded by remember { mutableStateOf(false) }
+    val maxSets = plan.weekly.maxOfOrNull { it.setsThisWeek } ?: 0
+    val ranked = remember(plan.weekly) { plan.weekly.sortedBy { it.setsThisWeek } } // lagging first
+    val chevronRot by animateFloatAsState(if (expanded) 90f else 0f, tween(300), label = "wk-chev")
+    val lagging = plan.focus.joinToString(", ") { it.displayName.lowercase() }
+
+    FrostedCard(
+        modifier = Modifier
+            .padding(bottom = 8.dp)
+            .clip(RoundedCornerShape(CornerCard))
+            .clickable { expanded = !expanded }
+            .animateContentSize(),
+        contentPadding = 14.dp,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                SectionLabel(text = "This week")
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = if (expanded) "Volume by muscle group"
+                    else if (lagging.isNotEmpty()) "Lagging: $lagging"
+                    else "Balanced across muscle groups",
+                    style = AppType.cardSubtitle,
+                    color = when {
+                        expanded -> appColors.textSecondary
+                        lagging.isNotEmpty() -> accent.inkLight
+                        else -> appColors.textSecondary
+                    },
+                )
+            }
+            // A bordered circular chevron reads clearly as a tap affordance (matches the app's
+            // back button), so the whole card obviously expands.
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(appColors.cardSurface)
+                    .border(1.dp, appColors.cardBorder, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = if (expanded) "Collapse this week" else "Expand this week",
+                    tint = appColors.textSecondary,
+                    modifier = Modifier.size(18.dp).rotate(chevronRot),
+                )
+            }
+        }
+        if (expanded) {
+            Spacer(Modifier.height(14.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                ranked.forEach { cw ->
+                    WeeklyBarRow(week = cw, maxSets = maxSets, isFocus = cw.category in plan.focus)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            HeatLegend()
+        }
+    }
+}
+
+/** Compact colour key for the volume bars: none → trained → overtrained. */
+@Composable
+private fun HeatLegend() {
+    val appColors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LegendDot(fill = null, label = "None")
+        LegendDot(fill = heatColor(14f), label = "Trained")
+        LegendDot(fill = heatColor(30f), label = "Too much")
+    }
+}
+
+/** One legend swatch: a filled dot ([fill]) or a hollow ring (fill = null → "not trained") + label. */
+@Composable
+private fun LegendDot(fill: Color?, label: String) {
+    val appColors = LocalAppColors.current
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .then(
+                    if (fill != null) Modifier.background(fill)
+                    else Modifier.border(1.dp, appColors.textMuted, CircleShape),
+                ),
+        )
+        Text(text = label, style = AppType.metaLabel, color = appColors.textMuted)
+    }
+}
+
+/** One muscle group's week: name · volume bar (∝ sets, vs the most-trained group) · sets + recency.
+ *  Lagging groups (in the plan's focus) render in the accent colour. */
+@Composable
+private fun WeeklyBarRow(week: TrainingPlanBuilder.CategoryWeek, maxSets: Int, isFocus: Boolean) {
+    val appColors = LocalAppColors.current
+    val trained = week.setsThisWeek > 0
+    val frac = if (maxSets > 0) week.setsThisWeek.toFloat() / maxSets else 0f // bar WIDTH: relative fill
+    val barColor = heatColor(week.setsThisWeek.toFloat()) // COLOR: absolute training-status
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = week.category.displayName,
+            style = AppType.cardSubtitle.copy(fontWeight = if (isFocus) FontWeight.SemiBold else FontWeight.Normal),
+            color = appColors.textPrimary,
+            modifier = Modifier.width(64.dp),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(7.dp)
+                .clip(RoundedCornerShape(100))
+                .background(appColors.cardSurface),
+        ) {
+            // Untrained (0 sets) → empty track (uncolored); trained → green bar sized by volume.
+            if (trained) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(frac.coerceIn(0.08f, 1f))
+                        .height(7.dp)
+                        .clip(RoundedCornerShape(100))
+                        .background(barColor),
+                )
+            }
+        }
+        Text(
+            text = "${week.setsThisWeek} · ${lastHitLabel(week.daysSinceLastHit)}",
+            style = AppType.metaLabel,
+            color = if (trained) barColor else appColors.textMuted,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(56.dp),
+        )
+    }
+}
+
+private fun lastHitLabel(days: Int?): String = when {
+    days == null -> "—"
+    days <= 0 -> "today"
+    days == 1 -> "1d"
+    else -> "${days}d"
 }
 
 @Composable

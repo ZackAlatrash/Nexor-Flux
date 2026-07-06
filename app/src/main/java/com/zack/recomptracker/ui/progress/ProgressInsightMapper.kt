@@ -13,6 +13,8 @@ fun buildProgressInsightContext(
     waistValues: List<Float>,
     liftValues: List<Float>,
     adherencePercent: Float?,
+    trainingSessionsPerWeek: Double? = null,
+    weeklyGymSessionsTarget: Int? = null,
 ): ProgressInsightContext = ProgressInsightContext(
     rangeDays = rangeDays,
     weightTrendKgPerWeek = trendPerWeek(weightValues),
@@ -21,6 +23,8 @@ fun buildProgressInsightContext(
     adherencePercent = adherencePercent?.toDouble(),
     weightPointCount = weightValues.size,
     waistPointCount = waistValues.size,
+    trainingSessionsPerWeek = trainingSessionsPerWeek,
+    weeklyGymSessionsTarget = weeklyGymSessionsTarget,
 )
 
 private fun trendPerWeek(values: List<Float>): Double? {

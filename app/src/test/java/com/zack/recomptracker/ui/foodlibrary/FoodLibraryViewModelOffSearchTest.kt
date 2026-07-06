@@ -75,6 +75,7 @@ class FoodLibraryViewModelOffSearchTest {
         foodCatalogRepository = foodCatalogRepository,
         barcodeRepository = barcodeRepository,
         recipeRepository = recipeRepository,
+        computeDispatcher = testDispatcher,
     )
 
     @Test

@@ -2,9 +2,17 @@ package com.zack.recomptracker.ai
 
 import com.zack.recomptracker.domain.review.WeeklyReviewData
 
+/**
+ * Supporting "what the coach noticed this week" note, surfaced from the deterministic proactive
+ * engine's WEEKLY-surface winner (see docs/ai-redesign D45). Colour only: the briefing verdict,
+ * targets, and every number stay authoritative in [WeeklyReviewData]. The prompt must never let this
+ * override or introduce a number.
+ */
+data class WeeklyCoachNote(val statement: String, val rationale: String?)
+
 class WeeklyBriefingPromptBuilder {
 
-    fun build(data: WeeklyReviewData): String = buildString {
+    fun build(data: WeeklyReviewData, coachNote: WeeklyCoachNote? = null): String = buildString {
         appendLine("You are a precise, supportive body-recomposition coach writing a user's WEEKLY briefing.")
         appendLine("All numbers and the verdict below are FINAL and computed by the app. Do not change, recompute, or contradict them. Write prose only.")
         appendLine()
@@ -17,6 +25,19 @@ class WeeklyBriefingPromptBuilder {
         appendLine("Signals (id — value — direction):")
         data.signals.forEach { appendLine("- \"${it.id}\" — ${it.value} — ${it.direction.name}") }
         appendLine()
+        // SUPPORTING cross-domain training context (Q1b: narrative only — never a new number/verdict).
+        data.training?.let { t ->
+            appendLine("Training this week (SUPPORTING context — do not change the verdict or invent numbers):")
+            appendLine("- ${t.summary}")
+            appendLine()
+        }
+        // SUPPORTING note from the deterministic coach engine's weekly winner (D45): colour only.
+        coachNote?.let { note ->
+            appendLine("What the coach noticed this week (SUPPORTING colour only — the verdict, targets, and every number above are FINAL; do not override or add numbers from this):")
+            appendLine("- ${note.statement}")
+            if (!note.rationale.isNullOrBlank()) appendLine("  (${note.rationale})")
+            appendLine()
+        }
         appendLine("Return ONLY a JSON object with EXACTLY these keys and no markdown:")
         appendLine("""{""")
         appendLine(""""headline": one vivid sentence stating the verdict and why,""")

@@ -2,6 +2,7 @@ package com.zack.recomptracker.domain.insight
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -40,5 +41,39 @@ class InsightEngineTest {
         }
         val fact = InsightEngine.detectTopFact(list, targets)
         assertEquals(InsightFactType.DERAILMENT_DAY, fact?.type)
+    }
+
+    @Test
+    fun `detectTopFacts returns ranked facts including the second place`() {
+        // A weekend spike (weekday/weekend fires) AND one big derailment day → two distinct facts.
+        val end = LocalDate.of(2026, 6, 14)
+        val list = (0..13).map { offset ->
+            val d = end.minusDays((13 - offset).toLong())
+            val weekend = d.dayOfWeek == DayOfWeek.SATURDAY || d.dayOfWeek == DayOfWeek.SUNDAY
+            val cals = when {
+                offset == 13 -> 3700
+                weekend -> 2700
+                else -> 2200
+            }
+            DayNutrition(d, cals, 164.0, 320.0, 68.0, logged = true)
+        }
+        val facts = InsightEngine.detectTopFacts(list, targets, n = 2)
+        assertEquals(2, facts.size)
+        // Ranked highest-priority first, and the single-fact API agrees with the top of the list.
+        assertEquals(InsightFactType.DERAILMENT_DAY, facts[0].type)
+        assertEquals(InsightEngine.detectTopFact(list, targets), facts[0])
+        assertTrue(facts[0].priority >= facts[1].priority)
+        // The 2nd-place fact (which the old single-fact card discarded) is a different type.
+        assertEquals(InsightFactType.WEEKDAY_WEEKEND, facts[1].type)
+    }
+
+    @Test
+    fun `detectTopFacts returns empty when no pattern fires`() {
+        val end = LocalDate.of(2026, 6, 14)
+        val calm = (0..13).map { offset ->
+            val d = end.minusDays((13 - offset).toLong())
+            DayNutrition(d, 2200, 164.0, 320.0, 68.0, logged = true)
+        }
+        assertTrue(InsightEngine.detectTopFacts(calm, targets, n = 2).isEmpty())
     }
 }

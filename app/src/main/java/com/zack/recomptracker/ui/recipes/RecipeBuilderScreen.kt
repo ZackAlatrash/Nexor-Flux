@@ -55,9 +55,9 @@ import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.SubScreenHeader
 import com.zack.recomptracker.ui.liquidglass.LiquidPrimaryButton
+import com.zack.recomptracker.ui.liquidglass.LiquidSecondaryButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
-import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
@@ -105,7 +105,7 @@ fun RecipeBuilderScreen(
                 if (state.recipeId != null) {
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
+                            .size(28.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(appColors.cardSurface)
                             .border(1.dp, appColors.cardBorder, RoundedCornerShape(10.dp))
@@ -142,7 +142,7 @@ fun RecipeBuilderScreen(
                             Box(
                                 modifier = Modifier
                                     .padding(end = 6.dp)
-                                    .size(34.dp)
+                                    .size(28.dp)
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(
                                         if (enabled)
@@ -223,18 +223,11 @@ fun RecipeBuilderScreen(
             }
 
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(CornerSmall))
-                        .background(appColors.cardSurface)
-                        .border(1.dp, appColors.cardBorder, RoundedCornerShape(CornerSmall))
-                        .clickable(remember { MutableInteractionSource() }, null, onClick = onNavigateToFoodPicker)
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("+ Add ingredient", style = AppType.body.copy(fontWeight = FontWeight.SemiBold), color = accent.inkLighter)
-                }
+                LiquidSecondaryButton(
+                    text = "+ Add ingredient",
+                    onClick = onNavigateToFoodPicker,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Spacer(Modifier.height(16.dp))
             }
         }

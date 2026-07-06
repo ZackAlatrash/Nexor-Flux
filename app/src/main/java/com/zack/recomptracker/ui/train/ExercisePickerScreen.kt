@@ -30,12 +30,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +58,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.ui.component.FrostedCard
+import com.zack.recomptracker.ui.component.GlassAlertDialog
+import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.CornerCard
@@ -342,42 +342,51 @@ fun ExercisePickerScreen(
     // ── Create custom exercise dialog ───────────────────────────────────────────
     if (showCreateDialog) {
         var customName by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showCreateDialog = false; customName = "" },
-            title = { Text("Custom exercise", color = appColors.textPrimary) },
-            text = {
-                OutlinedTextField(
+        var customMuscle by remember { mutableStateOf<String?>(null) }
+        GlassAlertDialog(
+            onDismiss = { showCreateDialog = false; customName = ""; customMuscle = null },
+            title = "Custom exercise",
+            confirmLabel = "Create",
+            confirmEnabled = customName.isNotBlank(),
+            onConfirm = {
+                val name = customName.trim()
+                if (name.isNotEmpty()) {
+                    val muscles = listOfNotNull(customMuscle)
+                    scope.launch {
+                        val id = viewModel.createCustom(name, muscles)
+                        if (replaceMode) onReplacePick(id)
+                    }
+                    showCreateDialog = false
+                    customName = ""
+                    customMuscle = null
+                }
+            },
+            dismissLabel = "Cancel",
+            content = {
+                GlassInputField(
+                    label = "Exercise name",
                     value = customName,
                     onValueChange = { customName = it },
-                    label = { Text("Exercise name") },
-                    singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
                     modifier = Modifier.fillMaxWidth(),
                 )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val name = customName.trim()
-                        if (name.isNotEmpty()) {
-                            scope.launch {
-                                val id = viewModel.createCustom(name)
-                                if (replaceMode) onReplacePick(id)
-                            }
-                            showCreateDialog = false
-                            customName = ""
-                        }
-                    },
-                    enabled = customName.isNotBlank(),
+                Spacer(Modifier.height(12.dp))
+                Text("Muscle group (optional)", style = AppType.label, color = appColors.textSecondary)
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
                 ) {
-                    Text("Create", color = accent.inkLight)
+                    MUSCLE_FILTER_CHIPS.filter { it != "All" }.forEach { muscle ->
+                        val active = customMuscle == muscle
+                        FilterChip(
+                            selected = active,
+                            onClick = { customMuscle = if (active) null else muscle },
+                            label = { Text(muscle) },
+                        )
+                    }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showCreateDialog = false; customName = "" }) {
-                    Text("Cancel", color = appColors.textMuted)
-                }
-            },
-            containerColor = appColors.frostedSurface,
         )
     }
 }

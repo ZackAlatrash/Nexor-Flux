@@ -10,21 +10,17 @@ import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.WeeklyReviewEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.ai.AiInsightCoordinator
-import com.zack.recomptracker.ai.AiInsightState
-import com.zack.recomptracker.ai.CrossMetricContext
-import com.zack.recomptracker.ai.InsightContext
-import com.zack.recomptracker.ai.InsightGate
-import com.zack.recomptracker.ai.InsightKind
-import com.zack.recomptracker.ai.InsightRequest
-import com.zack.recomptracker.ai.NoiseDefuserContext
-import com.zack.recomptracker.ai.PatternInsightContext
-import com.zack.recomptracker.ai.TargetChangeContext
-import com.zack.recomptracker.domain.insight.CrossMetricDetector
-import com.zack.recomptracker.domain.insight.DayNutrition
+import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.PlanDayInfo
+import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
 import com.zack.recomptracker.domain.adjustment.AdjustmentInput
 import com.zack.recomptracker.domain.adjustment.AdjustmentResult
@@ -55,8 +51,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -72,6 +71,7 @@ data class DayCalories(
 data class DashboardUiState(
     val preferences: PlanPreferences = PlanPreferences(),
     val todayTotals: MacroTotals = MacroTotals(),
+    val todaySteps: Int = 0,
     val sevenDayWeightAverage: Double? = null,
     val weightTrendKgPerWeek: Double = 0.0,
     val waistTrendCmPerWeek: Double = 0.0,
@@ -87,11 +87,11 @@ data class DashboardUiState(
     ),
     val motivationalMessage: String = "",   // display-only, at end
     val adjustmentInput: AdjustmentInput? = null,
-    val showWeeklyVerdictCard: Boolean = false,   // doctrine "stay quiet": hidden on clean on-track weeks
-    val patternInsightContext: PatternInsightContext? = null,
-    val targetChangeContext: TargetChangeContext? = null,
-    val noiseDefuserContext: NoiseDefuserContext? = null,
-    val crossMetricContext: CrossMetricContext? = null,
+    /**
+     * "Rebalance · Day X of Y" info for today when an active rebalance covers it, else null.
+     * Data only — Task 7 renders the card; this ViewModel just supplies the position.
+     */
+    val rebalanceToday: PlanDayInfo? = null,
 )
 
 /** Profile visual for the dashboard header avatar. */
@@ -120,6 +120,14 @@ class DashboardViewModel(
     private val adjustmentEngine: AdjustmentEngine,
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val userProfileStore: UserProfilePreferencesStore,
+    // Rebalance state overlays effective (reduced) targets on the today ring, adherence tile,
+    // in-zone-7, and 7-day chart, and supplies today's "Rebalance · Day X of Y" info. The
+    // AdjustmentEngine input stays on BASE targets (a 2–5 day blip must not perturb the verdict).
+    private val rebalanceStore: RebalanceStore,
+    // Off-main dispatcher for the combine transform + debounce (list filters, LocalDate.parse over
+    // 14–28-day windows, trend/adherence/adjustment math). Injectable so tests can pass their
+    // TestDispatcher; default keeps AppContainer/call sites unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     /** Profile photo + initials for the header avatar; updates live with the profile. */
@@ -130,84 +138,6 @@ class DashboardViewModel(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
-
-    val aiInsightState: StateFlow<AiInsightState> = aiInsightCoordinator.state
-
-    val patternInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.WEEKLY_PATTERN)
-
-    val targetChangeInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.TARGET_CHANGE)
-    val noiseDefuserInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.NOISE_DEFUSER)
-    val crossMetricInsightState: StateFlow<AiInsightState> =
-        aiInsightCoordinator.generationState(InsightKind.CROSS_METRIC)
-
-    fun onPatternInsightVisible() {
-        val ctx = _uiState.value.patternInsightContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.WeeklyPattern(ctx))
-    }
-
-    fun retryPatternInsight() {
-        val ctx = _uiState.value.patternInsightContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.WeeklyPattern(ctx))
-    }
-
-    fun onTargetChangeVisible() {
-        val ctx = _uiState.value.targetChangeContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.TargetChange(ctx))
-    }
-    fun retryTargetChange() {
-        val ctx = _uiState.value.targetChangeContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.TargetChange(ctx))
-    }
-    fun onNoiseDefuserVisible() {
-        val ctx = _uiState.value.noiseDefuserContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.NoiseDefuser(ctx))
-    }
-    fun retryNoiseDefuser() {
-        val ctx = _uiState.value.noiseDefuserContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.NoiseDefuser(ctx))
-    }
-    fun onCrossMetricVisible() {
-        val ctx = _uiState.value.crossMetricContext ?: return
-        aiInsightCoordinator.onInsightVisible(InsightRequest.CrossMetric(ctx))
-    }
-    fun retryCrossMetric() {
-        val ctx = _uiState.value.crossMetricContext ?: return
-        aiInsightCoordinator.retryInsight(InsightRequest.CrossMetric(ctx))
-    }
-
-    fun onAiCardVisible(result: AdjustmentResult) {
-        val state = _uiState.value
-        val input = state.adjustmentInput ?: return
-        val context = InsightContext(
-            result = result,
-            input = input,
-            targetCalories = state.preferences.targetCalories,
-            targetProteinG = state.preferences.targetProteinG,
-        )
-        // Doctrine "stay quiet": on a clean, on-track HOLD week the verdict card has nothing to add.
-        if (!InsightGate.shouldFireWeekly(context)) return
-        aiInsightCoordinator.onAiCardVisible(context)
-    }
-
-    fun requestModelDownload() = aiInsightCoordinator.requestDownload()
-
-    fun cancelDownload() = aiInsightCoordinator.cancelDownload()
-
-    fun retryGeneration() {
-        val state = _uiState.value
-        val input = state.adjustmentInput ?: return
-        aiInsightCoordinator.retryGeneration(
-            InsightContext(
-                result = state.result,
-                input = input,
-                targetCalories = state.preferences.targetCalories,
-                targetProteinG = state.preferences.targetProteinG,
-            )
-        )
-    }
 
     // Picked once at ViewModel construction — stable for the whole session.
     private val todayMessage: String = MOTIVATIONAL_MESSAGES.random()
@@ -228,10 +158,28 @@ class DashboardViewModel(
                 logRepository.observeMealEntriesSince(windowStart),
                 logRepository.observePerformances(),
                 planRepository.preferences,
-            ) { logs, meals, performances, preferences ->
-                buildState(logs, meals, performances, preferences)
+                // The 5-slot combine is full, so fold the plan-version history + rebalance state
+                // into one nested typed combine and unpack it below (mirrors ProgressViewModel's
+                // TrainingInputs pattern) — no unchecked casts.
+                combine(
+                    planRepository.observeVersions(),
+                    rebalanceStore.state,
+                ) { versions, rebalanceState -> DashboardStreams(versions, rebalanceState) },
+            ) { logs, allMeals, performances, preferences, streams ->
+                val (versions, rebalanceState) = streams
+                buildState(
+                    logs = logs,
+                    allMeals = allMeals,
+                    performances = performances,
+                    preferences = preferences,
+                    versions = versions,
+                    rebalanceState = rebalanceState,
+                )
             }
             .debounce(300L)
+            // Run the combine transform and debounce off the main thread; the terminal collect
+            // still resumes on viewModelScope's main dispatcher to publish state.
+            .flowOn(computeDispatcher)
             .collect { state ->
                 _uiState.value = state
                 persistWeeklyReview(state)
@@ -244,21 +192,47 @@ class DashboardViewModel(
         allMeals: List<MealEntryEntity>,
         performances: List<LiftPerformanceEntity>,
         preferences: PlanPreferences,
+        versions: List<PlanVersion>,
+        rebalanceState: RebalanceState,
     ): DashboardUiState {
         val today = dateProvider.today()
         // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
         val meals = allMeals.filterNot { it.planned }
         val todayTotals = meals.filter { it.date == today.toString() }.macroTotals()
+        val todaySteps = logs.lastOrNull { it.localDate() == today }?.steps ?: 0
         val last14Start = today.minusDays(13)
         val last28Start = today.minusDays(27)
         val last7Start  = today.minusDays(6)
         val logsLast28  = logs.filter { it.localDate() in last28Start..today }
         val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
         val mealsByDate = mealsLast14.groupBy { it.localDate() }
+        // BASE per-day targets (what the permanent plan says) — feeds the AdjustmentEngine input.
+        val dayTargets = PlanHistory.resolve(
+            versions,
+            (0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) },
+        )
+        // EFFECTIVE per-day targets (reduced on rebalance days) — feeds the display surfaces: the
+        // adherence tile, in-zone-7, and today's ring. Behaviour-neutral with an empty state.
+        val effectiveTargets = EffectiveTargets.resolveAll(dayTargets, rebalanceState)
 
+        // Adherence for the AdjustmentEngine stays on BASE targets: a 2–5 day rebalance blip must
+        // never perturb the long-horizon recomp verdict (spec §6, AdjustmentEngine inputs = base).
         val nutritionDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())
-            NutritionDay(date, mealsByDate[date].orEmpty().macroTotals().calories)
+            NutritionDay(
+                date = date,
+                calories = mealsByDate[date].orEmpty().macroTotals().calories,
+                targetCalories = dayTargets[date]?.calories ?: preferences.targetCalories,
+            )
+        }
+        // Effective adherence drives the DISPLAYED tile (graded against the agreed reduced targets).
+        val effectiveNutritionDays = (0..13).map { offset ->
+            val date = last14Start.plusDays(offset.toLong())
+            NutritionDay(
+                date = date,
+                calories = mealsByDate[date].orEmpty().macroTotals().calories,
+                targetCalories = effectiveTargets[date]?.calories ?: preferences.targetCalories,
+            )
         }
         val loggedDates = logsLast28.map { it.date }.toSet() + mealsLast14.map { it.date }.toSet()
         val weightPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.bodyWeightKg) }
@@ -272,7 +246,9 @@ class DashboardViewModel(
 
         val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
         val waistTrend   = trendCalculator.trendPerWeek(waistPoints)
-        val adherence    = adherenceCalculator.calculate(nutritionDays, preferences.targetCalories)
+        // BASE adherence for the AdjustmentEngine; EFFECTIVE adherence for the displayed tile.
+        val adherence    = adherenceCalculator.calculate(nutritionDays)
+        val displayAdherence = adherenceCalculator.calculate(effectiveNutritionDays)
         val loggedDaysInWindow = nutritionDays.count { it.calories > 0 }
         val weeksSincePhaseStart = preferences.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
@@ -313,81 +289,32 @@ class DashboardViewModel(
                 isToday = date == today,
             )
         }.toImmutableList()
-        val inZoneDays7 = if (preferences.calorieZoneLowerBound > 0) {
-            last7DaysCalories.count {
-                it.calories > 0 &&
-                it.calories >= preferences.calorieZoneLowerBound &&
-                it.calories <= preferences.calorieZoneUpperBound
-            }
-        } else 0
-
-        val patternDays = (0..13).map { offset ->
-            val date = last14Start.plusDays(offset.toLong())
-            val totals = mealsByDate[date].orEmpty().macroTotals()
-            DayNutrition(
-                date = date,
-                calories = totals.calories,
-                proteinG = totals.proteinG,
-                carbsG = totals.carbsG,
-                fatG = totals.fatG,
-                logged = totals.calories > 0,
-            )
-        }
-        val patternInsightContext = buildPatternInsightContext(patternDays, preferences)
-
-        // Target-change explainer: fires only when the verdict actually moves the target.
-        val targetChangeContext = run {
-            val change = result.recommendedCalorieChange
-            if (change == 0 || result.verdict == AdjustmentVerdict.WAIT_FOR_DATA) {
-                null
-            } else {
-                TargetChangeContext(
-                    oldTarget = preferences.targetCalories,
-                    newTarget = preferences.targetCalories + change,
-                    weightTrendKgPerWeek = weightTrend,
-                    adherencePercent = adherence,
-                    reasonCodes = result.reasonCodes,
-                )
-            }
+        val inZoneDays7 = (0..6).count { offset ->
+            val date = last7Start.plusDays(offset.toLong())
+            // Judged against the EFFECTIVE zone (reduced on a rebalance day, base otherwise).
+            val z = effectiveTargets[date] ?: preferences.toPlanTargets()
+            val cals = mealsByDate[date].orEmpty().macroTotals().calories
+            z.zoneLowerBound > 0 && cals > 0 && cals >= z.zoneLowerBound && cals <= z.zoneUpperBound
         }
 
-        // Noise-defuser: today's logged weight vs the most recent prior logged weight, gated by the trend.
-        val noiseDefuserContext = run {
-            val loggedWeights = logsLast28.filter { it.bodyWeightKg != null }.sortedBy { it.localDate() }
-            val todayWeight = loggedWeights.lastOrNull { it.localDate() == today }?.bodyWeightKg
-            val priorWeight = loggedWeights.lastOrNull { it.localDate() < today }?.bodyWeightKg
-            if (todayWeight != null && priorWeight != null) {
-                NoiseDefuserContext(todayWeight, priorWeight, weightTrend)
-                    .takeIf { InsightGate.shouldFireNoiseDefuser(it) }
-            } else {
-                null
-            }
-        }
-
-        // Cross-metric: protein adherence vs hunger over the 14-day window.
-        val hungerByDate = logsLast28
-            .filter { it.localDate() in last14Start..today && it.hungerScore != null }
-            .associate { it.localDate() to it.hungerScore!! }
-        val crossMetricContext = CrossMetricDetector
-            .detectProteinHungerLink(patternDays, hungerByDate, preferences.targetProteinG)
-            ?.let { CrossMetricContext(it) }
-
-        // Hide the verdict card ONLY on a clean on-track HOLD week (doctrine "stay quiet").
-        // Non-HOLD verdicts — including WAIT_FOR_DATA, which still shows the new-user placeholder
-        // and model-download UI — keep the card.
-        val showWeeklyVerdictCard = result.verdict != AdjustmentVerdict.HOLD ||
-            InsightGate.shouldFireWeekly(
-                InsightContext(
-                    result = result,
-                    input = adjustmentInput,
-                    targetCalories = preferences.targetCalories,
-                    targetProteinG = preferences.targetProteinG,
-                ),
-            )
+        // Today's ring shows the EFFECTIVE target: overlay today's reduced calories/macros/zone onto
+        // the exposed preferences (the ring + macro rows read state.preferences). Base today target is
+        // the resolved plan for today, falling back to current prefs when the ledger isn't seeded yet.
+        val baseToday = dayTargets[today] ?: preferences.toPlanTargets()
+        val effectiveToday = EffectiveTargets.resolve(baseToday, today, rebalanceState)
+        val effectivePreferences = preferences.copy(
+            targetCalories = effectiveToday.calories,
+            targetProteinG = effectiveToday.proteinG,
+            targetCarbsG = effectiveToday.carbsG,
+            targetFatG = effectiveToday.fatG,
+            calorieZoneLowerBound = effectiveToday.zoneLowerBound,
+            calorieZoneUpperBound = effectiveToday.zoneUpperBound,
+        )
 
         return DashboardUiState(
-            preferences = preferences,
+            preferences = effectivePreferences,
             todayTotals = todayTotals,
+            todaySteps = todaySteps,
             sevenDayWeightAverage = logs
                 .filter { it.localDate() in today.minusDays(6)..today }
                 .mapNotNull { it.bodyWeightKg }
@@ -395,18 +322,15 @@ class DashboardViewModel(
                 ?.average(),
             weightTrendKgPerWeek = weightTrend,
             waistTrendCmPerWeek = waistTrend,
-            adherencePercent = adherence,
+            // Displayed tile = effective adherence; the base `adherence` fed the AdjustmentEngine above.
+            adherencePercent = displayAdherence,
             loggedDaysInWindow = loggedDaysInWindow,
             last7DaysCalories = last7DaysCalories,
             inZoneDays7 = inZoneDays7,
             motivationalMessage = todayMessage,
             result = result,
             adjustmentInput = adjustmentInput,
-            patternInsightContext = patternInsightContext,
-            targetChangeContext = targetChangeContext,
-            noiseDefuserContext = noiseDefuserContext,
-            crossMetricContext = crossMetricContext,
-            showWeeklyVerdictCard = showWeeklyVerdictCard,
+            rebalanceToday = EffectiveTargets.planDayInfo(today, rebalanceState),
         )
     }
 
@@ -432,6 +356,15 @@ class DashboardViewModel(
     private fun DailyLogEntity.localDate(): LocalDate = LocalDate.parse(date)
     private fun MealEntryEntity.localDate(): LocalDate = LocalDate.parse(date)
     private fun LiftPerformanceEntity.localDate(): LocalDate = LocalDate.parse(date)
+
+    /**
+     * Bundles the two flows folded into the nested combine (the top-level combine's 5 slots are
+     * full). Destructured back out in the transform above.
+     */
+    private data class DashboardStreams(
+        val versions: List<PlanVersion>,
+        val rebalanceState: RebalanceState,
+    )
 
     companion object {
         val MOTIVATIONAL_MESSAGES: List<String> = listOf(

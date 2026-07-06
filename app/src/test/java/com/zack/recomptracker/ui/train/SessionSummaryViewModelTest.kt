@@ -59,6 +59,7 @@ class SessionSummaryViewModelTest {
             flowOf(sessions.values.firstOrNull { it.status == "ACTIVE" }?.let { build(it) })
         override suspend fun getLastCompletedSession(workoutId: Long): WorkoutSessionWithDetailsDb? = null
         override fun observeCompletedSessions(): Flow<List<WorkoutSessionWithDetailsDb>> = flowOf(emptyList())
+        override suspend fun getCompletedSessionsSince(startDate: String): List<WorkoutSessionWithDetailsDb> = emptyList()
         override suspend fun getExerciseHistory(exerciseId: Long): List<ExerciseHistoryRow> = emptyList()
         override suspend fun nextExerciseSortOrder(sessionId: Long): Int = 0
         override suspend fun deleteSessionExerciseById(id: Long) { exercises.remove(id) }

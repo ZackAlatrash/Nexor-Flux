@@ -11,7 +11,8 @@ import com.zack.recomptracker.ai.RecoveryInsightContext
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.util.toNullableDouble
-import com.zack.recomptracker.core.util.toNullableInt
+import com.zack.recomptracker.domain.body.StepsValidation
+import com.zack.recomptracker.domain.body.validateStepsInput
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
@@ -23,6 +24,8 @@ import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -52,6 +55,8 @@ data class TodayUiState(
     val waistCm: String = "",
     val waistSkinfoldMm: String = "",
     val steps: String = "",
+    /** True once the user types in the steps field — only then does saving mark steps manual. */
+    val stepsEdited: Boolean = false,
     val sleepHours: String = "",
     val energyScore: Int = 5,
     val hungerScore: Int = 5,
@@ -79,6 +84,10 @@ class TodayViewModel(
     dateProvider: DateProvider,
     private val hcRepository: HealthConnectRepository,
     private val aiInsightCoordinator: AiInsightCoordinator,
+    // Off-main dispatcher for the CPU-bearing collectors (per-day grouping/macro summing, and the
+    // 14-day calendar-sparkline build with LocalDate.parse + sorting). _uiState is a
+    // MutableStateFlow, so updating from this dispatcher is safe. Default keeps AppContainer unchanged.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val today = dateProvider.today()
     private val _uiState = MutableStateFlow(TodayUiState(date = today))
@@ -106,7 +115,8 @@ class TodayViewModel(
     }
 
     init {
-        viewModelScope.launch {
+        // Per-day grouping + macro summing runs in the collect body; launch off-main.
+        viewModelScope.launch(computeDispatcher) {
             combine(
                 logRepository.observeDay(today),
                 planRepository.preferences,
@@ -160,7 +170,9 @@ class TodayViewModel(
                 logRepository.applyHealthConnectSync(today, result)
             }
         }
-        viewModelScope.launch {
+        // 14-day sparkline build (LocalDate.parse + interpolation + sorting) runs in the collect
+        // body; launch off-main.
+        viewModelScope.launch(computeDispatcher) {
             logRepository.observeDailyLogs().collect { allLogs ->
                 val cutoff = today.minusDays(14)
                 val priorCutoff = today.minusDays(6)
@@ -249,7 +261,7 @@ class TodayViewModel(
     fun onBodyWeightChanged(v: String) = editMetrics { copy(bodyWeightKg = v) }
     fun onWaistChanged(v: String) = editMetrics { copy(waistCm = v) }
     fun onWaistSkinfoldChanged(v: String) = editMetrics { copy(waistSkinfoldMm = v) }
-    fun onStepsChanged(v: String) = editMetrics { copy(steps = v) }
+    fun onStepsChanged(v: String) = editMetrics { copy(steps = v, stepsEdited = true) }
     fun onSleepChanged(v: String) = editMetrics { copy(sleepHours = v) }
     fun onEnergyChanged(v: Int) = editMetrics { copy(energyScore = v.coerceIn(1, 10)) }
     fun onHungerChanged(v: Int) = editMetrics { copy(hungerScore = v.coerceIn(1, 10)) }
@@ -260,10 +272,12 @@ class TodayViewModel(
 
     fun saveMetrics() {
         val s = _uiState.value
-        val steps = s.steps.toNullableInt()
-        if (s.steps.isNotBlank() && steps == null) {
-            _uiState.update { it.copy(message = "Steps must be a whole number.") }
-            return
+        val steps = when (val v = validateStepsInput(s.steps)) {
+            is StepsValidation.Invalid -> {
+                _uiState.update { it.copy(message = v.message) }
+                return
+            }
+            is StepsValidation.Valid -> v.steps
         }
         viewModelScope.launch {
             logRepository.saveDailyMetrics(
@@ -273,6 +287,7 @@ class TodayViewModel(
                     waistCm = s.waistCm.toNullableDouble(),
                     waistSkinfoldMm = s.waistSkinfoldMm.toNullableDouble(),
                     steps = steps,
+                    stepsEdited = s.stepsEdited,
                     sleepHours = s.sleepHours.toNullableDouble(),
                     energyScore = s.energyScore,
                     hungerScore = s.hungerScore,
@@ -281,7 +296,7 @@ class TodayViewModel(
                     notes = s.notes,
                 ),
             )
-            _uiState.update { it.copy(metricsDirty = false, message = null) }
+            _uiState.update { it.copy(metricsDirty = false, stepsEdited = false, message = null) }
             _savedEvent.emit(Unit)
         }
     }

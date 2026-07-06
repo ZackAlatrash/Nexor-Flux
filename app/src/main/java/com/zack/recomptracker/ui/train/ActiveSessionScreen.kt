@@ -73,6 +73,7 @@ import com.zack.recomptracker.ui.theme.ErrorRed
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import com.zack.recomptracker.ui.train.component.ExerciseCard
+import com.zack.recomptracker.ui.train.component.PrBanner
 import com.zack.recomptracker.ui.train.component.exerciseImageUrl
 import com.zack.recomptracker.ui.train.component.SetGrid
 import com.zack.recomptracker.ui.train.component.SetGridMode
@@ -115,6 +116,7 @@ fun ActiveSessionScreen(
     val prevMap by viewModel.prevMap.collectAsStateWithLifecycle()
     val exerciseVisuals by viewModel.exerciseVisuals.collectAsStateWithLifecycle()
     val detailExercise by viewModel.detailExercise.collectAsStateWithLifecycle()
+    val prEvent by viewModel.prEvent.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
@@ -259,7 +261,7 @@ fun ActiveSessionScreen(
                 }
 
                 // ── Exercise cards ────────────────────────────────────────────────
-                items(displayExercises, key = { it.id }) { se ->
+                items(displayExercises, key = { it.id }, contentType = { "exercise" }) { se ->
                     ReorderableItem(reorderState, key = se.id) { isDragging ->
                         val visual = exerciseVisuals[se.exerciseId]
                         ExerciseCard(
@@ -301,18 +303,24 @@ fun ActiveSessionScreen(
                                 .padding(horizontal = 16.dp)
                                 .padding(bottom = 14.dp),
                         ) {
-                            // Build session set rows for this exercise
+                            // Build session set rows for this exercise. prevMap is populated once
+                            // per session load and static thereafter, so keying only on se.sets
+                            // (the actual per-keystroke-changing input) is sufficient — this list
+                            // was otherwise rebuilt on every recomposition, including every
+                            // keystroke in any KG/REPS field on any exercise card.
                             val prevList = prevMap[se.exerciseId] ?: emptyList()
-                            val sessionRows = se.sets.mapIndexed { idx, set ->
-                                SessionSetRow(
-                                    id = set.id,
-                                    setNumber = set.setNumber,
-                                    prev = prevList.getOrNull(idx),
-                                    reps = set.reps.takeIf { it > 0 },
-                                    weightKg = set.weightKg,
-                                    rir = set.rir,
-                                    completed = set.completed,
-                                )
+                            val sessionRows = remember(se.sets) {
+                                se.sets.mapIndexed { idx, set ->
+                                    SessionSetRow(
+                                        id = set.id,
+                                        setNumber = set.setNumber,
+                                        prev = prevList.getOrNull(idx),
+                                        reps = set.reps.takeIf { it > 0 },
+                                        weightKg = set.weightKg,
+                                        rir = set.rir,
+                                        completed = set.completed,
+                                    )
+                                }
                             }
 
                             SetGrid(
@@ -351,7 +359,7 @@ fun ActiveSessionScreen(
                         onClick = onAddExercise,
                         tint = accent.accent,
                         surfaceColor = Color.White.copy(alpha = 0.08f),
-                        buttonHeight = 44.dp,
+                        buttonHeight = 48.dp,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
@@ -365,7 +373,7 @@ fun ActiveSessionScreen(
                         )
                         Text(
                             text = "Add Exercise",
-                            style = AppType.body.copy(fontWeight = FontWeight.Medium),
+                            style = AppType.cardTitle.copy(fontWeight = FontWeight.Medium),
                             color = accent.onAccent,
                         )
                     }
@@ -430,6 +438,15 @@ fun ActiveSessionScreen(
                 onDismiss = { pendingReplacement = null },
             )
         }
+
+        // ── Mid-workout PR banner ───────────────────────────────────────────────────
+        // Transient celebration overlaid at the top; auto-dismisses and never intercepts touches,
+        // so logging keeps working underneath while it slides in/out.
+        PrBanner(
+            headline = prEvent?.headline,
+            onDismiss = { viewModel.dismissPrEvent() },
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 
@@ -729,7 +746,7 @@ private fun UnfinishedSetsOverlay(
                 ) {
                     Text(
                         text = "End anyway",
-                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                        style = AppType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
                         color = appColors.textPrimary,
                     )
                 }
@@ -742,7 +759,7 @@ private fun UnfinishedSetsOverlay(
                 ) {
                     Text(
                         text = "Keep going",
-                        style = AppType.body.copy(fontWeight = FontWeight.SemiBold),
+                        style = AppType.cardTitle.copy(fontWeight = FontWeight.SemiBold),
                         color = accent.onAccent,
                     )
                 }

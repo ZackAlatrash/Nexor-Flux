@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -37,8 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zack.recomptracker.ai.AiBackend
-import com.zack.recomptracker.ai.AiInsightState
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.MessageText
@@ -55,10 +55,9 @@ import com.zack.recomptracker.ui.theme.LocalAppColors
 fun AiCoachScreen(
     viewModel: AiCoachViewModel,
     onBack: () -> Unit,
+    onOpenCoachMemory: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val aiState by viewModel.aiInsightState.collectAsStateWithLifecycle()
-    val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
 
@@ -137,171 +136,206 @@ fun AiCoachScreen(
             }
 
             if (state.aiInsightsEnabled) {
-                // ── Engine selection (radio cards) ────────────────────────────
-                item { SectionLabel("Engine") }
+                // ── Coach memory ──────────────────────────────────────────────
+                item { SectionLabel("Memory") }
                 item {
-                    EngineRadioCard(
-                        selected = state.aiBackend == AiBackend.LOCAL,
-                        title = "On-device (Gemma)",
-                        subtitle = "Private · runs offline on your phone",
-                        onClick = { viewModel.setAiBackend(AiBackend.LOCAL) },
-                    )
-                }
-                item {
-                    EngineRadioCard(
-                        selected = state.aiBackend == AiBackend.CLOUD,
-                        title = "Cloud API",
-                        subtitle = "Faster & most capable · needs an API key",
-                        onClick = { viewModel.setAiBackend(AiBackend.CLOUD) },
-                    )
-                }
-
-                // ── Contextual config ─────────────────────────────────────────
-                when (state.aiBackend) {
-                    AiBackend.LOCAL -> {
-                        if (aiState != AiInsightState.Disabled) {
-                            item {
-                                AiModelSection(
-                                    aiState = aiState,
-                                    selectedModel = selectedModel,
-                                    onModelSelect = viewModel::setModel,
-                                    onDownload = viewModel::requestModelDownload,
-                                    onCancel = viewModel::cancelDownload,
-                                    onDelete = viewModel::deleteModel,
+                    TintedCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onOpenCoachMemory),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(accent.tintedSurface),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Psychology,
+                                    contentDescription = null,
+                                    tint = accent.inkBase,
+                                    modifier = Modifier.size(20.dp),
                                 )
                             }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "What the coach knows about you",
+                                    style = AppType.cardTitle,
+                                    color = appColors.textPrimary,
+                                )
+                                Text(
+                                    text = "Facts it remembers and uses in chat",
+                                    style = AppType.label,
+                                    color = appColors.textMuted,
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = appColors.textVeryMuted,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     }
+                }
 
-                    AiBackend.CLOUD -> {
-                        item {
-                            TintedCard {
-                                CloudStatusLine(
-                                    testingConnection = state.testingConnection,
-                                    testConnectionResult = state.testConnectionResult,
-                                    cloudHasKey = state.cloudHasKey,
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                Text(
-                                    text = "Your logged data is sent to the API you configure. Switch to On-device to keep everything private.",
-                                    style = AppType.label,
-                                    color = appColors.textMuted,
-                                    lineHeight = 15.sp,
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                SectionLabel("Quick fill")
-                                Spacer(Modifier.height(6.dp))
-                                ProviderPresetChips(onPick = viewModel::setCloudBaseUrl)
-                                Spacer(Modifier.height(12.dp))
-                                GlassInputField(
-                                    label = "Base URL",
-                                    value = state.cloudBaseUrl,
-                                    onValueChange = viewModel::setCloudBaseUrl,
-                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                GlassInputField(
-                                    label = "Model ID",
-                                    value = state.cloudModelId,
-                                    onValueChange = viewModel::setCloudModelId,
-                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                var apiKeyInput by remember { mutableStateOf("") }
-                                GlassInputField(
-                                    label = if (state.cloudHasKey) "API key (saved — type to replace)" else "API key",
-                                    value = apiKeyInput,
-                                    onValueChange = { apiKeyInput = it },
-                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
-                                    isPassword = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    LiquidActionButton(
-                                        text = "Save key",
-                                        onClick = {
-                                            if (apiKeyInput.isNotBlank()) {
-                                                viewModel.setCloudApiKey(apiKeyInput)
-                                                apiKeyInput = ""
-                                            }
-                                        },
-                                        isPrimary = true,
-                                        small = true,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    if (state.cloudHasKey) {
-                                        LiquidActionButton(
-                                            text = "Clear",
-                                            onClick = { viewModel.clearCloudApiKey() },
-                                            isPrimary = false,
-                                            small = true,
-                                            modifier = Modifier.weight(1f),
-                                        )
+                // ── Cloud API config ──────────────────────────────────────────
+                item { SectionLabel("Cloud API") }
+                item {
+                    TintedCard {
+                        CloudStatusLine(
+                            testingConnection = state.testingConnection,
+                            testConnectionResult = state.testConnectionResult,
+                            cloudHasKey = state.cloudHasKey,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = "Your logged data is sent to the API you configure.",
+                            style = AppType.label,
+                            color = appColors.textMuted,
+                            lineHeight = 15.sp,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        SectionLabel("Quick fill")
+                        Spacer(Modifier.height(6.dp))
+                        ProviderPresetChips(onPick = viewModel::setCloudBaseUrl)
+                        Spacer(Modifier.height(12.dp))
+                        GlassInputField(
+                            label = "Base URL",
+                            value = state.cloudBaseUrl,
+                            onValueChange = viewModel::setCloudBaseUrl,
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        GlassInputField(
+                            label = "Model ID",
+                            value = state.cloudModelId,
+                            onValueChange = viewModel::setCloudModelId,
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        var apiKeyInput by remember { mutableStateOf("") }
+                        GlassInputField(
+                            label = if (state.cloudHasKey) "API key (saved — type to replace)" else "API key",
+                            value = apiKeyInput,
+                            onValueChange = { apiKeyInput = it },
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                            isPassword = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            LiquidActionButton(
+                                text = "Save key",
+                                onClick = {
+                                    if (apiKeyInput.isNotBlank()) {
+                                        viewModel.setCloudApiKey(apiKeyInput)
+                                        apiKeyInput = ""
                                     }
-                                }
-                                Spacer(Modifier.height(14.dp))
-                                SectionLabel("Web search (optional)")
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    text = "Add a free Tavily API key (tavily.com) to let the coach look up facts it doesn't know, like calories for a restaurant meal.",
-                                    style = AppType.label,
-                                    color = appColors.textMuted,
-                                    lineHeight = 15.sp,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                var webKeyInput by remember { mutableStateOf("") }
-                                GlassInputField(
-                                    label = if (state.cloudHasWebSearchKey) "Tavily key (saved — type to replace)" else "Tavily API key",
-                                    value = webKeyInput,
-                                    onValueChange = { webKeyInput = it },
-                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
-                                    isPassword = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    LiquidActionButton(
-                                        text = "Save key",
-                                        onClick = {
-                                            if (webKeyInput.isNotBlank()) {
-                                                viewModel.setWebSearchKey(webKeyInput)
-                                                webKeyInput = ""
-                                            }
-                                        },
-                                        isPrimary = true,
-                                        small = true,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    if (state.cloudHasWebSearchKey) {
-                                        LiquidActionButton(
-                                            text = "Clear",
-                                            onClick = { viewModel.clearWebSearchKey() },
-                                            isPrimary = false,
-                                            small = true,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.height(8.dp))
+                                },
+                                isPrimary = true,
+                                small = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (state.cloudHasKey) {
                                 LiquidActionButton(
-                                    text = if (state.testingConnection) "Testing…" else "Test connection",
-                                    onClick = { viewModel.testCloudConnection() },
-                                    isPrimary = true,
+                                    text = "Clear",
+                                    onClick = { viewModel.clearCloudApiKey() },
+                                    isPrimary = false,
                                     small = true,
-                                    enabled = !state.testingConnection,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.weight(1f),
                                 )
                             }
                         }
+                        Spacer(Modifier.height(14.dp))
+                        SectionLabel("Web search (optional)")
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Add a free Tavily API key (tavily.com) to let the coach look up facts it doesn't know, like calories for a restaurant meal.",
+                            style = AppType.label,
+                            color = appColors.textMuted,
+                            lineHeight = 15.sp,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        var webKeyInput by remember { mutableStateOf("") }
+                        GlassInputField(
+                            label = if (state.cloudHasWebSearchKey) "Tavily key (saved — type to replace)" else "Tavily API key",
+                            value = webKeyInput,
+                            onValueChange = { webKeyInput = it },
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                            isPassword = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            LiquidActionButton(
+                                text = "Save key",
+                                onClick = {
+                                    if (webKeyInput.isNotBlank()) {
+                                        viewModel.setWebSearchKey(webKeyInput)
+                                        webKeyInput = ""
+                                    }
+                                },
+                                isPrimary = true,
+                                small = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (state.cloudHasWebSearchKey) {
+                                LiquidActionButton(
+                                    text = "Clear",
+                                    onClick = { viewModel.clearWebSearchKey() },
+                                    isPrimary = false,
+                                    small = true,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        LiquidActionButton(
+                            text = if (state.testingConnection) "Testing…" else "Test connection",
+                            onClick = { viewModel.testCloudConnection() },
+                            isPrimary = true,
+                            small = true,
+                            enabled = !state.testingConnection,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                // ── Notifications (quiet-by-default opt-out) ──────────────────
+                item { SectionLabel("Notifications") }
+                item {
+                    TintedCard {
+                        NotificationSettingRow(
+                            title = "Weekly check-in",
+                            subtitle = "One push a week when your review is ready",
+                            checked = state.weeklyCheckInPushEnabled,
+                            onCheckedChange = viewModel::setWeeklyCheckInPush,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        NotificationSettingRow(
+                            title = "Ambient nudges",
+                            subtitle = "Rare P0 alerts and celebrations. Off by default",
+                            checked = state.ambientNudgesEnabled,
+                            onCheckedChange = viewModel::setAmbientNudges,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        QuietHoursRow(
+                            subtitle = "No pushes during these hours",
+                            windowDisplay = state.quietHoursDisplay,
+                        )
                     }
                 }
             }

@@ -9,8 +9,11 @@ import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.BarcodeResult
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
+import com.zack.recomptracker.domain.food.FoodMacros
+import com.zack.recomptracker.domain.food.FoodScaling
 import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.ui.component.MessageKind
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +29,34 @@ sealed class ScanState {
         val product: BarcodeProduct,
         val logMode: LogMode = LogMode.GRAMS,
         val amountInput: String = "100",
-    ) : ScanState()
+    ) : ScanState() {
+        /** Whether this product carries enough serving data to log by servings. */
+        val canUseServings: Boolean get() = (product.servingGrams ?: 0.0) >= 1.0
+
+        /** Grams represented by [amountInput] under the current [logMode]. Null if invalid. */
+        val resolvedGrams: Double?
+            get() = when (logMode) {
+                LogMode.GRAMS -> amountInput.toDoubleOrNull()?.takeIf { it >= FoodScaling.MIN_GRAMS }
+                LogMode.SERVING -> {
+                    val servings = amountInput.toDoubleOrNull()
+                    val servingGrams = product.servingGrams
+                    if (servings != null && servings >= FoodScaling.MIN_SERVINGS && servingGrams != null) {
+                        servings * servingGrams
+                    } else {
+                        null
+                    }
+                }
+            }
+
+        /** Per-100g macros scaled to [resolvedGrams], for the live preview. Null if amount invalid. */
+        val previewMacros: FoodMacros?
+            get() = resolvedGrams?.let { grams ->
+                FoodScaling.scale(
+                    FoodMacros(product.caloriesPer100g, product.proteinPer100g, product.carbsPer100g, product.fatPer100g),
+                    grams,
+                )
+            }
+    }
     object NotFound : ScanState()
     object NetworkError : ScanState()
     data class ShowingSuccess(val message: String) : ScanState()
@@ -55,10 +85,17 @@ class BarcodeScannerViewModel(
     private var lastScannedBarcode: String? = null
     private var pickerMode = false
 
-    fun init(slotId: Long?, slotName: String, pickerMode: Boolean = false) {
+    /** Day the scanned entry is logged onto. A future date plans the meal instead of logging it eaten. */
+    private var logDate: LocalDate = dateProvider.today()
+
+    fun init(slotId: Long?, slotName: String, pickerMode: Boolean = false, logDate: LocalDate? = null) {
         this.pickerMode = pickerMode
+        this.logDate = logDate ?: dateProvider.today()
         _uiState.update { it.copy(slotId = slotId, slotName = slotName) }
     }
+
+    /** Adding food onto a future day creates plans, not eaten entries. */
+    private fun isPlannedDate(): Boolean = logDate.isAfter(dateProvider.today())
 
     fun onBarcodeDetected(barcode: String) {
         if (barcode == lastScannedBarcode) return
@@ -90,6 +127,23 @@ class BarcodeScannerViewModel(
     fun onAmountChanged(grams: String) {
         val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
         _uiState.update { it.copy(scanState = current.copy(amountInput = grams)) }
+    }
+
+    /** +/- stepper for grams mode (whole grams), matching the food-library amount sheet. */
+    fun stepGrams(delta: Int) {
+        val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
+        val value = current.amountInput.toDoubleOrNull() ?: FoodScaling.DEFAULT_SERVING_GRAMS
+        val next = (value + delta).coerceAtLeast(FoodScaling.MIN_GRAMS).toInt().toString()
+        _uiState.update { it.copy(scanState = current.copy(amountInput = next)) }
+    }
+
+    /** +/- stepper for serving mode (half-serving steps), matching the food-library amount sheet. */
+    fun stepServings(delta: Double) {
+        val current = _uiState.value.scanState as? ScanState.ProductFound ?: return
+        val value = current.amountInput.toDoubleOrNull() ?: 1.0
+        val next = (value + delta).coerceAtLeast(FoodScaling.MIN_SERVINGS)
+        val text = "%.2f".format(java.util.Locale.US, next).trimEnd('0').trimEnd('.')
+        _uiState.update { it.copy(scanState = current.copy(amountInput = text)) }
     }
 
     fun onLogModeChanged(mode: LogMode) {
@@ -153,7 +207,7 @@ class BarcodeScannerViewModel(
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
-                    date = dateProvider.today(),
+                    date = logDate,
                     mealType = MealEntryTypes.FOOD_LIBRARY,
                     name = product.name,
                     calories = (product.caloriesPer100g * scale).toInt(),
@@ -168,11 +222,12 @@ class BarcodeScannerViewModel(
                     entryServingName = product.servingName,
                     entryServingGrams = product.servingGrams,
                     loggedByServings = productState.logMode == LogMode.SERVING,
+                    planned = isPlannedDate(),
                 ),
                 slotId = state.slotId,
             )
             val slotLabel = state.slotName.ifBlank { "log" }
-            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Added to $slotLabel")) }
+            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess(scanSuccessMessage(slotLabel))) }
             delay(SUCCESS_OVERLAY_MS)
             _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
@@ -191,7 +246,7 @@ class BarcodeScannerViewModel(
         viewModelScope.launch {
             logRepository.addMealToSlot(
                 input = MealEntryInput(
-                    date = dateProvider.today(),
+                    date = logDate,
                     mealType = MealEntryTypes.FOOD_LIBRARY,
                     name = product.name,
                     calories = (product.caloriesPer100g * scale).toInt(),
@@ -206,6 +261,7 @@ class BarcodeScannerViewModel(
                     entryServingName = product.servingName,
                     entryServingGrams = product.servingGrams,
                     loggedByServings = productState.logMode == LogMode.SERVING,
+                    planned = isPlannedDate(),
                 ),
                 slotId = state.slotId,
             )
@@ -222,11 +278,19 @@ class BarcodeScannerViewModel(
                 ),
             )
             val slotLabel = state.slotName.ifBlank { "log" }
-            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess("Saved & added to $slotLabel")) }
+            val msg = if (isPlannedDate()) "Saved & planned for ${dayLabel()}" else "Saved & added to $slotLabel"
+            _uiState.update { it.copy(scanState = ScanState.ShowingSuccess(msg)) }
             delay(SUCCESS_OVERLAY_MS)
             _uiState.update { it.copy(scanState = ScanState.Logged) }
         }
     }
+
+    private fun dayLabel(): String =
+        logDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d"))
+
+    /** Success toast wording that reflects whether the entry was logged (eaten) or planned ahead. */
+    private fun scanSuccessMessage(slotLabel: String): String =
+        if (isPlannedDate()) "Planned for ${dayLabel()}" else "Added to $slotLabel"
 
     fun saveToLibrary() {
         val productState = _uiState.value.scanState as? ScanState.ProductFound ?: return

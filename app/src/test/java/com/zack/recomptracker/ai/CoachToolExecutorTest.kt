@@ -14,6 +14,7 @@ import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
 import com.zack.recomptracker.data.repository.PlanRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
 import java.time.LocalDate
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -152,10 +153,11 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `search_food_library scales macros when grams parameter is provided`() = runTest {
+    fun `search_food_library scales macros to requested grams on a per-100g basis`() = runTest {
+        // Saved-food macros are stored PER 100 g; the household serving (15 g) must NOT affect gram scaling.
         val ketchup = SavedFoodEntity(
             name = "Ketchup", servingName = "1 tbsp",
-            calories = 15, proteinG = 0.2, carbsG = 3.0, fatG = 0.0,
+            calories = 100, proteinG = 1.2, carbsG = 25.0, fatG = 0.1,
             householdServingGrams = 15.0,
         )
         val logRepo = mock<LogRepository>()
@@ -163,12 +165,11 @@ class CoachToolExecutorTest {
         whenever(logRepo.getSavedFoods()).thenReturn(listOf(ketchup))
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
-        // 1g out of 15g serving → macros should be 1/15 of saved values
-        val result = executor.execute("search_food_library", mapOf("query" to "ketchup", "grams" to "1"))
+        // 15 g of a 100 kcal/100g food → 100 × 15/100 = 15 kcal.
+        val result = executor.execute("search_food_library", mapOf("query" to "ketchup", "grams" to "15"))
 
-        // 15 kcal × (1/15) = 1 kcal
-        assertTrue("Calories should be scaled to 1", result.contains("\"calories\":1"))
-        assertTrue("Serving label should reflect requested grams", result.contains("1g"))
+        assertTrue("Calories should be 15% of the per-100g value", result.contains("\"calories\":15"))
+        assertTrue("Serving label should reflect requested grams", result.contains("15g"))
     }
 
     @Test
@@ -452,10 +453,16 @@ class CoachToolExecutorTest {
             LocalDate.of(2026, 6, 4) to MacroTotals(calories = 2600),
             LocalDate.of(2026, 6, 5) to MacroTotals(calories = 2450),
         )
+        val prefs = PlanPreferences(targetCalories = 2550)
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
         whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
-        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 2550)))
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.targetsByDate(any())).thenAnswer { inv ->
+            @Suppress("UNCHECKED_CAST")
+            val dates = inv.arguments[0] as List<LocalDate>
+            dates.associateWith { prefs.toPlanTargets() }
+        }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("get_weekly_trends", emptyMap())
@@ -474,16 +481,69 @@ class CoachToolExecutorTest {
         val start = today.minusDays(6)
         // Single logged day, far over target → graded score must be well below 100.
         val macroMap = mapOf(LocalDate.of(2026, 6, 5) to MacroTotals(calories = 4000))
+        val prefs = PlanPreferences(targetCalories = 2550)
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
         whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
-        whenever(planRepo.preferences).thenReturn(flowOf(PlanPreferences(targetCalories = 2550)))
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.targetsByDate(any())).thenAnswer { inv ->
+            @Suppress("UNCHECKED_CAST")
+            val dates = inv.arguments[0] as List<LocalDate>
+            dates.associateWith { prefs.toPlanTargets() }
+        }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("get_weekly_trends", emptyMap())
 
         assertFalse("Over-target day must not be 100% adherent", result.contains("\"adherence_percent\":100"))
         assertTrue("Should still report one logged day", result.contains("\"days_logged\":1"))
+    }
+
+    @Test
+    fun `get_weekly_trends grades against the effective target during an active rebalance`() = runTest {
+        val today = LocalDate.of(2026, 6, 5)
+        val start = today.minusDays(6)
+        // One logged day today, eaten exactly at the REDUCED target (2300) — 100% only if the tool
+        // resolves the effective target; against the base 2550 it would score below 100.
+        val macroMap = mapOf(today to MacroTotals(calories = 2300))
+        val prefs = PlanPreferences(targetCalories = 2550)
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getWeekMacros(start, today)).thenReturn(macroMap)
+        whenever(planRepo.preferences).thenReturn(flowOf(prefs))
+        whenever(planRepo.targetsByDate(any())).thenAnswer { inv ->
+            @Suppress("UNCHECKED_CAST")
+            val dates = inv.arguments[0] as List<LocalDate>
+            dates.associateWith { prefs.toPlanTargets() }
+        }
+        // 3-day rebalance covering today (−250 kcal → effective 2300).
+        val plan = com.zack.recomptracker.domain.rebalance.RebalancePlan(
+            id = "p",
+            triggerDateIso = today.minusDays(2).toString(),
+            startDateIso = today.minusDays(2).toString(),
+            endDateIso = today.toString(),
+            lengthDays = 3,
+            mode = com.zack.recomptracker.domain.rebalance.RebalanceMode.EAT_LESS,
+            baseCalories = 2550,
+            dailyCalorieReduction = 250,
+            extraDailySteps = 0,
+            baseStepGoal = null,
+            recentAvgSteps = null,
+            surplusKcal = 600,
+            recoveredKcal = 600,
+            status = com.zack.recomptracker.domain.rebalance.RebalanceStatus.ACTIVE,
+            createdAtIso = "2026-06-01T09:00:00Z",
+        )
+        val executor = CoachToolExecutor(
+            logRepo, planRepo, fixedDateProvider,
+            rebalanceState = {
+                com.zack.recomptracker.domain.rebalance.RebalanceState(active = plan)
+            },
+        )
+        val result = executor.execute("get_weekly_trends", emptyMap())
+
+        assertTrue("eaten at the reduced target is fully adherent", result.contains("\"adherence_percent\":100"))
+        assertTrue("still one logged day", result.contains("\"days_logged\":1"))
     }
 
     @Test
@@ -673,10 +733,11 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `log_meal scales library macros when grams provided`() = runTest {
+    fun `log_meal scales library macros to requested grams on a per-100g basis`() = runTest {
+        // Saved-food macros are stored PER 100 g; the household serving (15 g) must NOT affect gram scaling.
         val ketchup = SavedFoodEntity(
             name = "Ketchup", servingName = "1 tbsp",
-            calories = 15, proteinG = 0.2, carbsG = 3.0, fatG = 0.0,
+            calories = 100, proteinG = 1.2, carbsG = 25.0, fatG = 0.1,
             householdServingGrams = 15.0,
         )
         var captured: MealEntryInput? = null
@@ -687,10 +748,10 @@ class CoachToolExecutorTest {
         whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
-        // 1g of 15g serving → 1/15 of macros
-        executor.execute("log_meal", mapOf("name" to "ketchup", "calories" to "1", "grams" to "1"))
+        // 30 g of a 100 kcal/100g food → 100 × 30/100 = 30 kcal.
+        executor.execute("log_meal", mapOf("name" to "ketchup", "grams" to "30"))
 
-        assertTrue("Calories should be scaled to 1", captured?.calories == 1)
+        assertTrue("Calories should be per-100g scaled (100 × 30/100 = 30)", captured?.calories == 30)
         assertTrue("Name should be from library", captured?.name == "Ketchup")
     }
 

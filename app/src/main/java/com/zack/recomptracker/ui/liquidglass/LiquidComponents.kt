@@ -1,13 +1,18 @@
 package com.zack.recomptracker.ui.liquidglass
 
+import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -727,8 +732,28 @@ fun LiquidGlassButton(
     tint: Color = Color.Unspecified,
     surfaceColor: Color = if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
     buttonHeight: Dp = 48.dp,
+    /**
+     * Cheap look-alike for repeated-in-list call sites. When true, skips the `drawBackdrop` glass
+     * layer entirely and draws the same Capsule pill with a translucent fill + hairline border
+     * derived from the same [tint]/[surfaceColor] tokens the glass version tints with. The
+     * press-scale animation is kept (a plain graphicsLayer transform — cheap). Matches the resting
+     * look over the app's static background.
+     */
+    lite: Boolean = false,
     content: @Composable RowScope.() -> Unit,
 ) {
+    if (lite) {
+        LiteGlassButton(
+            onClick = { if (enabled) onClick() },
+            modifier = modifier.then(if (!enabled) Modifier.alpha(0.38f) else Modifier),
+            enabled = enabled,
+            tint = tint,
+            surfaceColor = surfaceColor,
+            buttonHeight = buttonHeight,
+            content = content,
+        )
+        return
+    }
     LiquidButton(
         onClick = { if (enabled) onClick() },
         backdrop = LocalBackdrop.current,
@@ -737,6 +762,56 @@ fun LiquidGlassButton(
         tint = tint,
         surfaceColor = surfaceColor,
         buttonHeight = buttonHeight,
+        content = content,
+    )
+}
+
+// ── LiteGlassButton (drawBackdrop-free look-alike for LiquidGlassButton) ──────
+
+// Reproduces the resting glass pill with an opaque/translucent fill instead of a backdrop layer:
+//  • tinted (primary) buttons paint the accent at the same 0.75 alpha the glass path fills with,
+//    then the surface wash on top — reads as the same violet pill over the app background;
+//  • clear (secondary) buttons paint only the surface wash.
+// A hairline border (white on dark / black on light, matching the glass rim's subtle edge) and the
+// press-scale keep it feeling like the same control at a fraction of the per-frame cost.
+@Composable
+private fun LiteGlassButton(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+    tint: Color,
+    surfaceColor: Color,
+    buttonHeight: Dp,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val isDark = LocalAppColors.current.isDark
+    val hairline = if (isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.10f)
+    val pressed = remember { MutableInteractionSource() }
+    val isPressed by pressed.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed && enabled) 0.97f else 1f, label = "litePressScale")
+    Row(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(Capsule())
+            .drawBehind {
+                if (tint.isSpecified) drawRect(tint.copy(alpha = 0.75f))
+                if (surfaceColor.isSpecified) drawRect(surfaceColor)
+            }
+            .border(1.dp, hairline, Capsule())
+            .clickable(
+                interactionSource = pressed,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .height(buttonHeight)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
 }
@@ -752,6 +827,7 @@ fun LiquidPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    lite: Boolean = false,
 ) {
     LiquidGlassButton(
         onClick = onClick,
@@ -759,8 +835,9 @@ fun LiquidPrimaryButton(
         enabled = enabled,
         tint = LocalAppAccent.current.accent,
         surfaceColor = Color.White.copy(alpha = 0.08f),
+        lite = lite,
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = LocalAppAccent.current.onAccent)
+        Text(text = text, style = AppType.cardTitle, color = LocalAppAccent.current.onAccent)
     }
 }
 
@@ -774,14 +851,16 @@ fun LiquidSecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    lite: Boolean = false,
 ) {
     LiquidGlassButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
         surfaceColor = if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
+        lite = lite,
     ) {
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LocalAppColors.current.textPrimary.copy(alpha = 0.90f))
+        Text(text = text, style = AppType.cardTitle.copy(fontWeight = FontWeight.Medium), color = LocalAppColors.current.textPrimary.copy(alpha = 0.90f))
     }
 }
 
@@ -822,6 +901,7 @@ fun LiquidStepButton(
             .then(if (enabled) highlight.modifier.then(highlight.gestureModifier) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
+        // Symbol glyph (+/−), not label text — no AppType text token applies to this size/weight.
         Text(text = symbol, fontSize = 18.sp, fontWeight = FontWeight.Light, color = LocalAppColors.current.textPrimary)
     }
 }
@@ -838,6 +918,7 @@ fun LiquidActionButton(
     isPrimary: Boolean = false,
     enabled: Boolean = true,
     small: Boolean = false,
+    lite: Boolean = false,
 ) {
     val accent = LocalAppAccent.current
     LiquidGlassButton(
@@ -848,11 +929,11 @@ fun LiquidActionButton(
         surfaceColor = if (isPrimary) Color.White.copy(alpha = 0.08f)
             else if (LocalAppColors.current.isDark) Color.White.copy(alpha = 0.14f) else LocalAppColors.current.glassPillSurface,
         buttonHeight = if (small) 32.dp else 48.dp,
+        lite = lite,
     ) {
         Text(
             text = text,
-            fontSize = 13.sp,
-            fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium,
+            style = AppType.body.copy(fontWeight = if (isPrimary) FontWeight.SemiBold else FontWeight.Medium),
             color = if (isPrimary) accent.accentLighter else LocalAppColors.current.textPrimary.copy(alpha = 0.85f),
         )
     }

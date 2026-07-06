@@ -6,6 +6,18 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class RebalanceMode { EAT_LESS, BALANCED, MOVE_MORE }
 
+/**
+ * Per-offer "how much of the surplus to claw back" dial (spec §2, §3). Unlike [RebalanceMode] this is
+ * **non-sticky** — it resets to [DEFAULT] on every fresh offer and lives on [RebalancePlan] only, never
+ * on [RebalanceState]. [fraction] is the share of the weekly surplus the plan targets recovering.
+ */
+@Serializable
+enum class RebalanceIntensity(val fraction: Double) {
+    LIGHT(0.50), STANDARD(0.75), FULL(1.00);
+
+    companion object { val DEFAULT = STANDARD }
+}
+
 /** Lifecycle status of a [RebalancePlan]. [NO_ADJUSTMENT] is a supportive note, not a plan. */
 @Serializable
 enum class RebalanceStatus { OFFERED, ACTIVE, COMPLETED, ENDED_EARLY, DECLINED, NO_ADJUSTMENT }
@@ -18,7 +30,7 @@ enum class RebalanceStatus { OFFERED, ACTIVE, COMPLETED, ENDED_EARLY, DECLINED, 
  * @property triggerDateIso latest qualifying high day (weekend -> the Sunday).
  * @property startDateIso Day 1 (accept-day + 1).
  * @property endDateIso inclusive; start + lengthDays - 1.
- * @property lengthDays 2..5.
+ * @property lengthDays 2..7.
  * @property baseCalories base target at offer/accept (audit + derivation anchor).
  * @property dailyCalorieReduction R >= 0.
  * @property extraDailySteps E >= 0 (0 = calorie-only).
@@ -27,6 +39,11 @@ enum class RebalanceStatus { OFFERED, ACTIVE, COMPLETED, ENDED_EARLY, DECLINED, 
  * @property surplusKcal S the plan was sized against.
  * @property recoveredKcal D * (R + stepKcal(E)).
  * @property endedReason "completed" | "unrecoverable" | "plan_edited" | "expired" | "cancelled".
+ * @property intensity the [RebalanceIntensity] selection that produced this plan (non-sticky; records
+ *   the active segment so the offer UI can highlight it and `customize` can re-derive). Defaults to
+ *   [RebalanceIntensity.STANDARD] so old serialized/history records decode.
+ * @property partial true when the surplus was only partially recoverable within the 7-day cap
+ *   (`recoveredKcal < targetRecover`); the offer then shows an honest "recovers about X of Y" line.
  */
 @Serializable
 data class RebalancePlan(
@@ -47,6 +64,8 @@ data class RebalancePlan(
     val createdAtIso: String,
     val decidedAtIso: String? = null,
     val endedReason: String? = null,
+    val intensity: RebalanceIntensity = RebalanceIntensity.STANDARD,
+    val partial: Boolean = false,
 )
 
 /** One bar in the offer's weekly-bars viz. Trailing-7 history days + the plan's lighter days ahead. */
@@ -103,9 +122,6 @@ object RebalanceDefaults {
     const val WEEKEND_SURPLUS_KCAL = 600
     const val WEEKLY_IMPACT_MIN_KCAL = 50
     const val COOLDOWN_DAYS = 3
-    const val RECOVERY_FRACTION = 0.75
-    const val RECOVERY_FRACTION_RECOMP = 0.375
-    const val RECOMP_MAX_LENGTH_DAYS = 3
     const val MAX_CAL_REDUCTION_PCT = 0.15
     const val MAX_CAL_REDUCTION_ABS = 300
     const val MIN_EFFECTIVE_CAL = 1200
@@ -115,7 +131,15 @@ object RebalanceDefaults {
     const val BALANCED_LEVER_FRACTION = 0.6
     const val UNRECOVERABLE_SLACK_KCAL = 75
     const val MIN_LENGTH_DAYS = 2
-    const val MAX_LENGTH_DAYS = 5
+    const val MAX_LENGTH_DAYS = 7
+
+    /**
+     * Surplus-band thresholds (spec §6). Below [SMALL_SURPLUS_KCAL] a plan would be noise → a supportive
+     * reassurance note; above [HUGE_SURPLUS_KCAL] even Light (50%) can't fit in 7 days at the max daily
+     * cut → a supportive resume note. In between, a dynamic (possibly partial) offer. Both are tunable.
+     */
+    const val SMALL_SURPLUS_KCAL = 500
+    const val HUGE_SURPLUS_KCAL = 4000
 
     /**
      * Half-width of the effective calorie zone: zone = effective ± this. Mirrors

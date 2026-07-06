@@ -2,7 +2,6 @@ package com.zack.recomptracker.data.rebalance
 
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
-import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.data.usage.UsageTracker
 import com.zack.recomptracker.domain.plan.PlanVersion
@@ -10,6 +9,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
 import com.zack.recomptracker.domain.rebalance.RebalanceDecision
 import com.zack.recomptracker.domain.rebalance.RebalanceEngine
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
@@ -46,9 +46,6 @@ import kotlinx.coroutines.sync.withLock
  *
  * @param store the persisted state + once-daily gate.
  * @param buildInput assembles the flattened engine input from repositories (one-shot suspend reads).
- * @param currentGoal the user's current [FitnessGoal], read at customize time — the goal is
- *   deliberately NOT stored on the plan record, so [RebalanceEngine.customize] needs it passed in to
- *   keep a RECOMP re-size goal-aware (halved fraction, 3-day cap).
  * @param planVersions `planRepository.observeVersions()`. A version row is written iff the permanent
  *   [com.zack.recomptracker.domain.plan.PlanTargets] actually changed (HC-sync saves don't), so keying
  *   the cancel hook on versions — not on every plan save — cancels an active plan only on a real edit.
@@ -59,7 +56,6 @@ import kotlinx.coroutines.sync.withLock
 class RebalanceCoordinator(
     private val store: RebalanceStore,
     private val buildInput: suspend () -> RebalanceEvaluationInput,
-    private val currentGoal: suspend () -> FitnessGoal?,
     private val planVersions: Flow<List<PlanVersion>>,
     private val dateProvider: DateProvider,
     private val usageTracker: UsageTracker,
@@ -244,16 +240,17 @@ class RebalanceCoordinator(
     }
 
     /**
-     * Customize the current OFFERED plan to [mode] (no-op otherwise): recompute R/E/D from the facts
-     * stored on the offer via [RebalanceEngine.customize], passing the user's current goal so a RECOMP
-     * offer keeps its halved fraction and 3-day cap. Persists the recomputed plan AND the sticky
-     * [com.zack.recomptracker.domain.rebalance.RebalanceState.mode] so future offers size with [mode].
+     * Customize the current OFFERED plan to [mode] + [intensity] (no-op otherwise): recompute R/E/D
+     * from the facts stored on the offer via [RebalanceEngine.customize]. Persists the recomputed plan
+     * AND the sticky [com.zack.recomptracker.domain.rebalance.RebalanceState.mode] so future offers size
+     * with [mode]. Intensity is deliberately **not** sticky (spec §2) — it lives on the plan only and
+     * resets to STANDARD on the next fresh offer, so it is never written to state.
      */
-    suspend fun customize(mode: RebalanceMode) {
+    suspend fun customize(mode: RebalanceMode, intensity: RebalanceIntensity) {
         val state = store.current()
         val offer = state.active ?: return
         if (offer.status != RebalanceStatus.OFFERED) return
-        val recomputed = RebalanceEngine.customize(offer, mode, currentGoal())
+        val recomputed = RebalanceEngine.customize(offer, mode, intensity)
         store.save(state.copy(active = recomputed, mode = mode))
     }
 

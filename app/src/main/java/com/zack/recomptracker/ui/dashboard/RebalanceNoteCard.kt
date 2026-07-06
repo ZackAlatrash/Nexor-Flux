@@ -82,7 +82,9 @@ internal fun RebalanceNoteCard(
         when (state.noteKind) {
             NoteKind.COMPLETION -> CompletionNote(state, onDismiss, animationsEnabled)
             NoteKind.GRACEFUL_END -> GracefulEndNote(state, onDismiss)
-            NoteKind.NO_ADJUSTMENT -> NoAdjustmentNote(state, onDismiss)
+            // REASSURANCE (small-end note) reuses the calm green "all is fine" skin for now; a distinct
+            // face is a later UI task (spec §12).
+            NoteKind.NO_ADJUSTMENT, NoteKind.REASSURANCE -> NoAdjustmentNote(state, onDismiss)
             null -> FallbackNote(state, onDismiss) // defensive — engine should always set a kind
         }
     }

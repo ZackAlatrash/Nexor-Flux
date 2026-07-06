@@ -11,6 +11,8 @@ import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
 import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
 import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
+import com.zack.recomptracker.domain.rebalance.RebalanceDefaults
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
@@ -44,6 +46,8 @@ data class RebalanceCardUiState(
     val effectiveCalories: Int = 0,
     val extraSteps: Int = 0,
     val mode: RebalanceMode = RebalanceMode.BALANCED,
+    val intensity: RebalanceIntensity = RebalanceIntensity.STANDARD,
+    val partial: Boolean = false,
     val noteKind: NoteKind? = null,
     val weeklyBars: ImmutableList<RebalanceDayBar> = persistentListOf(),
     val baseCalories: Int = 0,
@@ -51,8 +55,13 @@ data class RebalanceCardUiState(
     enum class Face { NONE, OFFER, PROGRESS, NOTE }
 }
 
-/** Which flavour of NOTE face is showing — selects the note's icon/tone in the redesign. */
-enum class NoteKind { COMPLETION, GRACEFUL_END, NO_ADJUSTMENT }
+/**
+ * Which flavour of NOTE face is showing — selects the note's icon/tone in the redesign. [REASSURANCE]
+ * is the small-end note (surplus below [RebalanceDefaults.SMALL_SURPLUS_KCAL]); [NO_ADJUSTMENT] doubles
+ * as the resume note (a surplus too large to sensibly claw back). Both are derived from
+ * `plan.surplusKcal`, not a persisted flag (spec §16).
+ */
+enum class NoteKind { COMPLETION, GRACEFUL_END, NO_ADJUSTMENT, REASSURANCE }
 
 /** Supportive copy for the one case with no §8 slot: accepted late, plan starts tomorrow (spec §10). */
 private const val STARTS_TOMORROW_LINE = "Your rebalance starts tomorrow — today stays your normal plan."
@@ -230,8 +239,22 @@ internal class RebalanceViewModel(
         }
     }
 
+    /**
+     * Change the offer's **mix** dial (spec §2). Keeps the current intensity — the two dials compose, so
+     * a mode change must not silently reset how much of the surplus is being clawed back.
+     */
     fun onCustomize(mode: RebalanceMode) {
-        viewModelScope.launch { coordinator.customize(mode) }
+        val intensity = _uiState.value.intensity
+        viewModelScope.launch { coordinator.customize(mode, intensity) }
+    }
+
+    /**
+     * Change the offer's **intensity** dial (spec §2). Keeps the current mode. Wired to the second dial
+     * in a later UI task; delegating here keeps the offer overlay's call sites compiling now.
+     */
+    fun onCustomizeIntensity(intensity: RebalanceIntensity) {
+        val mode = _uiState.value.mode
+        viewModelScope.launch { coordinator.customize(mode, intensity) }
     }
 
     /** Collapse the OFFER card to its minimized peek. Pure UI — never declines the offer. */
@@ -280,6 +303,8 @@ internal class RebalanceViewModel(
                 effectiveCalories = effectiveCalories(plan),
                 extraSteps = plan.extraDailySteps,
                 mode = plan.mode,
+                intensity = plan.intensity,
+                partial = plan.partial,
                 baseCalories = plan.baseCalories,
                 weeklyBars = window?.toImmutableList() ?: persistentListOf(),
             )
@@ -322,7 +347,15 @@ internal class RebalanceViewModel(
 
         private fun noteFace(plan: RebalancePlan): DerivedFace {
             val (slot, noteKind) = when (plan.status) {
-                RebalanceStatus.NO_ADJUSTMENT -> RebalanceCopySlot.NO_ADJUSTMENT to NoteKind.NO_ADJUSTMENT
+                // A NO_ADJUSTMENT note is either the small-end reassurance note or the big-end resume
+                // note; the two share the status and are told apart by the real surplus (spec §16), so
+                // the note card can pick the right copy/tone.
+                RebalanceStatus.NO_ADJUSTMENT ->
+                    if (plan.surplusKcal < RebalanceDefaults.SMALL_SURPLUS_KCAL) {
+                        RebalanceCopySlot.REASSURANCE to NoteKind.REASSURANCE
+                    } else {
+                        RebalanceCopySlot.NO_ADJUSTMENT to NoteKind.NO_ADJUSTMENT
+                    }
                 RebalanceStatus.COMPLETED -> RebalanceCopySlot.COMPLETION to NoteKind.COMPLETION
                 else -> RebalanceCopySlot.GRACEFUL_END to NoteKind.GRACEFUL_END // ENDED_EARLY ("unrecoverable")
             }

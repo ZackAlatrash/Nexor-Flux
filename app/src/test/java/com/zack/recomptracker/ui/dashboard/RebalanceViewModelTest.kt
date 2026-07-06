@@ -13,6 +13,7 @@ import com.zack.recomptracker.data.usage.NoOpUsageTracker
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
@@ -150,13 +151,11 @@ class RebalanceViewModelTest {
         store: FakeRebalanceStore,
         scope: CoroutineScope,
         buildInput: suspend () -> RebalanceEvaluationInput = { cannedInput(existing = store.current()) },
-        currentGoal: suspend () -> FitnessGoal? = { FitnessGoal.MODERATE_CUT },
         planVersions: Flow<List<PlanVersion>> = MutableSharedFlow(),
         dateProvider: DateProvider = FixedDateProvider(today),
     ) = RebalanceCoordinator(
         store = store,
         buildInput = buildInput,
-        currentGoal = currentGoal,
         planVersions = planVersions,
         dateProvider = dateProvider,
         usageTracker = NoOpUsageTracker,
@@ -445,6 +444,75 @@ class RebalanceViewModelTest {
         val state = vm.uiState.value
         assertEquals(RebalanceCardUiState.Face.NOTE, state.face)
         assertEquals(NoteKind.NO_ADJUSTMENT, state.noteKind)
+    }
+
+    @Test
+    fun `small-surplus note derives REASSURANCE, large-surplus note derives NO_ADJUSTMENT`() = runTest(dispatcher) {
+        // Both are NO_ADJUSTMENT-status notes; the VM tells them apart purely from plan.surplusKcal
+        // (spec §16): below SMALL_SURPLUS_KCAL (500) is the reassurance note, at/above is the resume note.
+        val reassure = offeredPlan().copy(
+            id = "reassure", status = RebalanceStatus.NO_ADJUSTMENT,
+            dailyCalorieReduction = 0, extraDailySteps = 0, surplusKcal = 300,
+        )
+        val reassureStore = FakeRebalanceStore(seed = RebalanceState(active = reassure))
+        val reassureVm = RebalanceViewModel(
+            reassureStore, coordinator(reassureStore, scope = backgroundScope),
+            fallbackOnlyCopyService(), FixedDateProvider(today),
+        )
+        advanceUntilIdle()
+        assertEquals(NoteKind.REASSURANCE, reassureVm.uiState.value.noteKind)
+
+        val resume = offeredPlan().copy(
+            id = "resume", status = RebalanceStatus.NO_ADJUSTMENT,
+            dailyCalorieReduction = 0, extraDailySteps = 0, surplusKcal = 5000,
+        )
+        val resumeStore = FakeRebalanceStore(seed = RebalanceState(active = resume))
+        val resumeVm = RebalanceViewModel(
+            resumeStore, coordinator(resumeStore, scope = backgroundScope),
+            fallbackOnlyCopyService(), FixedDateProvider(today),
+        )
+        advanceUntilIdle()
+        assertEquals(NoteKind.NO_ADJUSTMENT, resumeVm.uiState.value.noteKind)
+    }
+
+    // ── redesign surface: intensity + partial + second dial ─────────────────────────────
+
+    @Test
+    fun `offer face carries intensity and partial from the plan`() = runTest(dispatcher) {
+        val plan = offeredPlan().copy(intensity = RebalanceIntensity.FULL, partial = true)
+        val store = FakeRebalanceStore(seed = RebalanceState(active = plan))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.OFFER, state.face)
+        assertEquals(RebalanceIntensity.FULL, state.intensity)
+        assertTrue("partial threads through to the OFFER face", state.partial)
+    }
+
+    @Test
+    fun `onCustomizeIntensity recomputes the offer at the new intensity keeping the current mode`() = runTest(dispatcher) {
+        // A real STANDARD offer (S = 600 → 230 kcal); switching to FULL via the second dial delegates to
+        // the coordinator and recomputes to a heavier plan without changing the mode.
+        val store = FakeRebalanceStore()
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+        vm.onShown()
+        advanceUntilIdle()
+        assertEquals(RebalanceCardUiState.Face.OFFER, vm.uiState.value.face)
+        assertEquals(RebalanceIntensity.STANDARD, vm.uiState.value.intensity)
+        val modeBefore = vm.uiState.value.mode
+
+        vm.onCustomizeIntensity(RebalanceIntensity.FULL)
+        advanceUntilIdle()
+
+        val after = store.current().active!!
+        assertEquals("intensity applied to the plan", RebalanceIntensity.FULL, after.intensity)
+        assertEquals("mode unchanged by the intensity dial", modeBefore, after.mode)
+        assertEquals("FULL recovers more per day than STANDARD", 300, after.dailyCalorieReduction)
+        assertEquals(RebalanceStatus.OFFERED, after.status)
     }
 
     // ── redesign surface: weekly bars ──────────────────────────────────────────────────

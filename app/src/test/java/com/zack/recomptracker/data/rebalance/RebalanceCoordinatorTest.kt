@@ -7,6 +7,7 @@ import com.zack.recomptracker.data.usage.UsageTracker
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
@@ -82,7 +83,6 @@ class RebalanceCoordinatorTest {
     private fun coordinator(
         store: RebalanceStore,
         buildInput: suspend () -> RebalanceEvaluationInput,
-        currentGoal: suspend () -> FitnessGoal? = { FitnessGoal.MODERATE_CUT },
         planVersions: Flow<List<PlanVersion>> = MutableSharedFlow(),
         dateProvider: DateProvider = MutableDateProvider(today),
         usageTracker: UsageTracker = RecordingUsageTracker(),
@@ -90,7 +90,6 @@ class RebalanceCoordinatorTest {
     ) = RebalanceCoordinator(
         store = store,
         buildInput = buildInput,
-        currentGoal = currentGoal,
         planVersions = planVersions,
         dateProvider = dateProvider,
         usageTracker = usageTracker,
@@ -318,25 +317,27 @@ class RebalanceCoordinatorTest {
     // ── customize ─────────────────────────────────────────────────────────────────────
 
     @Test
-    fun `customize recomputes the offer with the current goal and stores sticky mode`() = runTest {
-        // currentGoal returns RECOMP → the re-size keeps RECOMP's 3-day length cap. The offer itself is
-        // built by the engine (realistic), then customized to EAT_LESS.
+    fun `customize recomputes the offer for the new mode and intensity and stores sticky mode`() = runTest {
+        // The engine mints a STANDARD offer (S = 600 → 2-day / 230 kcal). Customizing to EAT_LESS + FULL
+        // recomputes to a heavier plan; the mode persists on state (sticky) while intensity does not.
         val store = FakeRebalanceStore()
         val coordinator = coordinator(
             store = store,
-            buildInput = { cannedInput(goal = FitnessGoal.RECOMP, existing = store.current()) },
-            currentGoal = { FitnessGoal.RECOMP },
+            buildInput = { cannedInput(existing = store.current()) },
             scope = this,
         )
         coordinator.runIfDue()
-        assertNotNull(store.current().active)
+        val offer = store.current().active!!
+        assertEquals(RebalanceIntensity.STANDARD, offer.intensity)
+        assertEquals(230, offer.dailyCalorieReduction)
 
-        coordinator.customize(RebalanceMode.EAT_LESS)
+        coordinator.customize(RebalanceMode.EAT_LESS, RebalanceIntensity.FULL)
 
         val after = store.current()
         assertNotNull(after.active)
         assertEquals("recomputed plan keeps EAT_LESS", RebalanceMode.EAT_LESS, after.active!!.mode)
-        assertTrue("RECOMP caps length at 3 days", after.active!!.lengthDays <= 3)
+        assertEquals("intensity recorded on the plan", RebalanceIntensity.FULL, after.active!!.intensity)
+        assertEquals("FULL recovers ~all of the surplus (300 vs 230)", 300, after.active!!.dailyCalorieReduction)
         assertEquals("sticky mode updated on state", RebalanceMode.EAT_LESS, after.mode)
         assertEquals("still OFFERED after customize", RebalanceStatus.OFFERED, after.active!!.status)
     }

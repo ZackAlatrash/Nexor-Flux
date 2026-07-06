@@ -65,44 +65,50 @@ object RebalanceEngine {
         // Gate 5: weekly-impact test (integer-safe: S ≥ 50 * 7).
         if (surplus < RebalanceDefaults.WEEKLY_IMPACT_MIN_KCAL * 7) return RebalanceDecision.Silent
 
-        // Gate 6: goal branches. Bulk goals never offer.
+        // Gate 6: goal branches. Bulk goals never offer (a surplus while bulking is intended).
         if (input.goal.isBulk()) return RebalanceDecision.Silent
 
         val baseCalories = baseCaloriesFor(input, yesterday, window)
         val recentAvgSteps = ActivitySummary.averageDailySteps(input.stepsByDate, yesterday, 7)
+        val now = nowIso()
 
+        // A supportive NO_ADJUSTMENT note (start = end = triggerDate), carrying the REAL surplus so the
+        // ViewModel can distinguish the reassurance note (< SMALL_SURPLUS_KCAL) from the resume note.
+        fun noAdjustment(): RebalanceDecision.NoAdjustment = RebalanceDecision.NoAdjustment(
+            RebalancePlan(
+                id = newId(),
+                triggerDateIso = triggerDate.toString(),
+                startDateIso = triggerDate.toString(),
+                endDateIso = triggerDate.toString(),
+                lengthDays = 0,
+                mode = input.mode,
+                baseCalories = baseCalories,
+                dailyCalorieReduction = 0,
+                extraDailySteps = 0,
+                baseStepGoal = input.baseStepGoal,
+                recentAvgSteps = recentAvgSteps,
+                surplusKcal = surplus,
+                recoveredKcal = 0,
+                status = RebalanceStatus.NO_ADJUSTMENT,
+                createdAtIso = now,
+            ),
+        )
+
+        // Gate 7: surplus band (spec §6). A small slip is reassurance-only; a blowout beyond what even
+        // Light can recover in 7 days is resume-only. Both are supportive NO_ADJUSTMENT notes.
+        if (surplus < RebalanceDefaults.SMALL_SURPLUS_KCAL) return noAdjustment()
+        if (surplus > RebalanceDefaults.HUGE_SURPLUS_KCAL) return noAdjustment()
+
+        // In-band: size a (possibly partial) offer at the default STANDARD intensity. `size` returns
+        // null only when there is no usable lever (perDayCap ≤ 0) → reassurance note.
         val sizing = size(
             surplus = surplus,
             baseCalories = baseCalories,
             recentAvgSteps = recentAvgSteps,
             baseStepGoal = input.baseStepGoal,
-            goal = input.goal,
+            intensity = RebalanceIntensity.STANDARD,
             mode = input.mode,
-        )
-
-        val now = nowIso()
-        if (sizing == null) {
-            // Too-large surplus → a self-consistent NO_ADJUSTMENT note (start = end = triggerDate).
-            return RebalanceDecision.NoAdjustment(
-                RebalancePlan(
-                    id = newId(),
-                    triggerDateIso = triggerDate.toString(),
-                    startDateIso = triggerDate.toString(),
-                    endDateIso = triggerDate.toString(),
-                    lengthDays = 0,
-                    mode = input.mode,
-                    baseCalories = baseCalories,
-                    dailyCalorieReduction = 0,
-                    extraDailySteps = 0,
-                    baseStepGoal = input.baseStepGoal,
-                    recentAvgSteps = recentAvgSteps,
-                    surplusKcal = surplus,
-                    recoveredKcal = 0,
-                    status = RebalanceStatus.NO_ADJUSTMENT,
-                    createdAtIso = now,
-                ),
-            )
-        }
+        ) ?: return noAdjustment()
 
         // Provisional window at offer time; accept (Task 5) re-stamps start/end.
         val start = input.today.plusDays(1)
@@ -124,6 +130,8 @@ object RebalanceEngine {
                 recoveredKcal = sizing.recovered,
                 status = RebalanceStatus.OFFERED,
                 createdAtIso = now,
+                intensity = RebalanceIntensity.STANDARD,
+                partial = sizing.partial,
             ),
         )
     }
@@ -179,31 +187,33 @@ object RebalanceEngine {
     }
 
     /**
-     * Recomputes an OFFERED plan's R/E/D/recovered for [newMode] from the facts stored on the offer
-     * (`surplusKcal`, `recentAvgSteps`, `baseCalories`, `baseStepGoal`). No data re-read; OFFERED only.
-     * The goal is NOT stored on the plan, so the caller must pass the user's current [goal] — it keeps
-     * the re-size goal-aware (RECOMP's halved fraction and 3-day length cap, spec §5.6). Null goal →
-     * full cut behavior, matching [evaluate].
+     * Recomputes an OFFERED plan's R/E/D/recovered for [newMode] + [intensity] from the facts stored on
+     * the offer (`surplusKcal`, `recentAvgSteps`, `baseCalories`, `baseStepGoal`). No data re-read;
+     * OFFERED only. Both dials compose: [intensity] sets how much of the surplus to claw back (spec §2),
+     * [newMode] how to split it. Partial recovery means `size` returns a plan for any in-band surplus
+     * with a usable lever; the null-fallback (perDayCap ≤ 0) is essentially dead but kept sane.
      */
-    fun customize(offer: RebalancePlan, newMode: RebalanceMode, goal: FitnessGoal?): RebalancePlan {
+    fun customize(offer: RebalancePlan, newMode: RebalanceMode, intensity: RebalanceIntensity): RebalancePlan {
         val sizing = size(
             surplus = offer.surplusKcal,
             baseCalories = offer.baseCalories,
             recentAvgSteps = offer.recentAvgSteps,
             baseStepGoal = offer.baseStepGoal,
-            goal = goal,
+            intensity = intensity,
             mode = newMode,
-        ) ?: return offer.copy(mode = newMode) // too-large under this mode: keep facts, just switch mode
+        ) ?: return offer.copy(mode = newMode, intensity = intensity) // no usable lever: keep facts, switch dials
 
         val start = isoDate(offer.startDateIso)
         val end = start.plusDays((sizing.days - 1).toLong())
         return offer.copy(
             mode = newMode,
+            intensity = intensity,
             lengthDays = sizing.days,
             endDateIso = end.toString(),
             dailyCalorieReduction = sizing.reduction,
             extraDailySteps = sizing.extraSteps,
             recoveredKcal = sizing.recovered,
+            partial = sizing.partial,
             status = RebalanceStatus.OFFERED,
         )
     }
@@ -271,30 +281,31 @@ object RebalanceEngine {
 
     // ── Sizing (spec §5.5) ───────────────────────────────────────────────────────────
 
-    private data class Sizing(val days: Int, val reduction: Int, val extraSteps: Int, val recovered: Int)
+    private data class Sizing(
+        val days: Int,
+        val reduction: Int,
+        val extraSteps: Int,
+        val recovered: Int,
+        val partial: Boolean,
+    )
 
     /**
-     * Sizes a plan, or returns null when the surplus is too large to recover within the allowed length.
-     * Raw math is kept through the cap computation; only the FINAL R and E are rounded.
+     * Sizes a plan for the given [intensity], or returns null ONLY when there is no usable lever
+     * (`perDayCap <= 0` — a sub-floor base with no steps). A surplus too large to fully recover in
+     * [RebalanceDefaults.MAX_LENGTH_DAYS] is **partially** recovered (spec §5): the target is capped at
+     * `maxDays × perDayCap`, the plan is sized to that feasible amount, and `partial` is set. Raw math
+     * is kept through the cap computation; only the FINAL R and E are rounded.
      */
     private fun size(
         surplus: Int,
         baseCalories: Int,
         recentAvgSteps: Int?,
         baseStepGoal: Int?,
-        goal: FitnessGoal?,
+        intensity: RebalanceIntensity,
         mode: RebalanceMode,
     ): Sizing? {
-        val fraction = if (goal == FitnessGoal.RECOMP) {
-            RebalanceDefaults.RECOVERY_FRACTION_RECOMP
-        } else {
-            RebalanceDefaults.RECOVERY_FRACTION
-        }
-        val maxDays = if (goal == FitnessGoal.RECOMP) {
-            RebalanceDefaults.RECOMP_MAX_LENGTH_DAYS
-        } else {
-            RebalanceDefaults.MAX_LENGTH_DAYS
-        }
+        val fraction = intensity.fraction
+        val maxDays = RebalanceDefaults.MAX_LENGTH_DAYS
         val targetRecover = (surplus * fraction).roundToInt()
 
         val calCap = minOf(
@@ -327,6 +338,7 @@ object RebalanceEngine {
 
         // Per-day capacity (raw kcal) by mode. Steps unavailable → calorie-only for every mode.
         // Mode branches here must stay in lockstep with the raw-split `when` below (identical conditions).
+        // These branches are intensity-INDEPENDENT — intensity only scales targetRecover, not capacity.
         val perDayCap: Double = when {
             !stepsAvailable -> calLeverCap.toDouble()
             mode == RebalanceMode.EAT_LESS -> calLeverCap.toDouble()
@@ -340,12 +352,20 @@ object RebalanceEngine {
                     stepKcalRaw(RebalanceDefaults.BALANCED_LEVER_FRACTION * stepsCap)
         }
 
-        if (perDayCap <= 0.0 || maxDays * perDayCap < targetRecover) return null
+        // No usable lever at all (sub-floor base with no steps) → caller routes to the reassurance note.
+        if (perDayCap <= 0.0) return null
 
-        // Smallest D in [MIN_LENGTH_DAYS, maxDays] with D * perDayCap ≥ targetRecover.
+        // Partial recovery (spec §5): never bow out on a realistic blowout. Cap the recovery target at
+        // what maxDays at the per-day cap can actually achieve; size to that feasible amount and flag
+        // `partial` when it falls short of the full target. Kept Double through the math, rounded below.
+        val feasible = minOf(targetRecover.toDouble(), maxDays * perDayCap)
+        val partial = feasible < targetRecover
+
+        // Smallest D in [MIN_LENGTH_DAYS, maxDays] with D * perDayCap ≥ feasible. The feasible cap
+        // guarantees maxDays * perDayCap ≥ feasible, so `.first { }` always finds one (never throws).
         val days = (RebalanceDefaults.MIN_LENGTH_DAYS..maxDays)
-            .first { it * perDayCap >= targetRecover }
-        val perDay = ceil(targetRecover.toDouble() / days)
+            .first { it * perDayCap >= feasible }
+        val perDay = ceil(feasible / days)
 
         // Split into raw R/E by mode, then round + cap.
         // Mode branches here must stay in lockstep with the perDayCap `when` above (identical conditions).
@@ -371,7 +391,7 @@ object RebalanceEngine {
         val reduction = round10(rRaw).coerceIn(0, calLeverCap)
         val extraSteps = round100(eRaw).coerceIn(0, stepsCap)
         val recovered = days * (reduction + stepKcal(extraSteps))
-        return Sizing(days = days, reduction = reduction, extraSteps = extraSteps, recovered = recovered)
+        return Sizing(days = days, reduction = reduction, extraSteps = extraSteps, recovered = recovered, partial = partial)
     }
 
     // ── Rounding + kcal helpers ──────────────────────────────────────────────────────

@@ -611,15 +611,13 @@ class AppContainer(context: Context) {
 
     /**
      * Weekly Rebalance spine: once-daily reconcile-then-evaluate + the accept/decline/customize
-     * transitions and the cancel-on-plan-edit hook. Input assembly is [buildRebalanceInput]; the goal
-     * is read fresh at customize time (never stored on the plan). [start] launches the version observer
-     * below alongside the other appScope observers. `usageTracker` fires the `REBALANCE_*` events
-     * (fire-and-forget, spec §7's analytics line).
+     * transitions and the cancel-on-plan-edit hook. Input assembly is [buildRebalanceInput]. [start]
+     * launches the version observer below alongside the other appScope observers. `usageTracker` fires
+     * the `REBALANCE_*` events (fire-and-forget, spec §7's analytics line).
      */
     val rebalanceCoordinator = RebalanceCoordinator(
         store = rebalanceStore,
         buildInput = { buildRebalanceInput() },
-        currentGoal = { userProfilePreferencesStore.preferences.first().goal },
         planVersions = planRepository.observeVersions(),
         dateProvider = dateProvider,
         usageTracker = usageTracker,

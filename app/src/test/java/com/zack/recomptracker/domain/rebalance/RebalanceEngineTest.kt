@@ -3,7 +3,7 @@ package com.zack.recomptracker.domain.rebalance
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.domain.plan.PlanTargets
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -74,6 +74,9 @@ class RebalanceEngineTest {
         assertEquals(0, plan.extraDailySteps)
         assertEquals(460, plan.recoveredKcal)
         assertEquals(2500, plan.baseCalories)
+        // Fresh offers default to STANDARD intensity and are fully (not partially) recoverable here.
+        assertEquals(RebalanceIntensity.STANDARD, plan.intensity)
+        assertFalse(plan.partial)
         assertEquals(yesterday.toString(), plan.triggerDateIso)
         // Provisional window: start = today+1, end = start + D - 1.
         assertEquals(today.plusDays(1).toString(), plan.startDateIso)
@@ -120,19 +123,66 @@ class RebalanceEngineTest {
     }
 
     @Test
-    fun `too large surplus yields NO_ADJUSTMENT`() {
-        // Huge surplus that even 5 days at max capacity can't recover.
-        // base 2500 -> calCap = 300 (calorie-only). 5*300 = 1500 max recover.
-        // targetRecover must exceed 1500 -> S*0.75 > 1500 -> S > 2000. Put +2500 on yesterday.
-        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 5000)))
+    fun `surplus above the resume band yields the resume NO_ADJUSTMENT note`() {
+        // Surplus > HUGE_SURPLUS_KCAL (4000): even Light can't sensibly claw it back → a supportive
+        // resume note, NOT a plan. eaten +4500 on yesterday → S = 4500 > 4000.
+        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 7000)))
         val plan = (decision as RebalanceDecision.NoAdjustment).plan
         assertEquals(RebalanceStatus.NO_ADJUSTMENT, plan.status)
         assertEquals(0, plan.dailyCalorieReduction)
         assertEquals(0, plan.extraDailySteps)
         assertEquals(0, plan.lengthDays)
+        // The note MUST carry the real surplus so the VM tells resume (>500) from reassurance (<500).
+        assertEquals(4500, plan.surplusKcal)
         // Self-consistent record: start = end = triggerDate.
         assertEquals(plan.triggerDateIso, plan.startDateIso)
         assertEquals(plan.triggerDateIso, plan.endDateIso)
+    }
+
+    @Test
+    fun `surplus below the reassurance band yields the reassurance NO_ADJUSTMENT note carrying the surplus`() {
+        // A HIGH day (over ≥ 400) but a small weekly surplus < SMALL_SURPLUS_KCAL (500) → reassurance
+        // note, not a micro-plan. eaten +450 on yesterday → over 450 (HIGH), S = 450 (< 500), impact
+        // 450/7 ≈ 64 ≥ 50 passes the weekly-impact gate, so only the band gate suppresses the plan.
+        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 2950)))
+        val plan = (decision as RebalanceDecision.NoAdjustment).plan
+        assertEquals(RebalanceStatus.NO_ADJUSTMENT, plan.status)
+        assertEquals(0, plan.dailyCalorieReduction)
+        assertEquals(0, plan.lengthDays)
+        // Surplus stamped so the VM derives NoteKind.REASSURANCE (< 500) rather than the resume note.
+        assertEquals(450, plan.surplusKcal)
+    }
+
+    @Test
+    fun `a surplus too large to fully recover in seven days yields a partial plan, not a note`() {
+        // The blowout the feature was built for. base 2500 calorie-only → perDayCap 300, 7×300 = 2100.
+        // S = 3500 (in-band, < 4000): STANDARD target = round(2625) > 2100, so the recovery is capped
+        // at the 7-day feasible amount and the plan is PARTIAL — an honest offer, never NO_ADJUSTMENT.
+        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 6000)))
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertEquals(RebalanceStatus.OFFERED, plan.status)
+        assertEquals(3500, plan.surplusKcal)
+        assertTrue("a 7-day-overflow surplus must be flagged partial", plan.partial)
+        assertEquals(7, plan.lengthDays)
+        // Recovers only the feasible amount, strictly less than the STANDARD target (round(3500*0.75)).
+        val standardTarget = Math.round(3500 * 0.75).toInt()
+        assertTrue(
+            "partial recovered ${plan.recoveredKcal} must be < target $standardTarget",
+            plan.recoveredKcal < standardTarget,
+        )
+        assertEquals(2100, plan.recoveredKcal) // 7 × 300
+    }
+
+    @Test
+    fun `an in-band surplus needing seven days is offered (old five-day cap would have bowed out)`() {
+        // S = 2668: STANDARD target = round(2001) ≈ 2001. perDayCap 300. Smallest D with D×300 ≥ 2001
+        // is 7. Under the old MAX_LENGTH_DAYS = 5 (5×300 = 1500 < 2001) this was NO_ADJUSTMENT; now it
+        // is a full (non-partial) 7-day offer.
+        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 2500 + 2668)))
+        val plan = (decision as RebalanceDecision.Offer).plan
+        assertEquals(7, plan.lengthDays)
+        assertFalse("2001 ≤ 7×300 fits, so not partial", plan.partial)
+        assertEquals(RebalanceIntensity.STANDARD, plan.intensity)
     }
 
     @Test
@@ -253,11 +303,11 @@ class RebalanceEngineTest {
 
     @Test
     fun `MOVE_MORE maxes steps then covers the remainder with calories when steps alone fall short`() {
-        // steps avg 8000 -> stepsCap = round500(2000) = 2000, stepKcal = 80/day. Over maxDays 5 that is
-        // 400 kcal, short of targetRecover 450 (S = 600). Steps alone can't cover it, so MOVE_MORE maxes
+        // steps avg 6000 -> stepsCap = round500(1500) = 1500, stepKcal = 60/day. Over maxDays 7 that is
+        // 420 kcal, short of targetRecover 450 (S = 600). Steps alone can't cover it, so MOVE_MORE maxes
         // steps AND cuts calories for the remainder — a distinct, feasible plan, not a null that would
         // make `customize` fall back to the previous mode's numbers.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 8000 }
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 6000 }
         val plan = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -273,9 +323,9 @@ class RebalanceEngineTest {
     @Test
     fun `MOVE_MORE and BALANCED give different adjustments when steps alone fall short`() {
         // Regression guard for the on-device report "Balanced and Move more give the same adjustments":
-        // in the band where steps alone can't cover the surplus, the two modes must still differ, and
-        // Move more must lean harder on steps than the balanced split does.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 8000 }
+        // in the band where steps alone can't cover the surplus (avg 6000 → 60 kcal/day × 7 = 420 < 450),
+        // the two modes must still differ, and Move more must lean harder on steps than the balanced split.
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 6000 }
         fun planFor(mode: RebalanceMode) = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -299,7 +349,8 @@ class RebalanceEngineTest {
     fun `customize to MOVE_MORE changes the adjustment even when steps alone fall short`() {
         // The exact on-device path: a BALANCED offer, then tapping "Move more". customize must recompute
         // to a genuinely different plan rather than returning the offer with only its mode label flipped.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 8000 }
+        // avg 6000 keeps steps short of the target over 7 days so the two-tier remainder branch is live.
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 6000 }
         val offer = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -308,7 +359,7 @@ class RebalanceEngineTest {
                 mode = RebalanceMode.BALANCED,
             ),
         ) as RebalanceDecision.Offer).plan
-        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, FitnessGoal.MODERATE_CUT)
+        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, RebalanceIntensity.STANDARD)
         assertEquals(RebalanceMode.MOVE_MORE, moved.mode)
         assertTrue(
             "customize(MOVE_MORE) must change the adjustment, not just the label",
@@ -343,23 +394,22 @@ class RebalanceEngineTest {
     }
 
     @Test
-    fun `recomp halves recovery and caps length at three days`() {
-        // RECOMP: fraction 0.375, D <= 3. Big surplus so D would otherwise be 5.
-        // base 2500 calorie-only, calCap 300. S = 3000 -> targetRecover = round(3000*0.375) = 1125.
-        // Dmax = 3 -> 3*300 = 900 < 1125 -> too large -> NO_ADJUSTMENT (proves the D<=3 cap bites).
-        val bigSurplus = evaluate(
-            input(eatenOverrides = mapOf(yesterday to 5500), goal = FitnessGoal.RECOMP),
-        )
-        assertTrue(bigSurplus is RebalanceDecision.NoAdjustment)
-
-        // A recoverable recomp surplus: S = 600 -> targetRecover = round(225) = 225.
-        // calorie-only perDayCap 300 -> D = 2 (2*300 >= 225 and it's the smallest). length <= 3.
-        val small = evaluate(
+    fun `recomp is no longer halved and uses the same plan as a cut`() {
+        // Recomp special-casing (0.375 fraction, 3-day cap) is dropped (spec §7): a Recomp offer must
+        // now be byte-for-byte identical to a MODERATE_CUT offer for the same surplus, both sized at the
+        // shared STANDARD fraction and 7-day cap.
+        val recomp = (evaluate(
             input(eatenOverrides = mapOf(yesterday to 3100), goal = FitnessGoal.RECOMP),
-        )
-        val plan = (small as RebalanceDecision.Offer).plan
-        assertTrue("recomp length must be <= 3", plan.lengthDays <= 3)
-        assertEquals(600, plan.surplusKcal)
+        ) as RebalanceDecision.Offer).plan
+        val cut = (evaluate(
+            input(eatenOverrides = mapOf(yesterday to 3100), goal = FitnessGoal.MODERATE_CUT),
+        ) as RebalanceDecision.Offer).plan
+        assertEquals(cut.lengthDays, recomp.lengthDays)
+        assertEquals(cut.dailyCalorieReduction, recomp.dailyCalorieReduction)
+        assertEquals(cut.recoveredKcal, recomp.recoveredKcal)
+        // The old recomp cap was 3 days; the shared 7-day worked example is a 2-day / 230 kcal plan.
+        assertEquals(2, recomp.lengthDays)
+        assertEquals(230, recomp.dailyCalorieReduction)
     }
 
     @Test
@@ -465,7 +515,7 @@ class RebalanceEngineTest {
         ) as RebalanceDecision.Offer).plan
         assertEquals(0, offer.extraDailySteps)
 
-        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, FitnessGoal.MODERATE_CUT)
+        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, RebalanceIntensity.STANDARD)
         assertEquals(RebalanceMode.MOVE_MORE, moved.mode)
         assertEquals(RebalanceStatus.OFFERED, moved.status)
         assertEquals(offer.surplusKcal, moved.surplusKcal)     // facts unchanged
@@ -475,31 +525,65 @@ class RebalanceEngineTest {
     }
 
     @Test
-    fun `customize on a recomp offer keeps the halved fraction and 3-day cap`() {
-        // RECOMP, S = 2000 (yesterday +2000): targetRecover = round(2000*0.375) = 750; calorie-only
-        // perDayCap = 300; recomp maxDays = 3 -> D = 3 (2*300 < 750 <= 3*300); perDay = 250; R = 250.
-        val offer = (evaluate(
-            input(eatenOverrides = mapOf(yesterday to 4500), goal = FitnessGoal.RECOMP),
-        ) as RebalanceDecision.Offer).plan
-        assertEquals(3, offer.lengthDays)
-        assertEquals(250, offer.dailyCalorieReduction)
+    fun `intensity presets give distinct plans for the same surplus`() {
+        // Same S = 600, base 2500 calorie-only (perDayCap 300). Light/Standard/Full scale targetRecover
+        // (300 / 450 / 600) → distinct daily reductions and recovered kcal, all within the 300 cap.
+        fun sizeAt(intensity: RebalanceIntensity): RebalancePlan {
+            val offer = (evaluate(
+                input(eatenOverrides = mapOf(yesterday to 3100)),
+            ) as RebalanceDecision.Offer).plan
+            return RebalanceEngine.customize(offer, RebalanceMode.EAT_LESS, intensity)
+        }
+        val light = sizeAt(RebalanceIntensity.LIGHT)
+        val standard = sizeAt(RebalanceIntensity.STANDARD)
+        val full = sizeAt(RebalanceIntensity.FULL)
 
-        // Re-sizing for a new mode must keep the recomp fraction and cap. A cut re-size (fraction 0.75,
-        // maxDays 5) would instead give targetRecover = 1500 -> D = 5, R = 300.
-        val customized = RebalanceEngine.customize(offer, RebalanceMode.EAT_LESS, FitnessGoal.RECOMP)
-        assertEquals(RebalanceMode.EAT_LESS, customized.mode)
-        assertTrue("recomp customize length must stay <= 3", customized.lengthDays <= 3)
-        assertEquals(3, customized.lengthDays)
-        assertEquals(250, customized.dailyCalorieReduction)
-        assertEquals(750, customized.recoveredKcal) // 3 * (250 + 0)
+        assertEquals(RebalanceIntensity.LIGHT, light.intensity)
+        assertEquals(150, light.dailyCalorieReduction)    // target 300 / D 2
+        assertEquals(300, light.recoveredKcal)
+        assertEquals(230, standard.dailyCalorieReduction) // target 450 / D 2, round-half-up
+        assertEquals(460, standard.recoveredKcal)
+        assertEquals(300, full.dailyCalorieReduction)     // target 600 / D 2
+        assertEquals(600, full.recoveredKcal)
+        // Recovery is strictly monotonic in intensity.
+        assertTrue(light.recoveredKcal < standard.recoveredKcal)
+        assertTrue(standard.recoveredKcal < full.recoveredKcal)
+    }
+
+    @Test
+    fun `customize with mode and intensity recomputes the plan`() {
+        // A BALANCED/STANDARD offer, then customize to MOVE_MORE + FULL: both dials compose and the
+        // plan changes (more recovered at FULL, steps-led under MOVE_MORE with a generous step history).
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
+        val offer = (evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100), // S = 600
+                steps = stepsMap,
+                baseStepGoal = 8000,
+                mode = RebalanceMode.BALANCED,
+            ),
+        ) as RebalanceDecision.Offer).plan
+
+        val customized = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, RebalanceIntensity.FULL)
+        assertEquals(RebalanceMode.MOVE_MORE, customized.mode)
+        assertEquals(RebalanceIntensity.FULL, customized.intensity)
+        assertEquals(RebalanceStatus.OFFERED, customized.status)
+        // FULL recovers ~all of the surplus vs STANDARD's ~75%, so recovered climbs.
+        assertTrue(
+            "FULL should recover more than the STANDARD offer (${customized.recoveredKcal} vs ${offer.recoveredKcal})",
+            customized.recoveredKcal > offer.recoveredKcal,
+        )
     }
 
     // ── exact boundaries ────────────────────────────────────────────────────────────
 
     @Test
     fun `single day over of exactly 400 triggers`() {
-        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 2900))) // over == 400 exactly
-        val plan = (decision as RebalanceDecision.Offer).plan
+        // over == 400 fires the HIGH-day trigger, but S = 400 < SMALL_SURPLUS_KCAL (500), so the band
+        // gate routes it to the reassurance note. The stamped surplus proves the trigger + surplus math
+        // ran (it is not Silent).
+        val decision = evaluate(input(eatenOverrides = mapOf(yesterday to 2900)))
+        val plan = (decision as RebalanceDecision.NoAdjustment).plan
         assertEquals(400, plan.surplusKcal)
     }
 
@@ -519,9 +603,11 @@ class RebalanceEngineTest {
 
     @Test
     fun `surplus of exactly 350 passes the weekly impact gate`() {
-        // base 1400, eaten 1750 -> over 350: HIGH via pct (350 >= 0.25*1400) and S == 50*7 exactly.
+        // base 1400, eaten 1750 -> over 350: HIGH via pct (350 >= 0.25*1400) and S == 50*7 exactly, so
+        // it clears the weekly-impact gate (not Silent). S = 350 < SMALL_SURPLUS_KCAL (500) then routes
+        // to the reassurance note; the stamped surplus proves the gate + surplus math passed.
         val decision = evaluate(input(base = 1400, eatenOverrides = mapOf(yesterday to 1750)))
-        val plan = (decision as RebalanceDecision.Offer).plan
+        val plan = (decision as RebalanceDecision.NoAdjustment).plan
         assertEquals(350, plan.surplusKcal)
     }
 
@@ -553,26 +639,26 @@ class RebalanceEngineTest {
 
     @Test
     fun `low base sizes against the floored lever and still hits the recovery target`() {
-        // base 1300, eaten 1750 -> over 450 (HIGH), S = 450, targetRecover = round(337.5) = 338.
-        // calCap = min(round10(195)=200, 300) = 200 but floorCap = 1300 - 1200 = 100, so the calorie
-        // lever (and perDayCap) is 100 -> D = 4 (smallest with D*100 >= 338), perDay = ceil(338/4) = 85,
-        // round10 -> 90 -> R = 90, recovered = 4*90 = 360 (>= targetRecover, unlike the pre-fix
-        // under-recovery where D=2/R=100 recovered only 200 of 338).
-        val decision = evaluate(input(base = 1300, eatenOverrides = mapOf(yesterday to 1750)))
+        // base 1300, eaten 2000 -> over 700 (HIGH), S = 700 (≥ 500 so in-band), STANDARD targetRecover =
+        // round(525) = 525. calCap = min(round10(195)=200, 300) = 200 but floorCap = 1300 - 1200 = 100,
+        // so the calorie lever (and perDayCap) is 100 -> D = 6 (smallest with D*100 >= 525),
+        // perDay = ceil(525/6) = 88, round10 -> 90 -> R = 90, recovered = 6*90 = 540 (>= target; the
+        // lever is honoured and never exceeds floorCap 100).
+        val decision = evaluate(input(base = 1300, eatenOverrides = mapOf(yesterday to 2000)))
         val plan = (decision as RebalanceDecision.Offer).plan
-        assertEquals(4, plan.lengthDays)
+        assertEquals(6, plan.lengthDays)
         assertEquals(90, plan.dailyCalorieReduction)
         assertTrue("R=${plan.dailyCalorieReduction} must be <= floorCap 100", plan.dailyCalorieReduction <= 100)
         assertEquals(plan.lengthDays * plan.dailyCalorieReduction, plan.recoveredKcal)
-        assertEquals(360, plan.recoveredKcal)
+        assertEquals(540, plan.recoveredKcal)
     }
 
     @Test
     fun `base at or below the effective floor yields the no-adjustment note instead of a zero offer`() {
         // base 1150 <= MIN_EFFECTIVE_CAL -> floorCap = 0 -> calorie lever 0; no steps -> perDayCap = 0,
-        // so sizing is impossible and the decision routes to the supportive NO_ADJUSTMENT note
-        // (previously this emitted a meaningless Offer with R=0/E=0/recovered=0).
-        // eaten 1650 -> over 500 (HIGH via abs), S = 500, impact 500/7 >= 50 passes.
+        // so `size` returns null (the only in-band no-plan case, spec §5) and the decision routes to the
+        // supportive NO_ADJUSTMENT note rather than a meaningless Offer with R=0/E=0/recovered=0.
+        // eaten 1650 -> over 500 (HIGH via abs), S = 500 (≥ 500 so past the reassurance gate).
         val decision = evaluate(input(base = 1150, eatenOverrides = mapOf(yesterday to 1650)))
         assertTrue(decision is RebalanceDecision.NoAdjustment)
         val plan = (decision as RebalanceDecision.NoAdjustment).plan

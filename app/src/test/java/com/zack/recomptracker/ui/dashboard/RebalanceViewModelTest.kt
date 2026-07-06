@@ -342,4 +342,154 @@ class RebalanceViewModelTest {
         assertEquals(RebalanceCardUiState.Face.NONE, vm.uiState.value.face)
         assertEquals("", vm.uiState.value.body)
     }
+
+    // ── redesign surface: noteKind ────────────────────────────────────────────────────
+
+    @Test
+    fun `completion note sets noteKind COMPLETION`() = runTest(dispatcher) {
+        // An ACTIVE plan already past its end → reconcile completes it → COMPLETED ended notice.
+        val activePast = activePlan(
+            startDateIso = today.minusDays(4).toString(),
+            endDateIso = today.minusDays(2).toString(),
+            lengthDays = 3,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = activePast))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        vm.onShown()
+        advanceUntilIdle()
+
+        assertEquals(RebalanceStatus.COMPLETED, coord.endedNotice.value!!.status)
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.NOTE, state.face)
+        assertEquals(NoteKind.COMPLETION, state.noteKind)
+    }
+
+    @Test
+    fun `ended-early note sets noteKind GRACEFUL_END`() = runTest(dispatcher) {
+        // An unrecoverable ACTIVE plan → reconcile ends it early → ENDED_EARLY ended notice.
+        val active = activePlan(
+            startDateIso = today.minusDays(2).toString(),
+            endDateIso = today.plusDays(2).toString(),
+            lengthDays = 5,
+            dailyCalorieReduction = 100,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = active))
+        val coord = coordinator(
+            store,
+            scope = backgroundScope,
+            buildInput = { cannedInput(yesterdayEaten = 5500, existing = store.current()) },
+        )
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        vm.onShown()
+        advanceUntilIdle()
+
+        val ended = coord.endedNotice.value!!
+        assertEquals(RebalanceStatus.ENDED_EARLY, ended.status)
+        assertEquals("unrecoverable", ended.endedReason)
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.NOTE, state.face)
+        assertEquals(NoteKind.GRACEFUL_END, state.noteKind)
+    }
+
+    @Test
+    fun `no-adjustment note sets noteKind NO_ADJUSTMENT`() = runTest(dispatcher) {
+        val note = offeredPlan().copy(
+            id = "note", status = RebalanceStatus.NO_ADJUSTMENT,
+            dailyCalorieReduction = 0, extraDailySteps = 0,
+        )
+        val store = FakeRebalanceStore(seed = RebalanceState(active = note))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.NOTE, state.face)
+        assertEquals(NoteKind.NO_ADJUSTMENT, state.noteKind)
+    }
+
+    // ── redesign surface: weekly bars ──────────────────────────────────────────────────
+
+    @Test
+    fun `offer face carries the weekly bars from the coordinator`() = runTest(dispatcher) {
+        // Drive a real offer through runIfDue so the coordinator publishes lastOfferWindow; the VM
+        // threads that window into the OFFER face's weeklyBars.
+        val store = FakeRebalanceStore()
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        vm.onShown()
+        advanceUntilIdle()
+
+        val offerState = vm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.OFFER, offerState.face)
+        assertTrue("OFFER face carries the coordinator's weekly bars", offerState.weeklyBars.isNotEmpty())
+        assertEquals("baseCalories surfaced for the OFFER face", 2500, offerState.baseCalories)
+
+        // A progress state (no offer window) → weeklyBars empty.
+        val activeStore = FakeRebalanceStore(
+            seed = RebalanceState(
+                active = activePlan(
+                    startDateIso = today.minusDays(1).toString(),
+                    endDateIso = today.plusDays(1).toString(),
+                    lengthDays = 3,
+                ),
+            ),
+        )
+        val activeCoord = coordinator(activeStore, scope = backgroundScope)
+        val activeVm = RebalanceViewModel(activeStore, activeCoord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        val progressState = activeVm.uiState.value
+        assertEquals(RebalanceCardUiState.Face.PROGRESS, progressState.face)
+        assertTrue("PROGRESS face has no weekly bars", progressState.weeklyBars.isEmpty())
+    }
+
+    // ── redesign surface: offer minimize/expand ────────────────────────────────────────
+
+    @Test
+    fun `minimize then expand toggles offerMinimized and never declines`() = runTest(dispatcher) {
+        val store = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+        assertEquals(RebalanceCardUiState.Face.OFFER, vm.uiState.value.face)
+        assertTrue("a fresh offer starts expanded", !vm.offerMinimized.value)
+
+        vm.onMinimizeOffer()
+        advanceUntilIdle()
+        assertTrue("minimize sets the flag", vm.offerMinimized.value)
+
+        vm.onExpandOffer()
+        advanceUntilIdle()
+        assertTrue("expand clears the flag", !vm.offerMinimized.value)
+
+        // Minimize/expand must never mutate the plan (never decline).
+        assertEquals("the offer is still active, never declined", RebalanceStatus.OFFERED, store.current().active!!.status)
+        assertTrue("nothing was archived to history", store.current().history.isEmpty())
+    }
+
+    @Test
+    fun `a fresh offer resets offerMinimized to false`() = runTest(dispatcher) {
+        val store = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord = coordinator(store, scope = backgroundScope)
+        val vm = RebalanceViewModel(store, coord, fallbackOnlyCopyService(), FixedDateProvider(today))
+        advanceUntilIdle()
+
+        vm.onMinimizeOffer()
+        advanceUntilIdle()
+        assertTrue("minimized", vm.offerMinimized.value)
+
+        // A brand-new offer (different plan id) replaces the current one → auto-expand.
+        store.save(RebalanceState(active = offeredPlan().copy(id = "offer-2")))
+        advanceUntilIdle()
+
+        assertEquals(RebalanceCardUiState.Face.OFFER, vm.uiState.value.face)
+        assertTrue("a new offer id resets minimize to expanded", !vm.offerMinimized.value)
+    }
 }

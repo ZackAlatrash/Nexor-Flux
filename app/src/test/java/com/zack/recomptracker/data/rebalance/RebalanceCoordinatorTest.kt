@@ -546,4 +546,64 @@ class RebalanceCoordinatorTest {
         assertEquals(RebalanceStatus.ENDED_EARLY, store.current().history.first().status)
         assertEquals(listOf(UsageEvents.REBALANCE_ENDED_EARLY), tracker.events)
     }
+
+    // ── lastOfferWindow (redesign viz) ────────────────────────────────────────────────
+
+    @Test
+    fun `runOnce publishes lastOfferWindow when an offer is produced`() = runTest {
+        val store = FakeRebalanceStore()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput() },
+            scope = this,
+        )
+
+        coordinator.runIfDue()
+
+        val plan = store.current().active!!
+        assertEquals(RebalanceStatus.OFFERED, plan.status)
+        val window = coordinator.lastOfferWindow.value
+        assertNotNull("an offer publishes its weekly-bars window", window)
+        assertEquals("7 history days + plan.lengthDays plan days", 7 + plan.lengthDays, window!!.size)
+
+        // The first 7 bars are the trailing-7 history days (today-7 .. today-1), chronological.
+        val historyBars = window.take(7)
+        assertTrue("history bars are not plan days", historyBars.none { it.isPlanDay })
+        val window7 = (1..7).map { today.minusDays(it.toLong()) }.sorted() // today-7 .. today-1
+        window7.forEachIndexed { i, d ->
+            assertEquals("history bar $i valueKcal = eaten that day", 3100.takeIf { d == today.minusDays(1) } ?: 2500, historyBars[i].valueKcal)
+            assertEquals("history bar $i targetKcal = base target that day", 2500, historyBars[i].targetKcal)
+        }
+        assertTrue("the high day drove the offer (at least one over bar)", historyBars.any { it.isOver })
+
+        // The remaining bars are the plan days ahead (all isPlanDay, count == lengthDays).
+        val planBars = window.drop(7)
+        assertEquals("plan-day count == plan.lengthDays", plan.lengthDays, planBars.size)
+        assertTrue("every plan bar is a plan day", planBars.all { it.isPlanDay })
+        assertTrue("no plan bar is marked over", planBars.none { it.isOver })
+        planBars.forEach {
+            assertEquals("plan bar targetKcal = base calories", plan.baseCalories, it.targetKcal)
+            assertEquals(
+                "plan bar valueKcal = reduced effective target",
+                plan.baseCalories - plan.dailyCalorieReduction,
+                it.valueKcal,
+            )
+        }
+    }
+
+    @Test
+    fun `lastOfferWindow is null when the decision is silent`() = runTest {
+        // On-target window (no high day) → the engine stays Silent; no offer, no window.
+        val store = FakeRebalanceStore()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(yesterdayEaten = 2500) }, // no surplus → Silent
+            scope = this,
+        )
+
+        coordinator.runIfDue()
+
+        assertNull("silent decision persists no offer", store.current().active)
+        assertNull("silent decision clears the offer window", coordinator.lastOfferWindow.value)
+    }
 }

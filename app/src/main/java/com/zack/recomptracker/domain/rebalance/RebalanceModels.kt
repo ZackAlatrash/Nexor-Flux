@@ -49,6 +49,15 @@ data class RebalancePlan(
     val endedReason: String? = null,
 )
 
+/** One bar in the offer's weekly-bars viz. Trailing-7 history days + the plan's lighter days ahead. */
+data class RebalanceDayBar(
+    val label: String,       // "Mon".."Sun"
+    val valueKcal: Int,      // eaten (history days) or the reduced effective target (plan days)
+    val targetKcal: Int,     // the base calorie target that day
+    val isPlanDay: Boolean,  // false = trailing-7 history; true = a rebalance day ahead
+    val isOver: Boolean,     // a history day that ended over its target (drove the offer)
+)
+
 /**
  * Persisted weekly-rebalance state: at most one offered/active plan, a capped history of terminal
  * records, and the sticky Customize [mode] preference.

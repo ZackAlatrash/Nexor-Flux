@@ -10,12 +10,16 @@ import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
 import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
 import com.zack.recomptracker.domain.rebalance.RebalanceDefaults
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.LocalDate
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,9 +44,15 @@ data class RebalanceCardUiState(
     val effectiveCalories: Int = 0,
     val extraSteps: Int = 0,
     val mode: RebalanceMode = RebalanceMode.BALANCED,
+    val noteKind: NoteKind? = null,
+    val weeklyBars: ImmutableList<RebalanceDayBar> = persistentListOf(),
+    val baseCalories: Int = 0,
 ) {
     enum class Face { NONE, OFFER, PROGRESS, NOTE }
 }
+
+/** Which flavour of NOTE face is showing — selects the note's icon/tone in the redesign. */
+enum class NoteKind { COMPLETION, GRACEFUL_END, NO_ADJUSTMENT }
 
 /** Supportive copy for the one case with no §8 slot: accepted late, plan starts tomorrow (spec §10). */
 private const val STARTS_TOMORROW_LINE = "Your rebalance starts tomorrow — today stays your normal plan."
@@ -103,40 +113,93 @@ internal class RebalanceViewModel(
     private val _uiState = MutableStateFlow(RebalanceCardUiState())
     val uiState: StateFlow<RebalanceCardUiState> = _uiState.asStateFlow()
 
+    /**
+     * Whether the OFFER card is collapsed to its minimized peek (in-memory, never persisted — a
+     * minimize is a per-session UI gesture, not a decision). Reset to `false` whenever a *new* offer
+     * arrives (see [onStateChanged]); minimizing never declines the offer.
+     */
+    private val _offerMinimized = MutableStateFlow(false)
+    val offerMinimized: StateFlow<Boolean> = _offerMinimized.asStateFlow()
+
+    /**
+     * Whether the offer copy is currently being (re)phrased by the cloud — drives the "Generating"
+     * edge-glow on the OFFER card. Only meaningful for OFFER; stays `false` for every other face.
+     */
+    private val _phrasing = MutableStateFlow(false)
+    val phrasing: StateFlow<Boolean> = _phrasing.asStateFlow()
+
     /** The in-flight phrasing decoration, cancelled when a new derived face supersedes it. */
     private var phrasingJob: Job? = null
 
     /** Guards [onShown] so [RebalanceCoordinator.runIfDue] fires at most once per ViewModel instance. */
     private var hasTriggeredRun = false
 
+    /**
+     * The plan id of the OFFER currently on screen, so [onStateChanged] resets [offerMinimized] only
+     * when a genuinely *new* offer arrives — not on every re-emission (which would fight the user
+     * minimizing it). `null` whenever the face is not OFFER.
+     */
+    private var lastOfferPlanId: String? = null
+
     init {
         viewModelScope.launch {
-            combine(store.state, coordinator.endedNotice) { state, ended -> state to ended }
-                .collect { (state, ended) -> onStateChanged(state, ended) }
+            combine(
+                store.state,
+                coordinator.endedNotice,
+                coordinator.lastOfferWindow,
+            ) { state, ended, window -> Triple(state, ended, window) }
+                .collect { (state, ended, window) -> onStateChanged(state, ended, window) }
         }
     }
 
-    private fun onStateChanged(state: RebalanceState, ended: RebalancePlan?) {
+    private fun onStateChanged(
+        state: RebalanceState,
+        ended: RebalancePlan?,
+        window: List<RebalanceDayBar>?,
+    ) {
         if (ended != null && ended.endedReason == "plan_edited") {
             coordinator.dismissEndedNotice()
             return
         }
         phrasingJob?.cancel()
-        val derived = deriveFace(state, ended, dateProvider.today())
+        _phrasing.value = false
+        val derived = deriveFace(state, ended, window, dateProvider.today())
         if (derived == null) {
+            lastOfferPlanId = null
             _uiState.value = RebalanceCardUiState()
             return
+        }
+        // A fresh OFFER (a new plan id) auto-expands; any other face clears the tracked id so the
+        // next OFFER — even if it were somehow the same id — counts as fresh.
+        if (derived.uiState.face == RebalanceCardUiState.Face.OFFER) {
+            val offerId = state.active?.id
+            if (offerId != lastOfferPlanId) {
+                _offerMinimized.value = false
+                lastOfferPlanId = offerId
+            }
+        } else {
+            lastOfferPlanId = null
         }
         _uiState.value = derived.uiState
         val slot = derived.slot ?: return
         val facts = derived.facts ?: return
-        phrasingJob = viewModelScope.launch {
-            val phrased = copyService.copy(slot, facts)
-            // Only apply if this derivation is still the one on screen (guards a late return).
-            if (_uiState.value == derived.uiState) {
-                _uiState.value = _uiState.value.copy(body = phrased)
+        val phrasingOffer = derived.uiState.face == RebalanceCardUiState.Face.OFFER
+        if (phrasingOffer) _phrasing.value = true
+        lateinit var job: Job
+        job = viewModelScope.launch {
+            try {
+                val phrased = copyService.copy(slot, facts)
+                // Only apply if this derivation is still the one on screen (guards a late return).
+                if (_uiState.value == derived.uiState) {
+                    _uiState.value = _uiState.value.copy(body = phrased)
+                }
+            } finally {
+                // Clear the glow only if we're still the current job — a job superseded by a newer
+                // emission must not stomp the flag the newer job just raised.
+                if (phrasingOffer && phrasingJob === job) _phrasing.value = false
             }
         }
+        phrasingJob = job
     }
 
     /** Call when the card becomes visible — fires the once-daily coordinator run (fire-and-forget). */
@@ -169,22 +232,37 @@ internal class RebalanceViewModel(
         viewModelScope.launch { coordinator.customize(mode) }
     }
 
+    /** Collapse the OFFER card to its minimized peek. Pure UI — never declines the offer. */
+    fun onMinimizeOffer() {
+        _offerMinimized.value = true
+    }
+
+    /** Re-expand a minimized OFFER card. Pure UI — never mutates the plan. */
+    fun onExpandOffer() {
+        _offerMinimized.value = false
+    }
+
     private companion object {
 
         /** Derives the face to show, or `null` for [RebalanceCardUiState.Face.NONE]. */
-        fun deriveFace(state: RebalanceState, ended: RebalancePlan?, today: LocalDate): DerivedFace? {
+        fun deriveFace(
+            state: RebalanceState,
+            ended: RebalancePlan?,
+            window: List<RebalanceDayBar>?,
+            today: LocalDate,
+        ): DerivedFace? {
             if (ended != null) return noteFace(ended)
 
             val active = state.active ?: return null
             return when (active.status) {
-                RebalanceStatus.OFFERED -> offerFace(active)
+                RebalanceStatus.OFFERED -> offerFace(active, window)
                 RebalanceStatus.ACTIVE -> progressFace(active, state, today)
                 RebalanceStatus.NO_ADJUSTMENT -> noteFace(active)
                 RebalanceStatus.COMPLETED, RebalanceStatus.ENDED_EARLY, RebalanceStatus.DECLINED -> null
             }
         }
 
-        private fun offerFace(plan: RebalancePlan): DerivedFace {
+        private fun offerFace(plan: RebalancePlan, window: List<RebalanceDayBar>?): DerivedFace {
             val facts = copyFacts(plan, dayX = 0, ofY = plan.lengthDays)
             val uiState = RebalanceCardUiState(
                 face = RebalanceCardUiState.Face.OFFER,
@@ -195,6 +273,8 @@ internal class RebalanceViewModel(
                 effectiveCalories = effectiveCalories(plan),
                 extraSteps = plan.extraDailySteps,
                 mode = plan.mode,
+                baseCalories = plan.baseCalories,
+                weeklyBars = window?.toImmutableList() ?: persistentListOf(),
             )
             return DerivedFace(uiState, RebalanceCopySlot.OFFER_BODY, facts)
         }
@@ -214,6 +294,7 @@ internal class RebalanceViewModel(
                     effectiveCalories = effCalories,
                     extraSteps = plan.extraDailySteps,
                     mode = plan.mode,
+                    baseCalories = plan.baseCalories,
                 )
                 return DerivedFace(uiState, slot = null, facts = null)
             }
@@ -227,21 +308,23 @@ internal class RebalanceViewModel(
                 effectiveCalories = effCalories,
                 extraSteps = plan.extraDailySteps,
                 mode = plan.mode,
+                baseCalories = plan.baseCalories,
             )
             return DerivedFace(uiState, RebalanceCopySlot.PROGRESS_LINE, facts)
         }
 
         private fun noteFace(plan: RebalancePlan): DerivedFace {
-            val slot = when {
-                plan.status == RebalanceStatus.NO_ADJUSTMENT -> RebalanceCopySlot.NO_ADJUSTMENT
-                plan.status == RebalanceStatus.COMPLETED -> RebalanceCopySlot.COMPLETION
-                else -> RebalanceCopySlot.GRACEFUL_END // ENDED_EARLY ("unrecoverable")
+            val (slot, noteKind) = when (plan.status) {
+                RebalanceStatus.NO_ADJUSTMENT -> RebalanceCopySlot.NO_ADJUSTMENT to NoteKind.NO_ADJUSTMENT
+                RebalanceStatus.COMPLETED -> RebalanceCopySlot.COMPLETION to NoteKind.COMPLETION
+                else -> RebalanceCopySlot.GRACEFUL_END to NoteKind.GRACEFUL_END // ENDED_EARLY ("unrecoverable")
             }
             val facts = copyFacts(plan, dayX = 0, ofY = plan.lengthDays)
             val uiState = RebalanceCardUiState(
                 face = RebalanceCardUiState.Face.NOTE,
                 body = RebalanceCopyPromptBuilder.fallback(slot, facts),
                 mode = plan.mode,
+                noteKind = noteKind,
             )
             return DerivedFace(uiState, slot, facts)
         }

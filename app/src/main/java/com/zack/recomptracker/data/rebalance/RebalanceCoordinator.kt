@@ -6,6 +6,7 @@ import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.usage.UsageEvents
 import com.zack.recomptracker.data.usage.UsageTracker
 import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
 import com.zack.recomptracker.domain.rebalance.RebalanceDecision
 import com.zack.recomptracker.domain.rebalance.RebalanceEngine
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
@@ -15,6 +16,8 @@ import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -70,6 +73,16 @@ class RebalanceCoordinator(
      */
     private val _endedNotice = MutableStateFlow<RebalancePlan?>(null)
     val endedNotice: StateFlow<RebalancePlan?> = _endedNotice.asStateFlow()
+
+    /**
+     * The weekly-bars viz for the *current* offer (redesign): the trailing-7 history days that drove
+     * the offer plus the plan's lighter days ahead. Set only when [runOnce]'s decision is a concrete
+     * [RebalanceDecision.Offer]; `null` for Silent / NoAdjustment. In-memory only, built purely from
+     * the same evaluation input + plan the offer was derived from (no extra repository reads). The
+     * durable record is still the persisted [RebalancePlan]; this is a derived display convenience.
+     */
+    private val _lastOfferWindow = MutableStateFlow<List<RebalanceDayBar>?>(null)
+    val lastOfferWindow: StateFlow<List<RebalanceDayBar>?> = _lastOfferWindow.asStateFlow()
 
     /** Serialises [runIfDue] so two overlapping foreground calls can't both evaluate the same day. */
     private val runLock = Mutex()
@@ -143,11 +156,16 @@ class RebalanceCoordinator(
         when (val decision = RebalanceEngine.evaluate(evalInput, newId, nowIso)) {
             is RebalanceDecision.Offer -> {
                 store.save(reconciled.copy(active = decision.plan))
+                // Publish the offer's weekly-bars viz, built purely from this run's input + plan
+                // (no extra reads). Only a concrete Offer has a window; the others clear it.
+                _lastOfferWindow.value = buildOfferWindow(input, decision.plan)
                 usageTracker.track(UsageEvents.REBALANCE_OFFERED)
             }
-            is RebalanceDecision.NoAdjustment ->
+            is RebalanceDecision.NoAdjustment -> {
                 store.save(reconciled.copy(active = decision.plan))
-            RebalanceDecision.Silent -> Unit
+                _lastOfferWindow.value = null
+            }
+            RebalanceDecision.Silent -> _lastOfferWindow.value = null
         }
 
         // (3) Stamp today so the gate short-circuits further runs this day.
@@ -253,5 +271,46 @@ class RebalanceCoordinator(
 
     private companion object {
         const val TAG = "RebalanceCoordinator"
+
+        /**
+         * Build the offer's weekly-bars viz purely from the evaluation [input] and the offered [plan]
+         * — no repository reads. Two segments, chronological:
+         *  - History: the trailing 7 days ending yesterday (`today-7 .. today-1`). `valueKcal` is the
+         *    day's eaten kcal, `targetKcal` the base target that day; a day over its target is flagged
+         *    `isOver` (these are the days that drove the offer).
+         *  - Plan: `plan.lengthDays` days ahead starting tomorrow (`today+1 ..`). `valueKcal` is the
+         *    reduced effective target (`baseCalories - dailyCalorieReduction`), `targetKcal` the base;
+         *    never `isOver`.
+         */
+        fun buildOfferWindow(input: RebalanceEvaluationInput, plan: RebalancePlan): List<RebalanceDayBar> {
+            val today = input.today
+            val history = (7 downTo 1).map { offset ->
+                val d = today.minusDays(offset.toLong())
+                val value = input.eatenByDate[d] ?: 0
+                val target = input.baseTargetsByDate[d]?.calories ?: plan.baseCalories
+                RebalanceDayBar(
+                    label = dayLabel(d),
+                    valueKcal = value,
+                    targetKcal = target,
+                    isPlanDay = false,
+                    isOver = value > target,
+                )
+            }
+            val reducedTarget = plan.baseCalories - plan.dailyCalorieReduction
+            val planDays = (0 until plan.lengthDays).map { i ->
+                val d = today.plusDays(1L + i)
+                RebalanceDayBar(
+                    label = dayLabel(d),
+                    valueKcal = reducedTarget,
+                    targetKcal = plan.baseCalories,
+                    isPlanDay = true,
+                    isOver = false,
+                )
+            }
+            return history + planDays
+        }
+
+        private fun dayLabel(date: LocalDate): String =
+            date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
     }
 }

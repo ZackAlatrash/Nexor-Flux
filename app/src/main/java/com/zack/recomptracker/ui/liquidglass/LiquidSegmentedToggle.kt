@@ -105,6 +105,13 @@ fun LiquidSegmentedToggle(
     val thumbRadius: Dp = if (compact) 9.dp else 10.dp
     val thumbShape = RoundedCornerShape(thumbRadius)
 
+    // Fixed outer height so the toggle is self-sizing and parent-independent. Its primary call site
+    // (the Weekly Rebalance offer) lives inside a vertically-scrolling Dialog, which measures children
+    // with an UNBOUNDED height. Without a fixed height the fill-height thumb would receive that
+    // infinite height and Constraints packing would throw. A segmented toggle has a standard height
+    // anyway, so this is the correct model, not a workaround. compact ≈ 32dp, regular ≈ 44dp.
+    val trackHeight: Dp = if (compact) 32.dp else 44.dp
+
     // Track wash — a quiet neutral glass so the accent thumb reads on top of it.
     val trackColor = appColors.cardSurface
     // Accent-tinted container the thumb paints (matches the flat toggle's selected pill intent).
@@ -127,6 +134,7 @@ fun LiquidSegmentedToggle(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
+            .height(trackHeight)
             .clip(trackShape)
             .background(trackColor)
             .border(1.dp, appColors.cardBorder, trackShape)
@@ -234,10 +242,18 @@ fun LiquidSegmentedToggle(
  */
 private fun Modifier.fillMaxHeightSafe(): Modifier = this.then(
     Modifier.layout { measurable, constraints ->
-        val h = constraints.maxHeight
-        val placeable = measurable.measure(
-            constraints.copy(minHeight = h, maxHeight = h),
-        )
+        // Only pin to the parent height when it is actually BOUNDED. Inside a vertically-scrolling
+        // container maxHeight is Constraints.Infinity (Int.MAX_VALUE); copying that into a fixed
+        // constraint overflows Constraints packing and throws
+        // ("Can't represent a width of … and height of 2147483647 in Constraints"). When unbounded,
+        // fall back to the child's natural height rather than crash. The track's fixed height means
+        // this normally takes the bounded branch; the guard is defense-in-depth.
+        val placeable = if (constraints.hasBoundedHeight) {
+            val h = constraints.maxHeight
+            measurable.measure(constraints.copy(minHeight = h, maxHeight = h))
+        } else {
+            measurable.measure(constraints)
+        }
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     },
 )

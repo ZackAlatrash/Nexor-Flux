@@ -1,18 +1,13 @@
 package com.zack.recomptracker.ui.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -20,11 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.data.usage.NoOpUsageTracker
 import com.zack.recomptracker.data.usage.UsageEvents
@@ -34,6 +25,7 @@ import com.zack.recomptracker.domain.coach.CoachActionType
 import com.zack.recomptracker.domain.coach.CoachSignal
 import com.zack.recomptracker.domain.coach.isCelebration
 import com.zack.recomptracker.domain.coach.isDiscovery
+import com.zack.recomptracker.ui.component.DismissButton
 import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
@@ -145,7 +137,7 @@ fun CoachTodaySlot(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         SectionLabel("Today's Coaching")
-                        DismissButton(onDismiss)
+                        DismissButton(onDismiss, contentDescription = "Dismiss coaching")
                     }
                 },
                 displayText = displayText,
@@ -208,7 +200,7 @@ private fun DiscoveryHeader(onDismiss: () -> Unit) {
                 color = accent.inkLight,
             )
         }
-        DismissButton(onDismiss)
+        DismissButton(onDismiss, contentDescription = "Dismiss coaching")
     }
 }
 
@@ -235,28 +227,6 @@ private fun CelebrationHeader(onDismiss: () -> Unit) {
                 color = appColors.celebrationInk,
             )
         }
-        DismissButton(onDismiss)
-    }
-}
-
-@Composable
-private fun DismissButton(onDismiss: () -> Unit) {
-    val appColors = LocalAppColors.current
-    // Compact 32dp target (not the 48dp min) so the header row stays tight — this is a low-stakes,
-    // reversible dismiss affordance, so the smaller touch area is an acceptable trade for density.
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .clickable(role = Role.Button, onClick = onDismiss)
-            .semantics { contentDescription = "Dismiss coaching" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Close,
-            contentDescription = null,
-            tint = appColors.textVeryMuted,
-            modifier = Modifier.size(18.dp),
-        )
+        DismissButton(onDismiss, contentDescription = "Dismiss coaching")
     }
 }

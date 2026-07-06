@@ -18,6 +18,7 @@ import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.LocalDate
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,10 +28,12 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -110,6 +113,38 @@ class RebalanceViewModelTest {
     /** A [RebalanceCopyService] that never has cloud config — deterministically returns the fallback. */
     private fun fallbackOnlyCopyService(): RebalanceCopyService =
         RebalanceCopyService(client = FakeClient()) { null }
+
+    /**
+     * A client whose [streamCompletion] flow blocks on a per-call gate before emitting, so a test can
+     * hold each phrasing job suspended and release them in a chosen order — the control needed to
+     * exercise the phrasing interleaving guard (a superseded job's `finally` must not clear the flag a
+     * newer job raised). Each call appends its gate to [gates] in start order.
+     */
+    private class SuspendingCopyClient : OpenAiCompatClient() {
+        val gates = mutableListOf<CompletableDeferred<Unit>>()
+
+        override fun streamCompletion(
+            config: CloudConfig,
+            systemPrompt: String,
+            userPrompt: String,
+        ): Flow<String> = flow {
+            val gate = CompletableDeferred<Unit>()
+            gates.add(gate)
+            gate.await() // suspend until the test releases this specific job
+            emit("phrased ${gates.size}")
+        }
+
+        override suspend fun completion(
+            config: CloudConfig,
+            messages: List<ChatRequestMessage>,
+            toolSchemasJson: List<String>,
+        ): ParsedChatResponse = ParsedChatResponse("", emptyList())
+    }
+
+    private fun configuredCopyService(client: OpenAiCompatClient): RebalanceCopyService =
+        RebalanceCopyService(client = client) {
+            CloudConfig(baseUrl = "https://example.test", apiKey = "key", model = "test-model")
+        }
 
     private fun coordinator(
         store: FakeRebalanceStore,
@@ -491,5 +526,45 @@ class RebalanceViewModelTest {
 
         assertEquals(RebalanceCardUiState.Face.OFFER, vm.uiState.value.face)
         assertTrue("a new offer id resets minimize to expanded", !vm.offerMinimized.value)
+    }
+
+    // ── redesign surface: phrasing edge-glow interleaving guard ─────────────────────────
+
+    @Test
+    fun `phrasing stays raised when a superseded copy job completes after a newer one starts`() = runTest(dispatcher) {
+        // Offer A (job A) and a distinct offer B (job B, different reduction → distinct body). Job A is
+        // superseded by B before it finishes; A's finally must NOT clear the glow B just raised
+        // (guarded by phrasingJob === job), and only B's completion clears it. Drive with runCurrent()
+        // (not advanceUntilIdle) so virtual time never advances through copy()'s 15s withTimeout —
+        // that would time the "suspended" jobs out instead of leaving them parked on their gates.
+        val store = FakeRebalanceStore(seed = RebalanceState(active = offeredPlan()))
+        val coord = coordinator(store, scope = backgroundScope)
+        val client = SuspendingCopyClient()
+        val vm = RebalanceViewModel(store, coord, configuredCopyService(client), FixedDateProvider(today))
+        runCurrent()
+
+        // Job A is in flight (its phrasing gate is registered) and the glow is up.
+        assertEquals(RebalanceCardUiState.Face.OFFER, vm.uiState.value.face)
+        assertEquals("job A's phrasing call is parked on its gate", 1, client.gates.size)
+        assertTrue("the glow is raised while A phrases", vm.phrasing.value)
+
+        // A NEW offer (distinct id + reduction) supersedes A → cancels job A, starts job B.
+        store.save(RebalanceState(active = offeredPlan().copy(id = "offer-2", dailyCalorieReduction = 300)))
+        runCurrent()
+
+        // Job B is now the in-flight phrasing job; A has unwound (cancelled). The glow must remain up —
+        // A's finally saw phrasingJob === jobB (not jobA) and did NOT clear it.
+        assertEquals("job B's phrasing call is now parked on its own gate", 2, client.gates.size)
+        assertTrue("the glow stays raised: A's finally must not stomp B's flag", vm.phrasing.value)
+
+        // Releasing the (already superseded) job A changes nothing — it is no longer the current job.
+        client.gates[0].complete(Unit)
+        runCurrent()
+        assertTrue("a superseded job settling leaves the glow up", vm.phrasing.value)
+
+        // Only the current job (B) finishing clears the glow.
+        client.gates[1].complete(Unit)
+        runCurrent()
+        assertFalse("the current job finishing clears the glow", vm.phrasing.value)
     }
 }

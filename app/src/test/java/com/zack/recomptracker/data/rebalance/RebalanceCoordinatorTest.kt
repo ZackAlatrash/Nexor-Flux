@@ -9,6 +9,7 @@ import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
+import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.LocalDate
@@ -571,7 +572,8 @@ class RebalanceCoordinatorTest {
         assertTrue("history bars are not plan days", historyBars.none { it.isPlanDay })
         val window7 = (1..7).map { today.minusDays(it.toLong()) }.sorted() // today-7 .. today-1
         window7.forEachIndexed { i, d ->
-            assertEquals("history bar $i valueKcal = eaten that day", 3100.takeIf { d == today.minusDays(1) } ?: 2500, historyBars[i].valueKcal)
+            val expectedEaten = if (d == today.minusDays(1)) 3100 else 2500
+            assertEquals("history bar $i valueKcal = eaten that day", expectedEaten, historyBars[i].valueKcal)
             assertEquals("history bar $i targetKcal = base target that day", 2500, historyBars[i].targetKcal)
         }
         assertTrue("the high day drove the offer (at least one over bar)", historyBars.any { it.isOver })
@@ -584,8 +586,8 @@ class RebalanceCoordinatorTest {
         planBars.forEach {
             assertEquals("plan bar targetKcal = base calories", plan.baseCalories, it.targetKcal)
             assertEquals(
-                "plan bar valueKcal = reduced effective target",
-                plan.baseCalories - plan.dailyCalorieReduction,
+                "plan bar valueKcal = the single floored effective target",
+                RebalancePlanMath.effectiveCalories(plan),
                 it.valueKcal,
             )
         }

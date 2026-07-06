@@ -58,6 +58,18 @@ data class RebalanceDayBar(
     val isOver: Boolean,     // a history day that ended over its target (drove the offer)
 )
 
+/** Pure derived math over a [RebalancePlan]. The single home for the effective-target formula. */
+object RebalancePlanMath {
+    /**
+     * The reduced daily calorie target while a plan is in effect: base minus the daily reduction,
+     * floored at [RebalanceDefaults.MIN_EFFECTIVE_CAL]. This is the ONE formula — the coordinator's
+     * weekly-bars viz and the dashboard ViewModel both delegate here so the floor is applied
+     * everywhere (see commit "single effective formula").
+     */
+    fun effectiveCalories(plan: RebalancePlan): Int =
+        maxOf(plan.baseCalories - plan.dailyCalorieReduction, RebalanceDefaults.MIN_EFFECTIVE_CAL)
+}
+
 /**
  * Persisted weekly-rebalance state: at most one offered/active plan, a capped history of terminal
  * records, and the sticky Customize [mode] preference.

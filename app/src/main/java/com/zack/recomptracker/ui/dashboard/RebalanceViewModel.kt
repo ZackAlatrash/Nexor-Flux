@@ -11,9 +11,9 @@ import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
 import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
 import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
-import com.zack.recomptracker.domain.rebalance.RebalanceDefaults
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
+import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.LocalDate
@@ -170,7 +170,9 @@ internal class RebalanceViewModel(
             return
         }
         // A fresh OFFER (a new plan id) auto-expands; any other face clears the tracked id so the
-        // next OFFER — even if it were somehow the same id — counts as fresh.
+        // next OFFER counts as fresh. The engine already mints a fresh UUID per offer, so a repeat
+        // id is not a leak we've observed — the id compare is belt-and-braces to guarantee we never
+        // re-expand (and stomp the user's minimize) on a plain re-emission of the same offer.
         if (derived.uiState.face == RebalanceCardUiState.Face.OFFER) {
             val offerId = state.active?.id
             if (offerId != lastOfferPlanId) {
@@ -330,7 +332,7 @@ internal class RebalanceViewModel(
         }
 
         private fun effectiveCalories(plan: RebalancePlan): Int =
-            (plan.baseCalories - plan.dailyCalorieReduction).coerceAtLeast(RebalanceDefaults.MIN_EFFECTIVE_CAL)
+            RebalancePlanMath.effectiveCalories(plan)
 
         private fun copyFacts(plan: RebalancePlan, dayX: Int, ofY: Int) = RebalanceCopyFacts(
             lengthDays = plan.lengthDays,

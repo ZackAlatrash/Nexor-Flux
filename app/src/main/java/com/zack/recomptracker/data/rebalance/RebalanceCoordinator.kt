@@ -12,6 +12,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceEngine
 import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
+import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.Instant
@@ -279,7 +280,7 @@ class RebalanceCoordinator(
          *    day's eaten kcal, `targetKcal` the base target that day; a day over its target is flagged
          *    `isOver` (these are the days that drove the offer).
          *  - Plan: `plan.lengthDays` days ahead starting tomorrow (`today+1 ..`). `valueKcal` is the
-         *    reduced effective target (`baseCalories - dailyCalorieReduction`), `targetKcal` the base;
+         *    floored effective target ([RebalancePlanMath.effectiveCalories]), `targetKcal` the base;
          *    never `isOver`.
          */
         fun buildOfferWindow(input: RebalanceEvaluationInput, plan: RebalancePlan): List<RebalanceDayBar> {
@@ -296,7 +297,7 @@ class RebalanceCoordinator(
                     isOver = value > target,
                 )
             }
-            val reducedTarget = plan.baseCalories - plan.dailyCalorieReduction
+            val reducedTarget = RebalancePlanMath.effectiveCalories(plan)
             val planDays = (0 until plan.lengthDays).map { i ->
                 val d = today.plusDays(1L + i)
                 RebalanceDayBar(

@@ -100,7 +100,10 @@ internal fun WeeklyBarsChart(
     val appColors = LocalAppColors.current
     val animationsEnabled = rememberAnimationsEnabled()
 
-    val maxScale = bars.maxOf { maxOf(it.valueKcal, it.targetKcal) } * 1.15f
+    // coerceAtLeast(1f) guards div-by-zero: an all-zero window (every valueKcal & targetKcal == 0)
+    // would otherwise make maxScale 0f and turn every bar height / the target line into NaN. The
+    // bars.isEmpty() early-return above already keeps the maxOf {} from throwing on an empty list.
+    val maxScale = (bars.maxOf { maxOf(it.valueKcal, it.targetKcal) } * 1.15f).coerceAtLeast(1f)
     val lineTargetKcal = bars.firstOrNull { it.isPlanDay }?.targetKcal ?: bars.first().targetKcal
     val lineFrac = (lineTargetKcal.toFloat() / maxScale).coerceIn(0f, 1f)
     val firstPlanIndex = bars.indexOfFirst { it.isPlanDay }
@@ -445,10 +448,12 @@ internal fun LeverTiles(
     modifier: Modifier = Modifier,
 ) {
     val animationsEnabled = rememberAnimationsEnabled()
-    val visibleStates = remember(reduction, extraSteps, days) {
-        List(3) { mutableStateOf(!animationsEnabled) }
-    }
-    LaunchedEffect(reduction, extraSteps, days, animationsEnabled) {
+    // Keyed on Unit (not the values) so the entrance stagger runs ONCE on first composition. Changing
+    // reduction/steps/days via Customize then updates the tile labels in place — the tiles do not
+    // replay their fade/slide-in (which read as jank). The number labels are small and need no
+    // count-up, so an in-place text swap is all that's wanted.
+    val visibleStates = remember { List(3) { mutableStateOf(!animationsEnabled) } }
+    LaunchedEffect(Unit) {
         if (animationsEnabled) {
             visibleStates.forEachIndexed { i, state ->
                 launch {

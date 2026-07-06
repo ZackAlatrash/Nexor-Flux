@@ -35,9 +35,11 @@ import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiDialogCard
 import com.zack.recomptracker.ui.component.DismissButton
+import com.zack.recomptracker.ui.component.GlassAlertDialog
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
 import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
+import com.zack.recomptracker.ui.review.BriefingGhostButton
 import com.zack.recomptracker.ui.theme.AppType
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
@@ -61,6 +63,7 @@ internal fun RebalanceProgressDetailOverlay(
     open: Boolean,
     state: RebalanceCardUiState,
     onClose: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     if (!open || state.face != RebalanceCardUiState.Face.PROGRESS) return
 
@@ -92,7 +95,7 @@ internal fun RebalanceProgressDetailOverlay(
                     alpha = cardAlpha
                 },
         ) {
-            ProgressDetailBody(state = state, onClose = onClose)
+            ProgressDetailBody(state = state, onClose = onClose, onCancel = onCancel)
         }
     }
 }
@@ -106,10 +109,12 @@ internal fun RebalanceProgressDetailOverlay(
 private fun ColumnScope.ProgressDetailBody(
     state: RebalanceCardUiState,
     onClose: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current
     val animationsEnabled = rememberAnimationsEnabled()
+    var confirmingCancel by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -127,59 +132,84 @@ private fun ColumnScope.ProgressDetailBody(
         // Accepted late in the day — starts-tomorrow line only, no dots / progress bar (spec §10).
         Spacer(Modifier.height(6.dp))
         Text(text = state.body, style = AppType.body, color = appColors.textPrimary)
-        return
-    }
-
-    Spacer(Modifier.height(6.dp))
-    Text(
-        text = "Day ${state.dayX} of ${state.ofY}",
-        style = AppType.screenTitleCompact,
-        color = appColors.textPrimary,
-    )
-
-    Spacer(Modifier.height(12.dp))
-    DayDots(dayX = state.dayX, ofY = state.ofY, mini = false)
-
-    Spacer(Modifier.height(14.dp))
-    val fillBrush = remember(accent.accent, accent.accentLight) {
-        Brush.horizontalGradient(listOf(accent.accent, accent.accentLight))
-    }
-    val animatedFraction = if (animationsEnabled) {
-        val animated by animateFloatAsState(
-            targetValue = state.progressFraction,
-            animationSpec = ChartDefaults.AnimSpec.progressBar,
-            label = "rebalanceProgressDetail",
-        )
-        animated
     } else {
-        state.progressFraction
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(appColors.cardBorder),
-    ) {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Day ${state.dayX} of ${state.ofY}",
+            style = AppType.screenTitleCompact,
+            color = appColors.textPrimary,
+        )
+
+        Spacer(Modifier.height(12.dp))
+        DayDots(dayX = state.dayX, ofY = state.ofY, mini = false)
+
+        Spacer(Modifier.height(14.dp))
+        val fillBrush = remember(accent.accent, accent.accentLight) {
+            Brush.horizontalGradient(listOf(accent.accent, accent.accentLight))
+        }
+        val animatedFraction = if (animationsEnabled) {
+            val animated by animateFloatAsState(
+                targetValue = state.progressFraction,
+                animationSpec = ChartDefaults.AnimSpec.progressBar,
+                label = "rebalanceProgressDetail",
+            )
+            animated
+        } else {
+            state.progressFraction
+        }
         Box(
             modifier = Modifier
-                .fillMaxWidth(animatedFraction)
+                .fillMaxWidth()
                 .height(6.dp)
-                .background(fillBrush, RoundedCornerShape(3.dp)),
-        )
+                .clip(RoundedCornerShape(3.dp))
+                .background(appColors.cardBorder),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedFraction)
+                    .height(6.dp)
+                    .background(fillBrush, RoundedCornerShape(3.dp)),
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+        // state.body is the already-composed PROGRESS_LINE copy (fallback or phrased), which itself
+        // states today's effective kcal — this overlay never hands the composable a bare number to
+        // re-append (same contract as RebalanceCard.ProgressFaceContent).
+        Text(text = state.body, style = AppType.body, color = appColors.textSecondary)
+        if (state.extraSteps > 0) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "+${state.extraSteps} steps today",
+                style = AppType.cardSubtitle,
+                color = appColors.textMuted,
+            )
+        }
     }
 
-    Spacer(Modifier.height(12.dp))
-    // state.body is the already-composed PROGRESS_LINE copy (fallback or phrased), which itself
-    // states today's effective kcal — this overlay never hands the composable a bare number to
-    // re-append (same contract as RebalanceCard.ProgressFaceContent).
-    Text(text = state.body, style = AppType.body, color = appColors.textSecondary)
-    if (state.extraSteps > 0) {
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = "+${state.extraSteps} steps today",
-            style = AppType.cardSubtitle,
-            color = appColors.textMuted,
+    // Cancel affordance — available on every progress day (including day-0): ends the plan and
+    // returns today onward to the base plan. Opens a destructive confirm first.
+    Spacer(Modifier.height(16.dp))
+    BriefingGhostButton(
+        text = "Cancel rebalance",
+        onClick = { confirmingCancel = true },
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+
+    if (confirmingCancel) {
+        GlassAlertDialog(
+            onDismiss = { confirmingCancel = false },
+            title = "Cancel this rebalance?",
+            body = "Today and the days ahead go back to your normal plan. Days you've already " +
+                "finished stay as they were.",
+            confirmLabel = "Cancel rebalance",
+            onConfirm = {
+                confirmingCancel = false
+                onCancel()
+                onClose()
+            },
+            dismissLabel = "Keep going",
+            isDestructive = true,
         )
     }
 }
@@ -201,7 +231,7 @@ private fun PreviewProgressDetailBody() {
         baseCalories = 2200,
     )
     AiDialogCard(borderMode = AiBorderMode.Ready, cornerRadius = ModalCorner, scrollable = false) {
-        ProgressDetailBody(state = state, onClose = {})
+        ProgressDetailBody(state = state, onClose = {}, onCancel = {})
     }
 }
 
@@ -218,6 +248,6 @@ private fun PreviewProgressDetailBodyDayZero() {
         baseCalories = 2200,
     )
     AiDialogCard(borderMode = AiBorderMode.Ready, cornerRadius = ModalCorner, scrollable = false) {
-        ProgressDetailBody(state = state, onClose = {})
+        ProgressDetailBody(state = state, onClose = {}, onCancel = {})
     }
 }

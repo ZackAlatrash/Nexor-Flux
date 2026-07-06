@@ -149,8 +149,15 @@ Caps per day:
 
 Recovery target: `targetRecover = round(S × RECOVERY_FRACTION)` with `RECOVERY_FRACTION = 0.75`
 (deliberately not 100%). Per-day capacity by mode:
-`EAT_LESS = MAX_CAL_REDUCTION` · `MOVE_MORE = stepKcal(MAX_EXTRA_STEPS)` (0 → falls back to EAT_LESS) ·
-`BALANCED = 0.6×MAX_CAL_REDUCTION + stepKcal(0.6×MAX_EXTRA_STEPS)`.
+`EAT_LESS = MAX_CAL_REDUCTION` · `BALANCED = 0.6×MAX_CAL_REDUCTION + stepKcal(0.6×MAX_EXTRA_STEPS)`.
+`MOVE_MORE` is **two-tier** so it always resolves to a distinct, feasible plan: when the full step
+lever spread over the allowed days already covers the target (`maxDays × stepKcal(MAX_EXTRA_STEPS) ≥
+targetRecover`), it is a pure steps plan (`perDayCap = stepKcal(MAX_EXTRA_STEPS)`, `R = 0`); when
+steps alone fall short, it maxes steps and covers the remainder with calories
+(`perDayCap = stepKcal(MAX_EXTRA_STEPS) + MAX_CAL_REDUCTION`, split steps-first). A `MAX_EXTRA_STEPS`
+of 0 falls back to EAT_LESS. Without this second tier, a too-large-for-steps surplus made `size`
+return null and `customize` kept the previous mode's numbers verbatim, so switching to Move more
+showed the *same* adjustment as Balanced.
 **When steps are unavailable (null step data or null step goal) the plan is calorie-only for EVERY mode**
 — perDayCap is the full `MAX_CAL_REDUCTION` and E = 0 (the 0.6 split applies only when steps exist).
 `R` is additionally capped at `base − MIN_EFFECTIVE_CAL` so `recoveredKcal` never overstates what the

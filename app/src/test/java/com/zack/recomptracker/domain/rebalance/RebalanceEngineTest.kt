@@ -252,6 +252,73 @@ class RebalanceEngineTest {
     }
 
     @Test
+    fun `MOVE_MORE maxes steps then covers the remainder with calories when steps alone fall short`() {
+        // steps avg 8000 -> stepsCap = round500(2000) = 2000, stepKcal = 80/day. Over maxDays 5 that is
+        // 400 kcal, short of targetRecover 450 (S = 600). Steps alone can't cover it, so MOVE_MORE maxes
+        // steps AND cuts calories for the remainder — a distinct, feasible plan, not a null that would
+        // make `customize` fall back to the previous mode's numbers.
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 8000 }
+        val plan = (evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100), // S = 600
+                steps = stepsMap,
+                baseStepGoal = 9000,
+                mode = RebalanceMode.MOVE_MORE,
+            ),
+        ) as RebalanceDecision.Offer).plan
+        assertTrue("MOVE_MORE should still add steps", plan.extraDailySteps > 0)
+        assertTrue("MOVE_MORE should also cut calories when steps fall short", plan.dailyCalorieReduction > 0)
+    }
+
+    @Test
+    fun `MOVE_MORE and BALANCED give different adjustments when steps alone fall short`() {
+        // Regression guard for the on-device report "Balanced and Move more give the same adjustments":
+        // in the band where steps alone can't cover the surplus, the two modes must still differ, and
+        // Move more must lean harder on steps than the balanced split does.
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 8000 }
+        fun planFor(mode: RebalanceMode) = (evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100), // S = 600
+                steps = stepsMap,
+                baseStepGoal = 9000,
+                mode = mode,
+            ),
+        ) as RebalanceDecision.Offer).plan
+        val balanced = planFor(RebalanceMode.BALANCED)
+        val moveMore = planFor(RebalanceMode.MOVE_MORE)
+        assertTrue(
+            "Move more must differ from Balanced (R ${moveMore.dailyCalorieReduction} vs " +
+                "${balanced.dailyCalorieReduction}, E ${moveMore.extraDailySteps} vs ${balanced.extraDailySteps})",
+            moveMore.dailyCalorieReduction != balanced.dailyCalorieReduction ||
+                moveMore.extraDailySteps != balanced.extraDailySteps,
+        )
+        assertTrue("Move more should use more steps than Balanced", moveMore.extraDailySteps > balanced.extraDailySteps)
+    }
+
+    @Test
+    fun `customize to MOVE_MORE changes the adjustment even when steps alone fall short`() {
+        // The exact on-device path: a BALANCED offer, then tapping "Move more". customize must recompute
+        // to a genuinely different plan rather than returning the offer with only its mode label flipped.
+        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 8000 }
+        val offer = (evaluate(
+            input(
+                eatenOverrides = mapOf(yesterday to 3100), // S = 600
+                steps = stepsMap,
+                baseStepGoal = 9000,
+                mode = RebalanceMode.BALANCED,
+            ),
+        ) as RebalanceDecision.Offer).plan
+        val moved = RebalanceEngine.customize(offer, RebalanceMode.MOVE_MORE, FitnessGoal.MODERATE_CUT)
+        assertEquals(RebalanceMode.MOVE_MORE, moved.mode)
+        assertTrue(
+            "customize(MOVE_MORE) must change the adjustment, not just the label",
+            moved.extraDailySteps != offer.extraDailySteps ||
+                moved.dailyCalorieReduction != offer.dailyCalorieReduction,
+        )
+        assertTrue("MOVE_MORE should use more steps than the balanced offer", moved.extraDailySteps > offer.extraDailySteps)
+    }
+
+    @Test
     fun `BALANCED split uses both levers`() {
         val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
         val decision = evaluate(

@@ -315,13 +315,26 @@ object RebalanceEngine {
             0
         }
 
+        // MOVE_MORE prefers steps, but must still resolve to a *distinct, feasible* plan when steps
+        // alone fall short. [moveMoreStepsSuffice] is true only when the full step lever, spread over
+        // the allowed days, already covers the recovery target — then MOVE_MORE is a pure steps plan
+        // (R = 0). Otherwise it maxes steps and covers the remainder with a calorie cut. Without this
+        // two-tier fallback, a too-large-for-steps surplus made `size` return null, and
+        // [customize] then kept the previous mode's numbers verbatim — so switching to Move more
+        // showed the *same* adjustment as Balanced (spec §5.5).
+        val stepsOnlyKcal = if (stepsAvailable && stepsCap > 0) stepKcalRaw(stepsCap) else 0.0
+        val moveMoreStepsSuffice = stepsOnlyKcal > 0.0 && maxDays * stepsOnlyKcal >= targetRecover
+
         // Per-day capacity (raw kcal) by mode. Steps unavailable → calorie-only for every mode.
         // Mode branches here must stay in lockstep with the raw-split `when` below (identical conditions).
         val perDayCap: Double = when {
             !stepsAvailable -> calLeverCap.toDouble()
             mode == RebalanceMode.EAT_LESS -> calLeverCap.toDouble()
-            mode == RebalanceMode.MOVE_MORE ->
-                if (stepsCap > 0) stepKcalRaw(stepsCap) else calLeverCap.toDouble() // fall back to EAT_LESS
+            mode == RebalanceMode.MOVE_MORE -> when {
+                stepsCap <= 0 -> calLeverCap.toDouble()             // steps present but too few → EAT_LESS
+                moveMoreStepsSuffice -> stepsOnlyKcal               // steps alone cover the target
+                else -> stepsOnlyKcal + calLeverCap.toDouble()      // steps maxed + calories cover the rest
+            }
             else -> // BALANCED
                 RebalanceDefaults.BALANCED_LEVER_FRACTION * calLeverCap +
                     stepKcalRaw(RebalanceDefaults.BALANCED_LEVER_FRACTION * stepsCap)
@@ -339,8 +352,14 @@ object RebalanceEngine {
         val (rRaw, eRaw) = when {
             !stepsAvailable -> perDay to 0.0
             mode == RebalanceMode.EAT_LESS -> perDay to 0.0
-            mode == RebalanceMode.MOVE_MORE ->
-                if (stepsCap > 0) 0.0 to (perDay / RebalanceDefaults.KCAL_PER_STEP) else perDay to 0.0
+            mode == RebalanceMode.MOVE_MORE -> when {
+                stepsCap <= 0 -> perDay to 0.0                                            // calorie-only
+                moveMoreStepsSuffice -> 0.0 to (perDay / RebalanceDefaults.KCAL_PER_STEP) // steps-only
+                else -> {                                        // steps maxed, calories cover the remainder
+                    val eKcal = minOf(perDay, stepsOnlyKcal)
+                    (perDay - eKcal) to (eKcal / RebalanceDefaults.KCAL_PER_STEP)
+                }
+            }
             else -> { // BALANCED: calories first (up to their 0.6 lever), remainder into steps
                 val calLever = RebalanceDefaults.BALANCED_LEVER_FRACTION * calLeverCap
                 val r = minOf(perDay, calLever)

@@ -5,6 +5,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,7 +31,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -40,6 +52,7 @@ import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
 import com.zack.recomptracker.ui.review.BriefingGhostButton
 import com.zack.recomptracker.ui.review.BriefingPrimaryButton
 import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.CornerPill
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.collections.immutable.ImmutableList
@@ -173,16 +186,52 @@ private fun ColumnScope.OfferBody(
         modifier = Modifier.align(Alignment.CenterHorizontally),
     )
 
-    Spacer(Modifier.height(8.dp))
-    Column(modifier = Modifier.animateContentSize()) {
-        Text(
-            text = "Adjust the balance",
-            style = AppType.label,
-            color = accent.inkLight,
-            modifier = Modifier.clickable(onClick = { showCustomize = !showCustomize }),
+    Spacer(Modifier.height(10.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // A clearly-tappable pill (accent-tinted glass + border + a rotating chevron) rather than a
+        // bare text label, which read as a caption and didn't invite a tap.
+        val chevronRotation by animateFloatAsState(
+            targetValue = if (showCustomize) 180f else 0f,
+            animationSpec = tween(200),
+            label = "adjustChevron",
         )
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(CornerPill))
+                .clickable(role = Role.Button, onClick = { showCustomize = !showCustomize })
+                .background(accent.tintedSurface)
+                .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerPill))
+                .padding(horizontal = 16.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Tune,
+                contentDescription = null,
+                tint = accent.inkLight,
+                modifier = Modifier.size(15.dp),
+            )
+            Text(
+                text = if (showCustomize) "Done adjusting" else "Adjust the balance",
+                style = AppType.label,
+                color = accent.inkLight,
+            )
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                tint = accent.inkLight,
+                modifier = Modifier
+                    .size(16.dp)
+                    .rotate(chevronRotation),
+            )
+        }
         if (showCustomize) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             GlassSegmentedToggle(
                 options = CUSTOMIZE_OPTIONS,
                 selectedIndex = state.mode.toIndex(),
@@ -193,6 +242,7 @@ private fun ColumnScope.OfferBody(
                 text = "Your plan recomputes instantly — no need to restart.",
                 style = AppType.cardSubtitle,
                 color = appColors.textMuted,
+                textAlign = TextAlign.Center,
             )
         }
     }

@@ -33,6 +33,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
 import com.zack.recomptracker.ui.component.charts.ChartDefaults
@@ -250,10 +253,17 @@ internal fun DayDots(
     val animationsEnabled = rememberAnimationsEnabled()
     val dotSize = if (mini) 8.dp else 14.dp
 
-    // Per-dot appear stagger — an Animatable list, same idiom as the bars chart above.
-    val appearAnims = remember(ofY) { List(ofY) { Animatable(0f) } }
+    // Per-dot appear stagger — an Animatable list. The pop plays ONCE: a rememberSaveable flag
+    // survives this composable being disposed and re-created as the Today card scrolls out of and
+    // back into the LazyColumn, so the dots don't replay the stagger (and re-launch `ofY` coroutines)
+    // on every scroll — the reported perf toll. Keyed on `ofY` so a genuinely different plan length
+    // animates afresh; the progress-detail dialog composes unflagged and still animates on open.
+    var hasAnimated by rememberSaveable(ofY) { mutableStateOf(false) }
+    val appearAnims = remember(ofY) {
+        List(ofY) { Animatable(if (hasAnimated || !animationsEnabled) 1f else 0f) }
+    }
     LaunchedEffect(ofY, animationsEnabled) {
-        if (!animationsEnabled) {
+        if (hasAnimated || !animationsEnabled) {
             appearAnims.forEach { it.snapTo(1f) }
         } else {
             appearAnims.forEachIndexed { i, anim ->
@@ -262,11 +272,15 @@ internal fun DayDots(
                     anim.animateTo(1f, animationSpec = ChartDefaults.AnimSpec.dotPop)
                 }
             }
+            hasAnimated = true
         }
     }
 
     // Today's glow pulses only while animations are enabled; otherwise a static ring (no
-    // rememberInfiniteTransition is created at all in the disabled branch).
+    // rememberInfiniteTransition is created at all in the disabled branch). The `!mini` guard is
+    // load-bearing for performance: the mini variant rides the scrolled dashboard ribbon, and an
+    // infinite transition there would invalidate every frame forever — the pulse must stay confined
+    // to the non-mini variant, which only ever renders inside the transient progress-detail Dialog.
     val pulseAlpha: Float = if (!mini && animationsEnabled) {
         val transition = rememberInfiniteTransition(label = "dayDotsGlow")
         val pulse by transition.animateFloat(
@@ -280,28 +294,49 @@ internal fun DayDots(
         0.6f
     }
 
+    // Mini variant (dashboard ribbon): a tight, wrap-content cluster. Deliberately NOT fillMaxWidth +
+    // SpaceBetween — that spread the dots edge-to-edge and starved the ribbon's sibling label to zero
+    // width (it then wrapped one character per line, exploding the row's height). No track, no labels.
+    if (mini) {
+        Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for (i in 0 until ofY) {
+                DayDot(
+                    dotSize = dotSize,
+                    scale = appearAnims[i].value,
+                    completed = i < dayX,
+                    isToday = i == dayX,
+                    mini = true,
+                    pulseAlpha = pulseAlpha,
+                )
+            }
+        }
+        return
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(dotSize),
         ) {
-            if (!mini) {
-                // Connecting track behind the dots — filled up to dayX, dim after.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.Center)
-                        .padding(horizontal = dotSize / 2),
-                ) {
-                    for (i in 0 until ofY - 1) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(2.dp)
-                                .background(if (i < dayX - 1) accent.accent else appColors.cardBorder),
-                        )
-                    }
+            // Connecting track behind the dots — filled up to dayX, dim after.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .padding(horizontal = dotSize / 2),
+            ) {
+                for (i in 0 until ofY - 1) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(2.dp)
+                            .background(if (i < dayX - 1) accent.accent else appColors.cardBorder),
+                    )
                 }
             }
             Row(
@@ -309,82 +344,99 @@ internal fun DayDots(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 for (i in 0 until ofY) {
-                    val scale = appearAnims[i].value
-                    val completed = i < dayX
-                    val isToday = i == dayX
-                    Box(
-                        modifier = Modifier
-                            .size(dotSize)
-                            .scale(scale.coerceIn(0f, 1f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when {
-                            completed -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight()
-                                        .clip(CircleShape)
-                                        .background(accent.accent),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Check,
-                                        contentDescription = null,
-                                        tint = accent.onAccent,
-                                        modifier = Modifier.size(dotSize * 0.6f),
-                                    )
-                                }
-                            }
-                            isToday -> {
-                                if (!mini) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .fillMaxHeight()
-                                            .clip(CircleShape)
-                                            .background(accent.accentLight.copy(alpha = 0.20f * pulseAlpha)),
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.72f)
-                                        .fillMaxHeight(0.72f)
-                                        .clip(CircleShape)
-                                        .border(1.5.dp, accent.accentLight, CircleShape),
-                                )
-                            }
-                            else -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.72f)
-                                        .fillMaxHeight(0.72f)
-                                        .clip(CircleShape)
-                                        .border(1.dp, appColors.cardBorder, CircleShape),
-                                )
-                            }
-                        }
-                    }
+                    DayDot(
+                        dotSize = dotSize,
+                        scale = appearAnims[i].value,
+                        completed = i < dayX,
+                        isToday = i == dayX,
+                        mini = false,
+                        pulseAlpha = pulseAlpha,
+                    )
                 }
             }
         }
 
-        if (!mini) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                for (i in 0 until ofY) {
-                    Text(
-                        text = "${i + 1}",
-                        style = AppType.metaLabel,
-                        color = if (i == dayX) accent.accentLighter else appColors.textMuted,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(dotSize),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            for (i in 0 until ofY) {
+                Text(
+                    text = "${i + 1}",
+                    style = AppType.metaLabel,
+                    color = if (i == dayX) accent.accentLighter else appColors.textMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(dotSize),
+                )
+            }
+        }
+    }
+}
+
+/** A single day-progress dot: filled + check (done), a glowing ring (today), or a hollow dot (ahead). */
+@Composable
+private fun DayDot(
+    dotSize: Dp,
+    scale: Float,
+    completed: Boolean,
+    isToday: Boolean,
+    mini: Boolean,
+    pulseAlpha: Float,
+) {
+    val accent = LocalAppAccent.current
+    val appColors = LocalAppColors.current
+    Box(
+        modifier = Modifier
+            .size(dotSize)
+            .scale(scale.coerceIn(0f, 1f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            completed -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(accent.accent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = accent.onAccent,
+                        modifier = Modifier.size(dotSize * 0.6f),
                     )
                 }
+            }
+            isToday -> {
+                if (!mini) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .background(accent.accentLight.copy(alpha = 0.20f * pulseAlpha)),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.72f)
+                        .fillMaxHeight(0.72f)
+                        .clip(CircleShape)
+                        .border(1.5.dp, accent.accentLight, CircleShape),
+                )
+            }
+            else -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.72f)
+                        .fillMaxHeight(0.72f)
+                        .clip(CircleShape)
+                        .border(1.dp, appColors.cardBorder, CircleShape),
+                )
             }
         }
     }

@@ -26,7 +26,7 @@ enum class RebalanceStatus { OFFERED, ACTIVE, COMPLETED, ENDED_EARLY, DECLINED, 
  * @property recentAvgSteps 7-day avg at offer time — lets Customize recompute without re-reading data.
  * @property surplusKcal S the plan was sized against.
  * @property recoveredKcal D * (R + stepKcal(E)).
- * @property endedReason "completed" | "unrecoverable" | "plan_edited" | "expired".
+ * @property endedReason "completed" | "unrecoverable" | "plan_edited" | "expired" | "cancelled".
  */
 @Serializable
 data class RebalancePlan(

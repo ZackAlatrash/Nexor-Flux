@@ -230,6 +230,91 @@ class RebalanceCoordinatorTest {
         assertEquals(nowIso(), after.history.first().decidedAtIso)
     }
 
+    // ── cancelActive (user cancels a live plan) ────────────────────────────────────────
+
+    private fun activePlan(
+        start: LocalDate,
+        end: LocalDate,
+    ) = RebalancePlan(
+        id = "active", triggerDateIso = start.minusDays(2).toString(),
+        startDateIso = start.toString(), endDateIso = end.toString(),
+        lengthDays = 4, mode = RebalanceMode.BALANCED, baseCalories = 2500,
+        dailyCalorieReduction = 200, extraDailySteps = 1200, baseStepGoal = 9000,
+        recentAvgSteps = 8000, surplusKcal = 600, recoveredKcal = 460,
+        status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-06T09:00:00Z",
+        decidedAtIso = "2026-07-06T09:00:00Z",
+    )
+
+    @Test
+    fun `cancelActive ends the plan as of yesterday, clears the slot, and shows no notice`() = runTest {
+        // Mid-plan: started two days ago, ends in two days. Cancelling today reverts today onward.
+        val store = FakeRebalanceStore(
+            seed = RebalanceState(active = activePlan(start = today.minusDays(2), end = today.plusDays(1))),
+        )
+        val usage = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(existing = store.current()) },
+            usageTracker = usage,
+            scope = this,
+        )
+
+        coordinator.cancelActive()
+
+        val state = store.current()
+        assertNull("cancel clears the active slot", state.active)
+        assertEquals(1, state.history.size)
+        val ended = state.history.first()
+        assertEquals(RebalanceStatus.ENDED_EARLY, ended.status)
+        assertEquals("user cancel", "cancelled", ended.endedReason)
+        assertEquals(
+            "ends as of yesterday so today reverts to base",
+            today.minusDays(1).toString(),
+            ended.endDateIso,
+        )
+        assertNull("a user cancel surfaces no ended-notice card", coordinator.endedNotice.value)
+        assertTrue("REBALANCE_CANCELLED tracked", usage.events.contains(UsageEvents.REBALANCE_CANCELLED))
+    }
+
+    @Test
+    fun `cancelActive on a day-0 plan leaves an inverted window so nothing was ever reduced`() = runTest {
+        // Accepted late in the day: start = tomorrow, never in effect. Ending at today-1 (< start)
+        // makes [start, end] inverted → EffectiveTargets.overrides matches no date.
+        val store = FakeRebalanceStore(
+            seed = RebalanceState(active = activePlan(start = today.plusDays(1), end = today.plusDays(4))),
+        )
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput(existing = store.current()) },
+            scope = this,
+        )
+
+        coordinator.cancelActive()
+
+        val ended = store.current().history.first()
+        assertEquals(today.minusDays(1).toString(), ended.endDateIso)
+        assertTrue("inverted window: end precedes start", ended.endDateIso < ended.startDateIso)
+    }
+
+    @Test
+    fun `cancelActive is a no-op for an offered plan`() = runTest {
+        val store = FakeRebalanceStore()
+        val usage = RecordingUsageTracker()
+        val coordinator = coordinator(
+            store = store,
+            buildInput = { cannedInput() },
+            usageTracker = usage,
+            scope = this,
+        )
+        coordinator.runIfDue()
+        assertEquals(RebalanceStatus.OFFERED, store.current().active!!.status)
+
+        coordinator.cancelActive()
+
+        assertEquals("an offered plan is left untouched", RebalanceStatus.OFFERED, store.current().active!!.status)
+        assertTrue("no cancel event fires on a no-op", !usage.events.contains(UsageEvents.REBALANCE_CANCELLED))
+    }
+
     // ── customize ─────────────────────────────────────────────────────────────────────
 
     @Test

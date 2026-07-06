@@ -222,6 +222,28 @@ class RebalanceCoordinator(
     }
 
     /**
+     * User-initiated cancel of the current ACTIVE plan (no-op otherwise): ends it as of yesterday
+     * (`today - 1`) so today and every day forward revert to the base plan, moves it to history
+     * (`endedReason = "cancelled"`), and clears the active slot. Unlike the reconcile / plan-edit
+     * paths this surfaces **no** ended-notice card — a user who just cancelled doesn't need a
+     * "your plan ended" note; the caller shows a lightweight confirmation instead. A day-0 plan
+     * (start = tomorrow, never in effect) ends with an empty `[start, today-1]` window, so nothing
+     * was ever reduced.
+     */
+    suspend fun cancelActive() {
+        val state = store.current()
+        val active = state.active ?: return
+        if (active.status != RebalanceStatus.ACTIVE) return
+        val ended = active.copy(
+            status = RebalanceStatus.ENDED_EARLY,
+            endedReason = "cancelled",
+            endDateIso = dateProvider.today().minusDays(1).toString(),
+        )
+        archive(state, ended, notify = false)
+        usageTracker.track(UsageEvents.REBALANCE_CANCELLED)
+    }
+
+    /**
      * Customize the current OFFERED plan to [mode] (no-op otherwise): recompute R/E/D from the facts
      * stored on the offer via [RebalanceEngine.customize], passing the user's current goal so a RECOMP
      * offer keeps its halved fraction and 3-day cap. Persists the recomputed plan AND the sticky

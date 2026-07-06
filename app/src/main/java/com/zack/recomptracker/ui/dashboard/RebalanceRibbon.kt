@@ -2,18 +2,21 @@ package com.zack.recomptracker.ui.dashboard
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,22 +31,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
 import com.zack.recomptracker.ui.theme.AppType
+import com.zack.recomptracker.ui.theme.CornerSmall
 import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 
 /**
- * A tappable ribbon that rides the Today card's own space, summarizing an in-progress Weekly
- * Rebalance plan (day-X-of-Y + today's reduction) and opening [RebalanceProgressDetailOverlay] on
- * tap. Renders its content unconditionally — this composable does NOT early-return on
- * [state]'s face and does NOT wrap itself in `AnimatedVisibility`. The Task-7 call site inside
- * `TodayCard` is responsible for wrapping `RebalanceRibbon` in
- * `AnimatedVisibility(visible = state.face == RebalanceCardUiState.Face.PROGRESS)` so the
- * fade/expand enter-exit (mirroring [com.zack.recomptracker.ui.component.WeekCalorieStrip]'s
- * "Today" pill idiom) can play across composition, not just within this function.
+ * A tappable, accent-tinted strip that rides the Today card's own space, summarizing an in-progress
+ * Weekly Rebalance plan and opening [RebalanceProgressDetailOverlay] on tap. It always leads with a
+ * clear "WEEKLY REBALANCE" label + sparkle so the user can tell what it is at a glance (an earlier
+ * version showed only bare day-dots and read as an unexplained graphic), then a compact day-X-of-Y
+ * row (or "Starts tomorrow" on the accept-late day-0), and today's lever on the right.
  *
- * Has its OWN `Modifier.clickable` (rather than relying on a parent row's click) so the Today
- * card's separate Food-Log tap target is not hijacked — the inner clickable consumes the tap
- * first.
+ * Renders its content unconditionally — this composable does NOT early-return on [state]'s face and
+ * does NOT wrap itself in `AnimatedVisibility`. The `TodayCard` call site wraps it in
+ * `AnimatedVisibility(visible = state.face == RebalanceCardUiState.Face.PROGRESS)` so the fade/expand
+ * enter-exit can play across composition.
+ *
+ * Has its OWN `Modifier.clickable` (rather than relying on the Today card's Food-Log tap) so the
+ * inner clickable consumes the tap first.
  */
 @Composable
 internal fun RebalanceRibbon(
@@ -63,10 +68,12 @@ internal fun RebalanceRibbon(
         label = "ribbonPressAlpha",
     )
 
+    val reduction = (state.baseCalories - state.effectiveCalories).coerceAtLeast(0)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(CornerSmall))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -74,41 +81,69 @@ internal fun RebalanceRibbon(
                 onClick = onClick,
             )
             .graphicsLayer { alpha = pressAlpha }
-            .padding(vertical = 8.dp),
+            .background(accent.tintedSurface)
+            .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerSmall))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (state.dayX == 0) {
-            // Nothing is reduced today — no dots, no chevron, just the starts-tomorrow label.
+        Icon(
+            imageVector = Icons.Rounded.AutoAwesome,
+            contentDescription = null,
+            tint = accent.inkLight,
+            modifier = Modifier.size(16.dp),
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
             Text(
-                text = "Rebalance · starts tomorrow",
-                style = AppType.sectionLabel,
-                color = accent.accentLighter,
+                text = "WEEKLY REBALANCE",
+                style = AppType.metaLabel,
+                color = accent.inkLight,
             )
-        } else {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                DayDots(dayX = state.dayX, ofY = state.ofY, mini = true)
+            if (state.dayX == 0) {
                 Text(
-                    text = "Rebalance · day ${state.dayX} of ${state.ofY}",
-                    style = AppType.sectionLabel,
-                    color = accent.accentLighter,
+                    text = "Starts tomorrow",
+                    style = AppType.cardSubtitle,
+                    color = appColors.textSecondary,
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    DayDots(dayX = state.dayX, ofY = state.ofY, mini = true)
+                    Text(
+                        text = "Day ${state.dayX} of ${state.ofY}",
+                        style = AppType.cardSubtitle,
+                        color = appColors.textSecondary,
+                    )
+                }
+            }
+        }
+        // Today's lever, right-aligned: the calorie cut if any, else the step boost, else nothing
+        // (day-0 reduces nothing today).
+        if (state.dayX != 0) {
+            val trailing = when {
+                reduction > 0 -> "−$reduction kcal"
+                state.extraSteps > 0 -> "+${formatK(state.extraSteps)} steps"
+                else -> null
+            }
+            if (trailing != null) {
+                Text(
+                    text = trailing,
+                    style = AppType.cardSubtitle,
+                    color = accent.inkLight,
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "−${(state.baseCalories - state.effectiveCalories).coerceAtLeast(0)} kcal",
-                style = AppType.cardSubtitle,
-                color = appColors.textMuted,
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = accent.accentLight,
-                modifier = Modifier.size(18.dp),
-            )
         }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = accent.inkLight,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 

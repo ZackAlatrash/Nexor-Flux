@@ -38,6 +38,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,10 @@ import com.zack.recomptracker.ui.review.WeeklyBriefingOverlay
 import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
 import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.streak.StreakRow
+import com.zack.recomptracker.ui.toast.LocalToastController
+import com.zack.recomptracker.ui.toast.ToastMessage
+import com.zack.recomptracker.ui.toast.ToastType
+import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.streak.StreakGoalRing
 import com.zack.recomptracker.domain.streak.StreakType
 import com.zack.recomptracker.domain.streak.Streaks
@@ -145,12 +150,20 @@ internal fun HomeDashboardScreen(
         weeklyReviewViewModel.open()
     }
 
+    // A minimized offer's reopen pill takes over the Weekly Review pill's slot (the two never stack):
+    // when it's showing, hide the review pill and drop the reopen pill's stacking offset.
+    val reopenPillVisible = rebalanceCardState.face == RebalanceCardUiState.Face.OFFER && offerMinimized
+    val toastController = LocalToastController.current
+    val scope = rememberCoroutineScope()
+
     HomeDashboardContent(
         state = state,
         avatarPhotoUri = headerAvatar.photoUri,
         avatarInitials = headerAvatar.initials,
         showWeeklyReviewBadge = badge,
         onOpenWeeklyReview = openWeeklyReview,
+        hideWeeklyReviewPill = reopenPillVisible,
+        onExpandRebalance = { rebalanceViewModel.onExpandOffer() },
         onOpenSettings = onOpenSettings,
         onOpenFoodLog = onOpenFoodLog,
         onOpenBody = onOpenBody,
@@ -208,7 +221,22 @@ internal fun HomeDashboardScreen(
         state = rebalanceCardState,
         minimized = offerMinimized,
         phrasing = phrasing,
-        onAccept = { rebalanceViewModel.onAccept() },
+        onAccept = {
+            val days = rebalanceCardState.ofY
+            rebalanceViewModel.onAccept()
+            scope.launch {
+                toastController.show(
+                    ToastMessage(
+                        text = if (days > 0) {
+                            "Rebalance started — lighter targets for the next $days days"
+                        } else {
+                            "Rebalance started"
+                        },
+                        type = ToastType.Success,
+                    ),
+                )
+            }
+        },
         onDecline = { rebalanceViewModel.onDecline() },
         onMinimize = { rebalanceViewModel.onMinimizeOffer() },
         onCustomize = { rebalanceViewModel.onCustomize(it) },
@@ -217,23 +245,11 @@ internal fun HomeDashboardScreen(
         open = progressDetailOpen,
         state = rebalanceCardState,
         onClose = { progressDetailOpen = false },
+        onCancel = { rebalanceViewModel.onCancelActive() },
     )
-    // The reopen pill shares the dashboard window (LocalBackdrop present), so it lives in a
-    // BottomCenter-aligned Box like the Weekly Review pill. It applies its own bottom padding +
-    // AnimatedVisibility internally; `stackedAboveWeeklyReview` lifts it above the review pill when
-    // both show at once.
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-            RebalanceReopenPill(
-                visible = rebalanceCardState.face == RebalanceCardUiState.Face.OFFER && offerMinimized,
-                // The Weekly Review pill is always present on the real dashboard (HomeDashboardScreen
-                // always supplies openWeeklyReview to HomeDashboardContent), so the reopen pill always
-                // stacks above it.
-                stackedAboveWeeklyReview = true,
-                onExpand = { rebalanceViewModel.onExpandOffer() },
-            )
-        }
-    }
+    // The reopen pill is NOT hoisted here — it renders inside HomeDashboardContent's root Box (the
+    // Weekly Review pill's slot) so it shares the dashboard's liquid-glass backdrop; hoisting it to a
+    // sibling Box outside that scope made its LiquidGlassButton render backdrop-less (near-invisible).
 }
 
 @Composable
@@ -244,6 +260,8 @@ fun HomeDashboardContent(
     modifier: Modifier = Modifier,
     showWeeklyReviewBadge: Boolean = false,
     onOpenWeeklyReview: (() -> Unit)? = null,
+    hideWeeklyReviewPill: Boolean = false,
+    onExpandRebalance: () -> Unit = {},
     onOpenSettings: (() -> Unit)? = null,
     onOpenFoodLog: (() -> Unit)? = null,
     onOpenBody: (() -> Unit)? = null,
@@ -364,8 +382,9 @@ fun HomeDashboardContent(
             }
         }
 
-        // Floating wide liquid-glass Weekly Review pill above the nav bar
-        if (onOpenWeeklyReview != null) {
+        // Floating wide liquid-glass Weekly Review pill above the nav bar. Hidden while a minimized
+        // rebalance offer's reopen pill occupies this slot (they never stack).
+        if (onOpenWeeklyReview != null && !hideWeeklyReviewPill) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -404,6 +423,19 @@ fun HomeDashboardContent(
                         color = accent.onAccent,
                     )
                 }
+            }
+        }
+
+        // Rebalance reopen pill — occupies the Weekly Review pill's slot (the two never show at once,
+        // see hideWeeklyReviewPill). A plain `if` (not AnimatedVisibility) so the LiquidGlassButton's
+        // backdrop sampling isn't defeated by a graphics layer, and inside this Box so it shares the
+        // dashboard's live LocalBackdrop.
+        if (hideWeeklyReviewPill) {
+            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                RebalanceReopenPill(
+                    stackedAboveWeeklyReview = false,
+                    onExpand = onExpandRebalance,
+                )
             }
         }
     }

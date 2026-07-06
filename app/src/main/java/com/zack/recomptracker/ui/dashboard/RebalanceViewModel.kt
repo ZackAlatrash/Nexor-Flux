@@ -244,6 +244,11 @@ internal class RebalanceViewModel(
         _offerMinimized.value = false
     }
 
+    /** Cancel the current ACTIVE plan (from the progress detail). Reverts today onward to the base plan. */
+    fun onCancelActive() {
+        viewModelScope.launch { coordinator.cancelActive() }
+    }
+
     private companion object {
 
         /** Derives the face to show, or `null` for [RebalanceCardUiState.Face.NONE]. */

@@ -38,6 +38,8 @@ object UsageEvents {
     const val REBALANCE_COMPLETED = "rebalance_completed"
     /** An active weekly-rebalance plan ended before its course finished (unrecoverable or a base-plan edit). */
     const val REBALANCE_ENDED_EARLY = "rebalance_ended_early"
+    /** The user cancelled an active weekly-rebalance plan from the progress detail. */
+    const val REBALANCE_CANCELLED = "rebalance_cancelled"
 }
 
 /**

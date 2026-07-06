@@ -145,3 +145,25 @@ Add scenarios so the user can eyeball the new range on-device: an offer at each 
 - Always-visible dials make the offer card **taller** — accepted (a once-a-day floating dialog; more discoverable than a hidden toggle).
 - No push notifications, no new Room tables, no PlanVersion/PlanPreferences writes (unchanged from base spec).
 - The reassurance/resume thresholds (500 / 4000) and intensity fractions are tunable constants; final values validated on-device.
+
+## 16. Implementation notes (from code-seam map)
+
+The clean mental model: **`intensity` is a second `mode`** — thread it wherever `mode` is threaded — with two deviations and two genuinely-new mechanics.
+
+**Deviations from pure mirror-`mode`:**
+- **Non-sticky.** Per §8, `intensity` lives on `RebalancePlan` but **NOT** on `RebalanceState` (mix stays sticky; intensity resets to STANDARD each offer). So `evaluate()` sizes with a hardcoded `STANDARD`; `RebalanceEvaluationInput` needs **no** intensity field.
+- **Band notes reuse `NO_ADJUSTMENT`.** The reassurance (<500) and resume (>4000) notes are both `RebalanceDecision.NoAdjustment` with `RebalanceStatus.NO_ADJUSTMENT`; the ViewModel derives `NoteKind.REASSURANCE` vs the resume note **from `plan.surplusKcal`** (< `SMALL_SURPLUS_KCAL` ⇒ reassurance, else resume). No new decision variant, no new persisted flavor field.
+
+**Two new mechanics (not mirror-`mode`):**
+1. **Partial recovery** at `RebalanceEngine.size()` (the `... < targetRecover → return null` branch): cap `targetRecover` at `maxDays × perDayCap`, size to that, set `partial = true`. Return null only when `perDayCap ≤ 0` (no usable lever) → evaluate routes that to the reassurance note.
+2. **Surplus-band gate** in `evaluate()` before sizing: `surplus < SMALL_SURPLUS_KCAL (500)` → NoAdjustment(reassurance); `surplus > HUGE_SURPLUS_KCAL (4000)` → NoAdjustment(resume); else size and Offer.
+
+**Engine signature changes:** `size(...)` and `customize(...)` **drop `goal`** and gain `intensity: RebalanceIntensity`. Delete `RECOVERY_FRACTION_RECOMP`, `RECOMP_MAX_LENGTH_DAYS`, and the goal-based fraction/maxDays branch (recomp now uses the shared intensity fraction + 7-day cap). `evaluate()` keeps reading `input.goal` **only** for the existing Bulk→Silent gate.
+
+**Coordinator:** `customize(mode, intensity)`; the `currentGoal` lambda (its only consumer was `customize`) can be **removed** from the coordinator + its `AppContainer` wiring — verify nothing else calls it. `runOnce()`'s decision `when` routes the band notes exactly like today's `NoAdjustment`.
+
+**ViewModel API (keep existing call sites compiling):** keep `onCustomize(mode)` (delegates `customize(mode, currentIntensity)`) and **add** `onCustomizeIntensity(intensity)` (delegates `customize(currentMode, intensity)`), so the offer overlay compiles before the second dial is wired.
+
+**Serialization (the backup-safety rule):** both new fields (`intensity` on the plan; `partial`) MUST have Kotlin defaults so kotlinx-serialization treats a missing key as optional (old backups decode). The hand-rolled `RebalanceSerialization` codec must **separately** default `intensity` on decode (`?: STANDARD`, never `return null`). `RebalanceState` has no intensity field, so its codec is unchanged.
+
+**Verify:** 7-day plans emit up to **14 bars** in `WeeklyBarsChart` (7 history + 7 plan) — confirm it renders (weight-based, should just thin). `CoachContextAssembler`/`RebalanceContext` are intensity-agnostic (no change).

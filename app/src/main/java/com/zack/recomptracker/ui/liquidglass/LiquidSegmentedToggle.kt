@@ -86,9 +86,10 @@ fun LiquidSegmentedToggle(
     modifier: Modifier = Modifier,
     compact: Boolean = true,
 ) {
-    // Flip to true to use the real self-contained Kyant backdrop refraction instead of the lite
-    // fill. Kept LITE by default — see the KDoc "Which path is active" section.
-    val useLiveBackdrop = false
+    // Real self-contained Kyant backdrop refraction (the app's nav-bar liquid-glass material), per the
+    // user's explicit ask. If it ever renders wrong on a device, flip to false for the lite tinted-glass
+    // fallback — see the KDoc "Which path is active" section.
+    val useLiveBackdrop = true
 
     val appColors = LocalAppColors.current
     val accent = LocalAppAccent.current

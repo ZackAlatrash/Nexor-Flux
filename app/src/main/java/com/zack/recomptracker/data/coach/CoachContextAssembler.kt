@@ -26,6 +26,7 @@ import com.zack.recomptracker.domain.coach.TrainingDerivations
 import com.zack.recomptracker.domain.coach.WeeklyReviewSnapshot
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.domain.trend.MeasurementPoint
@@ -319,8 +320,7 @@ object CoachContextAssembler {
         val baseToday = inputs.targetsByDate[today]
         val effectiveCalories = effectiveTargets[today]?.calories
             ?: baseToday?.let { EffectiveTargets.resolve(it, today, state).calories }
-            ?: (plan.baseCalories - plan.dailyCalorieReduction)
-                .coerceAtLeast(com.zack.recomptracker.domain.rebalance.RebalanceDefaults.MIN_EFFECTIVE_CAL)
+            ?: RebalancePlanMath.effectiveCalories(plan)
         return RebalanceContext(
             dayX = info.dayX,
             ofY = info.ofY,

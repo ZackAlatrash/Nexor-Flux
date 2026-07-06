@@ -63,11 +63,16 @@ object RebalancePlanMath {
     /**
      * The reduced daily calorie target while a plan is in effect: base minus the daily reduction,
      * floored at [RebalanceDefaults.MIN_EFFECTIVE_CAL]. This is the ONE formula — the coordinator's
-     * weekly-bars viz and the dashboard ViewModel both delegate here so the floor is applied
-     * everywhere (see commit "single effective formula").
+     * weekly-bars viz, the dashboard ViewModel, the coach context, and the [EffectiveTargets] overlay
+     * engine all delegate here so the floor is applied identically everywhere (see commit
+     * "single effective formula").
      */
+    fun effectiveCalories(baseCalories: Int, reduction: Int): Int =
+        maxOf(baseCalories - reduction, RebalanceDefaults.MIN_EFFECTIVE_CAL)
+
+    /** [effectiveCalories] for a whole [RebalancePlan]. */
     fun effectiveCalories(plan: RebalancePlan): Int =
-        maxOf(plan.baseCalories - plan.dailyCalorieReduction, RebalanceDefaults.MIN_EFFECTIVE_CAL)
+        effectiveCalories(plan.baseCalories, plan.dailyCalorieReduction)
 }
 
 /**

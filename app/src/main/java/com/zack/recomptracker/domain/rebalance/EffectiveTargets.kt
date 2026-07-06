@@ -91,7 +91,7 @@ object EffectiveTargets {
 
     /** Applies a calorie reduction and re-derives macros + zone (spec §5.7). */
     private fun reduce(base: PlanTargets, reduction: Int): PlanTargets {
-        val eff = (base.calories - reduction).coerceAtLeast(RebalanceDefaults.MIN_EFFECTIVE_CAL)
+        val eff = RebalancePlanMath.effectiveCalories(base.calories, reduction)
         val proteinG = base.proteinG
         val fatG = (0.25 * eff / 9.0).roundToInt()
         val carbsG = ((eff - proteinG * 4 - fatG * 9) / 4.0).roundToInt().coerceAtLeast(0)

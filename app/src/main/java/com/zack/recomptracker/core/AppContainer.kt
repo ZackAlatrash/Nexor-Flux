@@ -70,6 +70,7 @@ import com.zack.recomptracker.ui.body.BodyHistoryViewModel
 import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.dashboard.RebalanceViewModel
+import com.zack.recomptracker.ui.developer.DeveloperViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
@@ -725,6 +726,10 @@ private class AppViewModelFactory(
                 coordinator = container.rebalanceCoordinator,
                 copyService = container.rebalanceCopyService,
                 dateProvider = container.dateProvider,
+            )
+            DeveloperViewModel::class.java -> DeveloperViewModel(
+                coordinator = container.rebalanceCoordinator,
+                store = container.rebalanceStore,
             )
             OnboardingViewModel::class.java -> OnboardingViewModel(
                 userProfileStore = container.userProfilePreferencesStore,

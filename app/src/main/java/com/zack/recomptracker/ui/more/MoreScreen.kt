@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Person
@@ -65,6 +66,7 @@ fun MoreScreen(
     onIntegrations: () -> Unit,
     onDataBackup: () -> Unit,
     onUsage: () -> Unit,
+    onDeveloper: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -168,6 +170,13 @@ fun MoreScreen(
                         title = "Usage",
                         detail = "Local activity & insight-card engagement",
                         onClick = onUsage,
+                        showDivider = true,
+                    )
+                    MenuRow(
+                        icon = Icons.Rounded.DeveloperMode,
+                        title = "Developer",
+                        detail = "Force Weekly Rebalance phases to test the UI",
+                        onClick = onDeveloper,
                         showDivider = false,
                     )
                 }

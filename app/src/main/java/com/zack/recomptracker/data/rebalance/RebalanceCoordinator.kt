@@ -270,6 +270,27 @@ class RebalanceCoordinator(
         if (notify) _endedNotice.value = terminal
     }
 
+    // ── Developer / debug tools (drive the UI into any phase; NOT part of production flows) ──
+    /**
+     * Force the dashboard rebalance card into the phase [scenario] describes, so the redesigned UI can
+     * be eyeballed on-device without waiting for real data to trigger each state. Sets all three
+     * UI-driving sources the `RebalanceViewModel` combines — the persisted [RebalanceState],
+     * [_endedNotice], and [_lastOfferWindow] — then stamps `markEvaluated(today)` so the next dashboard
+     * [runIfDue] short-circuits and does not clobber the forced state. Purely additive: none of the
+     * production transitions (reconcile / accept / decline / customize / [runIfDue] / [buildOfferWindow])
+     * are touched. The base calorie target is read from the same [buildInput] snapshot the engine uses
+     * (falling back to 2500 if unavailable) so the synthetic bars line up with the user's real plan.
+     */
+    suspend fun debugApply(scenario: RebalanceDebugScenario) {
+        val today = dateProvider.today()
+        val base = runCatching { buildInput().baseTargetsByDate[today]?.calories }.getOrNull() ?: 2500
+        val app = RebalanceDebugScenarios.build(scenario, today, base, newId, nowIso)
+        store.save(app.state)
+        _endedNotice.value = app.endedNotice
+        _lastOfferWindow.value = app.offerWindow
+        store.markEvaluated(today)
+    }
+
     private companion object {
         const val TAG = "RebalanceCoordinator"
 

@@ -40,6 +40,8 @@ import com.zack.recomptracker.ui.appearance.AppearanceScreen
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
 import com.zack.recomptracker.ui.integrations.IntegrationsScreen
 import com.zack.recomptracker.ui.databackup.DataBackupScreen
+import com.zack.recomptracker.ui.developer.DeveloperScreen
+import com.zack.recomptracker.ui.developer.DeveloperViewModel
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryScreen
 import com.zack.recomptracker.ui.foodlibrary.FoodLibraryViewModel
 import com.zack.recomptracker.ui.today.BodyRecoveryScreen
@@ -101,6 +103,7 @@ object Routes {
     const val Integrations = "integrations"
     const val DataBackup   = "data_backup"
     const val Usage        = "usage"
+    const val Developer    = "developer"
     const val Train          = "train"
     const val ActiveSession  = "active_session"
     const val ExercisePicker = "exercise_picker"
@@ -518,6 +521,7 @@ fun AppNavGraph(
                 onIntegrations = { navController.navigate(Routes.Integrations) },
                 onDataBackup = { navController.navigate(Routes.DataBackup) },
                 onUsage = { navController.navigate(Routes.Usage) },
+                onDeveloper = { navController.navigate(Routes.Developer) },
                 onBack = { navController.popBackStack() },
             )
         }
@@ -746,6 +750,16 @@ fun AppNavGraph(
         ) {
             UsageStatsScreen(
                 viewModel = viewModel<UsageStatsViewModel>(factory = factory),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.Developer,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            DeveloperScreen(
+                viewModel = viewModel<DeveloperViewModel>(factory = factory),
                 onBack = { navController.popBackStack() },
             )
         }

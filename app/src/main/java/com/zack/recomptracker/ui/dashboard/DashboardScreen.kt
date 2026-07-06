@@ -1,5 +1,11 @@
 package com.zack.recomptracker.ui.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +38,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +71,7 @@ import com.zack.recomptracker.ui.component.FrostedCard
 import com.zack.recomptracker.ui.component.VioletBadge
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.TintedCard
+import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
 import com.zack.recomptracker.ui.FloatingNavHeight
 import com.zack.recomptracker.ui.liquidglass.LiquidGlassButton
 import com.zack.recomptracker.ui.theme.ErrorRed
@@ -115,7 +123,14 @@ internal fun HomeDashboardScreen(
     val coachTodayState by coachTodayViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { coachTodayViewModel.onShown() }
     val rebalanceCardState by rebalanceViewModel.uiState.collectAsStateWithLifecycle()
+    val offerMinimized by rebalanceViewModel.offerMinimized.collectAsStateWithLifecycle()
+    val phrasing by rebalanceViewModel.phrasing.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { rebalanceViewModel.onShown() }
+    // Which face-scoped overlay/pill are open, owned here (the screen root Box) so the hoisted
+    // Dialogs/pill are siblings of HomeDashboardContent, mirroring WeeklyBriefingOverlay. The ribbon
+    // that opens the progress detail lives deep inside HomeDashboardContent → TodayCard, so the
+    // setter is threaded down as onRebalanceRibbonClick.
+    var progressDetailOpen by rememberSaveable { mutableStateOf(false) }
     val reviewState by weeklyReviewViewModel.uiState.collectAsStateWithLifecycle()
     val badge by weeklyReviewViewModel.badge.collectAsStateWithLifecycle()
     val pendingApply by weeklyReviewViewModel.pendingApply.collectAsStateWithLifecycle()
@@ -156,10 +171,8 @@ internal fun HomeDashboardScreen(
         onDismissCoach = coachTodayViewModel::dismiss,
         onTrackExperiment = coachTodayViewModel::onTrackExperiment,
         rebalanceCardState = rebalanceCardState,
-        onRebalanceAccept = rebalanceViewModel::onAccept,
-        onRebalanceDecline = rebalanceViewModel::onDecline,
         onRebalanceDismiss = rebalanceViewModel::onDismiss,
-        onRebalanceCustomize = rebalanceViewModel::onCustomize,
+        onRebalanceRibbonClick = { progressDetailOpen = true },
         rebalanceToday = state.rebalanceToday,
         streaks = streakState.streaks,
         stepGoal = streakState.stepGoal,
@@ -185,6 +198,42 @@ internal fun HomeDashboardScreen(
             onOpenSettings()
         },
     )
+
+    // Weekly Rebalance offer/progress overlays + the minimized-offer reopen pill, hoisted as
+    // siblings of HomeDashboardContent (like WeeklyBriefingOverlay above). Called UNCONDITIONALLY:
+    // each Dialog early-returns internally on its own face/open gate and the pill gates on `visible`
+    // via its own AnimatedVisibility, so keeping them mounted lets their dismiss/exit animations play
+    // — an outer `if` would cut those animations off (prior-review constraint).
+    RebalanceOfferOverlay(
+        state = rebalanceCardState,
+        minimized = offerMinimized,
+        phrasing = phrasing,
+        onAccept = { rebalanceViewModel.onAccept() },
+        onDecline = { rebalanceViewModel.onDecline() },
+        onMinimize = { rebalanceViewModel.onMinimizeOffer() },
+        onCustomize = { rebalanceViewModel.onCustomize(it) },
+    )
+    RebalanceProgressDetailOverlay(
+        open = progressDetailOpen,
+        state = rebalanceCardState,
+        onClose = { progressDetailOpen = false },
+    )
+    // The reopen pill shares the dashboard window (LocalBackdrop present), so it lives in a
+    // BottomCenter-aligned Box like the Weekly Review pill. It applies its own bottom padding +
+    // AnimatedVisibility internally; `stackedAboveWeeklyReview` lifts it above the review pill when
+    // both show at once.
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+            RebalanceReopenPill(
+                visible = rebalanceCardState.face == RebalanceCardUiState.Face.OFFER && offerMinimized,
+                // The Weekly Review pill is always present on the real dashboard (HomeDashboardScreen
+                // always supplies openWeeklyReview to HomeDashboardContent), so the reopen pill always
+                // stacks above it.
+                stackedAboveWeeklyReview = true,
+                onExpand = { rebalanceViewModel.onExpandOffer() },
+            )
+        }
+    }
 }
 
 @Composable
@@ -208,10 +257,8 @@ fun HomeDashboardContent(
     onDismissCoach: () -> Unit = {},
     onTrackExperiment: (com.zack.recomptracker.domain.coach.CoachSignal) -> Unit = {},
     rebalanceCardState: RebalanceCardUiState = RebalanceCardUiState(),
-    onRebalanceAccept: () -> Unit = {},
-    onRebalanceDecline: () -> Unit = {},
     onRebalanceDismiss: () -> Unit = {},
-    onRebalanceCustomize: (com.zack.recomptracker.domain.rebalance.RebalanceMode) -> Unit = {},
+    onRebalanceRibbonClick: () -> Unit = {},
     rebalanceToday: com.zack.recomptracker.domain.rebalance.PlanDayInfo? = null,
 ) {
     val accent = LocalAppAccent.current
@@ -268,22 +315,23 @@ fun HomeDashboardContent(
                         )
                     }
                 }
-                // Weekly Rebalance — the offer/progress/note card, directly adjacent to Today's
-                // Coaching (spec §3). Silent (renders nothing) when no face clears the bar;
-                // RebalanceCard early-returns.
-                if (rebalanceCardState.face != RebalanceCardUiState.Face.NONE) {
-                    item {
-                        RebalanceCard(
-                            state = rebalanceCardState,
-                            onAccept = onRebalanceAccept,
-                            onDecline = onRebalanceDecline,
-                            onDismiss = onRebalanceDismiss,
-                            onCustomize = onRebalanceCustomize,
-                        )
-                    }
+                // Weekly Rebalance NOTE — the only face that still renders inline (spec §3). The
+                // OFFER face is the hoisted popup + reopen pill and the PROGRESS face is the Today-card
+                // ribbon + detail overlay; both live outside this LazyColumn now. RebalanceNoteCard
+                // early-returns for any non-NOTE face, but gating the item here also keeps the item out
+                // of the list entirely so no empty slot spacing is left behind.
+                if (rebalanceCardState.face == RebalanceCardUiState.Face.NOTE) {
+                    item { RebalanceNoteCard(state = rebalanceCardState, onDismiss = onRebalanceDismiss) }
                 }
                 item { MotivationalCard(state.motivationalMessage) }
-                item { TodayCard(state, onClick = onOpenFoodLog) }
+                item {
+                    TodayCard(
+                        state,
+                        onClick = onOpenFoodLog,
+                        rebalanceCardState = rebalanceCardState,
+                        onRebalanceRibbonClick = onRebalanceRibbonClick,
+                    )
+                }
                 item {
                     StatTilesRow(
                         state.adherencePercent,
@@ -437,7 +485,12 @@ private fun HeaderProfileButton(
 // ── Card 1: TODAY ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun TodayCard(state: DashboardUiState, onClick: (() -> Unit)? = null) {
+private fun TodayCard(
+    state: DashboardUiState,
+    onClick: (() -> Unit)? = null,
+    rebalanceCardState: RebalanceCardUiState = RebalanceCardUiState(),
+    onRebalanceRibbonClick: () -> Unit = {},
+) {
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val prefs    = state.preferences
@@ -467,6 +520,30 @@ private fun TodayCard(state: DashboardUiState, onClick: (() -> Unit)? = null) {
     FrostedCard(
         modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
     ) {
+        // Weekly Rebalance progress ribbon — rides the Today card's space for an in-progress plan
+        // (spec §3). Wrapped in AnimatedVisibility (not RebalanceRibbon's job) so the fade/expand
+        // enter + fade/shrink exit play across composition; the ribbon has its own inner clickable,
+        // so a tap on it opens the detail overlay while taps elsewhere on the card still open Food Log.
+        val ribbonAnimations = rememberAnimationsEnabled()
+        AnimatedVisibility(
+            visible = rebalanceCardState.face == RebalanceCardUiState.Face.PROGRESS,
+            enter = if (ribbonAnimations) {
+                fadeIn(tween(220)) + expandVertically(tween(220), Alignment.Top)
+            } else {
+                fadeIn(tween(0))
+            },
+            exit = if (ribbonAnimations) {
+                fadeOut(tween(150)) + shrinkVertically(tween(170), Alignment.Top)
+            } else {
+                fadeOut(tween(0))
+            },
+        ) {
+            Column {
+                RebalanceRibbon(rebalanceCardState, onRebalanceRibbonClick)
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+
         // Header row
         Row(
             modifier = Modifier.fillMaxWidth(),

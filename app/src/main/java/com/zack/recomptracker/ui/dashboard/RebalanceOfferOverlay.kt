@@ -1,27 +1,16 @@
 package com.zack.recomptracker.ui.dashboard
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,29 +20,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.ui.component.AiBadge
 import com.zack.recomptracker.ui.component.AiBorderMode
 import com.zack.recomptracker.ui.component.AiDialogCard
 import com.zack.recomptracker.ui.component.DismissButton
-import com.zack.recomptracker.ui.component.GlassSegmentedToggle
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.rememberAnimationsEnabled
+import com.zack.recomptracker.ui.liquidglass.LiquidSegmentedToggle
 import com.zack.recomptracker.ui.review.BriefingGhostButton
 import com.zack.recomptracker.ui.review.BriefingPrimaryButton
 import com.zack.recomptracker.ui.theme.AppType
-import com.zack.recomptracker.ui.theme.CornerPill
-import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -61,11 +46,15 @@ import kotlinx.collections.immutable.persistentListOf
 private val ModalCorner = 24.dp
 
 /**
- * Customize-toggle labels, in [RebalanceMode] enum order (spec §3) — mirrors the constant that
- * lived in `RebalanceCard.kt` (deleted in Task 7). Not shared from there on purpose: this Dialog
- * surface must not depend on anything in that file.
+ * Mix-dial labels, in [RebalanceMode] enum order (spec §2, §12) — mirrors the constant that lived
+ * in `RebalanceCard.kt` (deleted in Task 7). Not shared from there on purpose: this Dialog surface
+ * must not depend on anything in that file. "Both" (not "Balanced") per spec §2's locked naming —
+ * "Balanced" collided with the old mix middle option before the intensity dial existed.
  */
-private val CUSTOMIZE_OPTIONS = listOf("Eat less", "Balanced", "Move more")
+private val MIX_OPTIONS = listOf("Eat less", "Both", "Move more")
+
+/** Intensity-dial labels, in [RebalanceIntensity] enum order (spec §2, §12). */
+private val INTENSITY_OPTIONS = listOf("Light", "Standard", "Full")
 
 /**
  * The floating Weekly Rebalance OFFER popup — a `Dialog` reusing the app's AI-card + edge-glow
@@ -81,7 +70,10 @@ private val CUSTOMIZE_OPTIONS = listOf("Eat less", "Balanced", "Move more")
  * @param onDecline "Keep my normal plan" — declines the offer.
  * @param onMinimize collapses the Dialog to the reopenable pill (tap-outside-to-dismiss + the
  *   header's close affordance both route here — minimizing never declines).
- * @param onCustomize invoked with the newly-selected [RebalanceMode] from the inline Customize row.
+ * @param onCustomizeMode invoked with the newly-selected [RebalanceMode] from the always-visible
+ *   "How to recover it" dial.
+ * @param onCustomizeIntensity invoked with the newly-selected [RebalanceIntensity] from the
+ *   always-visible "How much to recover" dial.
  */
 @Composable
 internal fun RebalanceOfferOverlay(
@@ -91,7 +83,8 @@ internal fun RebalanceOfferOverlay(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onMinimize: () -> Unit,
-    onCustomize: (RebalanceMode) -> Unit,
+    onCustomizeMode: (RebalanceMode) -> Unit,
+    onCustomizeIntensity: (RebalanceIntensity) -> Unit,
 ) {
     if (state.face != RebalanceCardUiState.Face.OFFER || minimized) return
 
@@ -128,7 +121,8 @@ internal fun RebalanceOfferOverlay(
                 onAccept = onAccept,
                 onDecline = onDecline,
                 onMinimize = onMinimize,
-                onCustomize = onCustomize,
+                onCustomizeMode = onCustomizeMode,
+                onCustomizeIntensity = onCustomizeIntensity,
             )
         }
     }
@@ -137,6 +131,12 @@ internal fun RebalanceOfferOverlay(
 /**
  * The OFFER card's contents, extracted from [RebalanceOfferOverlay] so it can be previewed without
  * the `Dialog` wrapper (a `Dialog` doesn't render in the IDE preview surface).
+ *
+ * Layout (spec §2, §12 — locked prototype order): header, headline, body, weekly bars, lever
+ * tiles, an honest partial-recovery line when [RebalanceCardUiState.partial], the two always-visible
+ * liquid-glass dials ("How much to recover" / "How to recover it"), a recompute-instantly caption,
+ * the accept/decline buttons, then the tap-outside caption. There is no "Adjust the balance"
+ * expand/collapse — both dials are always on screen.
  */
 @Composable
 private fun ColumnScope.OfferBody(
@@ -144,11 +144,10 @@ private fun ColumnScope.OfferBody(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onMinimize: () -> Unit,
-    onCustomize: (RebalanceMode) -> Unit,
+    onCustomizeMode: (RebalanceMode) -> Unit,
+    onCustomizeIntensity: (RebalanceIntensity) -> Unit,
 ) {
     val appColors = LocalAppColors.current
-    val accent = LocalAppAccent.current
-    var showCustomize by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -178,6 +177,46 @@ private fun ColumnScope.OfferBody(
         days = state.ofY,
     )
 
+    if (state.partial && state.partialLine.isNotBlank()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = state.partialLine,
+            style = AppType.cardSubtitle,
+            color = appColors.textMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    Spacer(Modifier.height(16.dp))
+    SectionLabel(text = "How much to recover")
+    Spacer(Modifier.height(6.dp))
+    LiquidSegmentedToggle(
+        options = INTENSITY_OPTIONS,
+        selectedIndex = state.intensity.ordinal,
+        onSelect = { index -> onCustomizeIntensity(RebalanceIntensity.entries[index]) },
+        compact = true,
+    )
+
+    Spacer(Modifier.height(12.dp))
+    SectionLabel(text = "How to recover it")
+    Spacer(Modifier.height(6.dp))
+    LiquidSegmentedToggle(
+        options = MIX_OPTIONS,
+        selectedIndex = state.mode.toIndex(),
+        onSelect = { index -> onCustomizeMode(index.toMode()) },
+        compact = true,
+    )
+
+    Spacer(Modifier.height(10.dp))
+    Text(
+        text = "Recomputes instantly — nothing restarts.",
+        style = AppType.metaLabel,
+        color = appColors.textMuted,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
     Spacer(Modifier.height(14.dp))
     BriefingPrimaryButton(text = "Start rebalance", onClick = onAccept, modifier = Modifier.fillMaxWidth())
     BriefingGhostButton(
@@ -185,67 +224,6 @@ private fun ColumnScope.OfferBody(
         onClick = onDecline,
         modifier = Modifier.align(Alignment.CenterHorizontally),
     )
-
-    Spacer(Modifier.height(10.dp))
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // A clearly-tappable pill (accent-tinted glass + border + a rotating chevron) rather than a
-        // bare text label, which read as a caption and didn't invite a tap.
-        val chevronRotation by animateFloatAsState(
-            targetValue = if (showCustomize) 180f else 0f,
-            animationSpec = tween(200),
-            label = "adjustChevron",
-        )
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(CornerPill))
-                .clickable(role = Role.Button, onClick = { showCustomize = !showCustomize })
-                .background(accent.tintedSurface)
-                .border(1.dp, accent.tintedBorder, RoundedCornerShape(CornerPill))
-                .padding(horizontal = 16.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Tune,
-                contentDescription = null,
-                tint = accent.inkLight,
-                modifier = Modifier.size(15.dp),
-            )
-            Text(
-                text = if (showCustomize) "Done adjusting" else "Adjust the balance",
-                style = AppType.label,
-                color = accent.inkLight,
-            )
-            Icon(
-                imageVector = Icons.Rounded.KeyboardArrowDown,
-                contentDescription = null,
-                tint = accent.inkLight,
-                modifier = Modifier
-                    .size(16.dp)
-                    .rotate(chevronRotation),
-            )
-        }
-        if (showCustomize) {
-            Spacer(Modifier.height(12.dp))
-            GlassSegmentedToggle(
-                options = CUSTOMIZE_OPTIONS,
-                selectedIndex = state.mode.toIndex(),
-                onSelect = { index -> onCustomize(index.toMode()) },
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Your plan recomputes instantly — no need to restart.",
-                style = AppType.cardSubtitle,
-                color = appColors.textMuted,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
 
     Spacer(Modifier.height(12.dp))
     Text(
@@ -294,10 +272,20 @@ private fun PreviewOfferBody() {
         effectiveCalories = 1950,
         extraSteps = 1200,
         mode = RebalanceMode.BALANCED,
+        intensity = RebalanceIntensity.STANDARD,
+        partial = true,
+        partialLine = "Recovers about 1100 of 1400 — a big one, but this keeps you moving the right way.",
         baseCalories = 2200,
         weeklyBars = bars,
     )
     AiDialogCard(borderMode = AiBorderMode.Ready, cornerRadius = ModalCorner) {
-        OfferBody(state = state, onAccept = {}, onDecline = {}, onMinimize = {}, onCustomize = {})
+        OfferBody(
+            state = state,
+            onAccept = {},
+            onDecline = {},
+            onMinimize = {},
+            onCustomizeMode = {},
+            onCustomizeIntensity = {},
+        )
     }
 }

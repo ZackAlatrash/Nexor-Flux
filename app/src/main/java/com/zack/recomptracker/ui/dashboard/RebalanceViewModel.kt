@@ -48,6 +48,7 @@ data class RebalanceCardUiState(
     val mode: RebalanceMode = RebalanceMode.BALANCED,
     val intensity: RebalanceIntensity = RebalanceIntensity.STANDARD,
     val partial: Boolean = false,
+    val partialLine: String = "",
     val noteKind: NoteKind? = null,
     val weeklyBars: ImmutableList<RebalanceDayBar> = persistentListOf(),
     val baseCalories: Int = 0,
@@ -294,6 +295,11 @@ internal class RebalanceViewModel(
 
         private fun offerFace(plan: RebalancePlan, window: List<RebalanceDayBar>?): DerivedFace {
             val facts = copyFacts(plan, dayX = 0, ofY = plan.lengthDays)
+            val partialLine = if (plan.partial) {
+                RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_PARTIAL_LINE, facts)
+            } else {
+                ""
+            }
             val uiState = RebalanceCardUiState(
                 face = RebalanceCardUiState.Face.OFFER,
                 headline = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_HEADLINE, facts),
@@ -305,6 +311,7 @@ internal class RebalanceViewModel(
                 mode = plan.mode,
                 intensity = plan.intensity,
                 partial = plan.partial,
+                partialLine = partialLine,
                 baseCalories = plan.baseCalories,
                 weeklyBars = window?.toImmutableList() ?: persistentListOf(),
             )

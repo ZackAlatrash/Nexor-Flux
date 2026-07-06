@@ -239,7 +239,8 @@ internal fun HomeDashboardScreen(
         },
         onDecline = { rebalanceViewModel.onDecline() },
         onMinimize = { rebalanceViewModel.onMinimizeOffer() },
-        onCustomize = { rebalanceViewModel.onCustomize(it) },
+        onCustomizeMode = { rebalanceViewModel.onCustomize(it) },
+        onCustomizeIntensity = { rebalanceViewModel.onCustomizeIntensity(it) },
     )
     RebalanceProgressDetailOverlay(
         open = progressDetailOpen,

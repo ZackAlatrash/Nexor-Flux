@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
 import com.zack.recomptracker.data.rebalance.RebalanceDebugScenario
 import com.zack.recomptracker.data.rebalance.RebalanceStore
+import com.zack.recomptracker.domain.rebalance.RebalanceDefaults
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
@@ -50,9 +51,17 @@ internal class DeveloperViewModel(
             }
             val active = state.active ?: return "Normal (no forced state)"
             return when (active.status) {
-                RebalanceStatus.OFFERED -> "Offer (${active.mode})"
+                RebalanceStatus.OFFERED -> "Offer (${active.mode}, ${active.intensity})"
                 RebalanceStatus.ACTIVE -> "Progress (${active.lengthDays}-day plan)"
-                RebalanceStatus.NO_ADJUSTMENT -> "No-adjustment note"
+                // A NO_ADJUSTMENT-status plan is either the small-end reassurance note or the
+                // big-end resume note, told apart purely by the real surplus — same derivation the
+                // dashboard RebalanceViewModel uses (spec §16).
+                RebalanceStatus.NO_ADJUSTMENT ->
+                    if (active.surplusKcal < RebalanceDefaults.SMALL_SURPLUS_KCAL) {
+                        "Reassurance note"
+                    } else {
+                        "Resume note"
+                    }
                 RebalanceStatus.COMPLETED,
                 RebalanceStatus.ENDED_EARLY,
                 RebalanceStatus.DECLINED -> "Normal (no forced state)"

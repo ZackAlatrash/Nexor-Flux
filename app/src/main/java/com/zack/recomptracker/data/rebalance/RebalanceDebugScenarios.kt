@@ -1,6 +1,7 @@
 package com.zack.recomptracker.data.rebalance
 
 import com.zack.recomptracker.domain.rebalance.RebalanceDayBar
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
@@ -27,12 +28,17 @@ enum class RebalanceDebugScenario(val label: String, val description: String) {
     OFFER_BALANCED("Offer · Balanced", "Popup: −200 kcal + 1,200 steps, 4 days"),
     OFFER_EAT_LESS("Offer · Eat less", "Popup: calorie-only, −300 kcal, 3 days"),
     OFFER_MOVE_MORE("Offer · Move more", "Popup: steps-only, +2,500 steps, 4 days"),
+    OFFER_LIGHT("Offer · Light intensity", "Popup: LIGHT (~50%), −150 kcal + 700 steps, 3 days"),
+    OFFER_FULL("Offer · Full intensity", "Popup: FULL (~100%), −280 kcal + 1,600 steps, 5 days"),
+    OFFER_PARTIAL("Offer · Partial recovery", "Popup: ~3,000 kcal surplus, 7-day plan, only partly recoverable"),
     PROGRESS_DAY0("Progress · starts tomorrow", "Ribbon: accepted late, day 0"),
     PROGRESS_MID("Progress · day 2 of 4", "Ribbon on Today card + tap detail"),
     PROGRESS_FINAL("Progress · final day", "Ribbon: day 4 of 4"),
     COMPLETION("Completed", "Gold celebration note"),
     GRACEFUL_END("Ended early", "Green graceful-end note"),
     NO_ADJUSTMENT("No-adjustment note", "Green 'keep your normal plan' note"),
+    REASSURANCE_NOTE("Reassurance note", "Green 'still on track' note — surplus below the reassurance band"),
+    RESUME_NOTE("Resume note", "Green 'just resume tomorrow' note — surplus above the resume band"),
     CLEAR("Clear / back to normal", "Removes any forced state"),
 }
 
@@ -135,6 +141,93 @@ object RebalanceDebugScenarios {
             ),
             endedNotice = null,
             offerWindow = syntheticOfferWindow(today, baseCalories, reduction = 0, lengthDays = 4),
+        )
+
+        // LIGHT recovers ~50% of the same 600 surplus other OFFER_* scenarios use, so the two
+        // intensity scenarios can be eyeballed side by side against the plain-STANDARD offers above.
+        // recovered = days * (reduction + stepKcal(extraSteps)) = 3 * (150 + round(700*0.04)) = 534,
+        // matching RebalanceEngine.size()'s own formula.
+        RebalanceDebugScenario.OFFER_LIGHT -> RebalanceDebugApplication(
+            state = RebalanceState(
+                active = plan(
+                    id = newId(),
+                    status = RebalanceStatus.OFFERED,
+                    mode = RebalanceMode.BALANCED,
+                    triggerDate = today.minusDays(1),
+                    start = today.plusDays(1),
+                    end = today.plusDays(3),
+                    lengthDays = 3,
+                    baseCalories = baseCalories,
+                    reduction = 150,
+                    extraSteps = 700,
+                    baseStepGoal = 9000,
+                    recentAvgSteps = 8000,
+                    surplus = 600,
+                    recovered = 534,
+                    createdAt = nowIso(),
+                    decidedAt = null,
+                    intensity = RebalanceIntensity.LIGHT,
+                ),
+            ),
+            endedNotice = null,
+            offerWindow = syntheticOfferWindow(today, baseCalories, reduction = 150, lengthDays = 3),
+        )
+
+        // FULL recovers close to the entire 600 surplus, spread over more days than STANDARD/LIGHT so
+        // the daily cut stays gentle (spec §4). recovered = 5 * (80 + round(1600*0.04)) = 720.
+        RebalanceDebugScenario.OFFER_FULL -> RebalanceDebugApplication(
+            state = RebalanceState(
+                active = plan(
+                    id = newId(),
+                    status = RebalanceStatus.OFFERED,
+                    mode = RebalanceMode.BALANCED,
+                    triggerDate = today.minusDays(1),
+                    start = today.plusDays(1),
+                    end = today.plusDays(5),
+                    lengthDays = 5,
+                    baseCalories = baseCalories,
+                    reduction = 80,
+                    extraSteps = 1600,
+                    baseStepGoal = 9000,
+                    recentAvgSteps = 8000,
+                    surplus = 600,
+                    recovered = 720,
+                    createdAt = nowIso(),
+                    decidedAt = null,
+                    intensity = RebalanceIntensity.FULL,
+                ),
+            ),
+            endedNotice = null,
+            offerWindow = syntheticOfferWindow(today, baseCalories, reduction = 80, lengthDays = 5),
+        )
+
+        // A big-blowout surplus (~3,000 kcal) sized to the 7-day max — even at STANDARD (0.75) the
+        // feasible cap falls short of the full target, so the plan is genuinely partial (spec §5).
+        // recovered = 7 * (260 + round(1800*0.04)) = 2324, well under the 3000 surplus.
+        RebalanceDebugScenario.OFFER_PARTIAL -> RebalanceDebugApplication(
+            state = RebalanceState(
+                active = plan(
+                    id = newId(),
+                    status = RebalanceStatus.OFFERED,
+                    mode = RebalanceMode.BALANCED,
+                    triggerDate = today.minusDays(1),
+                    start = today.plusDays(1),
+                    end = today.plusDays(7),
+                    lengthDays = 7,
+                    baseCalories = baseCalories,
+                    reduction = 260,
+                    extraSteps = 1800,
+                    baseStepGoal = 9000,
+                    recentAvgSteps = 8000,
+                    surplus = 3000,
+                    recovered = 2324,
+                    createdAt = nowIso(),
+                    decidedAt = null,
+                    partial = true,
+                ),
+            ),
+            endedNotice = null,
+            offerWindow = syntheticOfferWindow(today, baseCalories, reduction = 260, lengthDays = 7),
         )
 
         RebalanceDebugScenario.PROGRESS_DAY0 -> RebalanceDebugApplication(
@@ -289,6 +382,62 @@ object RebalanceDebugScenarios {
             offerWindow = null,
         )
 
+        // Small-end supportive note: surplus < SMALL_SURPLUS_KCAL (500), so the ViewModel derives
+        // NoteKind.REASSURANCE (spec §6, §16 — a NO_ADJUSTMENT-status plan, told apart from the resume
+        // note purely by plan.surplusKcal).
+        RebalanceDebugScenario.REASSURANCE_NOTE -> RebalanceDebugApplication(
+            state = RebalanceState(
+                active = plan(
+                    id = newId(),
+                    status = RebalanceStatus.NO_ADJUSTMENT,
+                    mode = RebalanceMode.BALANCED,
+                    triggerDate = today.minusDays(1),
+                    start = today.minusDays(1),
+                    end = today.minusDays(1),
+                    lengthDays = 0,
+                    baseCalories = baseCalories,
+                    reduction = 0,
+                    extraSteps = 0,
+                    baseStepGoal = 9000,
+                    recentAvgSteps = 8000,
+                    surplus = 300,
+                    recovered = 0,
+                    createdAt = nowIso(),
+                    decidedAt = null,
+                ),
+            ),
+            endedNotice = null,
+            offerWindow = null,
+        )
+
+        // Big-end supportive note: surplus > HUGE_SURPLUS_KCAL (4000) — a blowout beyond what even
+        // Light can claw back in 7 days, so the ViewModel derives the resume flavour of
+        // NoteKind.NO_ADJUSTMENT (spec §6, §16).
+        RebalanceDebugScenario.RESUME_NOTE -> RebalanceDebugApplication(
+            state = RebalanceState(
+                active = plan(
+                    id = newId(),
+                    status = RebalanceStatus.NO_ADJUSTMENT,
+                    mode = RebalanceMode.BALANCED,
+                    triggerDate = today.minusDays(1),
+                    start = today.minusDays(1),
+                    end = today.minusDays(1),
+                    lengthDays = 0,
+                    baseCalories = baseCalories,
+                    reduction = 0,
+                    extraSteps = 0,
+                    baseStepGoal = 9000,
+                    recentAvgSteps = 8000,
+                    surplus = 4500,
+                    recovered = 0,
+                    createdAt = nowIso(),
+                    decidedAt = null,
+                ),
+            ),
+            endedNotice = null,
+            offerWindow = null,
+        )
+
         RebalanceDebugScenario.CLEAR -> RebalanceDebugApplication(
             state = RebalanceState(),
             endedNotice = null,
@@ -298,7 +447,8 @@ object RebalanceDebugScenarios {
 
     /**
      * Every-field [RebalancePlan] factory so each scenario reads as a flat argument list. Positional
-     * date params are stringified to ISO here.
+     * date params are stringified to ISO here. [intensity]/[partial] default to the plain-offer shape
+     * (STANDARD, not partial) so every pre-existing call site keeps compiling unchanged.
      */
     private fun plan(
         id: String,
@@ -318,6 +468,8 @@ object RebalanceDebugScenarios {
         createdAt: String,
         decidedAt: String?,
         endedReason: String? = null,
+        intensity: RebalanceIntensity = RebalanceIntensity.STANDARD,
+        partial: Boolean = false,
     ): RebalancePlan = RebalancePlan(
         id = id,
         triggerDateIso = triggerDate.toString(),
@@ -336,6 +488,8 @@ object RebalanceDebugScenarios {
         createdAtIso = createdAt,
         decidedAtIso = decidedAt,
         endedReason = endedReason,
+        intensity = intensity,
+        partial = partial,
     )
 
     /**

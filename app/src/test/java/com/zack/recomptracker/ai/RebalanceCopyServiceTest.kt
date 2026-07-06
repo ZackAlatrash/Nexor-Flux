@@ -34,6 +34,9 @@ class RebalanceCopyServiceTest {
         effectiveCalories: Int = 1950,
         dayX: Int = 2,
         ofY: Int = 3,
+        surplusKcal: Int = 900,
+        recoveredKcal: Int = 675,
+        partial: Boolean = false,
     ) = RebalanceCopyFacts(
         lengthDays = lengthDays,
         dailyCalorieReduction = dailyCalorieReduction,
@@ -41,6 +44,9 @@ class RebalanceCopyServiceTest {
         effectiveCalories = effectiveCalories,
         dayX = dayX,
         ofY = ofY,
+        surplusKcal = surplusKcal,
+        recoveredKcal = recoveredKcal,
+        partial = partial,
     )
 
     @Test
@@ -51,11 +57,11 @@ class RebalanceCopyServiceTest {
 
     @Test
     fun `OFFER_BODY fallback without steps matches spec verbatim and omits stepsClause`() {
-        val f = facts(lengthDays = 3, dailyCalorieReduction = 250, extraDailySteps = 0)
+        val f = facts(lengthDays = 3, dailyCalorieReduction = 250, extraDailySteps = 0, surplusKcal = 600)
         val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, f)
         assertEquals(
-            "Yesterday ran a bit high. Want a light 3-day rebalance — about 250 kcal less a day — " +
-                "to bring your weekly average back near target?",
+            "A slightly high stretch nudged your week up. Here's a gentle 3-day way back — " +
+                "about 250 kcal less a day.",
             result,
         )
         assertFalse("must not mention steps when extraDailySteps == 0", result.contains("steps"))
@@ -63,11 +69,11 @@ class RebalanceCopyServiceTest {
 
     @Test
     fun `OFFER_BODY fallback with steps includes stepsClause per spec`() {
-        val f = facts(lengthDays = 4, dailyCalorieReduction = 200, extraDailySteps = 1500)
+        val f = facts(lengthDays = 4, dailyCalorieReduction = 200, extraDailySteps = 1500, surplusKcal = 600)
         val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, f)
         assertEquals(
-            "Yesterday ran a bit high. Want a light 4-day rebalance — about 200 kcal less a day " +
-                "and +1500 steps — to bring your weekly average back near target?",
+            "A slightly high stretch nudged your week up. Here's a gentle 4-day way back — " +
+                "about 200 kcal less a day and +1500 steps.",
             result,
         )
     }
@@ -76,11 +82,11 @@ class RebalanceCopyServiceTest {
     fun `OFFER_BODY stepsClause present iff extraDailySteps greater than zero`() {
         val withSteps = RebalanceCopyPromptBuilder.fallback(
             RebalanceCopySlot.OFFER_BODY,
-            facts(dailyCalorieReduction = 150, extraDailySteps = 500),
+            facts(dailyCalorieReduction = 150, extraDailySteps = 500, surplusKcal = 600),
         )
         val withoutSteps = RebalanceCopyPromptBuilder.fallback(
             RebalanceCopySlot.OFFER_BODY,
-            facts(dailyCalorieReduction = 150, extraDailySteps = 0),
+            facts(dailyCalorieReduction = 150, extraDailySteps = 0, surplusKcal = 600),
         )
         assertTrue(withSteps.contains("and +500 steps"))
         assertFalse(withoutSteps.contains("and +"))
@@ -89,17 +95,52 @@ class RebalanceCopyServiceTest {
 
     @Test
     fun `OFFER_BODY for a MOVE_MORE plan with zero calorie reduction leads with steps and drops kcal phrase`() {
-        val f = facts(lengthDays = 3, dailyCalorieReduction = 0, extraDailySteps = 2000)
+        val f = facts(lengthDays = 3, dailyCalorieReduction = 0, extraDailySteps = 2000, surplusKcal = 600)
         val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, f)
 
         assertEquals(
-            "Yesterday ran a bit high. Want a light 3-day rebalance — about +2000 steps a day — " +
-                "to bring your weekly average back near target?",
+            "A slightly high stretch nudged your week up. Here's a gentle 3-day way back — " +
+                "about +2000 steps a day.",
             result,
         )
         assertFalse("must not say '0 kcal less' when R == 0", result.contains("kcal less"))
         assertFalse("must not mention 0 kcal at all", result.contains("0 kcal"))
         assertTrue("must lead with the steps figure", result.contains("+2000 steps"))
+    }
+
+    @Test
+    fun `OFFER_BODY intro scales with surplus size — under 700 is a slightly high stretch`() {
+        val f = facts(surplusKcal = 699)
+        val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, f)
+        assertTrue(result.startsWith("A slightly high stretch nudged your week up."))
+    }
+
+    @Test
+    fun `OFFER_BODY intro scales with surplus size — 700 up to 1400 is a couple of heavier days`() {
+        val atBoundary = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, facts(surplusKcal = 700))
+        val midRange = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, facts(surplusKcal = 1000))
+        val justUnder1400 = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, facts(surplusKcal = 1399))
+        assertTrue(atBoundary.startsWith("A couple of heavier days nudged your week up."))
+        assertTrue(midRange.startsWith("A couple of heavier days nudged your week up."))
+        assertTrue(justUnder1400.startsWith("A couple of heavier days nudged your week up."))
+    }
+
+    @Test
+    fun `OFFER_BODY intro scales with surplus size — 1400 and above is a big few days`() {
+        val atBoundary = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, facts(surplusKcal = 1400))
+        val huge = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, facts(surplusKcal = 3000))
+        assertTrue(atBoundary.startsWith("A big few days pushed your week up."))
+        assertTrue(huge.startsWith("A big few days pushed your week up."))
+    }
+
+    @Test
+    fun `OFFER_PARTIAL_LINE fallback matches spec verbatim`() {
+        val f = facts(surplusKcal = 3000, recoveredKcal = 2100)
+        val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_PARTIAL_LINE, f)
+        assertEquals(
+            "Recovers about 2100 of 3000 — a big one, but this keeps you moving the right way.",
+            result,
+        )
     }
 
     @Test
@@ -129,11 +170,20 @@ class RebalanceCopyServiceTest {
     }
 
     @Test
-    fun `NO_ADJUSTMENT fallback matches spec verbatim`() {
+    fun `NO_ADJUSTMENT fallback (the resume note) matches spec verbatim`() {
         val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.NO_ADJUSTMENT, facts())
         assertEquals(
-            "This week ran high enough that a mini-plan wouldn't add much — best to just pick up " +
-                "your normal plan tomorrow.",
+            "One rough patch won't derail you — you can't sensibly claw all of it back without it " +
+                "feeling like a punishment. Just resume your normal plan tomorrow.",
+            result,
+        )
+    }
+
+    @Test
+    fun `REASSURANCE fallback matches spec verbatim`() {
+        val result = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.REASSURANCE, facts())
+        assertEquals(
+            "You're still on track — your weekly average is still near target. Nothing to do.",
             result,
         )
     }
@@ -147,7 +197,10 @@ class RebalanceCopyServiceTest {
 
     @Test
     fun `userPrompt includes the fallback text and every fact value`() {
-        val f = facts(lengthDays = 3, dailyCalorieReduction = 250, extraDailySteps = 1500, effectiveCalories = 1950, dayX = 2, ofY = 3)
+        val f = facts(
+            lengthDays = 3, dailyCalorieReduction = 250, extraDailySteps = 1500, effectiveCalories = 1950,
+            dayX = 2, ofY = 3, surplusKcal = 900, recoveredKcal = 675, partial = true,
+        )
         val prompt = RebalanceCopyPromptBuilder.userPrompt(RebalanceCopySlot.OFFER_BODY, f)
         val fallback = RebalanceCopyPromptBuilder.fallback(RebalanceCopySlot.OFFER_BODY, f)
 
@@ -155,6 +208,9 @@ class RebalanceCopyServiceTest {
         assertTrue(prompt.contains("3"))
         assertTrue(prompt.contains("250"))
         assertTrue(prompt.contains("1500"))
+        assertTrue("must include surplusKcal in the allow-list", prompt.contains("900"))
+        assertTrue("must include recoveredKcal in the allow-list", prompt.contains("675"))
+        assertTrue("must include partial in the allow-list", prompt.contains("true"))
     }
 
     // ---------------------------------------------------------------------------------------

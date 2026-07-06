@@ -1,5 +1,6 @@
 package com.zack.recomptracker.data.rebalance
 
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
@@ -9,6 +10,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -86,6 +88,8 @@ internal object RebalanceSerialization {
         put("createdAtIso", plan.createdAtIso)
         put("decidedAtIso", plan.decidedAtIso)
         put("endedReason", plan.endedReason)
+        put("intensity", plan.intensity.name)
+        put("partial", plan.partial)
     }
 
     /** Returns `null` for a missing/blank required field, a malformed number, or an unknown enum name. */
@@ -107,6 +111,13 @@ internal object RebalanceSerialization {
         val createdAtIso = obj.str("createdAtIso") ?: return null
         val decidedAtIso = obj.str("decidedAtIso")
         val endedReason = obj.str("endedReason")
+        // Backup-safety rule (spec §16): a missing/malformed "intensity" key DEFAULTs to STANDARD —
+        // unlike every required field above, this must never `?: return null` the whole plan, since a
+        // pre-dynamic-rebalance persisted/backed-up record has neither key at all.
+        val intensity = obj.str("intensity")
+            ?.let { runCatching { RebalanceIntensity.valueOf(it) }.getOrNull() }
+            ?: RebalanceIntensity.STANDARD
+        val partial = obj.bool("partial") ?: false
 
         return RebalancePlan(
             id = id,
@@ -126,6 +137,8 @@ internal object RebalanceSerialization {
             createdAtIso = createdAtIso,
             decidedAtIso = decidedAtIso,
             endedReason = endedReason,
+            intensity = intensity,
+            partial = partial,
         )
     }
 
@@ -136,6 +149,9 @@ internal object RebalanceSerialization {
 
     private fun JsonObject.int(key: String): Int? =
         (this[key] as? JsonPrimitive)?.intOrNull
+
+    private fun JsonObject.bool(key: String): Boolean? =
+        (this[key] as? JsonPrimitive)?.booleanOrNull
 
     /** Writes [value], or explicit JSON `null` when absent (so a decoded object always has the key). */
     private fun JsonObjectBuilder.putNullableInt(key: String, value: Int?) {

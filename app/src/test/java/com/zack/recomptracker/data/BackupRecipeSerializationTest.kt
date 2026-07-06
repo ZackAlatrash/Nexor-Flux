@@ -6,6 +6,7 @@ import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.domain.export.BackupPayload
 import com.zack.recomptracker.domain.export.RecipeBackup
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
@@ -113,6 +114,9 @@ class BackupRecipeSerializationTest {
 
     @Test
     fun `rebalance state with an active plan and history round-trips through the backup payload`() {
+        // `intensity`/`partial` deliberately set to non-default values (LIGHT / true, vs. the
+        // STANDARD / false Kotlin defaults) so this proves the fields actually round-trip rather than
+        // merely matching defaults by coincidence.
         val active = RebalancePlan(
             id = "active-1", triggerDateIso = "2026-07-01", startDateIso = "2026-07-06",
             endDateIso = "2026-07-10", lengthDays = 5, mode = RebalanceMode.BALANCED,
@@ -120,6 +124,7 @@ class BackupRecipeSerializationTest {
             baseStepGoal = 8000, recentAvgSteps = 7200, surplusKcal = 600, recoveredKcal = 1000,
             status = RebalanceStatus.ACTIVE, createdAtIso = "2026-07-05T09:00:00Z",
             decidedAtIso = "2026-07-05T09:00:00Z",
+            intensity = RebalanceIntensity.LIGHT, partial = true,
         )
         val declined = RebalancePlan(
             id = "declined-1", triggerDateIso = "2026-06-01", startDateIso = "2026-06-02",
@@ -128,6 +133,7 @@ class BackupRecipeSerializationTest {
             baseStepGoal = null, recentAvgSteps = null, surplusKcal = 500, recoveredKcal = 0,
             status = RebalanceStatus.DECLINED, createdAtIso = "2026-06-01T09:00:00Z",
             decidedAtIso = "2026-06-01T10:00:00Z",
+            intensity = RebalanceIntensity.FULL, partial = false,
         )
         val rebalanceState = RebalanceState(
             active = active,
@@ -146,6 +152,9 @@ class BackupRecipeSerializationTest {
         assertEquals(1, decoded.rebalanceState!!.history.size)
         assertEquals(RebalanceStatus.DECLINED, decoded.rebalanceState!!.history[0].status)
         assertEquals(RebalanceMode.MOVE_MORE, decoded.rebalanceState!!.mode)
+        assertEquals(RebalanceIntensity.LIGHT, decoded.rebalanceState!!.active!!.intensity)
+        assertTrue(decoded.rebalanceState!!.active!!.partial)
+        assertEquals(RebalanceIntensity.FULL, decoded.rebalanceState!!.history[0].intensity)
     }
 
     @Test
@@ -154,5 +163,37 @@ class BackupRecipeSerializationTest {
             "savedFoods":[],"savedMeals":[],"liftPerformances":[],"weeklyReviews":[]}"""
         val decoded = json.decodeFromString(BackupPayload.serializer(), old)
         assertNull(decoded.rebalanceState)
+    }
+
+    @Test
+    fun `legacy backup JSON without intensity or partial on a rebalance plan defaults to STANDARD and false`() {
+        // A backup written before the dynamic-rebalance fields existed: the plan object inside
+        // rebalanceState.active has neither "intensity" nor "partial". kotlinx defaults (spec §16)
+        // must fill both in rather than failing to decode the whole payload.
+        val old = """
+            {"exportedAt":"t","preferences":{},"dailyLogs":[],"mealEntries":[],
+            "savedFoods":[],"savedMeals":[],"liftPerformances":[],"weeklyReviews":[],
+            "rebalanceState":{
+                "active":{
+                    "id":"active-1","triggerDateIso":"2026-07-01","startDateIso":"2026-07-06",
+                    "endDateIso":"2026-07-10","lengthDays":5,"mode":"BALANCED",
+                    "baseCalories":2500,"dailyCalorieReduction":200,"extraDailySteps":1500,
+                    "baseStepGoal":8000,"recentAvgSteps":7200,"surplusKcal":600,"recoveredKcal":1000,
+                    "status":"ACTIVE","createdAtIso":"2026-07-05T09:00:00Z",
+                    "decidedAtIso":"2026-07-05T09:00:00Z"
+                },
+                "history":[],
+                "mode":"MOVE_MORE"
+            }}
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(BackupPayload.serializer(), old)
+
+        val active = decoded.rebalanceState?.active
+        assertEquals(RebalanceIntensity.STANDARD, active?.intensity)
+        assertEquals(false, active?.partial)
+        // Every other field on the legacy plan still decodes correctly.
+        assertEquals(RebalanceStatus.ACTIVE, active?.status)
+        assertEquals(600, active?.surplusKcal)
     }
 }

@@ -1,6 +1,8 @@
 package com.zack.recomptracker.data.rebalance
 
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
+import com.zack.recomptracker.domain.rebalance.RebalanceDefaults
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
@@ -115,5 +117,95 @@ class RebalanceDebugScenariosTest {
         assertEquals(0, plan.extraDailySteps)
         assertEquals(300, plan.dailyCalorieReduction)
         assertFalse(app.offerWindow.isNullOrEmpty())
+    }
+
+    // ── Dynamic-intensity scenarios (spec 2026-07-06 §13) ────────────────────────────────────────
+
+    @Test
+    fun `OFFER_LIGHT sets an offered plan at LIGHT intensity`() {
+        val app = build(RebalanceDebugScenario.OFFER_LIGHT)
+        val plan = app.state.active
+        assertNotNull(plan)
+        assertEquals(RebalanceStatus.OFFERED, plan!!.status)
+        assertEquals(RebalanceIntensity.LIGHT, plan.intensity)
+        assertFalse("a LIGHT offer is not partial", plan.partial)
+        assertFalse(app.offerWindow.isNullOrEmpty())
+    }
+
+    @Test
+    fun `OFFER_FULL sets an offered plan at FULL intensity`() {
+        val app = build(RebalanceDebugScenario.OFFER_FULL)
+        val plan = app.state.active
+        assertNotNull(plan)
+        assertEquals(RebalanceStatus.OFFERED, plan!!.status)
+        assertEquals(RebalanceIntensity.FULL, plan.intensity)
+        assertFalse("a FULL offer is not partial", plan.partial)
+        assertFalse(app.offerWindow.isNullOrEmpty())
+    }
+
+    @Test
+    fun `OFFER_LIGHT recovers less than OFFER_FULL for the same surplus`() {
+        // Eyeball check that the two scenarios read as genuinely different intensities, not just a
+        // different label on the same numbers.
+        val light = build(RebalanceDebugScenario.OFFER_LIGHT).state.active!!
+        val full = build(RebalanceDebugScenario.OFFER_FULL).state.active!!
+        assertEquals(light.surplusKcal, full.surplusKcal)
+        assertTrue(
+            "LIGHT must recover less of the same surplus than FULL",
+            light.recoveredKcal < full.recoveredKcal,
+        )
+    }
+
+    @Test
+    fun `OFFER_PARTIAL sets a partial 7-day plan for a large surplus`() {
+        val app = build(RebalanceDebugScenario.OFFER_PARTIAL)
+        val plan = app.state.active
+        assertNotNull(plan)
+        assertEquals(RebalanceStatus.OFFERED, plan!!.status)
+        assertTrue("a big-surplus offer must be flagged partial", plan.partial)
+        assertEquals(RebalanceDefaults.MAX_LENGTH_DAYS, plan.lengthDays)
+        assertTrue("~3000 surplus per spec 13", plan.surplusKcal in 2500..3500)
+        assertTrue(
+            "a partial plan recovers less than its surplus",
+            plan.recoveredKcal < plan.surplusKcal,
+        )
+        assertFalse(app.offerWindow.isNullOrEmpty())
+    }
+
+    @Test
+    fun `REASSURANCE_NOTE sets a NO_ADJUSTMENT note with surplus below the reassurance band`() {
+        val app = build(RebalanceDebugScenario.REASSURANCE_NOTE)
+        val plan = app.state.active
+        assertNotNull(plan)
+        assertEquals(RebalanceStatus.NO_ADJUSTMENT, plan!!.status)
+        assertTrue(
+            "must be below SMALL_SURPLUS_KCAL so the VM derives NoteKind.REASSURANCE",
+            plan.surplusKcal < RebalanceDefaults.SMALL_SURPLUS_KCAL,
+        )
+        assertNull(app.endedNotice)
+        assertNull(app.offerWindow)
+    }
+
+    @Test
+    fun `RESUME_NOTE sets a NO_ADJUSTMENT note with surplus above the resume band`() {
+        val app = build(RebalanceDebugScenario.RESUME_NOTE)
+        val plan = app.state.active
+        assertNotNull(plan)
+        assertEquals(RebalanceStatus.NO_ADJUSTMENT, plan!!.status)
+        assertTrue(
+            "must be above HUGE_SURPLUS_KCAL so the VM derives the resume NoteKind.NO_ADJUSTMENT",
+            plan.surplusKcal > RebalanceDefaults.HUGE_SURPLUS_KCAL,
+        )
+        assertNull(app.endedNotice)
+        assertNull(app.offerWindow)
+    }
+
+    @Test
+    fun `every RebalanceDebugScenario is covered by build without throwing`() {
+        // A cheap exhaustiveness guard: every enum entry must build cleanly for some base calorie
+        // target, so a future scenario addition can't silently fall through an unhandled branch.
+        RebalanceDebugScenario.entries.forEach { scenario ->
+            build(scenario)
+        }
     }
 }

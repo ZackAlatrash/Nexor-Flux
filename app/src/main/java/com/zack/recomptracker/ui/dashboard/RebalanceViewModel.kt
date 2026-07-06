@@ -379,6 +379,9 @@ internal class RebalanceViewModel(
             effectiveCalories = effectiveCalories(plan),
             dayX = dayX,
             ofY = ofY,
+            surplusKcal = plan.surplusKcal,
+            recoveredKcal = plan.recoveredKcal,
+            partial = plan.partial,
         )
     }
 }

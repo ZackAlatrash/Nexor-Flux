@@ -9,6 +9,7 @@ import com.zack.recomptracker.data.local.RecompDatabase
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.PlanPreferencesSource
 import com.zack.recomptracker.data.rebalance.FakeRebalanceStore
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
@@ -75,6 +76,9 @@ class BackupRepositoryResetTest {
         baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 1000,
         status = status, createdAtIso = "2026-07-05T09:00:00Z",
         decidedAtIso = "2026-07-05T09:00:00Z",
+        // Non-default intensity/partial so this proves the reset clears them too, not just leaves a
+        // stale non-default plan object behind under a passing top-level equality check.
+        intensity = RebalanceIntensity.FULL, partial = true,
     )
 
     @Test

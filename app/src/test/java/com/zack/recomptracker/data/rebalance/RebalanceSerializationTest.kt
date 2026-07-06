@@ -1,16 +1,27 @@
 package com.zack.recomptracker.data.rebalance
 
+import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
 import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlan
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 /** Pure (de)serialization for [RebalanceState]: full round-trip + failure tolerance. */
 class RebalanceSerializationTest {
 
-    /** A fully-populated OFFERED plan — every optional field non-null — as the [RebalanceState.active] entry. */
+    /**
+     * A fully-populated OFFERED plan — every optional field non-null — as the [RebalanceState.active]
+     * entry. `intensity`/`partial` deliberately use non-default values (LIGHT / true, vs. the
+     * STANDARD / false Kotlin defaults) so the round-trip tests prove the codec actually threads them
+     * through rather than merely matching defaults by coincidence.
+     */
     private val activePlan = RebalancePlan(
         id = "11111111-1111-1111-1111-111111111111",
         triggerDateIso = "2026-07-03",
@@ -29,6 +40,8 @@ class RebalanceSerializationTest {
         createdAtIso = "2026-07-05T08:00:00",
         decidedAtIso = "2026-07-05T08:05:00",
         endedReason = "unrecoverable",
+        intensity = RebalanceIntensity.LIGHT,
+        partial = true,
     )
 
     private val historyRecordOne = RebalancePlan(
@@ -49,6 +62,8 @@ class RebalanceSerializationTest {
         createdAtIso = "2026-06-21T09:00:00",
         decidedAtIso = "2026-06-21T09:10:00",
         endedReason = "completed",
+        intensity = RebalanceIntensity.FULL,
+        partial = false,
     )
 
     private val historyRecordTwo = RebalancePlan(
@@ -69,6 +84,8 @@ class RebalanceSerializationTest {
         createdAtIso = "2026-06-28T07:30:00",
         decidedAtIso = null,
         endedReason = "expired",
+        intensity = RebalanceIntensity.STANDARD,
+        partial = false,
     )
 
     private val fullState = RebalanceState(
@@ -104,6 +121,8 @@ class RebalanceSerializationTest {
         assertEquals(activePlan.createdAtIso, decodedActive.createdAtIso)
         assertEquals(activePlan.decidedAtIso, decodedActive.decidedAtIso)
         assertEquals(activePlan.endedReason, decodedActive.endedReason)
+        assertEquals(activePlan.intensity, decodedActive.intensity)
+        assertEquals(activePlan.partial, decodedActive.partial)
     }
 
     @Test
@@ -170,5 +189,51 @@ class RebalanceSerializationTest {
         // A stored blob with a mode name that no longer exists (schema drift) must never throw.
         val raw = RebalanceSerialization.encode(fullState).replace("MOVE_MORE", "SOME_UNKNOWN_MODE")
         assertEquals(RebalanceState(), RebalanceSerialization.decode(raw))
+    }
+
+    /**
+     * The key legacy forward-compat test (backup-safety rule, spec §16): a plan blob written before
+     * `intensity`/`partial` existed has neither key. A missing key must DEFAULT (STANDARD / false),
+     * never `?: return null` the whole plan — a pre-dynamic-rebalance persisted/backed-up record must
+     * still decode.
+     */
+    @Test
+    fun `a plan blob with no intensity or partial key decodes to STANDARD intensity and partial false`() {
+        val legacyPlanJson: JsonObject = buildJsonObject {
+            put("id", activePlan.id)
+            put("triggerDateIso", activePlan.triggerDateIso)
+            put("startDateIso", activePlan.startDateIso)
+            put("endDateIso", activePlan.endDateIso)
+            put("lengthDays", activePlan.lengthDays)
+            put("mode", activePlan.mode.name)
+            put("baseCalories", activePlan.baseCalories)
+            put("dailyCalorieReduction", activePlan.dailyCalorieReduction)
+            put("extraDailySteps", activePlan.extraDailySteps)
+            put("baseStepGoal", activePlan.baseStepGoal)
+            put("recentAvgSteps", activePlan.recentAvgSteps)
+            put("surplusKcal", activePlan.surplusKcal)
+            put("recoveredKcal", activePlan.recoveredKcal)
+            put("status", activePlan.status.name)
+            put("createdAtIso", activePlan.createdAtIso)
+            put("decidedAtIso", activePlan.decidedAtIso)
+            put("endedReason", activePlan.endedReason)
+            // Deliberately NO "intensity" or "partial" key — simulates a pre-dynamic-rebalance blob.
+        }
+        val legacyStateJson = buildJsonObject {
+            put("active", legacyPlanJson)
+            put("mode", RebalanceMode.BALANCED.name)
+        }
+
+        val decoded = RebalanceSerialization.decode(Json.encodeToString(JsonObject.serializer(), legacyStateJson))
+
+        val decodedActive = decoded.active
+        assertEquals(RebalanceIntensity.STANDARD, decodedActive?.intensity)
+        assertEquals(false, decodedActive?.partial)
+        // Every other field on the plan survives untouched — the missing keys must not nuke the record.
+        assertEquals(activePlan.id, decodedActive?.id)
+        assertEquals(activePlan.mode, decodedActive?.mode)
+        assertEquals(activePlan.surplusKcal, decodedActive?.surplusKcal)
+        assertEquals(activePlan.status, decodedActive?.status)
+        assertFalse("history must decode too (empty, since none was included)", decoded.history.isNotEmpty())
     }
 }

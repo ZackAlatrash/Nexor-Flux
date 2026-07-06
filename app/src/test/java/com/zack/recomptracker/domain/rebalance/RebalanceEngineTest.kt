@@ -154,6 +154,19 @@ class RebalanceEngineTest {
     }
 
     @Test
+    fun `surplus exactly at the band boundaries lands in the offer band, not a note`() {
+        // The band gates are strict (< 500 / > 4000), so exactly 500 and exactly 4000 are OFFERS (spec §6).
+        // S = 500: eaten +500 (over ≥ 400 = HIGH), not < 500 → offer.
+        val at500 = evaluate(input(eatenOverrides = mapOf(yesterday to 3000)))
+        assertTrue("surplus == 500 is an offer, not the reassurance note", at500 is RebalanceDecision.Offer)
+        assertEquals(500, (at500 as RebalanceDecision.Offer).plan.surplusKcal)
+        // S = 4000: not > 4000 → offer (partial, since 4000 overflows 7 days at max daily cut).
+        val at4000 = evaluate(input(eatenOverrides = mapOf(yesterday to 6500)))
+        assertTrue("surplus == 4000 is an offer, not the resume note", at4000 is RebalanceDecision.Offer)
+        assertEquals(4000, (at4000 as RebalanceDecision.Offer).plan.surplusKcal)
+    }
+
+    @Test
     fun `a surplus too large to fully recover in seven days yields a partial plan, not a note`() {
         // The blowout the feature was built for. base 2500 calorie-only → perDayCap 300, 7×300 = 2100.
         // S = 3500 (in-band, < 4000): STANDARD target = round(2625) > 2100, so the recovery is capped
@@ -573,6 +586,20 @@ class RebalanceEngineTest {
             "FULL should recover more than the STANDARD offer (${customized.recoveredKcal} vs ${offer.recoveredKcal})",
             customized.recoveredKcal > offer.recoveredKcal,
         )
+    }
+
+    @Test
+    fun `customize to FULL can turn a fully-recoverable offer into a partial one`() {
+        // S = 2800: STANDARD target round(2100) == 7×300 feasible → fully recoverable (not partial).
+        // Bumping to FULL raises the target to 2800 > 2100 feasible → the plan becomes PARTIAL.
+        val offer = (evaluate(input(eatenOverrides = mapOf(yesterday to 5300))) as RebalanceDecision.Offer).plan
+        assertEquals(2800, offer.surplusKcal)
+        assertFalse("STANDARD offer for S=2800 recovers fully", offer.partial)
+
+        val full = RebalanceEngine.customize(offer, offer.mode, RebalanceIntensity.FULL)
+        assertEquals(RebalanceIntensity.FULL, full.intensity)
+        assertTrue("FULL on a 2800 surplus overflows 7 days → partial", full.partial)
+        assertTrue("still an honest offer, never a note", full.status == RebalanceStatus.OFFERED)
     }
 
     // ── exact boundaries ────────────────────────────────────────────────────────────

@@ -50,7 +50,7 @@ Today `size()` returns null (→ NO_ADJUSTMENT) whenever `maxDays × perDayCap <
 - `feasible = min(targetRecover, round(maxDays × perDayCap))`.
 - Size the plan to `feasible` (not `targetRecover`). Set `partial = feasible < targetRecover`.
 - The plan is always offered when `feasible > 0` and the surplus is in the plan band (§6). When `partial`, the UI shows an honest line: *"Recovers about {recovered} of {surplus} — a big one, but this keeps you moving the right way."*
-- `perDayCap == 0` (sub-floor base with no steps — can't reduce safely) is the only in-band case with no plan → falls through to the reassurance note.
+- `perDayCap == 0` (sub-floor base with no steps — can't reduce safely) is the only in-band case with no plan → a `NoAdjustment` note. Because such a plan carries an in-band `surplusKcal` (≥ 500), the VM classifies it as the **resume** note, which is the tonally-correct message here: the user *did* overeat meaningfully but their plan is already maxed out, so "you can't sensibly claw all of it back — just resume" fits, whereas the reassurance "you're still on track" would be inaccurate.
 
 The existing MOVE_MORE two-tier split (steps-only when a week of steps covers it, else steps-maxed + calorie remainder) is preserved and now interacts with `feasible`.
 

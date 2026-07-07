@@ -108,8 +108,9 @@ Don't build a raw `Column.clip().background().border()` card — use these. A ze
 - **`LiquidActionButton(text, onClick, isPrimary, small)`** — compact inline actions / pairs.
 - **`LiquidStepButton(symbol, …)`** — +/- steppers.
 
-Standard heights: full-width primary **48dp**, compact **36dp**, small **32dp**. Never use a
-Material `Button` or a `Surface`-as-button.
+Standard heights: full-width primary **48dp**, small (`small = true`) **32dp** — these are the
+only two sizes `LiquidActionButton` implements. Never use a Material `Button` or a
+`Surface`-as-button.
 
 ## Inputs — `ui/component/GlassComponents.kt`
 

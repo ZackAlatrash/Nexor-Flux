@@ -1,6 +1,6 @@
 # Recomp Tracker
 
-Recomp Tracker is a fully offline Android MVP for logging nutrition, body metrics, recovery, marker lifts, and weekly calorie-adjustment decisions.
+Recomp Tracker is a local-first Android app for logging nutrition, body metrics, recovery, training, and weekly calorie-adjustment decisions. All data lives on-device; optional cloud features (AI coach/insights via an OpenAI-compatible API, web search, Open Food Facts barcode lookup) require a user-supplied API key and network access.
 
 ## Stack
 - Kotlin

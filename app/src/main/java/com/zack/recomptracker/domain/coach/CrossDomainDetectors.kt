@@ -31,7 +31,13 @@ class DeloadDueDetector(
     private val trend: TrendCalculator = TrendCalculator(),
 ) : CoachDetector {
     override fun detect(ctx: CoachContext): CoachSignal? {
-        val rir = ctx.training.recentRir.takeLast(DELOAD_RIR_WINDOW)
+        // recentRir is NEWEST-FIRST (see TrainingContext.recentRir / TrainingDerivations.recentRir).
+        // Reverse to chronological so the earlier-vs-recent split below is right-way-round — reading
+        // it as-is inverted the trend, staying silent while the user ground toward failure and firing
+        // after they'd already recovered (review P1-6). A flat reverse also flips set order *within*
+        // a session, but the signal is across-session overreaching: whole sessions landing in one
+        // half have order-invariant averages, and any straddling session only nudges toward silence.
+        val rir = ctx.training.recentRir.reversed().takeLast(DELOAD_RIR_WINDOW)
         // Need enough readings to split into an earlier vs recent half.
         if (rir.size < 4) return null
 

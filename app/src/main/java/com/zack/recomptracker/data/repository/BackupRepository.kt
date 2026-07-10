@@ -10,7 +10,9 @@ import com.zack.recomptracker.domain.export.CURRENT_BACKUP_VERSION
 import com.zack.recomptracker.domain.export.RecipeBackup
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 class BackupRepository(
@@ -24,7 +26,10 @@ class BackupRepository(
         encodeDefaults = true
     }
 
-    suspend fun createBackupJson(): String {
+    // Both directions are main-safe by construction: the payload can run to megabytes (full meal
+    // history + the bundled exercise library + the NEVO catalog), and JSON encode/decode is
+    // CPU-bound, so it must never run on the caller's (Main) dispatcher.
+    suspend fun createBackupJson(): String = withContext(Dispatchers.Default) {
         val payload = BackupPayload(
             exportedAt = Instant.now().toString(),
             preferences = planRepository.preferences.first(),
@@ -49,10 +54,10 @@ class BackupRepository(
             sessionExercises = database.workoutSessionDao().getAllSessionExercises(),
             sessionSets = database.workoutSessionDao().getAllSessionSets(),
         )
-        return json.encodeToString(BackupPayload.serializer(), payload)
+        json.encodeToString(BackupPayload.serializer(), payload)
     }
 
-    suspend fun restoreFromJson(rawJson: String) {
+    suspend fun restoreFromJson(rawJson: String): Unit = withContext(Dispatchers.Default) {
         val payload = json.decodeFromString(BackupPayload.serializer(), rawJson)
         require(payload.version <= CURRENT_BACKUP_VERSION) {
             "This backup (v${payload.version}) was created by a newer version of the app and can't be " +

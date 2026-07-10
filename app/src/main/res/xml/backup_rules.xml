@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy (API <= 30) Auto Backup rules. Same intent as data_extraction_rules.xml: back everything up
+  except the EncryptedSharedPreferences key store, whose keyset can't be decrypted after a restore to
+  a device that doesn't hold the original Keystore master key. See review P1-4.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="secure_ai_prefs.xml" />
+</full-backup-content>

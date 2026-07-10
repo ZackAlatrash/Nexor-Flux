@@ -34,8 +34,13 @@ class HealthSyncCoordinator(
     suspend fun syncToday(): HealthConnectReadResult = mutex.withLock {
         val date = dateProvider.today()
         val result = hcRepository.readToday(date)
-        Log.d(TAG, "syncToday: steps=${result.steps} weightKg=${result.weightKg} sleepHours=${result.sleepHours}")
+        // Log presence only — steps/weight/sleep are health PII and Log.d is not stripped from release.
+        Log.d(TAG, "syncToday: steps=${result.steps != null} weight=${result.weightKg != null} sleep=${result.sleepHours != null}")
         logRepository.applyHealthConnectSync(date, result)
+        // Also close out yesterday: on the background-worker path (and any post-midnight full sync)
+        // readToday reads today's steps only, so without this yesterday's total stays frozen at its
+        // last pre-midnight value — the P1-1 symptom on the path a foreground sync doesn't cover.
+        finalizeRecentSteps()
         val prefs = planRepository.preferences.first()
         // Non-target edit → never creates a plan version (see PlanRepository.save).
         planRepository.save(prefs.copy(healthConnectLastSyncEpochMs = now()))
@@ -101,7 +106,14 @@ class HealthSyncCoordinator(
      * last sync before midnight and never reconciled (the post-sync evening tail is lost). Internal
      * for tests. Serialized with [syncToday] via the same mutex.
      */
-    internal suspend fun syncTodaySteps() = mutex.withLock {
+    internal suspend fun syncTodaySteps() = mutex.withLock { finalizeRecentSteps() }
+
+    /**
+     * Applies a [STEPS_FINALIZE_DAYS]-day steps window, reconciling each day by provenance (manual
+     * entries preserved). Callers must already hold [mutex] — the [Mutex] is non-reentrant, so this
+     * helper never takes the lock itself.
+     */
+    private suspend fun finalizeRecentSteps() {
         val steps = hcRepository.readStepsHistory(days = STEPS_FINALIZE_DAYS)
         if (steps.isNotEmpty()) logRepository.applyHealthConnectStepsHistory(steps)
     }

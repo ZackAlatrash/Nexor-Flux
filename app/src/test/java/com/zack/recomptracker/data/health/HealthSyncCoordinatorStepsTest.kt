@@ -115,4 +115,16 @@ class HealthSyncCoordinatorStepsTest {
 
         assertEquals("reads a 2-day window so the post-midnight sync closes yesterday", 2L, hc.lastDaysRequested)
     }
+
+    @Test
+    fun `full sync also finalizes yesterday's steps (worker-only path)`() = runTest {
+        // A user who enables Health Connect but never foregrounds the app only ever hits the
+        // background worker → syncToday. That path must finalize yesterday too, or the worker's
+        // pre-midnight total stays frozen forever (the same P1-1 symptom as the foreground path).
+        coordinator.syncToday()
+
+        val yesterdayLog = database.dailyLogDao().getByDate(yesterday.toString())
+        assertNotNull("full sync finalizes yesterday, not just today", yesterdayLog)
+        assertEquals("yesterday's finalized step total", 9_000, yesterdayLog!!.steps)
+    }
 }

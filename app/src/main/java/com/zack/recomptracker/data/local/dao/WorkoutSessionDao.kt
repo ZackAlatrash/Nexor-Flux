@@ -15,6 +15,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class WorkoutSessionDao {
 
+    /** Flat one-shot reads of the whole session graph — for backup export. */
+    @Query("SELECT * FROM workout_sessions ORDER BY id")
+    abstract suspend fun getAllSessions(): List<WorkoutSessionEntity>
+
+    @Query("SELECT * FROM session_exercises ORDER BY id")
+    abstract suspend fun getAllSessionExercises(): List<SessionExerciseEntity>
+
+    @Query("SELECT * FROM session_sets ORDER BY id")
+    abstract suspend fun getAllSessionSets(): List<SessionSetEntity>
+
     @Insert
     abstract suspend fun insertSession(session: WorkoutSessionEntity): Long
 

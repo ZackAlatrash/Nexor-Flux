@@ -22,6 +22,16 @@ abstract class WorkoutDao {
     @Query("SELECT * FROM workouts WHERE id = :id")
     abstract suspend fun getWithExercises(id: Long): WorkoutWithExercisesDb?
 
+    /** Flat one-shot reads of the whole template graph — for backup export. */
+    @Query("SELECT * FROM workouts ORDER BY id")
+    abstract suspend fun getAllWorkouts(): List<WorkoutEntity>
+
+    @Query("SELECT * FROM workout_exercises ORDER BY id")
+    abstract suspend fun getAllWorkoutExercises(): List<WorkoutExerciseEntity>
+
+    @Query("SELECT * FROM planned_sets ORDER BY id")
+    abstract suspend fun getAllPlannedSets(): List<PlannedSetEntity>
+
     @Insert
     abstract suspend fun insertWorkout(workout: WorkoutEntity): Long
 

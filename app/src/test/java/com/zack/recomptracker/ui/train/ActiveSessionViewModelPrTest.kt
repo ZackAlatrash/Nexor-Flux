@@ -140,6 +140,7 @@ private class PrNoopExerciseDao : ExerciseDao {
     override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(emptyList())
     override suspend fun search(query: String): List<ExerciseEntity> = emptyList()
     override suspend fun getById(id: Long): ExerciseEntity? = null
+    override suspend fun getAll(): List<ExerciseEntity> = emptyList()
     override suspend fun count(): Int = 0
     override suspend fun sourceVersion(source: String): String? = null
     override suspend fun insertAll(exercises: List<ExerciseEntity>) {}
@@ -154,6 +155,9 @@ private class PrNoopSessionDao : WorkoutSessionDao() {
     override suspend fun deleteSessionById(id: Long) {}
     override suspend fun insertSessionExercise(exercise: SessionExerciseEntity): Long = 0L
     override suspend fun insertSet(set: SessionSetEntity): Long = 0L
+    override suspend fun getAllSessions(): List<WorkoutSessionEntity> = emptyList()
+    override suspend fun getAllSessionExercises(): List<SessionExerciseEntity> = emptyList()
+    override suspend fun getAllSessionSets(): List<SessionSetEntity> = emptyList()
     override suspend fun updateSet(set: SessionSetEntity) {}
     override suspend fun deleteSetById(id: Long) {}
     override suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int = 0

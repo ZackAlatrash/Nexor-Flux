@@ -1,162 +1,142 @@
 # AI Coach System
 
-On-device AI coach powered by Gemma 4 2B running via LiteRT-LM. Two separate AI features share a single Engine instance.
+**Cloud-only.** All AI features call an OpenAI-compatible chat-completions API (OpenRouter by
+default) through one shared `data/remote/OpenAiCompatClient`. The former on-device Gemma/LiteRT
+stack was removed ("Phase 8"); `ai/AiCoachBoundaryTest` enforces that no local-stack symbols
+return. Every coordinator lives in `AppContainer` on `appScope` (`SupervisorJob + Dispatchers.Default`),
+so generations survive navigation.
 
-**Model file:** `<externalFilesDir>/ai/gemma-4-E2B-it.litertlm`
-(dropped manually onto the device; not bundled in the APK)
+## Configuration
 
----
-
-## Two AI Features
-
-| Feature | Class | What it does |
+| What | Where | Notes |
 |---|---|---|
-| Insight cards | `GemmaInsightCoordinator` | Single-turn: generates a one-liner verdict shown on the dashboard. Uses `generateExplanation()` — streaming, no tool calls. |
-| Coach chat | `GemmaCoachCoordinator` | Multi-turn: full conversation with tool calling. User types messages; model can read data and log on their behalf. |
+| Base URL + model id | `UiPreferences` (DataStore) | `cloudModelId` remaps the deprecated tool-broken `openai/gpt-oss-20b:free` → `nvidia/nemotron-nano-9b-v2:free` at read time |
+| Cloud API key + Tavily key | `SecureKeyStore` (EncryptedSharedPreferences, AES256-GCM) | never logged; `hasKey` StateFlows |
+| Combined | `AppContainer.cloudConfigFlow: StateFlow<CloudConfig?>` | non-null only when URL + model + key all present; gates every feature |
 
-Both features share the same `GemmaInsightService` / Engine via `GemmaServiceHolder`. They never run concurrently — `inferenceLock` enforces mutual exclusion.
+`OpenAiCompatClient` exposes two entry points over one pooled OkHttp client (connect 15 s, read 60 s,
+no retries): `completion()` (non-streaming, supports tool schemas — coach chat, weekly briefing,
+Settings test) and `streamCompletion()` (SSE deltas — insights, phrasing, recipe names). Non-2xx →
+`IllegalStateException("HTTP <code>: <body>")`. Parsing lives in `OpenAiCompatModels.kt`: strict JSON
+for server payloads, lenient only for model-generated tool arguments (handles `"500.0"`-style ints).
 
----
+## The AI features
 
-## Class Map
-
-```
-GemmaServiceHolder          App-scoped owner of GemmaInsightService.
-                            Lazy-creates it; closes it on release().
-
-GemmaInsightService         Owns the LiteRT-LM Engine.
-                            - initLock: prevents double-init
-                            - inferenceLock: mutual exclusion across ALL engine use
-                            - generateExplanation(): streaming single-turn
-                            - createConversation(): for multi-turn coach
-                            - withInferenceLock(): lets coordinator hold lock across turns
-
-GemmaInsightCoordinator     Drives insight card generation. Calls generateExplanation().
-AiInsightCoordinator        Interface for the above (StubInsightCoordinator for tests).
-
-GemmaCoachCoordinator       Drives multi-turn coach conversation.
-                            Implements CoachCoordinator interface.
-                            Manages Conversation lifecycle, tool call loop, state machine.
-
-CoachToolExecutor           Executes tool calls. Model-agnostic — receives (name, args)
-                            and returns JSON strings. Backed by LogRepository + PlanRepository.
-
-CoachCoordinator            Interface: sendMessage(), clearHistory(), confirm/cancelPendingAction()
-CoachState                  Sealed class: Unavailable | Ready | Idle | Thinking | Responding
-                                          | Error | AwaitingConfirmation
-
-CoachViewModel              Thin wrapper — delegates everything to CoachCoordinator.
-```
-
----
-
-## Tool List
-
-All tools are defined as `SchemaTool` entries in `COACH_TOOLS` (JSON schema only — `execute()` is never called on them). Dispatch goes through `CoachToolExecutor.execute(name, args)`.
-
-| Tool | Args | Returns | Notes |
-|---|---|---|---|
-| `get_today_summary` | `date?: String` (ISO `YYYY-MM-DD`) | JSON: meals (each tagged `planned`), `totals` (eaten only), `planned_totals`, daily log | Omit `date` for today. Pass ISO date for any past date. Falls back to today if date fails to parse — always pass ISO format. `totals` exclude planned (not-yet-eaten) entries; planned meals carry `"planned":true` and are summed in `planned_totals`. |
-| `get_weekly_trends` | — | JSON: 7-day daily macros, `adherence_percent` (graded closeness on logged days), `days_logged` | Last 7 days ending today. `adherence_percent` is the average per-day graded score over days that were logged (not a logged-days count); `days_logged` is the separate logging-consistency signal. |
-| `search_food_library` | `query: String`, `grams?: Number` | JSON: up to 5 matches, macros scaled to `grams` if provided | Fuzzy scored: exact > starts-with > contains > all-words. |
-| `log_meal` | `name`, `meal_type`, `grams?`, `date?`, `calories?`, `protein_g?`, `carbs_g?`, `fat_g?` | `{success, logged, calories}` or `{success, planned, date, calories}` | Always checks food library first. Macro args only needed if food not in library. A future `date` (ISO `YYYY-MM-DD`) **plans** the meal instead of logging it eaten. **Write tool — requires user confirmation.** |
-| `log_metric` | `metric: String`, `value: Number` | `{success, metric, value}` | Metrics: `weight_kg`, `waist_cm`, `sleep_hours`, `energy_score`, `hunger_score`, `soreness_score`. Scores must be whole numbers 1–10. **Write tool — requires user confirmation.** |
-| `update_calorie_target` | `target_calories: Int` | `{success, new_target_calories}` | Range: 500–6000. **Write tool — requires user confirmation.** |
-
-### Write Tool Confirmation Flow
-
-Tools in `WRITE_TOOLS` (`log_meal`, `log_metric`, `update_calorie_target`) pause for user confirmation before executing:
-
-1. `CoachState.AwaitingConfirmation` is emitted with a `PendingCoachAction` (tool name, args, display text).
-2. UI shows a confirmation dialog.
-3. User taps Confirm → `confirmPendingAction()` → `CompletableDeferred.complete(true)` → tool runs.
-4. User taps Cancel → `cancelPendingAction()` → tool response sent as `{"cancelled": true}`.
-5. `inferenceLock` is **not** held during the wait — the insight flow can run freely while the user reads the dialog.
-
----
-
-## System Prompt Structure
-
-Built in `GemmaCoachCoordinator.buildSystemPrompt()` once per conversation (at `createConversation()`).
-
-```
-You are a nutrition coach...
-Today: <date> (<DayName>) | Yesterday: <date>
-
-Plan: <calories> kcal | P <g> | C <g> | F <g>
-
-=== USER PROFILE ===              ← only present if user has set any fields
-Goal: X | Sex: X | Age: X | Height: X cm | Activity: X | Gym sessions/week: X
-=== END PROFILE ===
-
-=== TODAY'S DATA SNAPSHOT ===     ← fetched once at conversation start
-<get_today_summary JSON>
-=== END SNAPSHOT ===
-
-Rules (follow exactly):
-1. TODAY questions → answer from snapshot, do NOT call get_today_summary
-2. YESTERDAY or past date questions → MUST call get_today_summary(date="YYYY-MM-DD"), do NOT use snapshot
-3. Weekly questions → call get_weekly_trends()
-4. After a tool returns → answer in 1–3 sentences from the JSON only
-5. Logging food → call log_meal(...), tool checks library automatically
-6. Stay on topic
-```
-
-### What's Static vs. Tool-Fetched
-
-| Data | Where | Why |
+| Feature | Class | Shape |
 |---|---|---|
-| Plan targets | System prompt (static) | Never changes mid-conversation; no tool iteration wasted |
-| User profile | System prompt (static) | Read-only, session-invariant |
-| Today's snapshot | System prompt (pre-fetched) | Avoids a tool iteration for the most common read |
-| Yesterday / past data | Tool call (`get_today_summary`) | Not pre-fetched; model must call the tool |
-| Weekly trends | Tool call (`get_weekly_trends`) | Not pre-fetched |
+| Coach chat | `ai/CloudCoachCoordinator` | Multi-turn, 19 tools, write-confirmation flow |
+| Insight cards (Recovery, Progress) | `ai/CloudInsightCoordinator` | Single-turn streamed 2-sentence verdicts, per-kind dedup keys |
+| Weekly briefing | `ai/WeeklyBriefingGenerator` | Deterministic skeleton; model adds prose only |
+| Signal phrasing | `ai/CoachPhrasingService` | Rewords a proactive-signal card; deterministic fallback verbatim on any failure |
+| Rebalance copy | `ai/RebalanceCopyService` | Same shape as phrasing, for the rebalance offer card |
+| Recipe namer | `ai/RecipeNamer` (`CloudRecipeNamer`) | One streamed name, sanitized, ≤42 chars |
+| Knowledge base | `ai/knowledge/*` | Cited RAG over `assets/knowledge/corpus.json` |
 
-**Never add a tool for data that is static or session-invariant.** The 2B model has limited tool iterations; every unnecessary tool call risks hitting the cap or producing an empty response.
+**Deterministic-first doctrine:** engines compute every number and verdict; the model only adds
+prose. Briefing narration is overlaid via `merge()` — blank/unparseable narration falls back to
+engine text, so the model can never alter numbers. Phrasing/rebalance copy return the deterministic
+fallback verbatim on any failure. Insight prompts embed pre-computed, signed-formatted signals.
 
----
+## Coach chat (`CloudCoachCoordinator`)
 
-## Concurrency Model
+- **Turn flow** (all under `turnLock`): first turn seeds one system message from
+  `CoachToolsAdapter.systemPromptSnapshot()` — plan line with **rebalance-effective** targets,
+  optional profile, a pre-fetched `get_today_summary` JSON snapshot, journey narrative, coach-memory
+  bullets, `COACH_PROMPT_GUIDELINES`, plus a one-shot weekly-briefing handoff consumed from
+  `CoachHandoffStore`. Each user turn swaps in a fresh knowledge `REFERENCE` block (previous turn's
+  block is removed so they never accumulate).
+- **Tool loop:** ≤ `MAX_TOOL_ROUNDS` = 12 completions per turn, each under `withTimeout(180 s)`.
+  Tool calls dispatch through `CoachToolsAdapter` → `CoachToolExecutor` on `Dispatchers.IO`; results
+  are replayed as `role:"tool"` messages. A running `thinkingSteps` log feeds `CoachState.Thinking`.
+- **Empty-response recovery** (the fix for the historical "Done." bug): blank text + no tool calls →
+  one `EMPTY_RESPONSE_NUDGE`, then an honest error ("The AI didn't complete that action — please try
+  again."). Success is never fabricated.
+- **Errors** (timeout / exception / round-cap): the model-side context (`requestMessages`) is cleared
+  and reseeded on the next message; the visible transcript (`history`) is preserved. Chat history is
+  **in-memory only** — process death drops the conversation (confirmed tool writes are already in Room).
 
-```
-initLock (GemmaInsightService)
-  └── Prevents double-initialisation on first call. Released immediately after.
+### Tools (19, defined in `CoachTools.kt` as `CLOUD_COACH_TOOL_SCHEMAS`)
 
-inferenceLock (GemmaInsightService)
-  └── Mutual exclusion across ALL engine use.
-      - generateExplanation() holds it for full streaming duration.
-      - GemmaCoachCoordinator holds it per sendMessage() call (not per turn)
-        so the insight flow can run during user-confirmation wait.
-      - release() holds it to prevent use-after-close.
+Core reads: `get_today_summary(date?)`, `get_weekly_trends`, `get_body_trends`,
+`get_training_summary`, `search_food_library(query, grams?)`, `suggest_meals`, plus `web_search`
+(Tavily; unavailable → tool returns "web search unavailable"). Writes: `log_meal`, `log_metric`,
+`update_calorie_target`, routine tools (`create_routine`, `edit_routine`, `create_exercise`, …),
+meal edits (`edit_meal`, `delete_meal`). Memory: `remember` / `forget` (deliberately unconfirmed;
+persisted in `CoachMemoryStore`, ≤50 facts). A future `date` on `log_meal` **plans** the meal
+instead of logging it eaten.
 
-turnLock (GemmaCoachCoordinator, Mutex)
-  └── Serialises handleMessage() so only one user message is in-flight at a time.
-      clearConversation() is also dispatched through turnLock to wait for
-      any in-progress turn before closing the Conversation object.
-```
+### Write-tool confirmation flow
 
----
+Tools in `COACH_WRITE_TOOLS` pause before executing:
 
-## Limits & Guardrails
+1. A `PendingCoachAction` (tool, args, display text) + `CompletableDeferred` is stored in an
+   `AtomicReference`; `CoachState.AwaitingConfirmation` is emitted.
+2. UI shows the confirmation bar. Confirm/cancel/`clearHistory` each `getAndSet(null)?.complete(…)` —
+   the first tap atomically claims the deferred; stale taps are no-ops and can never approve a later
+   turn's write.
+3. Cancel sends `{"cancelled": true}` back to the model. The wait holds `turnLock` (UI disables input
+   while busy), and the deferred has no timeout by design.
+
+## Insight cards (`CloudInsightCoordinator`)
+
+Triggered when a card becomes visible (`TodayViewModel` / `ProgressViewModel` build
+`RecoveryInsightContext` / `ProgressInsightContext`). Regeneration is gated by a per-kind
+**quantized context key** (trends rounded to 0.1) — cards do *not* regenerate on every open, only
+when data moves or on explicit retry. Pipeline: static knowledge query → `REFERENCE` block →
+`InsightPromptBuilder` (deterministic signals + few-shot style) → SSE stream (60 s timeout) →
+markdown-strip → 2-sentence cap → `Ready(text)`. Keys/results are in-memory only.
+
+## Proactive coach spine (`data/coach` + `domain/coach`)
+
+Deterministic pipeline, no LLM required (phrasing is optional decoration):
+
+`CoachContextBuilder` (one-shot repository reads) → pure `CoachContextAssembler.assemble()`
+(28-day `CoachContext`) → `CoachContextCache` (memoized per calendar day; invalidated on plan/profile
+edits) → `CoachDigestCoordinator.run()` (mutex): AI-toggle gate → evaluate the 18-detector catalog
+(`CoachSignalEngine`; < 14 logged days → `INSUFFICIENT_DATA` only) + matured experiment →
+`SignalSelector` (tier P0–P3 → severity → cooldowns, 7-day dedup ledger) → stage exactly **one**
+winner in `CoachInbox` (or silence) → optional P0 push + separate weekly push through `RateLimiter`
+(quiet hours 22:00–07:00, ≤2 pushes / rolling 7 days) and `AndroidCoachNotifier`. Triggers: app
+foreground, Today-slot visibility, and a 24 h `CoachDigestWorker`. Notification taps deep-link via
+a `CoachActionType` extra on `MainActivity`.
+
+## Knowledge base (`ai/knowledge`)
+
+- **Corpus:** `assets/knowledge/corpus.json` (~116 KB, 77 cited chunks, 4 domains), built by
+  `tools/ingest_knowledge.py` from `knowledge-sources/`. Parsed once off-main at app start; on
+  failure the injector stays a no-op (features degrade, never crash).
+- **Retrieval:** `KeywordKnowledgeRetriever` — tokenization with stopwords + light suffix stemming;
+  score = title-tf×3 + tag-hit×2 + body-tf×1, min-score floor 2.0, deterministic tie-breaks.
+- **Injection:** `RetrievalKnowledgeInjector` — top 3 chunks in a 2000-char budget, formatted
+  `[n] Title — body (Source: X)`. Consumers: coach (per user turn), insights (per kind), briefing.
+
+## Limits & guardrails
 
 | Limit | Value | Where |
 |---|---|---|
-| Turn timeout | 45 s | `TIMEOUT_MS` in `GemmaCoachCoordinator` |
-| Max tool iterations per turn | 5 | `MAX_TOOL_ITERATIONS` |
-| Max turns before context reset | 20 | `MAX_TURNS` |
-| Calorie target range | 500–6000 kcal | `CoachToolExecutor.updateCalorieTarget` |
-| Score metrics range | 1–10, whole numbers | `CoachToolExecutor.logMetric` |
+| Tool rounds per turn | 12 | `CloudCoachCoordinator.MAX_TOOL_ROUNDS` |
+| Per-completion timeout (chat) | 180 s | `TURN_TIMEOUT_MS` |
+| Insight / recipe / phrasing timeouts | 60 s / 45 s / 15 s | respective services |
+| Knowledge block budget | 2000 chars, top 3 chunks | `RetrievalKnowledgeInjector` |
+| Coach memory | ≤ 50 facts, case-insensitive dedup | `CoachMemoryStore` |
+| Calorie target range (tool) | 500–6000 | `CoachToolExecutor` |
+| Score metrics | whole numbers 1–10 | `CoachToolExecutor` |
 
-After the turn limit the model emits a "context reset" notice and `clearConversation()` is called (Conversation object closed, new one created on next message). History is kept in `mutableHistory` so the chat UI stays intact.
+## Test harness (`app/src/test/.../ai/harness/`)
 
----
+`InsightHarnessTest` is a live iteration rig for insight-card prompt quality: renders 8 personas
+(`InsightScenarios`) through the **production** prompt builder + client, printing outputs for manual
+scoring (optional LLM judge via `InsightJudge`, pass = all rubric dims ≥ 4). It reads `.env.test`
+(git-ignored) or `INSIGHT_*` env vars and **self-skips when credentials are absent** — but when
+credentials exist it hits the live API from the default unit-test task and can fail on upstream
+rate limits. Test source set only; never ships.
 
-## 2B Model Behavioural Notes
+## Known behavioural notes
 
-These are known tendencies of the Gemma 4 2B model that affect how the system prompt must be written:
-
-- **Rule ambiguity causes wrong-rule matching.** If two rules could match a question, the model picks the simpler one (usually Rule 1). Rules must be separated by clear, non-overlapping conditions — e.g., date-based ("today only" vs. "yesterday or past") rather than intent-based ("read-only" vs. "write").
-- **Hallucinated dates.** When answering from the snapshot, the model may label the answer with a different date if the user's question mentions a date. Always make the snapshot's date scope explicit in the rule.
-- **Empty text after tool sequence.** After one or more tool calls the model sometimes returns no text. `GemmaCoachCoordinator` sends a nudge ("Confirm what you just did in one sentence.") once before giving up with an error.
-- **Echo phrases.** After a tool returns data the model sometimes echoes its pre-tool planning text ("I need to call…") instead of answering. Detected via `containsEchoPhrase()` and corrected with a follow-up prompt.
-- **Integer values as doubles.** LiteRT-LM may surface integer JSON values as `"500.0"`. `CoachToolExecutor` uses `toIntOrNull() ?: toDoubleOrNull()?.toInt()` everywhere integers are expected.
+- Free OpenRouter routes rate-limit (429) and occasionally change tool-calling behaviour; the model
+  remap in `UiPreferences.cloudModelId` is the escape hatch for a route that stops emitting
+  `tool_calls`. There is currently no retry/backoff and no `tool_choice` in requests.
+- The system snapshot is seeded once per conversation — totals/date can go stale across midnight or
+  after the coach's own writes (see the July 2026 review, P2-3).
+- Error handling collapses all failures into one generic message today; a sealed error taxonomy is
+  on the roadmap.

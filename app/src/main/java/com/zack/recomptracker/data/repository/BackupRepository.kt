@@ -6,10 +6,13 @@ import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.rebalance.RebalanceStore
 import com.zack.recomptracker.domain.export.BackupPayload
+import com.zack.recomptracker.domain.export.CURRENT_BACKUP_VERSION
 import com.zack.recomptracker.domain.export.RecipeBackup
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 class BackupRepository(
@@ -23,7 +26,10 @@ class BackupRepository(
         encodeDefaults = true
     }
 
-    suspend fun createBackupJson(): String {
+    // Both directions are main-safe by construction: the payload can run to megabytes (full meal
+    // history + the bundled exercise library + the NEVO catalog), and JSON encode/decode is
+    // CPU-bound, so it must never run on the caller's (Main) dispatcher.
+    suspend fun createBackupJson(): String = withContext(Dispatchers.Default) {
         val payload = BackupPayload(
             exportedAt = Instant.now().toString(),
             preferences = planRepository.preferences.first(),
@@ -39,21 +45,51 @@ class BackupRepository(
             },
             planVersions = database.planVersionDao().getAll(),
             rebalanceState = rebalanceStore.current(),
+            exercises = database.exerciseDao().getAll(),
+            catalogFoods = database.catalogFoodDao().getAll(),
+            workouts = database.workoutDao().getAllWorkouts(),
+            workoutExercises = database.workoutDao().getAllWorkoutExercises(),
+            plannedSets = database.workoutDao().getAllPlannedSets(),
+            workoutSessions = database.workoutSessionDao().getAllSessions(),
+            sessionExercises = database.workoutSessionDao().getAllSessionExercises(),
+            sessionSets = database.workoutSessionDao().getAllSessionSets(),
         )
-        return json.encodeToString(BackupPayload.serializer(), payload)
+        json.encodeToString(BackupPayload.serializer(), payload)
     }
 
-    suspend fun restoreFromJson(rawJson: String) {
+    suspend fun restoreFromJson(rawJson: String): Unit = withContext(Dispatchers.Default) {
         val payload = json.decodeFromString(BackupPayload.serializer(), rawJson)
+        require(payload.version <= CURRENT_BACKUP_VERSION) {
+            "This backup (v${payload.version}) was created by a newer version of the app and can't be " +
+                "restored here. Update the app first."
+        }
         database.withTransaction {
+            // Wipes all tables, then re-inserts everything the payload carries below. The one table
+            // deliberately not restored is `usage_events` (local, transient telemetry — never user
+            // data worth carrying across a restore); it is simply cleared.
             database.clearAllTables()
             if (payload.mealSlots.isEmpty()) {
                 listOf("Meal 1", "Lunch", "Dinner").forEachIndexed { i, name ->
                     database.mealSlotDao().insert(MealSlotEntity(name = name, sortOrder = i))
                 }
             } else {
-                payload.mealSlots.forEach { database.mealSlotDao().insert(it.copy(id = 0)) }
+                // Keep the original slot ids: meal_entries reference them by id (with no foreign key
+                // to catch a mismatch), so reassigning slot ids here would silently orphan every
+                // restored meal from its slot (review P0-2).
+                payload.mealSlots.forEach { database.mealSlotDao().insert(it) }
             }
+            // Training + catalog, id-for-id, parents before children so every foreign key resolves.
+            // Exercises come first: workout/session lines reference them by id, and both the bundled
+            // library and the user's custom exercises must exist before those lines are inserted
+            // (without this whole block, restore permanently wiped all training data — review P0-1).
+            database.exerciseDao().insertAll(payload.exercises)
+            database.catalogFoodDao().insertAll(payload.catalogFoods)
+            payload.workouts.forEach { database.workoutDao().insertWorkout(it) }
+            payload.workoutExercises.forEach { database.workoutDao().insertWorkoutExercise(it) }
+            payload.plannedSets.forEach { database.workoutDao().insertPlannedSet(it) }
+            payload.workoutSessions.forEach { database.workoutSessionDao().insertSession(it) }
+            payload.sessionExercises.forEach { database.workoutSessionDao().insertSessionExercise(it) }
+            payload.sessionSets.forEach { database.workoutSessionDao().insertSet(it) }
             database.dailyLogDao().insertAll(payload.dailyLogs)
             database.mealEntryDao().insertAll(payload.mealEntries)
             database.savedFoodDao().insertAll(payload.savedFoods)

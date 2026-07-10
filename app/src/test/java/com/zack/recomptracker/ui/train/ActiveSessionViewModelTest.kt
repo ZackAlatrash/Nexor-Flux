@@ -94,6 +94,7 @@ private class NoopExerciseDao : ExerciseDao {
     override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(emptyList())
     override suspend fun search(query: String): List<ExerciseEntity> = emptyList()
     override suspend fun getById(id: Long): ExerciseEntity? = null
+    override suspend fun getAll(): List<ExerciseEntity> = emptyList()
     override suspend fun count(): Int = 0
     override suspend fun sourceVersion(source: String): String? = null
     override suspend fun insertAll(exercises: List<ExerciseEntity>) {}
@@ -108,6 +109,9 @@ private class NoopSessionDao : WorkoutSessionDao() {
     override suspend fun deleteSessionById(id: Long) {}
     override suspend fun insertSessionExercise(exercise: com.zack.recomptracker.data.local.entity.SessionExerciseEntity): Long = 0L
     override suspend fun insertSet(set: com.zack.recomptracker.data.local.entity.SessionSetEntity): Long = 0L
+    override suspend fun getAllSessions(): List<com.zack.recomptracker.data.local.entity.WorkoutSessionEntity> = emptyList()
+    override suspend fun getAllSessionExercises(): List<com.zack.recomptracker.data.local.entity.SessionExerciseEntity> = emptyList()
+    override suspend fun getAllSessionSets(): List<com.zack.recomptracker.data.local.entity.SessionSetEntity> = emptyList()
     override suspend fun updateSet(set: com.zack.recomptracker.data.local.entity.SessionSetEntity) {}
     override suspend fun deleteSetById(id: Long) {}
     override suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int = 0

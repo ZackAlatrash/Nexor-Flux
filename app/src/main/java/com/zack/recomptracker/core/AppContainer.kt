@@ -277,12 +277,17 @@ class AppContainer(context: Context) {
     // Effective cloud config: non-null only when base URL, model id, and API key are all present.
     private val cloudConfigFlow: StateFlow<CloudConfig?> =
         combine(
-            uiPreferences.cloudBaseUrl,
-            uiPreferences.cloudModelId,
+            // distinctUntilChanged so an unrelated UiPreferences write doesn't re-emit a new
+            // CloudConfig every time (its apiKey lambda makes each instance non-equal, so stateIn
+            // can't conflate them).
+            uiPreferences.cloudBaseUrl.distinctUntilChanged(),
+            uiPreferences.cloudModelId.distinctUntilChanged(),
             secureKeyStore.hasKey,
         ) { baseUrl, model, hasKey ->
             if (baseUrl.isNotBlank() && model.isNotBlank() && hasKey) {
-                CloudConfig(baseUrl = baseUrl, apiKey = secureKeyStore.getApiKey(), model = model)
+                // apiKey is a provider read fresh per request, so rotating the key (hasKey stays
+                // true, so this combine does not re-fire) still takes effect immediately (review P1-5).
+                CloudConfig(baseUrl = baseUrl, apiKey = { secureKeyStore.getApiKey() }, model = model)
             } else {
                 null
             }

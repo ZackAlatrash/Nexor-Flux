@@ -29,7 +29,7 @@ class WeeklyBriefingKnowledgeTest {
         2550,
     )
 
-    private val config = CloudConfig("https://x", "k", "m")
+    private val config = CloudConfig("https://x", { "k" }, "m")
 
     private val validJson = """{"headline":"Recomp.","narrative":"Good week.",
         "interpretations":{"weight":"Flat.","waist":"Down.","adherence":"Strong.",

@@ -153,7 +153,7 @@ class AiCoachViewModel(
             val result = try {
                 withContext(Dispatchers.IO) {
                     openAiCompatClient.completion(
-                        config = CloudConfig(baseUrl = s.cloudBaseUrl, apiKey = key, model = s.cloudModelId),
+                        config = CloudConfig(baseUrl = s.cloudBaseUrl, apiKey = { key }, model = s.cloudModelId),
                         messages = listOf(ChatRequestMessage(role = "user", content = "ping")),
                         toolSchemasJson = emptyList(),
                     )

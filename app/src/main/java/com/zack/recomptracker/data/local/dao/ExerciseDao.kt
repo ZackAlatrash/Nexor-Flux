@@ -12,6 +12,10 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises ORDER BY name")
     fun observeAll(): Flow<List<ExerciseEntity>>
 
+    /** One-shot read of every exercise (both bundled and custom) — for backup export. */
+    @Query("SELECT * FROM exercises ORDER BY id")
+    suspend fun getAll(): List<ExerciseEntity>
+
     @Query("SELECT * FROM exercises WHERE name LIKE '%' || :query || '%' ORDER BY name LIMIT 50")
     suspend fun search(query: String): List<ExerciseEntity>
 

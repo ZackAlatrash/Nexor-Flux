@@ -49,6 +49,9 @@ class SessionSummaryViewModelTest {
             exercises[exercise.id] = exercise; return exercise.id
         }
         override suspend fun insertSet(set: SessionSetEntity): Long { sets[set.id] = set; return set.id }
+        override suspend fun getAllSessions(): List<WorkoutSessionEntity> = sessions.values.toList()
+        override suspend fun getAllSessionExercises(): List<SessionExerciseEntity> = exercises.values.toList()
+        override suspend fun getAllSessionSets(): List<SessionSetEntity> = sets.values.toList()
         override suspend fun updateSet(set: SessionSetEntity) { sets[set.id] = set }
         override suspend fun deleteSetById(id: Long) { sets.remove(id) }
         override suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int =
@@ -88,6 +91,7 @@ class SessionSummaryViewModelTest {
         override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(emptyList())
         override suspend fun search(query: String): List<ExerciseEntity> = emptyList()
         override suspend fun getById(id: Long): ExerciseEntity? = null
+        override suspend fun getAll(): List<ExerciseEntity> = emptyList()
         override suspend fun count(): Int = 0
         override suspend fun sourceVersion(source: String): String? = null
         override suspend fun insertAll(exercises: List<ExerciseEntity>) {}

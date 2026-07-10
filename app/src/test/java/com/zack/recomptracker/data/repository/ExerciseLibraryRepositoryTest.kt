@@ -19,6 +19,7 @@ class ExerciseLibraryRepositoryTest {
         override suspend fun search(query: String): List<ExerciseEntity> =
             rows.filter { it.name.contains(query, ignoreCase = true) }
         override suspend fun getById(id: Long): ExerciseEntity? = rows.firstOrNull { it.id == id }
+        override suspend fun getAll(): List<ExerciseEntity> = rows.toList()
         override suspend fun count(): Int = rows.size
         override suspend fun sourceVersion(source: String): String? =
             rows.firstOrNull { it.source == source }?.sourceVersion

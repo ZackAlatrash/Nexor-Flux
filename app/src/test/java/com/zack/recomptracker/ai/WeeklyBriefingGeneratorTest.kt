@@ -27,7 +27,7 @@ class WeeklyBriefingGeneratorTest {
         2550,
     )
 
-    private val config = CloudConfig("https://x", "k", "m")
+    private val config = CloudConfig("https://x", { "k" }, "m")
 
     private class FakeClient(private val text: String) : OpenAiCompatClient() {
         var calls = 0

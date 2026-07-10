@@ -144,7 +144,7 @@ class RebalanceViewModelTest {
 
     private fun configuredCopyService(client: OpenAiCompatClient): RebalanceCopyService =
         RebalanceCopyService(client = client) {
-            CloudConfig(baseUrl = "https://example.test", apiKey = "key", model = "test-model")
+            CloudConfig(baseUrl = "https://example.test", apiKey = { "key" }, model = "test-model")
         }
 
     private fun coordinator(
@@ -331,7 +331,7 @@ class RebalanceViewModelTest {
         val coord = coordinator(store, scope = backgroundScope)
         val succeedingClient = FakeClient(chunk = "A rephrased, warmer offer.")
         val succeedingService = RebalanceCopyService(client = succeedingClient) {
-            CloudConfig(baseUrl = "https://example.test", apiKey = "key", model = "test-model")
+            CloudConfig(baseUrl = "https://example.test", apiKey = { "key" }, model = "test-model")
         }
         val vm = RebalanceViewModel(store, coord, succeedingService, FixedDateProvider(today))
         advanceUntilIdle()

@@ -217,7 +217,7 @@ class RebalanceCopyServiceTest {
     // RebalanceCopyService — fake client by subclassing OpenAiCompatClient (it is `open`)
     // ---------------------------------------------------------------------------------------
 
-    private fun config() = CloudConfig(baseUrl = "https://x", apiKey = "k", model = "m")
+    private fun config() = CloudConfig(baseUrl = "https://x", apiKey = { "k" }, model = "m")
 
     /** Emits fixed chunks, throws, or hangs-then-cancels, per constructor. Tracks whether it was invoked. */
     private class FakeClient(

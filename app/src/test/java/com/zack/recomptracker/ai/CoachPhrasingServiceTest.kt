@@ -45,7 +45,7 @@ class CoachPhrasingServiceTest {
         fallbackText = "Weight is flat but your waist is down 0.35 cm/wk — keep going.",
     )
 
-    private fun config() = CloudConfig(baseUrl = "https://x", apiKey = "k", model = "m")
+    private fun config() = CloudConfig(baseUrl = "https://x", apiKey = { "k" }, model = "m")
 
     /** Emits fixed chunks, or throws, per constructor. Captures the last prompts sent. */
     private class FakeClient(

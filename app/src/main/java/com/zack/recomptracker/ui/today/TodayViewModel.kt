@@ -20,7 +20,7 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
-import com.zack.recomptracker.data.health.HealthConnectRepository
+import com.zack.recomptracker.data.health.HealthSyncCoordinator
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -82,7 +81,7 @@ class TodayViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
     dateProvider: DateProvider,
-    private val hcRepository: HealthConnectRepository,
+    private val healthSyncCoordinator: HealthSyncCoordinator,
     private val aiInsightCoordinator: AiInsightCoordinator,
     // Off-main dispatcher for the CPU-bearing collectors (per-day grouping/macro summing, and the
     // 14-day calendar-sparkline build with LocalDate.parse + sorting). _uiState is a
@@ -162,14 +161,13 @@ class TodayViewModel(
                 }
             }
         }
-        viewModelScope.launch {
-            if (planRepository.preferences.first().healthConnectEnabled
-                && hcRepository.hasPermissions()
-            ) {
-                val result = hcRepository.readToday(today)
-                logRepository.applyHealthConnectSync(today, result)
-            }
-        }
+        // Health Connect sync is centralized in HealthSyncCoordinator, whose mutex serializes every
+        // read-modify-write of the daily log. Doing the read+apply directly here (as before) raced
+        // the app-foreground sync (RecompTrackerApp.onStart) and could revert a freshly-written
+        // weight/sleep to null. syncStepsNow refreshes steps immediately; syncIfDue does a debounced
+        // full sync. Both are fire-and-forget and no-op unless Health Connect is enabled + permitted.
+        healthSyncCoordinator.syncStepsNow()
+        healthSyncCoordinator.syncIfDue()
         // 14-day sparkline build (LocalDate.parse + interpolation + sorting) runs in the collect
         // body; launch off-main.
         viewModelScope.launch(computeDispatcher) {

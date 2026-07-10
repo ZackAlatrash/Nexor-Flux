@@ -671,7 +671,7 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
-                hcRepository = container.healthConnectRepository,
+                healthSyncCoordinator = container.healthSyncCoordinator,
                 // Q6a: Body RECOVERY_READINESS card now binds directly to the cloud coordinator.
                 aiInsightCoordinator = container.cloudInsightCoordinator,
             )

@@ -23,6 +23,8 @@ import com.zack.recomptracker.domain.adherence.AdherenceCalculator
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
 import com.zack.recomptracker.domain.rebalance.RebalanceState
+import com.zack.recomptracker.domain.trend.MeasurementPoint
+import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.MuscleTrainingAggregator
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineDispatcher
@@ -78,6 +80,8 @@ class ProgressViewModel(
     private val planRepository: PlanRepository,
     private val dateProvider: DateProvider,
     private val adherenceCalculator: AdherenceCalculator,
+    // Date-based trend regression shared with the Dashboard so the two screens agree (P1-12).
+    private val trendCalculator: TrendCalculator,
     private val aiInsightCoordinator: AiInsightCoordinator,
     private val userProfileStore: UserProfilePreferencesStore,
     private val workoutSessionRepository: WorkoutSessionRepository,
@@ -116,19 +120,26 @@ class ProgressViewModel(
                 planRepository.observeVersions(),
                 // The 5-slot combine is full, so fold rangeDays + profile + the training inputs
                 // (completed sessions + exercise library, needed for per-muscle volume) + the
-                // rebalance state into one nested combine and unpack it below.
+                // rebalance state + the reactive "today" into one nested combine and unpack it below.
+                // "today" is bundled with the exercise library to stay within combine's 5-argument
+                // arity; it re-emits at midnight so the charted window doesn't freeze on the opening
+                // day (P1-10 pattern; lower severity — pushed screen). The log flows aren't windowed
+                // at query time, so no re-subscription is needed — the transform just re-picks dates.
                 combine(
                     rangeDays,
                     userProfileStore.preferences,
                     workoutSessionRepository.observeCompletedSessions(),
-                    exerciseLibraryRepository.observeAll(),
+                    combine(
+                        exerciseLibraryRepository.observeAll(),
+                        dateProvider.todayFlow(),
+                    ) { library, today -> library to today },
                     rebalanceStore.state,
-                ) { r, p, sessions, library, rebalanceState ->
-                    TrainingInputs(r, p, sessions, library, rebalanceState)
+                ) { r, p, sessions, libraryAndToday, rebalanceState ->
+                    val (library, today) = libraryAndToday
+                    TrainingInputs(r, p, sessions, library, rebalanceState, today)
                 },
             ) { logs, meals, performances, versions, trainingInputs ->
-                val (range, profile, sessions, library, rebalanceState) = trainingInputs
-                val today = dateProvider.today()
+                val (range, profile, sessions, library, rebalanceState, today) = trainingInputs
                 val dates = (range - 1 downTo 0).map { today.minusDays(it.toLong()) }
                 // Adherence chart's target line resolves to EFFECTIVE (reduced) targets on rebalance
                 // days, base otherwise — behaviour-neutral with an empty state.
@@ -158,16 +169,17 @@ class ProgressViewModel(
                 }
                 val liftValues = dates.mapNotNull { liftByDate[it] }
 
-                fun trendPerWeek(values: List<Float>): Float? {
-                    if (values.size < 2) return null
-                    val first = values.first()
-                    val last = values.last()
-                    val weeks = (values.size - 1).toFloat() / 7f
-                    return if (weeks > 0) (last - first) / weeks else null
-                }
+                // Trends are ELAPSED-DAY based (least-squares regression over actual dates), routed
+                // through the same TrendCalculator the Dashboard uses so the two screens agree and
+                // sparse data isn't inflated by point count (P1-12). Null below two logged points so
+                // the chart hides the label and the insight card doesn't count it toward sufficiency.
+                fun weeklyTrend(points: List<MeasurementPoint>): Double? =
+                    if (points.count { it.value != null } < 2) null
+                    else trendCalculator.trendPerWeek(points)
 
-                val weightTrend = trendPerWeek(weightValues)
-                val waistTrend = trendPerWeek(waistValues)
+                val weightTrend = weeklyTrend(dates.map { MeasurementPoint(it, logsByDate[it]?.bodyWeightKg) })
+                val waistTrend = weeklyTrend(dates.map { MeasurementPoint(it, logsByDate[it]?.waistCm) })
+                val liftTrend = weeklyTrend(dates.map { d -> MeasurementPoint(d, liftByDate[d]?.toDouble()) })
                 val adherenceLast = adherenceValues.lastOrNull { it > 0 }
 
                 // Training frequency reuses the shared ActivitySummary derivation (same source the
@@ -198,7 +210,7 @@ class ProgressViewModel(
                             val sign = if (it <= 0) "↓" else "↑"
                             "$sign ${"%.1f".format(Math.abs(it))} kg/wk"
                         } ?: "",
-                        trendIsGood = (weightTrend ?: 0f) <= 0f,
+                        trendIsGood = (weightTrend ?: 0.0) <= 0.0,
                     ),
                     waist = ChartSeries(
                         "Waist", "cm", waistValues,
@@ -207,7 +219,7 @@ class ProgressViewModel(
                             val sign = if (it <= 0) "↓" else "↑"
                             "$sign ${"%.1f".format(Math.abs(it))} cm/wk"
                         } ?: "",
-                        trendIsGood = (waistTrend ?: 0f) <= 0f,
+                        trendIsGood = (waistTrend ?: 0.0) <= 0.0,
                     ),
                     calories = ChartSeries(
                         "Calories", "kcal", calValues,
@@ -252,9 +264,11 @@ class ProgressViewModel(
                     muscleVolumeReads = muscleVolumeReads,
                     insightContext = buildProgressInsightContext(
                         rangeDays = range,
-                        weightValues = weightValues,
-                        waistValues = waistValues,
-                        liftValues = liftValues,
+                        weightTrendKgPerWeek = weightTrend,
+                        waistTrendCmPerWeek = waistTrend,
+                        liftTrendKgPerWeek = liftTrend,
+                        weightPointCount = weightValues.size,
+                        waistPointCount = waistValues.size,
                         adherencePercent = adherenceLast,
                         trainingSessionsPerWeek = trainingSessionsPerWeek,
                         weeklyGymSessionsTarget = profile.weeklyGymSessions,
@@ -285,6 +299,7 @@ class ProgressViewModel(
         val sessions: List<com.zack.recomptracker.domain.workout.WorkoutSession>,
         val library: List<com.zack.recomptracker.domain.workout.Exercise>,
         val rebalanceState: RebalanceState,
+        val today: LocalDate,
     )
 
     companion object {

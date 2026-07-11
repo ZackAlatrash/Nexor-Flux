@@ -3,32 +3,29 @@ package com.zack.recomptracker.ui.progress
 import com.zack.recomptracker.ai.ProgressInsightContext
 
 /**
- * Pure mapper: builds a [ProgressInsightContext] from the raw per-metric value series the
- * ProgressViewModel already computes for its charts. Trends are kg-or-cm per week; a series
- * with fewer than two points yields a null trend (and does not count toward sufficiency).
+ * Pure mapper: assembles a [ProgressInsightContext] from values the ProgressViewModel already
+ * computed. Trends (kg-or-cm per week) are passed in pre-computed by the ViewModel via the shared
+ * date-based TrendCalculator — the mapper no longer derives them from point count (P1-12). A trend
+ * is null when its series had fewer than two logged points (and doesn't count toward sufficiency).
  */
 fun buildProgressInsightContext(
     rangeDays: Int,
-    weightValues: List<Float>,
-    waistValues: List<Float>,
-    liftValues: List<Float>,
+    weightTrendKgPerWeek: Double?,
+    waistTrendCmPerWeek: Double?,
+    liftTrendKgPerWeek: Double?,
+    weightPointCount: Int,
+    waistPointCount: Int,
     adherencePercent: Float?,
     trainingSessionsPerWeek: Double? = null,
     weeklyGymSessionsTarget: Int? = null,
 ): ProgressInsightContext = ProgressInsightContext(
     rangeDays = rangeDays,
-    weightTrendKgPerWeek = trendPerWeek(weightValues),
-    waistTrendCmPerWeek = trendPerWeek(waistValues),
-    liftTrendKgPerWeek = trendPerWeek(liftValues),
+    weightTrendKgPerWeek = weightTrendKgPerWeek,
+    waistTrendCmPerWeek = waistTrendCmPerWeek,
+    liftTrendKgPerWeek = liftTrendKgPerWeek,
     adherencePercent = adherencePercent?.toDouble(),
-    weightPointCount = weightValues.size,
-    waistPointCount = waistValues.size,
+    weightPointCount = weightPointCount,
+    waistPointCount = waistPointCount,
     trainingSessionsPerWeek = trainingSessionsPerWeek,
     weeklyGymSessionsTarget = weeklyGymSessionsTarget,
 )
-
-private fun trendPerWeek(values: List<Float>): Double? {
-    if (values.size < 2) return null
-    val weeks = (values.size - 1).toFloat() / 7f
-    return if (weeks > 0f) ((values.last() - values.first()) / weeks).toDouble() else null
-}

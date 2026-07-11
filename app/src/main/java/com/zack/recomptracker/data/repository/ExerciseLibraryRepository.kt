@@ -45,7 +45,9 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
             images = "[]",
             userCreated = true,
         )
-        return exerciseDao.insertReturningId(entity)
+        // Idempotent: re-adding a same-named custom exercise returns the existing one instead of
+        // REPLACE-deleting it (which crashed on the FK when it was already in a routine — P1-20).
+        return exerciseDao.insertCustomOrGetExisting(entity)
     }
 
     /**

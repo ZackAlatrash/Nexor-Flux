@@ -93,7 +93,11 @@ data class TrainingContext(
     val weeklyGymSessionsTarget: Int? = null,
     /** Estimated-1RM series per exercise name, oldest → newest, over the window. */
     val e1rmByExercise: Map<String, List<LiftE1rmPoint>> = emptyMap(),
-    /** Recent reps-in-reserve values across the last few sessions (for deload detection). */
+    /**
+     * Recent reps-in-reserve values across the last few sessions (for deload detection), ordered
+     * **newest-session-first** (the order [com.zack.recomptracker.domain.coach.TrainingDerivations.recentRir]
+     * produces). Consumers that reason about a trend over time must reverse it to chronological.
+     */
     val recentRir: List<Int> = emptyList(),
 )
 

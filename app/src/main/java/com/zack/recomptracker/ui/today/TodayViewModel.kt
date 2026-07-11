@@ -26,12 +26,15 @@ import com.zack.recomptracker.data.repository.macroTotals
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -77,10 +80,11 @@ data class TodayUiState(
     val recoveryInsightContext: RecoveryInsightContext? = null,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TodayViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
-    dateProvider: DateProvider,
+    private val dateProvider: DateProvider,
     private val healthSyncCoordinator: HealthSyncCoordinator,
     private val aiInsightCoordinator: AiInsightCoordinator,
     // Off-main dispatcher for the CPU-bearing collectors (per-day grouping/macro summing, and the
@@ -88,12 +92,12 @@ class TodayViewModel(
     // MutableStateFlow, so updating from this dispatcher is safe. Default keeps AppContainer unchanged.
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
-    private val today = dateProvider.today()
-    private val _uiState = MutableStateFlow(TodayUiState(date = today))
+    private val initialToday = dateProvider.today()
+    private val _uiState = MutableStateFlow(TodayUiState(date = initialToday))
     val uiState: StateFlow<TodayUiState> = _uiState.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
-        TodayUiState(date = today),
+        TodayUiState(date = initialToday),
     )
 
     private val _savedEvent = MutableSharedFlow<Unit>(replay = 0)
@@ -114,14 +118,25 @@ class TodayViewModel(
     }
 
     init {
-        // Per-day grouping + macro summing runs in the collect body; launch off-main.
+        // The working date follows the real calendar day. A tab ViewModel outlives midnight, so
+        // without this a check-in saved next morning would land on the day the tab was opened
+        // (P1-10). saveMetrics reads _uiState.date, so advancing it here fixes the write too.
+        viewModelScope.launch {
+            dateProvider.todayFlow().collect { day ->
+                _uiState.update { if (it.date == day) it else it.copy(date = day) }
+            }
+        }
+        // Per-day grouping + macro summing runs in the collect body; launch off-main. flatMapLatest
+        // re-subscribes observeDay(today) when the day rolls, so the summary tracks the new day.
         viewModelScope.launch(computeDispatcher) {
-            combine(
-                logRepository.observeDay(today),
-                planRepository.preferences,
-                logRepository.observeSlots(),
-            ) { day, prefs, slots ->
-                Triple(day, prefs, slots)
+            dateProvider.todayFlow().flatMapLatest { today ->
+                combine(
+                    logRepository.observeDay(today),
+                    planRepository.preferences,
+                    logRepository.observeSlots(),
+                ) { day, prefs, slots ->
+                    Triple(day, prefs, slots)
+                }
             }.collect { (day, prefs, slots) ->
                 val allEntries = day.meals
                 val slotMap = allEntries.groupBy { it.slotId }
@@ -169,9 +184,11 @@ class TodayViewModel(
         healthSyncCoordinator.syncStepsNow()
         healthSyncCoordinator.syncIfDue()
         // 14-day sparkline build (LocalDate.parse + interpolation + sorting) runs in the collect
-        // body; launch off-main.
+        // body; launch off-main. flatMapLatest re-runs the windows against the new day at midnight.
         viewModelScope.launch(computeDispatcher) {
-            logRepository.observeDailyLogs().collect { allLogs ->
+            dateProvider.todayFlow().flatMapLatest { today ->
+                logRepository.observeDailyLogs().map { logs -> logs to today }
+            }.collect { (allLogs, today) ->
                 val cutoff = today.minusDays(14)
                 val priorCutoff = today.minusDays(6)
                 val recent = allLogs

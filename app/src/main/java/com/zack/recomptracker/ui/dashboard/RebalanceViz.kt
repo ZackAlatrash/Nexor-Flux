@@ -233,6 +233,20 @@ internal fun WeeklyBarsChart(
     }
 }
 
+/** Visual state of a single rebalance day-progress dot. */
+internal enum class DayDotState { COMPLETED, TODAY, UPCOMING }
+
+/**
+ * State of the [i]-th (0-based) dot for a rebalance on its 1-based [dayX] day. dayX=1 is the first
+ * day, so dot 0 is TODAY and nothing is COMPLETED; on the final day (dayX==ofY) the last dot is
+ * TODAY (it gets the ring). Converting the 1-based dayX to the 0-based index is the P1-13 fix.
+ */
+internal fun dotStateFor(i: Int, dayX: Int): DayDotState = when {
+    i < dayX - 1 -> DayDotState.COMPLETED
+    i == dayX - 1 -> DayDotState.TODAY
+    else -> DayDotState.UPCOMING
+}
+
 /**
  * A row of `ofY` day-progress dots for the Weekly Rebalance progress detail / dashboard ribbon:
  * filled + check for completed days, a glowing hollow ring for today, plain hollow dots for days
@@ -304,11 +318,12 @@ internal fun DayDots(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             for (i in 0 until ofY) {
+                val st = dotStateFor(i, dayX)
                 DayDot(
                     dotSize = dotSize,
                     scale = appearAnims[i].value,
-                    completed = i < dayX,
-                    isToday = i == dayX,
+                    completed = st == DayDotState.COMPLETED,
+                    isToday = st == DayDotState.TODAY,
                     mini = true,
                     pulseAlpha = pulseAlpha,
                 )
@@ -331,11 +346,15 @@ internal fun DayDots(
                     .padding(horizontal = dotSize / 2),
             ) {
                 for (i in 0 until ofY - 1) {
+                    // Segment i (dot i → dot i+1) is filled once dot i is a completed day.
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(2.dp)
-                            .background(if (i < dayX - 1) accent.accent else appColors.cardBorder),
+                            .background(
+                                if (dotStateFor(i, dayX) == DayDotState.COMPLETED) accent.accent
+                                else appColors.cardBorder,
+                            ),
                     )
                 }
             }
@@ -344,11 +363,12 @@ internal fun DayDots(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 for (i in 0 until ofY) {
+                    val st = dotStateFor(i, dayX)
                     DayDot(
                         dotSize = dotSize,
                         scale = appearAnims[i].value,
-                        completed = i < dayX,
-                        isToday = i == dayX,
+                        completed = st == DayDotState.COMPLETED,
+                        isToday = st == DayDotState.TODAY,
                         mini = false,
                         pulseAlpha = pulseAlpha,
                     )
@@ -366,7 +386,8 @@ internal fun DayDots(
                 Text(
                     text = "${i + 1}",
                     style = AppType.metaLabel,
-                    color = if (i == dayX) accent.accentLighter else appColors.textMuted,
+                    color = if (dotStateFor(i, dayX) == DayDotState.TODAY) accent.accentLighter
+                    else appColors.textMuted,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.width(dotSize),
                 )

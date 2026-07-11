@@ -315,7 +315,8 @@ fun AppNavGraph(
             SharedRoutineImportScreen(
                 viewModel = viewModel<SharedRoutineImportViewModel>(factory = factory),
                 onClose = {
-                    // Land on Train whether opened cold (empty back stack) or over an existing screen.
+                    // Pop back to wherever we came from (Home on a cold launch, the prior screen when
+                    // opened warm); fall back to Train only if the stack is somehow empty.
                     if (!navController.popBackStack()) {
                         navController.navigate(Routes.Train) { launchSingleTop = true }
                     }

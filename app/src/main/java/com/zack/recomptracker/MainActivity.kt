@@ -48,8 +48,13 @@ class MainActivity : ComponentActivity() {
         app.container.coachNotifier.ensureChannels()
         maybeRequestNotificationPermission(app)
 
-        pendingDeepLink.value = intent.readCoachAction()
-        pendingShareUri.value = intent.readShareUri()
+        // Only consume the launch intent on a fresh start. On a recreation (rotation) savedInstanceState
+        // is non-null and re-reading the same intent would re-navigate into the deep-link/import screen
+        // after the user already handled it; warm taps come through onNewIntent instead.
+        if (savedInstanceState == null) {
+            pendingDeepLink.value = intent.readCoachAction()
+            pendingShareUri.value = intent.readShareUri()
+        }
 
         setContent {
             val themeMode by app.container.uiPreferences.themeMode

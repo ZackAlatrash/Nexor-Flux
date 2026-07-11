@@ -5,6 +5,9 @@ import com.zack.recomptracker.data.local.dao.WorkoutDao
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.domain.workout.Exercise
+import com.zack.recomptracker.domain.workout.PlannedSet
+import com.zack.recomptracker.domain.workout.WorkoutTemplate
+import com.zack.recomptracker.domain.workout.WorkoutTemplateExercise
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -34,6 +37,23 @@ class RoutineBuilderViewModelTest {
     ) : ExerciseLibraryRepository(mock<ExerciseDao>()) {
         override suspend fun getById(id: Long): Exercise? = exercises[id]
     }
+
+    private class FakeWorkoutRepository(
+        private val templates: Map<Long, WorkoutTemplate>,
+    ) : WorkoutRepository(mock<WorkoutDao>()) {
+        override suspend fun getById(id: Long): WorkoutTemplate? = templates[id]
+    }
+
+    private fun template(id: Long, name: String, ex: Exercise) = WorkoutTemplate(
+        id = id, name = name, note = null, createdAt = "", updatedAt = "",
+        exercises = listOf(
+            WorkoutTemplateExercise(
+                id = 1L, exercise = ex,
+                plannedSets = listOf(PlannedSet(1L, 1, 10, 50.0)),
+                sortOrder = 0, note = null,
+            ),
+        ),
+    )
 
     private fun newViewModel(exercises: Map<Long, Exercise>) = RoutineBuilderViewModel(
         workoutRepository = WorkoutRepository(mock<WorkoutDao>()),
@@ -83,5 +103,47 @@ class RoutineBuilderViewModelTest {
         val after = vm.state.value
 
         assertSame(before, after)
+    }
+
+    // ── P1-15: reloading the already-loaded routine must not wipe the draft ──────
+
+    @Test
+    fun `loadWorkout is a no-op once its routine is already loaded so a picker return keeps the draft`() = runTest {
+        val picked = exercise(1L, "Bench Press")
+        val vm = RoutineBuilderViewModel(
+            workoutRepository = FakeWorkoutRepository(mapOf(5L to template(5L, "Push Day", exercise(5L, "Deadlift")))),
+            exerciseLibraryRepository = FakeExerciseLibraryRepository(mapOf(1L to picked)),
+        )
+        vm.loadWorkout(5L)                        // initial edit-mode load
+        assertEquals("Push Day", vm.state.value.name)
+        assertEquals(1, vm.state.value.exercises.size)
+
+        // User edits the name and adds a just-picked exercise, then returns from the picker.
+        vm.setName("Push Day (edited)")
+        vm.addExercises(longArrayOf(1L))
+        assertEquals(2, vm.state.value.exercises.size)
+
+        // The re-fired load effect must NOT clobber the in-progress draft.
+        vm.loadWorkout(5L)
+        assertEquals("Push Day (edited)", vm.state.value.name)
+        assertEquals(2, vm.state.value.exercises.size)
+    }
+
+    @Test
+    fun `loadWorkout with a genuinely different routine id replaces the draft`() = runTest {
+        val vm = RoutineBuilderViewModel(
+            workoutRepository = FakeWorkoutRepository(
+                mapOf(
+                    5L to template(5L, "Push Day", exercise(5L, "Deadlift")),
+                    7L to template(7L, "Pull Day", exercise(7L, "Row")),
+                ),
+            ),
+            exerciseLibraryRepository = FakeExerciseLibraryRepository(emptyMap()),
+        )
+        vm.loadWorkout(5L)
+        vm.setName("edited")
+        vm.loadWorkout(7L)                        // different routine → replace, not skip
+        assertEquals("Pull Day", vm.state.value.name)
+        assertEquals(7L, vm.state.value.workoutId)
     }
 }

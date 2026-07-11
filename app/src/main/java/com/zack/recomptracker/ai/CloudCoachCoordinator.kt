@@ -130,6 +130,10 @@ class CloudCoachCoordinator(
             thinkingSteps.clear()
             committedWrites.clear()
             pushThinking("Thinking…")
+            // Count of messages that predate THIS turn (system + prior completed turns). A failed
+            // turn reverts to exactly this, so prior turns survive an error. Finalised below, after
+            // seeding + trimming, before this turn's own messages are appended.
+            var priorContextSize = 0
             try {
                 val today = dateProvider.today()
                 // The system snapshot embeds Today's date + totals and is seeded once. If the day
@@ -144,9 +148,14 @@ class CloudCoachCoordinator(
                     systemSeeded = true
                     seededDate = today
                 }
-                // Refresh the per-turn knowledge block: drop the previous turn's block, inject a
-                // fresh one for THIS question, positioned immediately before the user message.
+                // Drop the previous turn's knowledge block, then bound the accumulated context so a
+                // long conversation can't grow without limit into a provider 400 (review P2-4). What
+                // remains is the durable pre-turn context a failure reverts to.
                 lastReferenceMessage?.let { requestMessages.remove(it) }
+                lastReferenceMessage = null
+                trimOldTurns()
+                priorContextSize = requestMessages.size
+                // Inject a fresh knowledge block for THIS question, immediately before the user message.
                 val reference = knowledgeInjector.referenceBlock(userText)
                 lastReferenceMessage = if (reference.isNotBlank()) {
                     ChatRequestMessage(role = "system", content = reference).also { requestMessages.add(it) }
@@ -159,9 +168,7 @@ class CloudCoachCoordinator(
                 var nudged = false
                 while (true) {
                     if (rounds++ >= MAX_TOOL_ROUNDS) {
-                        requestMessages.clear()
-                        systemSeeded = false
-                        lastReferenceMessage = null
+                        revertFailedTurn(priorContextSize)
                         _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
                         break
                     }
@@ -182,9 +189,7 @@ class CloudCoachCoordinator(
                                 requestMessages.add(ChatRequestMessage(role = "user", content = EMPTY_RESPONSE_NUDGE))
                                 continue
                             }
-                            requestMessages.clear()
-                            systemSeeded = false
-                            lastReferenceMessage = null
+                            revertFailedTurn(priorContextSize)
                             _state.value = CoachState.Error(
                                 history.toList(),
                                 failureMessage("The AI didn't complete that action — please try again."),
@@ -227,20 +232,52 @@ class CloudCoachCoordinator(
                     }
                 }
             } catch (e: TimeoutCancellationException) {
-                requestMessages.clear()
-                systemSeeded = false
-                lastReferenceMessage = null
+                revertFailedTurn(priorContextSize)
                 _state.value = CoachState.Error(history.toList(), failureMessage("Took too long — try again."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                requestMessages.clear()
-                systemSeeded = false
-                lastReferenceMessage = null
+                revertFailedTurn(priorContextSize)
                 _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
             }
         }
     }
+
+    /**
+     * Reverts the current (failed) turn's messages, truncating [requestMessages] back to
+     * [toSize] — the context that predated this turn. Prior completed turns and the system snapshot
+     * (with its already-consumed briefing handoff) survive the error, so the model keeps its memory
+     * instead of being wiped (review P2-4). Any partial tool-call scaffolding from the failed turn
+     * is dropped too, so the retained context stays a valid message sequence.
+     */
+    private fun revertFailedTurn(toSize: Int) {
+        while (requestMessages.size > toSize) requestMessages.removeAt(requestMessages.size - 1)
+        lastReferenceMessage = null
+        // If the revert left no system message — e.g. the failure was in systemPromptSnapshot() itself,
+        // before priorContextSize was set past 0 — force a clean reseed next turn rather than sending
+        // a context with no system prompt.
+        if (requestMessages.firstOrNull()?.role != "system") {
+            systemSeeded = false
+            seededDate = null
+        }
+    }
+
+    /**
+     * Bounds the accumulated request context: while it exceeds [MAX_CONTEXT_CHARS] and more than one
+     * prior user turn remains, drops the OLDEST complete `[user … ]` block (up to the next user
+     * message). Whole blocks are dropped so assistant tool_calls stay paired with their tool results,
+     * and the system message at index 0 is never touched. The most recent turn is always kept.
+     */
+    private fun trimOldTurns() {
+        while (estimatedContextChars() > MAX_CONTEXT_CHARS) {
+            val firstUser = (1 until requestMessages.size).firstOrNull { requestMessages[it].role == "user" } ?: break
+            val nextUser = ((firstUser + 1) until requestMessages.size).firstOrNull { requestMessages[it].role == "user" } ?: break
+            repeat(nextUser - firstUser) { requestMessages.removeAt(firstUser) }
+        }
+    }
+
+    private fun estimatedContextChars(): Int =
+        requestMessages.sumOf { (it.content?.length ?: 0) + (it.assistantToolCallsJson?.length ?: 0) }
 
     private suspend fun confirmAndRun(call: ParsedToolCall): String {
         // For log_meal, describe what will ACTUALLY be written (library-resolved food/macros,
@@ -374,6 +411,11 @@ class CloudCoachCoordinator(
     private companion object {
         private const val MAX_TOOL_ROUNDS = 12
         private const val TURN_TIMEOUT_MS = 180_000L
+
+        // Soft budget (characters, ~4 chars/token) for the accumulated request context. When the
+        // conversation exceeds it, the oldest turns are trimmed so token use can't grow without
+        // limit into a provider 400 (review P2-4). The system message (index 0) is never trimmed.
+        private const val MAX_CONTEXT_CHARS = 24_000
 
         /** One-shot prompt sent when a completion returns no tool call and no text, to recover the turn. */
         private const val EMPTY_RESPONSE_NUDGE =

@@ -136,6 +136,9 @@ private class NoopLibraryRepo : ExerciseLibraryRepository(NoopExerciseDao()) {
 }
 
 private class NoopExerciseDao : ExerciseDao {
+    override suspend fun update(exercise: ExerciseEntity) {}
+    override suspend fun findIdBySourceAndExternalId(source: String, externalId: String): Long? = null
+    override suspend fun stampSourceVersion(source: String, version: String) {}
     override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(emptyList())
     override suspend fun search(query: String): List<ExerciseEntity> = emptyList()
     override suspend fun getById(id: Long): ExerciseEntity? = null

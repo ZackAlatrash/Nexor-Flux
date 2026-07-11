@@ -37,6 +37,15 @@ class ExerciseLibraryRepositoryTest {
             rows.add(entity)
             return nextId
         }
+        override suspend fun update(exercise: ExerciseEntity) {
+            val idx = rows.indexOfFirst { it.id == exercise.id }
+            if (idx >= 0) rows[idx] = exercise
+        }
+        override suspend fun findIdBySourceAndExternalId(source: String, externalId: String): Long? =
+            rows.firstOrNull { it.source == source && it.externalId == externalId }?.id
+        override suspend fun stampSourceVersion(source: String, version: String) {
+            for (i in rows.indices) if (rows[i].source == source) rows[i] = rows[i].copy(sourceVersion = version)
+        }
     }
 
     private val sampleJson = """
@@ -60,11 +69,12 @@ class ExerciseLibraryRepositoryTest {
         val dao = FakeExerciseDao()
         val repo = ExerciseLibraryRepository(dao)
         repo.seedIfEmpty(version = "v1") { sampleJson.byteInputStream() }
-        val callsAfterFirst = dao.insertCalls
+        val rowsAfterFirst = dao.rows.toList()
 
         repo.seedIfEmpty(version = "v1") { sampleJson.byteInputStream() }
 
-        assertEquals(callsAfterFirst, dao.insertCalls)
+        // The version gate skips the re-seed entirely — rows are untouched (no duplicate insert).
+        assertEquals(rowsAfterFirst, dao.rows.toList())
     }
 
     @Test

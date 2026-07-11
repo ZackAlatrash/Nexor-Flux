@@ -28,6 +28,7 @@ import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.domain.food.MealSuggester
 import com.zack.recomptracker.domain.food.SuggestionFocus
 import com.zack.recomptracker.domain.food.SuggestionResult
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.trend.MeasurementPoint
@@ -855,9 +856,13 @@ class CoachToolExecutor(
         val date = args["date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: dateProvider.today()
         val prefs = planRepository.preferences.first()
         val eaten = logRepository.getDay(date).totals
+        // Use the rebalance-EFFECTIVE target for the date, matching the coach system prompt and
+        // get_weekly_trends. Using the untouched base plan here contradicted the reduced target the
+        // coach quotes during an active rebalance (review P2-5).
+        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), date, rebalanceState())
         val target = MealSuggester.MacroTargets(
-            calories = prefs.targetCalories, proteinG = prefs.targetProteinG,
-            carbsG = prefs.targetCarbsG, fatG = prefs.targetFatG,
+            calories = effective.calories, proteinG = effective.proteinG,
+            carbsG = effective.carbsG, fatG = effective.fatG,
         )
         val library = logRepository.getSavedFoods().map { it.toSuggestionFood() }
         return serializeSuggestions(MealSuggester.suggestForDay(target, eaten, library))

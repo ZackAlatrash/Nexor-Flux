@@ -2,7 +2,6 @@ package com.zack.recomptracker.ui.train
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.workout.Exercise
@@ -173,81 +172,35 @@ class ActiveSessionViewModel(
 
     // ── Set mutations ─────────────────────────────────────────────────────────
 
+    // Each editor writes ONLY its own column (P1-18). Building a whole-entity write from the passed
+    // `set` snapshot used to revert a sibling field the user had just typed (the flow hadn't re-emitted
+    // yet). Targeted updates can't clobber. `se` is unused now but kept for call-site stability.
     fun updateKg(se: SessionExercise, set: SessionSet, kg: Double?) {
-        viewModelScope.launch {
-            runCatching {
-                sessionRepository.updateSet(
-                    SessionSetEntity(
-                        id = set.id,
-                        sessionExerciseId = se.id,
-                        setNumber = set.setNumber,
-                        reps = set.reps,
-                        weightKg = kg,
-                        rir = set.rir,
-                        completed = set.completed,
-                    )
-                )
-            }
-        }
+        viewModelScope.launch { runCatching { sessionRepository.updateSetWeight(set.id, kg) } }
     }
 
     fun updateReps(se: SessionExercise, set: SessionSet, reps: Int?) {
-        viewModelScope.launch {
-            runCatching {
-                sessionRepository.updateSet(
-                    SessionSetEntity(
-                        id = set.id,
-                        sessionExerciseId = se.id,
-                        setNumber = set.setNumber,
-                        reps = reps ?: 0,
-                        weightKg = set.weightKg,
-                        rir = set.rir,
-                        completed = set.completed,
-                    )
-                )
-            }
-        }
+        viewModelScope.launch { runCatching { sessionRepository.updateSetReps(set.id, reps ?: 0) } }
     }
 
     fun updateRir(se: SessionExercise, set: SessionSet, rir: Int?) {
-        viewModelScope.launch {
-            runCatching {
-                sessionRepository.updateSet(
-                    SessionSetEntity(
-                        id = set.id,
-                        sessionExerciseId = se.id,
-                        setNumber = set.setNumber,
-                        reps = set.reps,
-                        weightKg = set.weightKg,
-                        rir = rir,
-                        completed = set.completed,
-                    )
-                )
-            }
-        }
+        viewModelScope.launch { runCatching { sessionRepository.updateSetRir(set.id, rir) } }
     }
 
     /**
-     * Toggle a set's completed state. Requires reps > 0 to mark complete.
+     * Toggle a set's completed state. Requires reps > 0 to mark complete — judged against the CURRENT
+     * persisted row (re-read inside the coroutine), not the possibly-stale `set` snapshot, so a
+     * just-typed reps value isn't ignored (P1-18). Writes only the completed column.
      */
     fun toggleComplete(se: SessionExercise, set: SessionSet) {
-        val newCompleted = if (set.completed) false else (set.reps > 0)
         viewModelScope.launch {
             runCatching {
-                sessionRepository.updateSet(
-                    SessionSetEntity(
-                        id = set.id,
-                        sessionExerciseId = se.id,
-                        setNumber = set.setNumber,
-                        reps = set.reps,
-                        weightKg = set.weightKg,
-                        rir = set.rir,
-                        completed = newCompleted,
-                    )
-                )
-            }
-            if (newCompleted) {
-                detectPr(se, set)
+                val current = sessionRepository.getSet(set.id) ?: set
+                val newCompleted = if (current.completed) false else (current.reps > 0)
+                sessionRepository.updateSetCompleted(set.id, newCompleted)
+                if (newCompleted) {
+                    detectPr(se, current)
+                }
             }
         }
     }

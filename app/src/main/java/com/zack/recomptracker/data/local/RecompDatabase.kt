@@ -25,6 +25,7 @@ import com.zack.recomptracker.data.local.entity.CatalogFoodEntity
 import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.DEFAULT_MEAL_SLOTS
 import com.zack.recomptracker.data.local.entity.MealSlotEntity
 import com.zack.recomptracker.data.local.entity.PlanVersionEntity
 import com.zack.recomptracker.data.local.entity.PlannedSetEntity
@@ -345,9 +346,12 @@ abstract class RecompDatabase : RoomDatabase() {
         internal val SEED_DEFAULT_SLOTS: RoomDatabase.Callback = object : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Meal 1', 0)")
-                db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Lunch', 1)")
-                db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Dinner', 2)")
+                DEFAULT_MEAL_SLOTS.forEach { slot ->
+                    db.execSQL(
+                        "INSERT INTO meal_slots (name, sort_order) VALUES (?, ?)",
+                        arrayOf<Any>(slot.name, slot.sortOrder),
+                    )
+                }
             }
         }
 

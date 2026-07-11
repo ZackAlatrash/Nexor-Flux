@@ -15,6 +15,7 @@ import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.MealSlotInitializer
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanHistoryInitializer
 import com.zack.recomptracker.data.repository.PlanRepository
@@ -213,6 +214,7 @@ class AppContainer(context: Context) {
         rebalanceStore = rebalanceStore,
     )
     val planHistoryInitializer = PlanHistoryInitializer.from(database.planVersionDao(), planRepository)
+    val mealSlotInitializer = MealSlotInitializer(database.mealSlotDao())
     val healthSyncCoordinator = HealthSyncCoordinator(
         hcRepository = healthConnectRepository,
         logRepository = logRepository,
@@ -239,6 +241,15 @@ class AppContainer(context: Context) {
                 planHistoryInitializer.seedIfEmpty()
             }.onFailure {
                 Log.w("RecompPlan", "Plan history baseline seed failed", it)
+            }
+        }
+        appScope.launch {
+            // Remediate fresh installs first created at schema v>=2 (which skipped MIGRATION_1_2's
+            // meal-slot seed) — they reach v15 with an empty Food Log until this self-heals (P1-21).
+            runCatching {
+                mealSlotInitializer.seedIfEmpty()
+            }.onFailure {
+                Log.w("RecompMeals", "Meal slot seed failed", it)
             }
         }
         appScope.launch {

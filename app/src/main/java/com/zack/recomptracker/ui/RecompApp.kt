@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -129,6 +130,8 @@ fun RecompApp(
     darkMode: Boolean,
     deepLinkAction: State<CoachActionType?> = remember { mutableStateOf(null) },
     onDeepLinkHandled: () -> Unit = {},
+    shareRoutineUri: State<Uri?> = remember { mutableStateOf(null) },
+    onShareRoutineHandled: () -> Unit = {},
 ) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
@@ -169,6 +172,20 @@ fun RecompApp(
                 restoreState = true
             }
             onDeepLinkHandled()
+        }
+
+        // Tapped shared-routine file: hand the Uri to the import inbox, then navigate to the preview
+        // screen. Gated on onboardingComplete for the same reason as the coach deep-link above (the
+        // NavHost isn't composed until the flag loads, and we never route over onboarding). Waits for
+        // the first back-stack entry so we don't race setGraph().
+        val pendingShareUriValue by shareRoutineUri
+        LaunchedEffect(pendingShareUriValue, onboardingComplete) {
+            val uri = pendingShareUriValue ?: return@LaunchedEffect
+            if (onboardingComplete != true) return@LaunchedEffect
+            container.routineShareInbox.offer(uri)
+            navController.currentBackStackEntryFlow.first()
+            navController.navigate(Routes.SharedRoutineImport) { launchSingleTop = true }
+            onShareRoutineHandled()
         }
 
         // Two separate backdrops to avoid a circular GraphicsLayer read:

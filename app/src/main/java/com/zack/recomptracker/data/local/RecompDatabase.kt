@@ -335,12 +335,29 @@ abstract class RecompDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Seeds the default meal slots on a FRESH install. The seed used to live only in
+         * [MIGRATION_1_2], so a new device — which creates the schema at the current version and never
+         * runs migrations — started with an empty Food Log and no slot cards (P1-21). onCreate fires
+         * only on first creation, so upgraders (which already have the slots from MIGRATION_1_2) are
+         * never double-seeded. Exposed so the same seed is exercised by tests.
+         */
+        internal val SEED_DEFAULT_SLOTS: RoomDatabase.Callback = object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                super.onCreate(db)
+                db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Meal 1', 0)")
+                db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Lunch', 1)")
+                db.execSQL("INSERT INTO meal_slots (name, sort_order) VALUES ('Dinner', 2)")
+            }
+        }
+
         fun create(context: Context): RecompDatabase = Room.databaseBuilder(
             context.applicationContext,
             RecompDatabase::class.java,
             "recomp_tracker.db",
         )
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+            .addCallback(SEED_DEFAULT_SLOTS)
             .build()
     }
 }

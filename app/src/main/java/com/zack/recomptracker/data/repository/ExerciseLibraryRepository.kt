@@ -59,8 +59,10 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
 
         val raw = openStream().bufferedReader().use { it.readText() }
         val entities = ExerciseLibraryJson.parse(raw).map { it.toEntity(SOURCE, version) }
-        exerciseDao.deleteBySource(SOURCE)
-        exerciseDao.insertAll(entities)
+        // Id-preserving upsert (never a delete-then-insert): a bulk delete of the old library hit the
+        // FK references from routines/sessions (NO ACTION) and crashed for anyone with a routine, so
+        // the re-seed failed silently forever (P1-19). Existing rows are updated in place.
+        exerciseDao.upsertLibrary(SOURCE, version, entities)
     }
 
     companion object {

@@ -38,6 +38,38 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
+/**
+ * Minimum food-library match score for a log_meal to silently override the model's name + macros.
+ * The scorer (CoachToolExecutor.scoredFoodMatches) rates 3=exact, 2=starts-with, 1=contains, 0=every
+ * query word appears somewhere. A score-0 hit is too loose — it can pick an arbitrary/wrong food and
+ * replace what the confirmation dialog showed — so we require ≥ 1 (the query is an actual substring).
+ */
+private const val MIN_LIBRARY_MATCH_SCORE = 1
+
+/**
+ * A fully-resolved log_meal action — exactly what will be written to the food log. Produced once by
+ * CoachToolExecutor.resolveMeal and consumed by BOTH the execution and the confirmation dialog, so
+ * the two can never diverge (review P1-9). [amountGrams]/[fromLibrary] are null for a food whose
+ * macros come from the model rather than the saved-food library.
+ */
+internal data class ResolvedMeal(
+    val finalName: String,
+    val calories: Int,
+    val proteinG: Double,
+    val carbsG: Double,
+    val fatG: Double,
+    val amountGrams: Double?,
+    val fromLibrary: SavedFoodEntity?,
+    val mealType: String,
+    val date: LocalDate,
+    val planned: Boolean,
+)
+
+private sealed interface MealResolution {
+    data class Resolved(val meal: ResolvedMeal) : MealResolution
+    data class Failed(val errorJson: String) : MealResolution
+}
+
 class CoachToolExecutor(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
@@ -260,7 +292,56 @@ class CoachToolExecutor(
     }
 
     private suspend fun logMeal(args: Map<String, String>): String {
-        val name = args["name"] ?: return """{"error":"log_meal requires 'name'"}"""
+        val meal = when (val r = resolveMeal(args)) {
+            is MealResolution.Failed -> return r.errorJson
+            is MealResolution.Resolved -> r.meal
+        }
+        val lib = meal.fromLibrary
+        Log.d("RecompCoach", "logMeal: name='${meal.finalName}' grams=${meal.amountGrams} fromLibrary=${lib != null} calories=${meal.calories}")
+        val input = MealEntryInput(
+            date = meal.date,
+            // FOOD_LIBRARY tags a library entry so it renders with the "Xg ·" prefix and is amount-editable.
+            mealType = if (lib != null) MealEntryTypes.FOOD_LIBRARY else meal.mealType,
+            name = meal.finalName,
+            calories = meal.calories,
+            proteinG = meal.proteinG,
+            carbsG = meal.carbsG,
+            fatG = meal.fatG,
+            amountGrams = meal.amountGrams,
+            basePer100Calories = lib?.calories,
+            basePer100ProteinG = lib?.proteinG,
+            basePer100CarbsG = lib?.carbsG,
+            basePer100FatG = lib?.fatG,
+            entryServingName = lib?.householdServingName,
+            entryServingGrams = lib?.householdServingGrams,
+            loggedByServings = false,
+            planned = meal.planned,
+        )
+        // Match the meal_type to a named slot (case-insensitive) so the entry appears inside the
+        // correct slot card in the food log screen, not just in the totals.
+        val matchedSlotId = logRepository.getSlots()
+            .firstOrNull { it.name.trim().equals(meal.mealType, ignoreCase = true) }
+            ?.id
+        logRepository.addMealToSlot(input, matchedSlotId)
+        return if (meal.planned) {
+            """{"success":true,"planned":"${meal.finalName.esc()}","date":"${meal.date}","calories":${meal.calories}}"""
+        } else {
+            """{"success":true,"logged":"${meal.finalName.esc()}","calories":${meal.calories}}"""
+        }
+    }
+
+    /**
+     * Resolves a log_meal call into exactly what will be written. Both the execution ([logMeal]) and
+     * the user-facing confirmation ([describeLoggedMeal]) go through this ONE resolution, so the
+     * confirmation dialog can never describe a different action than the one performed (review P1-9).
+     *
+     * A library override requires a match score of at least [MIN_LIBRARY_MATCH_SCORE]: a loose
+     * score-0 ("every query word appears somewhere") hit can pick an arbitrary/wrong food and
+     * silently replace the name + macros the user saw in the dialog, so below that gate we keep the
+     * model's own macros — which then match what the dialog showed.
+     */
+    private suspend fun resolveMeal(args: Map<String, String>): MealResolution {
+        val name = args["name"] ?: return MealResolution.Failed("""{"error":"log_meal requires 'name'"}""")
         val requestedGrams = args["grams"]?.toDoubleOrNull()
         val mealType = args["meal_type"]
             ?.takeIf { it in setOf("Breakfast", "Lunch", "Dinner", "Snack") }
@@ -270,90 +351,83 @@ class CoachToolExecutor(
             ?: dateProvider.today()
         val planned = logDate.isAfter(dateProvider.today())
 
-        // Always check the food library first — use its macros instead of the model's
-        // estimates. This ensures the entry matches the saved food exactly, regardless of
-        // whether the model called search_food_library beforehand.
         val allFoods = logRepository.getSavedFoods()
-        val libraryFood = scoredFoodMatches(name, allFoods).firstOrNull()?.first
-        Log.d("RecompCoach", "logMeal: query='$name' grams=$requestedGrams library_hit=${libraryFood?.name} total_foods=${allFoods.size}")
-        val finalName: String
-        val calories: Int
-        val proteinG: Double
-        val carbsG: Double
-        val fatG: Double
-        // The gram amount a library food is logged at — used for BOTH the macro scale and the
-        // displayed amount so the entry is self-consistent. Null for a non-library (model-macro) food.
-        var libraryGrams: Double? = null
+        val libraryFood = scoredFoodMatches(name, allFoods)
+            .firstOrNull { it.second >= MIN_LIBRARY_MATCH_SCORE }?.first
 
-        if (libraryFood != null) {
-            // Saved-food macros are stored PER 100 g. Resolve one gram amount — the requested grams,
-            // else the household serving, else 100 g — and scale BOTH the macros and the displayed
-            // amount by it. The old code scaled macros at a 100 g basis (scale 1.0) while displaying
-            // the household serving, so a no-grams "log ketchup" wrote "15 g · 15 kcal" for a 15 g
-            // serving of a 15 kcal/100g food instead of ~2, and a later amount edit silently changed
-            // the calories (review P1-8).
+        return if (libraryFood != null) {
+            // Saved-food macros are stored PER 100 g. Resolve one gram amount (requested, else the
+            // household serving, else 100 g) and scale BOTH macros and the displayed amount by it so
+            // the entry is self-consistent (review P1-8); roundToInt matches FoodScaling.scale.
             val grams = requestedGrams ?: libraryFood.householdServingGrams ?: 100.0
-            libraryGrams = grams
             val scale = grams / 100.0
-            finalName = libraryFood.name
-            // roundToInt (not toInt) to match FoodScaling.scale — the canonical scaler the manual-log
-            // and amount-edit paths use — so a later edit at the same amount can't nudge the calories.
-            calories = (libraryFood.calories * scale).roundToInt()
-            proteinG = libraryFood.proteinG * scale
-            carbsG = libraryFood.carbsG * scale
-            fatG = libraryFood.fatG * scale
-            Log.d("RecompCoach", "logMeal: using library '$finalName' grams=$grams scale=$scale calories=$calories")
+            MealResolution.Resolved(
+                ResolvedMeal(
+                    finalName = libraryFood.name,
+                    calories = (libraryFood.calories * scale).roundToInt(),
+                    proteinG = libraryFood.proteinG * scale,
+                    carbsG = libraryFood.carbsG * scale,
+                    fatG = libraryFood.fatG * scale,
+                    amountGrams = grams,
+                    fromLibrary = libraryFood,
+                    mealType = mealType,
+                    date = logDate,
+                    planned = planned,
+                ),
+            )
         } else {
-            // Food not in library — fall back to model-provided macros.
-            finalName = name
-            // The model may surface integer JSON values as Double (e.g. "500.0"), so try
-            // toIntOrNull first and fall back to toDoubleOrNull().toInt() before giving up.
-            calories = args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }
-                ?: return """{"error":"'${name.esc()}' not found in food library. Please call log_meal again with calories and macros."}"""
-            // Guard: model passes 0 as placeholder when it expects library lookup to handle it.
-            // Logging 0 calories is always wrong for real food — return an error so the model retries.
-            if (calories <= 0) return """{"error":"'${name.esc()}' not found in food library. Please call log_meal again with the actual calories."}"""
-            proteinG = args["protein_g"]?.toDoubleOrNull() ?: 0.0
-            carbsG = args["carbs_g"]?.toDoubleOrNull() ?: 0.0
-            fatG = args["fat_g"]?.toDoubleOrNull() ?: 0.0
-        }
-
-        // For library foods: populate all the metadata fields so the entry renders in the
-        // food log exactly like a manually-logged library food (shows "Xg ·" prefix and
-        // allows amount editing). mealType is set to FOOD_LIBRARY so the entry is tagged
-        // correctly; slot assignment still uses the user's mealType arg via matchedSlotId.
-        // Same basis the macros were scaled at (above), so amount and calories always agree.
-        val logGrams = libraryGrams
-        val input = MealEntryInput(
-            date = logDate,
-            mealType = if (libraryFood != null) MealEntryTypes.FOOD_LIBRARY else mealType,
-            name = finalName,
-            calories = calories,
-            proteinG = proteinG,
-            carbsG = carbsG,
-            fatG = fatG,
-            amountGrams = logGrams,
-            basePer100Calories = libraryFood?.calories,
-            basePer100ProteinG = libraryFood?.proteinG,
-            basePer100CarbsG = libraryFood?.carbsG,
-            basePer100FatG = libraryFood?.fatG,
-            entryServingName = libraryFood?.householdServingName,
-            entryServingGrams = libraryFood?.householdServingGrams,
-            loggedByServings = false,
-            planned = planned,
-        )
-        // Match the meal_type to a named slot (case-insensitive) so the entry appears
-        // inside the correct slot card in the food log screen, not just in the totals.
-        val matchedSlotId = logRepository.getSlots()
-            .firstOrNull { it.name.trim().equals(mealType, ignoreCase = true) }
-            ?.id
-        logRepository.addMealToSlot(input, matchedSlotId)
-        return if (planned) {
-            """{"success":true,"planned":"${finalName.esc()}","date":"$logDate","calories":$calories}"""
-        } else {
-            """{"success":true,"logged":"${finalName.esc()}","calories":$calories}"""
+            // Not in the library (or only a below-threshold match) — use the model's own macros.
+            // The model may surface integer JSON values as Double (e.g. "500.0").
+            val calories = args["calories"]?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }
+                ?: return MealResolution.Failed("""{"error":"'${name.esc()}' not found in food library. Please call log_meal again with calories and macros."}""")
+            // 0 is the model's placeholder when it expects a library lookup — always wrong for real food.
+            if (calories <= 0) return MealResolution.Failed("""{"error":"'${name.esc()}' not found in food library. Please call log_meal again with the actual calories."}""")
+            MealResolution.Resolved(
+                ResolvedMeal(
+                    finalName = name,
+                    calories = calories,
+                    proteinG = args["protein_g"]?.toDoubleOrNull() ?: 0.0,
+                    carbsG = args["carbs_g"]?.toDoubleOrNull() ?: 0.0,
+                    fatG = args["fat_g"]?.toDoubleOrNull() ?: 0.0,
+                    amountGrams = null,
+                    fromLibrary = null,
+                    mealType = mealType,
+                    date = logDate,
+                    planned = planned,
+                ),
+            )
         }
     }
+
+    /**
+     * Confirmation text for a pending log_meal, built from the SAME [resolveMeal] result the
+     * execution uses — so the user approves the actual food, macros, and planned-vs-logged date that
+     * will be written, not the model's raw args (review P1-9). Falls back to the model's args only
+     * when the call would error on execution (unknown food + no macros).
+     */
+    suspend fun describeLoggedMeal(args: Map<String, String>): String =
+        when (val r = resolveMeal(args)) {
+            is MealResolution.Failed -> fallbackMealDescription(args)
+            is MealResolution.Resolved -> buildString {
+                val m = r.meal
+                append("Log ${m.finalName}")
+                if (m.amountGrams != null) append(" (${fmtGrams(m.amountGrams)}g · ${m.calories} kcal)")
+                else append(" (${m.calories} kcal)")
+                append(" as ${m.mealType}")
+                append(if (m.planned) " — planned for ${m.date}" else " to today's food log")
+            }
+        }
+
+    private fun fallbackMealDescription(args: Map<String, String>): String = buildString {
+        append("Log ${args["name"]}")
+        val type = args["meal_type"]?.takeIf { it in setOf("Breakfast", "Lunch", "Dinner", "Snack") } ?: "Snack"
+        append(" as $type")
+        val logDate = args["date"]?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+            ?: dateProvider.today()
+        append(if (logDate.isAfter(dateProvider.today())) " — planned for $logDate" else " to today's food log")
+    }
+
+    private fun fmtGrams(g: Double): String = if (g % 1.0 == 0.0) g.toInt().toString() else g.toString()
 
     // Shared food scoring used by both searchFoodLibrary and logMeal.
     //   3 = exact name match (case-insensitive)

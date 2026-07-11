@@ -194,6 +194,13 @@ class AppContainer(context: Context) {
 
     val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
     val workoutRepository = WorkoutRepository(database.workoutDao())
+    val routineShareInbox = com.zack.recomptracker.data.share.RoutineShareInbox()
+    val routineShareRepository = com.zack.recomptracker.data.repository.RoutineShareRepository(
+        appContext = context.applicationContext,
+        workoutDao = database.workoutDao(),
+        workoutRepository = workoutRepository,
+        exerciseLibraryRepository = exerciseLibraryRepository,
+    )
     val workoutSessionRepository = WorkoutSessionRepository(
         database.workoutSessionDao(),
         dailyLogDao = database.dailyLogDao(),
@@ -842,6 +849,7 @@ private class AppViewModelFactory(
                 exerciseLibraryRepository = container.exerciseLibraryRepository,
                 logRepository = container.logRepository,
                 userProfileStore = container.userProfilePreferencesStore,
+                routineShareRepository = container.routineShareRepository,
                 dateProvider = container.dateProvider,
             )
             ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
@@ -872,6 +880,11 @@ private class AppViewModelFactory(
             UsageStatsViewModel::class.java -> UsageStatsViewModel(
                 dao = container.database.usageEventDao(),
             )
+            com.zack.recomptracker.ui.share.SharedRoutineImportViewModel::class.java ->
+                com.zack.recomptracker.ui.share.SharedRoutineImportViewModel(
+                    routineShareRepository = container.routineShareRepository,
+                    inbox = container.routineShareInbox,
+                )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T
     }

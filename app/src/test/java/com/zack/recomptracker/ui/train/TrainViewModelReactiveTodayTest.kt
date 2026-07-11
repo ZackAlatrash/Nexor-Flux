@@ -6,6 +6,7 @@ import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.RoutineShareRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import java.time.LocalDate
@@ -44,6 +45,7 @@ class TrainViewModelReactiveTodayTest {
     private lateinit var sessionRepo: WorkoutSessionRepository
     private lateinit var exerciseRepo: ExerciseLibraryRepository
     private lateinit var logRepo: LogRepository
+    private lateinit var shareRepo: RoutineShareRepository
     private lateinit var profileStore: UserProfilePreferencesStore
 
     @Before
@@ -53,6 +55,7 @@ class TrainViewModelReactiveTodayTest {
         sessionRepo = mock()
         exerciseRepo = mock()
         logRepo = mock()
+        shareRepo = mock()
         profileStore = mock()
         whenever(workoutRepo.observeAll()).thenReturn(flowOf(emptyList()))
         whenever(sessionRepo.observeActiveSession()).thenReturn(flowOf(null))
@@ -73,6 +76,7 @@ class TrainViewModelReactiveTodayTest {
         exerciseLibraryRepository = exerciseRepo,
         logRepository = logRepo,
         userProfileStore = profileStore,
+        routineShareRepository = shareRepo,
         dateProvider = provider,
         computeDispatcher = dispatcher,
     )

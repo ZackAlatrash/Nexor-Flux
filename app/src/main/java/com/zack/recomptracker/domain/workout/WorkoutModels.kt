@@ -64,6 +64,14 @@ data class SessionExercise(
     val sets: List<SessionSet>,
 )
 
+/**
+ * True when the user has touched any of this exercise's sets — a completed check, entered reps, or an
+ * entered weight. Used to gate destructive edits (replacing OR removing an exercise) behind a
+ * confirmation, so a mis-tap can't silently delete logged work.
+ */
+fun SessionExercise.hasLoggedSets(): Boolean =
+    sets.any { it.completed || it.reps > 0 || it.weightKg != null }
+
 data class WorkoutSession(
     val id: Long,
     val workoutId: Long?,

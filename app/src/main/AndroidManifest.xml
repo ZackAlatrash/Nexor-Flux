@@ -40,6 +40,29 @@
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
+
+            <!-- Import a shared .rtroutine file. Two filters because custom-extension matching on
+                 Android is unreliable through a single filter: one matches the content mime we send,
+                 the other matches the file extension for file:// deliveries. A transport that re-types
+                 the file to something else may not match (documented limitation in the spec). -->
+            <intent-filter android:label="Import routine">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter android:label="Import routine">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.rtroutine" />
+                <data android:pathSuffix=".rtroutine" />
+            </intent-filter>
         </activity>
 
         <!-- Health Connect permissions rationale (Android 14+ / API >= 34).
@@ -55,5 +78,15 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

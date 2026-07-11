@@ -29,19 +29,51 @@ private const val KG_PER_POUND = 0.45359237
 private const val MIN_AGE = 13
 private const val MAX_AGE = 120
 
-/** Height in canonical centimetres from raw input. Metric = cm; imperial = whole inches. */
+// Plausibility bounds — an implausible measurement is rejected (parse → null) so it can never gate
+// past validation or seed a garbage Mifflin-St Jeor plan (P1-14).
+private const val MIN_HEIGHT_CM = 90
+private const val MAX_HEIGHT_CM = 250
+private const val MIN_WEIGHT_KG = 30.0
+private const val MAX_WEIGHT_KG = 300.0
+// Adjusted calorie target is clamped to the same range the coach tool uses, and its zone is
+// recomputed around the (clamped) target — matches PlanCalculator's target ± 100 band.
+private const val MIN_CALORIE_TARGET = 500
+private const val MAX_CALORIE_TARGET = 6000
+private const val CALORIE_ZONE_BAND = 100
+
+internal fun isPlausibleHeightCm(cm: Int): Boolean = cm in MIN_HEIGHT_CM..MAX_HEIGHT_CM
+internal fun isPlausibleWeightKg(kg: Double): Boolean = kg in MIN_WEIGHT_KG..MAX_WEIGHT_KG
+
+/** Height in canonical centimetres from raw input, or null if unparseable or implausible. */
 internal fun parseHeightCm(input: String, metric: Boolean): Int? {
     val value = input.trim().toDoubleOrNull() ?: return null
     if (value <= 0.0) return null
     val cm = if (metric) value else value * CM_PER_INCH
-    return Math.round(cm).toInt()
+    return Math.round(cm).toInt().takeIf { isPlausibleHeightCm(it) }
 }
 
-/** Weight in canonical kilograms from raw input. Metric = kg; imperial = pounds. */
+/** Height in canonical centimetres from an imperial feet + inches split, or null if implausible. */
+internal fun parseHeightCmImperial(feetInput: String, inchesInput: String): Int? {
+    val feet = feetInput.trim().toIntOrNull() ?: return null
+    // Inches is optional (a whole-foot height is valid) and must be a proper 0..<12 remainder.
+    val inches = inchesInput.trim().ifBlank { "0" }.toDoubleOrNull() ?: return null
+    if (feet < 0 || inches < 0.0 || inches >= 12.0) return null
+    val totalInches = feet * 12 + inches
+    if (totalInches <= 0.0) return null
+    return Math.round(totalInches * CM_PER_INCH).toInt().takeIf { isPlausibleHeightCm(it) }
+}
+
+/** Canonical height (cm) from the current inputs — the metric cm field, or the imperial ft+in split. */
+internal fun resolveHeightCm(s: OnboardingUiState): Int? =
+    if (s.useMetricUnits) parseHeightCm(s.heightInput, metric = true)
+    else parseHeightCmImperial(s.heightFeetInput, s.heightInchesInput)
+
+/** Weight in canonical kilograms from raw input, or null if unparseable or implausible. */
 internal fun parseWeightKg(input: String, metric: Boolean): Double? {
     val value = input.trim().toDoubleOrNull() ?: return null
     if (value <= 0.0) return null
-    return if (metric) value else value * KG_PER_POUND
+    val kg = if (metric) value else value * KG_PER_POUND
+    return kg.takeIf { isPlausibleWeightKg(it) }
 }
 
 /** Waist in canonical centimetres from raw input. Metric = cm; imperial = inches. Optional → null. */
@@ -76,7 +108,9 @@ data class OnboardingUiState(
     // Screen 2 — Your body
     val sex: BiologicalSex? = null,
     val birthDate: String? = null,           // ISO yyyy-MM-dd
-    val heightInput: String = "",            // raw, interpreted per useMetricUnits
+    val heightInput: String = "",            // metric: raw cm
+    val heightFeetInput: String = "",        // imperial: whole feet
+    val heightInchesInput: String = "",      // imperial: inches remainder (0..<12)
     // Screen 3 — Goal & measurements
     val goal: FitnessGoal? = null,
     val activityLevel: ActivityLevel? = null,
@@ -115,12 +149,18 @@ class OnboardingViewModel(
         if (metric == useMetricUnits) this
         // Units are chosen before any measurement is entered; if the user goes back and flips them,
         // clear the metric-ambiguous fields so they are re-entered in the new unit.
-        else copy(useMetricUnits = metric, heightInput = "", weightInput = "", waistInput = "")
+        else copy(
+            useMetricUnits = metric,
+            heightInput = "", heightFeetInput = "", heightInchesInput = "",
+            weightInput = "", waistInput = "",
+        )
     }
 
     fun setSex(value: BiologicalSex) = set { copy(sex = value) }
     fun setBirthDate(iso: String) = set { copy(birthDate = iso) }
     fun setHeight(value: String) = set { copy(heightInput = value.filter { it == '.' || it.isDigit() }.take(5)) }
+    fun setHeightFeet(value: String) = set { copy(heightFeetInput = value.filter { it.isDigit() }.take(1)) }
+    fun setHeightInches(value: String) = set { copy(heightInchesInput = value.filter { it == '.' || it.isDigit() }.take(4)) }
 
     fun setGoal(value: FitnessGoal) = set { copy(goal = value) }
     fun setActivityLevel(value: ActivityLevel) = set { copy(activityLevel = value) }
@@ -184,14 +224,18 @@ class OnboardingViewModel(
         viewModelScope.launch {
             userProfileStore.save(buildDraftProfile(s))
             val base = planRepository.preferences.first()
+            // Clamp a hand-edited calorie target to a sane range and recompute the zone AROUND it —
+            // the zone must not stay pinned to the original plan's target after an adjustment (P1-14).
+            val adjustedCalories = (s.adjCalories.toIntOrNull() ?: plan.targetCalories)
+                .coerceIn(MIN_CALORIE_TARGET, MAX_CALORIE_TARGET)
             planRepository.save(
                 base.copy(
-                    targetCalories = s.adjCalories.toIntOrNull() ?: plan.targetCalories,
+                    targetCalories = adjustedCalories,
                     targetProteinG = s.adjProtein.toIntOrNull() ?: plan.proteinG,
                     targetCarbsG = s.adjCarbs.toIntOrNull() ?: plan.carbsG,
                     targetFatG = s.adjFat.toIntOrNull() ?: plan.fatG,
-                    calorieZoneLowerBound = plan.zoneLower,
-                    calorieZoneUpperBound = plan.zoneUpper,
+                    calorieZoneLowerBound = adjustedCalories - CALORIE_ZONE_BAND,
+                    calorieZoneUpperBound = adjustedCalories + CALORIE_ZONE_BAND,
                     useMetricUnits = s.useMetricUnits,
                 ),
             )
@@ -219,7 +263,7 @@ class OnboardingViewModel(
 
     private fun buildDraftProfile(s: OnboardingUiState) = UserProfilePreferences(
         name = s.name.trim().ifBlank { null },
-        heightCm = parseHeightCm(s.heightInput, s.useMetricUnits),
+        heightCm = resolveHeightCm(s),
         birthDate = s.birthDate,
         biologicalSex = s.sex,
         activityLevel = s.activityLevel,
@@ -230,7 +274,7 @@ class OnboardingViewModel(
         0 -> true
         1 -> s.sex != null &&
             isValidBirthDate(s.birthDate, dateProvider.today()) &&
-            parseHeightCm(s.heightInput, s.useMetricUnits) != null
+            resolveHeightCm(s) != null
         2 -> s.goal != null && s.activityLevel != null &&
             (parseWeightKg(s.weightInput, s.useMetricUnits) ?: 0.0) > 0.0
         else -> true

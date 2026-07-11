@@ -709,7 +709,10 @@ class CoachToolExecutorTest {
     // ── log_meal library lookup ────────────────────────────────────────────────
 
     @Test
-    fun `log_meal uses library macros when food found by name`() = runTest {
+    fun `log_meal with no grams logs the household serving with amount and macros on one basis`() = runTest {
+        // 15 kcal per 100 g, household serving 15 g. Logging with no grams must scale the per-100g
+        // macros to the 15 g serving AND display 15 g — one basis, so the entry is self-consistent.
+        // The old code scaled macros at 100 g (15 kcal) while displaying 15 g (review P1-8).
         val ketchup = SavedFoodEntity(
             name = "Ketchup", servingName = "1 tbsp",
             calories = 15, proteinG = 0.2, carbsG = 3.0, fatG = 0.0,
@@ -723,13 +726,14 @@ class CoachToolExecutorTest {
         whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
-        // Model passes a wrong calorie estimate — tool should override with library value
+        // Model passes a wrong calorie estimate — tool should override with the library value.
         executor.execute("log_meal", mapOf("name" to "ketchup", "calories" to "999"))
 
         assertTrue("Should use library name (capitalized)", captured?.name == "Ketchup")
-        assertTrue("Should use library calories (15)", captured?.calories == 15)
-        assertTrue("Should use library protein", captured?.proteinG == 0.2)
-        assertTrue("Should use library carbs", captured?.carbsG == 3.0)
+        assertTrue("Amount is the 15 g household serving", captured?.amountGrams == 15.0)
+        assertTrue("Calories = 15/100g × 15/100 = 2, matching the 15 g amount", captured?.calories == 2)
+        // Protein scales on the SAME basis as the amount (0.2/100g × 15/100 ≈ 0.03).
+        assertTrue("Protein scaled to the 15 g serving", (captured?.proteinG ?: -1.0) in 0.029..0.031)
     }
 
     @Test

@@ -16,6 +16,7 @@ import com.zack.recomptracker.data.repository.NewWorkoutLine
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.PlannedSetDraft
 import com.zack.recomptracker.data.repository.WorkoutRepository
+import kotlin.math.roundToInt
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.data.repository.toSuggestionFood
 import com.zack.recomptracker.domain.activity.ActivitySummary
@@ -248,7 +249,7 @@ class CoachToolExecutor(
             // Saved-food macros are stored PER 100 g, so a requested gram amount scales by /100
             // (NOT by the household serving size — see FoodScaling / basePer100Calories).
             val scale = if (requestedGrams != null) requestedGrams / 100.0 else null
-            val calories = if (scale != null) (food.calories * scale).toInt() else food.calories
+            val calories = if (scale != null) (food.calories * scale).roundToInt() else food.calories
             val proteinG = if (scale != null) food.proteinG * scale else food.proteinG
             val carbsG   = if (scale != null) food.carbsG   * scale else food.carbsG
             val fatG     = if (scale != null) food.fatG     * scale else food.fatG
@@ -280,18 +281,28 @@ class CoachToolExecutor(
         val proteinG: Double
         val carbsG: Double
         val fatG: Double
+        // The gram amount a library food is logged at — used for BOTH the macro scale and the
+        // displayed amount so the entry is self-consistent. Null for a non-library (model-macro) food.
+        var libraryGrams: Double? = null
 
         if (libraryFood != null) {
-            // Saved-food macros are stored PER 100 g, so requested grams scale by /100 (NOT by the
-            // household serving size — see FoodScaling / basePer100Calories). No grams → one 100 g
-            // basis (scale 1.0), matching the food library's own default.
-            val scale = if (requestedGrams != null) requestedGrams / 100.0 else 1.0
+            // Saved-food macros are stored PER 100 g. Resolve one gram amount — the requested grams,
+            // else the household serving, else 100 g — and scale BOTH the macros and the displayed
+            // amount by it. The old code scaled macros at a 100 g basis (scale 1.0) while displaying
+            // the household serving, so a no-grams "log ketchup" wrote "15 g · 15 kcal" for a 15 g
+            // serving of a 15 kcal/100g food instead of ~2, and a later amount edit silently changed
+            // the calories (review P1-8).
+            val grams = requestedGrams ?: libraryFood.householdServingGrams ?: 100.0
+            libraryGrams = grams
+            val scale = grams / 100.0
             finalName = libraryFood.name
-            calories = (libraryFood.calories * scale).toInt()
+            // roundToInt (not toInt) to match FoodScaling.scale — the canonical scaler the manual-log
+            // and amount-edit paths use — so a later edit at the same amount can't nudge the calories.
+            calories = (libraryFood.calories * scale).roundToInt()
             proteinG = libraryFood.proteinG * scale
             carbsG = libraryFood.carbsG * scale
             fatG = libraryFood.fatG * scale
-            Log.d("RecompCoach", "logMeal: using library '$finalName' scale=$scale calories=$calories")
+            Log.d("RecompCoach", "logMeal: using library '$finalName' grams=$grams scale=$scale calories=$calories")
         } else {
             // Food not in library — fall back to model-provided macros.
             finalName = name
@@ -311,7 +322,8 @@ class CoachToolExecutor(
         // food log exactly like a manually-logged library food (shows "Xg ·" prefix and
         // allows amount editing). mealType is set to FOOD_LIBRARY so the entry is tagged
         // correctly; slot assignment still uses the user's mealType arg via matchedSlotId.
-        val logGrams = if (libraryFood != null) requestedGrams ?: libraryFood.householdServingGrams else null
+        // Same basis the macros were scaled at (above), so amount and calories always agree.
+        val logGrams = libraryGrams
         val input = MealEntryInput(
             date = logDate,
             mealType = if (libraryFood != null) MealEntryTypes.FOOD_LIBRARY else mealType,

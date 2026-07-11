@@ -447,6 +447,27 @@ class CoachDigestCoordinatorTest {
         assertEquals("the TODAY signal wins the Today slot", todaySignal, inbox.staged)
     }
 
+    @Test
+    fun `a second run on the same day is a no-op and does not clobber the staged winner`() = runTest {
+        val inbox = FakeInbox()
+        val winner = signal(dedupKey = "LOW_ADHERENCE|w27")
+        val coordinator = coordinator(inbox = inbox, engine = engineWith(winner), scope = this)
+
+        coordinator.run()
+        assertEquals(winner, inbox.staged)
+        val stageCallsAfterFirst = inbox.stageCalls
+
+        // A second run the same day (e.g. the periodic worker firing after a foreground open, or the
+        // two foreground triggers racing) must skip entirely. Without an in-lock debounce re-check it
+        // re-evaluates against the ledger the first run just wrote — the winner is now on cooldown, so
+        // the selector suppresses it and stages the runner-up (here: silence), clobbering the winner
+        // and burning its cooldown (review P1-7).
+        coordinator.run()
+
+        assertEquals("winner preserved, not clobbered by a second same-day run", winner, inbox.staged)
+        assertEquals("a second same-day run stages nothing new", stageCallsAfterFirst, inbox.stageCalls)
+    }
+
     // ── active experiment evaluation (Phase 5F) ──────────────────────────────────────
 
     /** A matured (age ≥ 7d) hunger experiment whose result is computable from the default context. */

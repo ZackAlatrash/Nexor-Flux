@@ -84,6 +84,13 @@ class CoachDigestCoordinator(
             return
         }
         val today = dateProvider.today()
+        // Once-a-day debounce, re-checked now that we hold runLock. runIfDue's pre-check is OUTSIDE
+        // the lock, and both foreground triggers (app foreground + Today-slot onShown) plus the
+        // periodic worker can call this on the same day. Without this re-check the second acquirer
+        // re-evaluates against the seen-ledger the first run just wrote — the winner is now on
+        // cooldown, so the selector stages the runner-up (or silence) OVER the real winner and burns
+        // lower-ranked signals' cooldowns (review P1-7; mirrors RebalanceCoordinator.runIfDue).
+        if (inbox.lastRunDate() == today) return
         val ctx = contextProvider()
         // Journey memory: idempotently record every weekly-review verdict the snapshot carries so the
         // multi-week narrative accretes over time. recordWeeklyVerdict dedups per signature, so

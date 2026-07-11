@@ -30,7 +30,9 @@ open class WorkoutSessionRepository(
      *  session — or no matching set — the set is left blank (reps=0, weightKg=null).
      *  Routine plan targets are not used for prefill. All sets start uncompleted. */
     open suspend fun startSession(template: WorkoutTemplate): Long {
-        val sessionId = sessionDao.insertSession(
+        // Retire any in-progress session and insert the new one atomically, so two ACTIVE sessions
+        // can never coexist (which would orphan the older workout's logged sets — P1-16).
+        val sessionId = sessionDao.abandonActiveAndInsertSession(
             WorkoutSessionEntity(
                 workoutId = template.id,
                 workoutName = template.name,

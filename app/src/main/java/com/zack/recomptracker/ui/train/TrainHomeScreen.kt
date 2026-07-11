@@ -114,6 +114,14 @@ fun TrainHomeScreen(
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
 
+    // Confirm before discarding an in-progress workout (P1-16): requestStart runs the start action
+    // immediately when nothing is active, otherwise it stashes it behind a confirm dialog. The
+    // repository also retires any prior session atomically, so a slipped double-tap can't double-start.
+    var pendingStart by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
+    val requestStart: (suspend () -> Unit) -> Unit = { action ->
+        if (state.activeSession != null) pendingStart = action else scope.launch { action() }
+    }
+
     val streakVm: StreakViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = LocalAppContainer.current.viewModelFactory,
     )
@@ -184,7 +192,7 @@ fun TrainHomeScreen(
                     recoveryLoggedToday = state.recoveryLoggedToday,
                     onStartRoutine = { routineId ->
                         state.routines.firstOrNull { it.id == routineId }?.let { template ->
-                            scope.launch {
+                            requestStart {
                                 viewModel.startSession(template)
                                 onStart()
                             }
@@ -192,7 +200,7 @@ fun TrainHomeScreen(
                     },
                     onStartLight = { routineId ->
                         state.routines.firstOrNull { it.id == routineId }?.let { template ->
-                            scope.launch {
+                            requestStart {
                                 viewModel.startLightSession(template)
                                 onStart()
                             }
@@ -325,7 +333,7 @@ fun TrainHomeScreen(
                         template = template,
                         onCardClick = { onEditRoutine(template.id) },
                         onStart = {
-                            scope.launch {
+                            requestStart {
                                 viewModel.startSession(template)
                                 onStart()
                             }
@@ -385,6 +393,19 @@ fun TrainHomeScreen(
         if (state.tab == TrainTab.STATS) {
             item { StatsContent(state = state, onOpenExerciseStats = onOpenExerciseStats) }
         }
+    }
+
+    pendingStart?.let { action ->
+        ConfirmDialog(
+            title = "Workout in progress",
+            body = "You already have an active workout. Starting a new one will discard it. Continue?",
+            confirmLabel = "Discard & start",
+            onConfirm = {
+                pendingStart = null
+                scope.launch { action() }
+            },
+            onDismiss = { pendingStart = null },
+        )
     }
 }
 

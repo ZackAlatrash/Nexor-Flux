@@ -28,6 +28,21 @@ abstract class WorkoutSessionDao {
     @Insert
     abstract suspend fun insertSession(session: WorkoutSessionEntity): Long
 
+    /** Marks every currently-ACTIVE session as ABANDONED. Used to guarantee a single active session. */
+    @Query("UPDATE workout_sessions SET status = 'ABANDONED' WHERE status = 'ACTIVE'")
+    abstract suspend fun abandonActiveSessions()
+
+    /**
+     * Atomically retires any in-progress session and inserts [session] as the new one, so starting a
+     * workout can never leave two ACTIVE sessions (which orphans the older one — P1-16). The prior
+     * session's logged sets are preserved; only its status changes.
+     */
+    @Transaction
+    open suspend fun abandonActiveAndInsertSession(session: WorkoutSessionEntity): Long {
+        abandonActiveSessions()
+        return insertSession(session)
+    }
+
     @Update
     abstract suspend fun updateSession(session: WorkoutSessionEntity)
 

@@ -9,7 +9,6 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.remote.WebResult
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.WebSearchResult
-import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
@@ -341,13 +340,15 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `log_metric weight_kg saves weight and returns success`() = runTest {
-        var saved: DailyMetricsInput? = null
+    fun `log_metric weight_kg saves weight via a partial write and returns success`() = runTest {
+        var savedDate: java.time.LocalDate? = null
+        var savedMetric: String? = null
+        var savedValue: Double? = null
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
-        whenever(logRepo.getDay(fixedDate)).thenReturn(emptyDayLog())
-        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
-            saved = inv.getArgument(0); Unit
+        // P2-7: a single metric goes through the partial-column write, NOT a whole-row save.
+        whenever(logRepo.setDailyMetric(any(), any(), any())).thenAnswer { inv ->
+            savedDate = inv.getArgument(0); savedMetric = inv.getArgument(1); savedValue = inv.getArgument(2); Unit
         }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
@@ -356,24 +357,27 @@ class CoachToolExecutorTest {
         assertTrue("Should succeed", result.contains("\"success\":true"))
         assertTrue("Should echo metric", result.contains("weight_kg"))
         assertTrue("Should echo value", result.contains("82.5"))
-        assertTrue("Weight should be saved", saved?.bodyWeightKg == 82.5)
+        assertEquals(fixedDate, savedDate)
+        assertEquals("weight_kg", savedMetric)
+        assertEquals(82.5, savedValue!!, 0.0)
     }
 
     @Test
-    fun `log_metric sleep_hours saves sleep and returns success`() = runTest {
-        var saved: DailyMetricsInput? = null
+    fun `log_metric sleep_hours saves sleep via a partial write and returns success`() = runTest {
+        var savedMetric: String? = null
+        var savedValue: Double? = null
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
-        whenever(logRepo.getDay(fixedDate)).thenReturn(emptyDayLog())
-        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
-            saved = inv.getArgument(0); Unit
+        whenever(logRepo.setDailyMetric(any(), any(), any())).thenAnswer { inv ->
+            savedMetric = inv.getArgument(1); savedValue = inv.getArgument(2); Unit
         }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("log_metric", mapOf("metric" to "sleep_hours", "value" to "7.5"))
 
         assertTrue("Should succeed", result.contains("\"success\":true"))
-        assertTrue("Sleep should be saved", saved?.sleepHours == 7.5)
+        assertEquals("sleep_hours", savedMetric)
+        assertEquals(7.5, savedValue!!, 0.0)
     }
 
     @Test
@@ -435,19 +439,21 @@ class CoachToolExecutorTest {
 
     @Test
     fun `log_metric energy_score accepts whole numbers`() = runTest {
-        var saved: DailyMetricsInput? = null
+        var savedMetric: String? = null
+        var savedValue: Double? = null
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
-        whenever(logRepo.getDay(fixedDate)).thenReturn(emptyDayLog())
-        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
-            saved = inv.getArgument(0); Unit
+        whenever(logRepo.setDailyMetric(any(), any(), any())).thenAnswer { inv ->
+            savedMetric = inv.getArgument(1); savedValue = inv.getArgument(2); Unit
         }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("log_metric", mapOf("metric" to "energy_score", "value" to "8.0"))
 
         assertTrue("Should succeed", result.contains("\"success\":true"))
-        assertTrue("Should save as integer", saved?.energyScore == 8)
+        // The partial write receives the score; the DAO stores its integer part (see DailyLogPartialMetricTest).
+        assertEquals("energy_score", savedMetric)
+        assertEquals(8.0, savedValue!!, 0.0)
     }
 
     @Test

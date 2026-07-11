@@ -35,11 +35,10 @@ private const val MIN_HEIGHT_CM = 90
 private const val MAX_HEIGHT_CM = 250
 private const val MIN_WEIGHT_KG = 30.0
 private const val MAX_WEIGHT_KG = 300.0
-// Adjusted calorie target is clamped to the same range the coach tool uses, and its zone is
-// recomputed around the (clamped) target — matches PlanCalculator's target ± 100 band.
+// Adjusted calorie target is clamped to the same range the coach tool uses; the zone is recomputed
+// around the (clamped) target by PlanPreferences.withCalorieTarget (the canonical helper).
 private const val MIN_CALORIE_TARGET = 500
 private const val MAX_CALORIE_TARGET = 6000
-private const val CALORIE_ZONE_BAND = 100
 
 internal fun isPlausibleHeightCm(cm: Int): Boolean = cm in MIN_HEIGHT_CM..MAX_HEIGHT_CM
 internal fun isPlausibleWeightKg(kg: Double): Boolean = kg in MIN_WEIGHT_KG..MAX_WEIGHT_KG
@@ -224,20 +223,18 @@ class OnboardingViewModel(
         viewModelScope.launch {
             userProfileStore.save(buildDraftProfile(s))
             val base = planRepository.preferences.first()
-            // Clamp a hand-edited calorie target to a sane range and recompute the zone AROUND it —
-            // the zone must not stay pinned to the original plan's target after an adjustment (P1-14).
+            // Clamp a hand-edited calorie target to a sane range; withCalorieTarget recomputes the
+            // zone AROUND it (the canonical helper) so the zone never stays pinned to the original
+            // plan's target after an adjustment (P1-14).
             val adjustedCalories = (s.adjCalories.toIntOrNull() ?: plan.targetCalories)
                 .coerceIn(MIN_CALORIE_TARGET, MAX_CALORIE_TARGET)
             planRepository.save(
                 base.copy(
-                    targetCalories = adjustedCalories,
                     targetProteinG = s.adjProtein.toIntOrNull() ?: plan.proteinG,
                     targetCarbsG = s.adjCarbs.toIntOrNull() ?: plan.carbsG,
                     targetFatG = s.adjFat.toIntOrNull() ?: plan.fatG,
-                    calorieZoneLowerBound = adjustedCalories - CALORIE_ZONE_BAND,
-                    calorieZoneUpperBound = adjustedCalories + CALORIE_ZONE_BAND,
                     useMetricUnits = s.useMetricUnits,
-                ),
+                ).withCalorieTarget(adjustedCalories),
             )
             // First run by definition: today's row does not exist yet, so an upsert is safe.
             logRepository.saveDailyMetrics(

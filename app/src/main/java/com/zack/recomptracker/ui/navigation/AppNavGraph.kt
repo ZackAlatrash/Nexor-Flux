@@ -436,7 +436,9 @@ fun AppNavGraph(
 
             val vm = viewModel<RoutineBuilderViewModel>(factory = factory)
 
-            // Load existing workout data on first composition (edit mode only)
+            // Load existing workout data in edit mode. This effect re-fires on every re-entry
+            // (returning from the exercise picker, rotation) — loadWorkout guards against reloading
+            // an already-loaded routine so the in-progress draft is never wiped (P1-15).
             androidx.compose.runtime.LaunchedEffect(workoutId) {
                 vm.loadWorkout(workoutId)
             }

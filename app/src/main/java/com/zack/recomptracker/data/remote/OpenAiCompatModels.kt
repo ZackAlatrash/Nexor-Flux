@@ -60,8 +60,7 @@ fun extractStreamDelta(line: String): String? {
         val choices = strictJson.parseToJsonElement(payload)
             .jsonObject["choices"]?.jsonArray ?: return null
         val delta = choices.firstOrNull()?.jsonObject?.get("delta")?.jsonObject ?: return null
-        val content = delta["content"]?.jsonPrimitive?.contentOrNullSafe()
-        content?.takeIf { it.isNotEmpty() }
+        delta["content"].messageContentText().takeIf { it.isNotEmpty() }
     } catch (_: Exception) {
         null
     }
@@ -74,7 +73,7 @@ fun parseChatResponse(body: String): ParsedChatResponse {
         ?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
         ?: return ParsedChatResponse(text = "", toolCalls = emptyList())
 
-    val text = message["content"]?.jsonPrimitive?.contentOrNullSafe()?.trim().orEmpty()
+    val text = message["content"].messageContentText().trim()
 
     val toolCalls = (message["tool_calls"] as? JsonArray).orEmptyArray().mapNotNull { element ->
         val obj = element.jsonObject
@@ -144,5 +143,19 @@ private fun JsonPrimitive.contentOrNullSafe(): String? =
     if (this.isString) content
     else if (this.toString() == "null") null
     else content
+
+/**
+ * Text of a message `content` field, which may be a plain string OR an OpenAI content-parts array
+ * (e.g. `[{"type":"text","text":"…"}]`). Some OpenAI-compatible routes return the array form; reading
+ * it directly as a primitive threw and failed the whole turn with a generic error (review P2-6).
+ * Returns "" for null, JSON null, or an unrecognised shape; concatenates the text parts of an array.
+ */
+private fun JsonElement?.messageContentText(): String = when (this) {
+    is JsonPrimitive -> contentOrNullSafe().orEmpty()
+    is JsonArray -> joinToString("") { part ->
+        ((part as? JsonObject)?.get("text") as? JsonPrimitive)?.contentOrNullSafe().orEmpty()
+    }
+    else -> ""
+}
 
 private fun JsonArray?.orEmptyArray(): JsonArray = this ?: JsonArray(emptyList())

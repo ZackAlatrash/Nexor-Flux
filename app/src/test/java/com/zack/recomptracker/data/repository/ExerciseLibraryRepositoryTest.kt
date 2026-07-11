@@ -104,6 +104,12 @@ class ExerciseLibraryRepositoryTest {
     /** Fake DAO that captures the inserted entity and returns a fixed id. */
     private class CapturingExerciseDao : ExerciseDao by mock() {
         var inserted: ExerciseEntity? = null
+        // addCustomExercise now routes through the idempotent insertCustomOrGetExisting (P1-20);
+        // capture the entity it builds here.
+        override suspend fun insertCustomOrGetExisting(entity: ExerciseEntity): Long {
+            inserted = entity
+            return 42L
+        }
         override suspend fun insertReturningId(entity: ExerciseEntity): Long {
             inserted = entity
             return 42L

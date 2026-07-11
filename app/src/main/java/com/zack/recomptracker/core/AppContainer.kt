@@ -552,6 +552,7 @@ class AppContainer(context: Context) {
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
         toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
+        dateProvider = dateProvider,
     )
 
     // ── Proactive coaching spine (deterministic engine → inbox; cloud phrasing on open) ──

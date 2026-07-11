@@ -296,6 +296,28 @@ class CoachToolExecutorTest {
     }
 
     @Test
+    fun `log_meal falls back to the first slot when no slot name matches the meal_type`() = runTest {
+        var capturedSlotId: Long? = -1L
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        // Default slots have no "snack"; the model asks to log a snack.
+        val meal1 = MealSlotEntity(id = 7L, name = "Meal 1", sortOrder = 0)
+        val dinner = MealSlotEntity(id = 9L, name = "Dinner", sortOrder = 2)
+        whenever(logRepo.getSavedFoods()).thenReturn(emptyList())
+        whenever(logRepo.getSlots()).thenReturn(listOf(meal1, dinner))
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv ->
+            capturedSlotId = inv.getArgument(1)
+            1L
+        }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        executor.execute("log_meal", mapOf("name" to "Trail mix", "calories" to "300", "meal_type" to "snack"))
+
+        // No slot named "snack" → falls back to the first slot (Meal 1), never a null slot (P1-22).
+        assertTrue("Should fall back to the first slot, not null", capturedSlotId == 7L)
+    }
+
+    @Test
     fun `log_meal without name returns error JSON`() = runTest {
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()

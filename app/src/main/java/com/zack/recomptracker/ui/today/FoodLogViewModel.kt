@@ -45,6 +45,9 @@ private data class DaySummary(
     val plannedTotals: MacroTotals,
     val hasPlannedEntries: Boolean,
     val slots: ImmutableList<MealSlotWithEntries>,
+    /** Entries with no slot (or a since-deleted slot) — rendered in an "Unassigned" section so they
+     *  aren't invisible-but-counted (P1-22). */
+    val unslottedEntries: ImmutableList<MealEntryEntity>,
     /** Day-X-of-Y info when the viewed day falls in a rebalance window, else null. */
     val rebalanceDay: PlanDayInfo?,
 )
@@ -59,6 +62,8 @@ data class FoodLogUiState(
     /** True when the selected day has at least one planned entry. */
     val hasPlannedEntries: Boolean = false,
     val slots: ImmutableList<MealSlotWithEntries> = persistentListOf(),
+    /** Entries with no slot (or a since-deleted slot) — shown in an "Unassigned" section (P1-22). */
+    val unslottedEntries: ImmutableList<MealEntryEntity> = persistentListOf(),
     val slotsEditMode: Boolean = false,
     /**
      * "Rebalance · Day X of Y" info for the selected day when a rebalance covers it, else null.
@@ -144,6 +149,12 @@ class FoodLogViewModel(
                         val entries = slotMap[slot.id].orEmpty()
                         MealSlotWithEntries(slot = slot, entries = entries, totals = entries.macroTotals())
                     }.toImmutableList()
+                    // Entries with no slot — or a slot that no longer exists — would otherwise vanish
+                    // from the list yet still count toward totals (P1-22).
+                    val knownSlotIds = slots.mapTo(HashSet()) { it.id }
+                    val unslotted = day.meals
+                        .filter { it.slotId == null || it.slotId !in knownSlotIds }
+                        .toImmutableList()
                     DaySummary(
                         date = day.date,
                         target = dayTarget,
@@ -151,6 +162,7 @@ class FoodLogViewModel(
                         plannedTotals = day.plannedTotals,
                         hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
+                        unslottedEntries = unslotted,
                         rebalanceDay = EffectiveTargets.planDayInfo(date, rebalanceState),
                     )
                 }
@@ -163,6 +175,7 @@ class FoodLogViewModel(
                         plannedTotals = s.plannedTotals,
                         hasPlannedEntries = s.hasPlannedEntries,
                         slots = s.slots,
+                        unslottedEntries = s.unslottedEntries,
                         rebalanceDay = s.rebalanceDay,
                     )
                 }

@@ -318,10 +318,13 @@ class CoachToolExecutor(
             planned = meal.planned,
         )
         // Match the meal_type to a named slot (case-insensitive) so the entry appears inside the
-        // correct slot card in the food log screen, not just in the totals.
-        val matchedSlotId = logRepository.getSlots()
-            .firstOrNull { it.name.trim().equals(meal.mealType, ignoreCase = true) }
-            ?.id
+        // correct slot card in the food log screen, not just in the totals. When nothing matches
+        // (e.g. the model says "breakfast"/"snack" but the slots are "Meal 1"/"Lunch"/"Dinner"), fall
+        // back to the first slot rather than leaving slotId null — a null-slot entry counts toward
+        // totals but is invisible/uneditable in the food log (P1-22).
+        val slots = logRepository.getSlots()
+        val matchedSlotId = slots.firstOrNull { it.name.trim().equals(meal.mealType, ignoreCase = true) }?.id
+            ?: slots.firstOrNull()?.id
         logRepository.addMealToSlot(input, matchedSlotId)
         return if (meal.planned) {
             """{"success":true,"planned":"${meal.finalName.esc()}","date":"${meal.date}","calories":${meal.calories}}"""

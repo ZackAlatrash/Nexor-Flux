@@ -170,6 +170,30 @@ class FoodLogViewModelTest {
     }
 
     @Test
+    fun `entries with no slot appear in the unassigned bucket instead of being dropped`() = runTest {
+        val slot = com.zack.recomptracker.data.local.entity.MealSlotEntity(id = 1L, name = "Meal 1", sortOrder = 0)
+        val slotted = MealEntryEntity(
+            id = 10L, date = today.toString(), mealType = "Lunch", name = "Chicken",
+            calories = 200, proteinG = 30.0, carbsG = 0.0, fatG = 5.0, slotId = 1L,
+        )
+        val unassigned = MealEntryEntity(
+            id = 11L, date = today.toString(), mealType = "snack", name = "Coach snack",
+            calories = 300, proteinG = 5.0, carbsG = 40.0, fatG = 10.0, slotId = null,
+        )
+        whenever(logRepo.observeSlots()).thenReturn(flowOf(listOf(slot)))
+        whenever(logRepo.observeDay(today)).thenReturn(
+            flowOf(DayLog(today, null, listOf(slotted, unassigned), MacroTotals(calories = 500))),
+        )
+        val vm = buildVm()
+        advanceUntilIdle()
+
+        // The null-slot entry is visible in the Unassigned bucket, not silently dropped.
+        assertEquals(listOf(11L), vm.uiState.value.unslottedEntries.map { it.id })
+        // The slotted entry stays in its slot.
+        assertEquals(listOf(10L), vm.uiState.value.slots.single().entries.map { it.id })
+    }
+
+    @Test
     fun `past day target reflects the plan in effect on that day, not current prefs`() = runTest {
         val yesterday = today.minusDays(1)
         // Current prefs differ from the historical plan that was in effect yesterday.

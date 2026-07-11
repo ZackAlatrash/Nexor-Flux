@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.zack.recomptracker.ui.component.GlassBottomSheet
 import com.zack.recomptracker.ui.component.GlassInputField
 import com.zack.recomptracker.ui.component.GlassTextArea
+import com.zack.recomptracker.ui.component.MessageText
 import com.zack.recomptracker.ui.component.ScoreStepper
 import com.zack.recomptracker.ui.component.SectionLabel
 import com.zack.recomptracker.ui.component.VioletToggle
@@ -37,8 +38,10 @@ object CheckInSection {
 }
 
 /**
- * Reusable daily check-in bottom sheet. Pass [onDismiss] to handle both
- * drag-to-close and post-save dismissal from the caller.
+ * Reusable daily check-in bottom sheet. Save does NOT auto-dismiss: the caller must close the sheet
+ * only when the ViewModel signals a successful save, so an invalid entry (e.g. a "12k" steps typo)
+ * keeps the sheet open with its error visible instead of silently dropping the whole check-in
+ * (P1-11). [onDismiss] handles drag-to-close.
  *
  * [initialSection] scrolls to a specific section on open:
  *   CheckInSection.MEASUREMENTS (0), RECOVERY (1), or ACTIVITY (2).
@@ -55,10 +58,7 @@ fun BodyCheckInSheet(
     GlassBottomSheet(onDismiss = onDismiss, sheetState = sheetState) {
         BodyCheckInSheetContent(
             state = state,
-            actions = actions.copy(onSave = {
-                actions.onSave()
-                onDismiss()
-            }),
+            actions = actions,
             initialSection = initialSection,
         )
     }
@@ -137,6 +137,10 @@ fun BodyCheckInSheetContent(
             SectionLabel("Activity")
             VioletToggle("Training day", state.trained, actions.onTrainedChanged)
             GlassTextArea(state.notes, actions.onNotesChanged, placeholder = "Notes...", minLines = 2)
+            // Surfaces a validation error (e.g. bad steps) so a failed save keeps the sheet open
+            // with a reason instead of silently discarding the check-in (P1-11). Renders nothing
+            // when null; matches the message shown by BodyCheckInFormContent on the edit screen.
+            MessageText(state.message)
             LiquidPrimaryButton(text = "Save check-in", onClick = actions.onSave)
         }
     }

@@ -23,6 +23,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -157,5 +158,97 @@ class OnboardingViewModelTest {
         val planCaptor = argumentCaptor<PlanPreferences>()
         verify(planRepo).save(planCaptor.capture())
         assertEquals(2000, planCaptor.firstValue.targetCalories)
+    }
+
+    // ── P1-14 ─────────────────────────────────────────────────────────────────
+
+    @Test
+    fun absurdHeightBlocksContinue() {
+        val vm = vm()
+        vm.next()                                // -> step 1
+        vm.setSex(BiologicalSex.MALE)
+        vm.setBirthDate("1996-03-14")
+        vm.setHeight("15")                       // 15 cm — implausible
+        assertFalse(vm.uiState.value.canContinue)
+        vm.setHeight("300")                      // 300 cm — implausible
+        assertFalse(vm.uiState.value.canContinue)
+        vm.setHeight("178")                      // plausible
+        assertTrue(vm.uiState.value.canContinue)
+    }
+
+    @Test
+    fun absurdWeightBlocksContinue() {
+        val vm = vm()
+        vm.fillValid()                           // weight 82.5 → can continue
+        assertTrue(vm.uiState.value.canContinue)
+        vm.setWeight("10")                       // 10 kg — implausible
+        assertFalse(vm.uiState.value.canContinue)
+        vm.setWeight("400")                      // 400 kg — implausible
+        assertFalse(vm.uiState.value.canContinue)
+        vm.setWeight("82.5")
+        assertTrue(vm.uiState.value.canContinue)
+    }
+
+    @Test
+    fun finishClampsAbsurdAdjustedCaloriesAndRecomputesZone() = runTest(dispatcher) {
+        val vm = vm()
+        vm.fillValid()
+        vm.next(); advanceUntilIdle()            // generate -> step 3
+        vm.setAdjustedCalories("99999")          // absurd
+        vm.finish(); advanceUntilIdle()
+
+        val planCaptor = argumentCaptor<PlanPreferences>()
+        verify(planRepo).save(planCaptor.capture())
+        assertEquals(6000, planCaptor.firstValue.targetCalories) // clamped to max
+        assertEquals(5900, planCaptor.firstValue.calorieZoneLowerBound)
+        assertEquals(6100, planCaptor.firstValue.calorieZoneUpperBound)
+    }
+
+    @Test
+    fun finishRecomputesZoneAroundAdjustedTarget() = runTest(dispatcher) {
+        val vm = vm()
+        vm.fillValid()
+        vm.next(); advanceUntilIdle()            // generate -> step 3
+        vm.setAdjustedCalories("2000")
+        vm.finish(); advanceUntilIdle()
+
+        val planCaptor = argumentCaptor<PlanPreferences>()
+        verify(planRepo).save(planCaptor.capture())
+        assertEquals(1900, planCaptor.firstValue.calorieZoneLowerBound)
+        assertEquals(2100, planCaptor.firstValue.calorieZoneUpperBound)
+    }
+
+    @Test
+    fun parseHeightCmImperialConvertsAndBoundsChecks() {
+        assertEquals(175, parseHeightCmImperial("5", "9"))   // 69 in → 175 cm
+        assertEquals(183, parseHeightCmImperial("6", "0"))   // 72 in → 183 cm
+        assertEquals(152, parseHeightCmImperial("5", ""))    // whole feet, blank inches → 60 in → 152 cm
+        assertNull(parseHeightCmImperial("", "9"))           // no feet
+        assertNull(parseHeightCmImperial("5", "13"))         // inches must be a 0..<12 remainder
+        assertNull(parseHeightCmImperial("2", "0"))          // 61 cm — implausibly short
+    }
+
+    @Test
+    fun imperialHeightSplitParsesFeetAndInches() {
+        val vm = vm()
+        vm.next()                                // -> step 1
+        vm.setSex(BiologicalSex.MALE)
+        vm.setBirthDate("1996-03-14")
+        vm.setUnits(metric = false)
+        vm.setHeightFeet("5")
+        vm.setHeightInches("9")
+        assertTrue(vm.uiState.value.canContinue)
+        assertEquals(175, resolveHeightCm(vm.uiState.value)) // 5'9" = 175 cm
+    }
+
+    @Test
+    fun changingUnitsClearsImperialHeightSplit() {
+        val vm = vm()
+        vm.next()
+        vm.setUnits(metric = false)
+        vm.setHeightFeet("5"); vm.setHeightInches("9")
+        vm.setUnits(metric = true)
+        assertEquals("", vm.uiState.value.heightFeetInput)
+        assertEquals("", vm.uiState.value.heightInchesInput)
     }
 }

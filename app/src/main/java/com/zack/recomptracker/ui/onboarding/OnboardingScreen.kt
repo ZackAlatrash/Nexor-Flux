@@ -187,14 +187,37 @@ private fun YourBodyStep(state: OnboardingUiState, vm: OnboardingViewModel) {
             SectionLabel("Date of birth")
             PickerRow(value = state.birthDate ?: "Select date") { showDatePicker = true }
             Spacer(Modifier.height(16.dp))
-            GlassInputField(
-                label = "Height",
-                value = state.heightInput,
-                onValueChange = vm::setHeight,
-                unit = if (state.useMetricUnits) "cm" else "in",
-                keyboardType = KeyboardType.Number,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (state.useMetricUnits) {
+                GlassInputField(
+                    label = "Height",
+                    value = state.heightInput,
+                    onValueChange = vm::setHeight,
+                    unit = "cm",
+                    keyboardType = KeyboardType.Number,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                // Split feet + inches so a US user can't type "5.9" (5′9″) into one inches field and
+                // silently get 15 cm (P1-14).
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    GlassInputField(
+                        label = "Height",
+                        value = state.heightFeetInput,
+                        onValueChange = vm::setHeightFeet,
+                        unit = "ft",
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.weight(1f),
+                    )
+                    GlassInputField(
+                        label = "Inches",
+                        value = state.heightInchesInput,
+                        onValueChange = vm::setHeightInches,
+                        unit = "in",
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     }
     if (showDatePicker) {

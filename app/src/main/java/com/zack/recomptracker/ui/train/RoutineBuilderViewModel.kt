@@ -64,6 +64,10 @@ class RoutineBuilderViewModel(
 
     suspend fun loadWorkout(workoutId: Long?) {
         if (workoutId == null || workoutId == -1L) return
+        // Already loaded this routine — do NOT re-fetch and overwrite. The load effect re-fires when
+        // the builder re-enters composition (returning from the exercise picker, or on rotation), and
+        // without this guard it would race addExercises and wipe the in-progress draft (P1-15).
+        if (_state.value.workoutId == workoutId) return
         val template = workoutRepository.getById(workoutId) ?: return
         val exercises = template.exercises.map { templateEx ->
             BuilderExercise(

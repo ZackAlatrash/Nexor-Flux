@@ -2,6 +2,8 @@ package com.zack.recomptracker.ai
 
 import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
 import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
+import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.core.time.SystemDateProvider
 import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -58,6 +61,9 @@ class CloudCoachCoordinator(
     private val scope: CoroutineScope,
     private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
     private val toolSchemas: List<String> = COACH_TOOL_SCHEMAS,
+    // Used only to detect a calendar-day rollover mid-conversation, so the once-seeded system
+    // snapshot (Today's date + totals) can be rebuilt instead of answering with yesterday's data.
+    private val dateProvider: DateProvider = SystemDateProvider(),
 ) : CoachCoordinator {
 
     private val _state = MutableStateFlow<CoachState>(CoachState.Unavailable)
@@ -67,6 +73,8 @@ class CloudCoachCoordinator(
     private val turnLock = Mutex()
     private val requestMessages = mutableListOf<ChatRequestMessage>()
     private var systemSeeded = false
+    // The calendar day the system snapshot was (re)seeded for; a change means the snapshot is stale.
+    private var seededDate: LocalDate? = null
     // The previous turn's injected reference message, dropped before injecting the next turn's so
     // multi-turn context never accumulates reference blocks.
     private var lastReferenceMessage: ChatRequestMessage? = null
@@ -102,6 +110,7 @@ class CloudCoachCoordinator(
                 history.clear()
                 requestMessages.clear()
                 systemSeeded = false
+                seededDate = null
                 lastReferenceMessage = null
                 if (_state.value != CoachState.Unavailable) _state.value = CoachState.Ready
             }
@@ -122,9 +131,18 @@ class CloudCoachCoordinator(
             committedWrites.clear()
             pushThinking("Thinking…")
             try {
+                val today = dateProvider.today()
+                // The system snapshot embeds Today's date + totals and is seeded once. If the day
+                // rolled over mid-conversation, rebuild it in place (index 0 is always the snapshot)
+                // so the coach stops answering "today" with yesterday's data (review P2-3).
+                if (systemSeeded && seededDate != today && requestMessages.firstOrNull()?.role == "system") {
+                    requestMessages[0] = ChatRequestMessage(role = "system", content = tools.systemPromptSnapshot())
+                    seededDate = today
+                }
                 if (!systemSeeded) {
                     requestMessages.add(ChatRequestMessage(role = "system", content = tools.systemPromptSnapshot()))
                     systemSeeded = true
+                    seededDate = today
                 }
                 // Refresh the per-turn knowledge block: drop the previous turn's block, inject a
                 // fresh one for THIS question, positioned immediately before the user message.

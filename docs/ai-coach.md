@@ -136,7 +136,11 @@ rate limits. Test source set only; never ships.
 - Free OpenRouter routes rate-limit (429) and occasionally change tool-calling behaviour; the model
   remap in `UiPreferences.cloudModelId` is the escape hatch for a route that stops emitting
   `tool_calls`. There is currently no retry/backoff and no `tool_choice` in requests.
-- The system snapshot is seeded once per conversation — totals/date can go stale across midnight or
-  after the coach's own writes (see the July 2026 review, P2-3).
+- The system snapshot is seeded once per conversation. A calendar-day rollover mid-conversation now
+  rebuilds it in place (`CloudCoachCoordinator` tracks the seeded date via `DateProvider`), so the
+  date/totals no longer freeze across midnight (P2-3). Post-write totals are only *mitigated*: a
+  `COACH_PROMPT_GUIDELINES` line tells the model to re-call `get_today_summary()` after a write before
+  quoting today's totals — a model that ignores it can still quote the pre-write snapshot (the
+  coordinator does not force a refresh after a confirmed write).
 - Error handling collapses all failures into one generic message today; a sealed error taxonomy is
   on the roadmap.

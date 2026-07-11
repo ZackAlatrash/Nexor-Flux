@@ -38,6 +38,11 @@ class SessionSummaryViewModelTest {
     /** Minimal in-memory session DAO holding one ACTIVE session with one exercise + set. */
     private class FakeDao : WorkoutSessionDao() {
         override suspend fun abandonActiveSessions() {}
+        override suspend fun updateSetWeight(setId: Long, weightKg: Double?) {}
+        override suspend fun updateSetReps(setId: Long, reps: Int) {}
+        override suspend fun updateSetRir(setId: Long, rir: Int?) {}
+        override suspend fun updateSetCompleted(setId: Long, completed: Boolean) {}
+        override suspend fun getSetById(setId: Long): com.zack.recomptracker.data.local.entity.SessionSetEntity? = null
         val sessions = mutableMapOf<Long, WorkoutSessionEntity>()
         val exercises = mutableMapOf<Long, SessionExerciseEntity>()
         val sets = mutableMapOf<Long, SessionSetEntity>()

@@ -152,6 +152,11 @@ private class PrNoopExerciseDao : ExerciseDao {
 private class PrNoopSessionDao : WorkoutSessionDao() {
     override suspend fun insertSession(session: WorkoutSessionEntity): Long = 0L
     override suspend fun abandonActiveSessions() {}
+    override suspend fun updateSetWeight(setId: Long, weightKg: Double?) {}
+    override suspend fun updateSetReps(setId: Long, reps: Int) {}
+    override suspend fun updateSetRir(setId: Long, rir: Int?) {}
+    override suspend fun updateSetCompleted(setId: Long, completed: Boolean) {}
+    override suspend fun getSetById(setId: Long): com.zack.recomptracker.data.local.entity.SessionSetEntity? = null
     override suspend fun updateSession(session: WorkoutSessionEntity) {}
     override suspend fun deleteSessionById(id: Long) {}
     override suspend fun insertSessionExercise(exercise: SessionExerciseEntity): Long = 0L

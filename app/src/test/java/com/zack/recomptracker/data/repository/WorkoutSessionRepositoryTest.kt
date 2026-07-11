@@ -52,6 +52,11 @@ class WorkoutSessionRepositoryTest {
         override suspend fun getAllSessionExercises(): List<SessionExerciseEntity> = exercises.values.toList()
         override suspend fun getAllSessionSets(): List<SessionSetEntity> = sets.values.toList()
         override suspend fun updateSet(set: SessionSetEntity) { sets[set.id] = set }
+        override suspend fun updateSetWeight(setId: Long, weightKg: Double?) { sets[setId] = sets.getValue(setId).copy(weightKg = weightKg) }
+        override suspend fun updateSetReps(setId: Long, reps: Int) { sets[setId] = sets.getValue(setId).copy(reps = reps) }
+        override suspend fun updateSetRir(setId: Long, rir: Int?) { sets[setId] = sets.getValue(setId).copy(rir = rir) }
+        override suspend fun updateSetCompleted(setId: Long, completed: Boolean) { sets[setId] = sets.getValue(setId).copy(completed = completed) }
+        override suspend fun getSetById(setId: Long): SessionSetEntity? = sets[setId]
         override suspend fun deleteSetById(id: Long) { sets.remove(id) }
         override suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int =
             sets.values.count { it.sessionExerciseId == sessionExerciseId }

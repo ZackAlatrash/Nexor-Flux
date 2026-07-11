@@ -59,6 +59,9 @@ class CoachToolsAdapter(
     override suspend fun execute(name: String, args: Map<String, String>): String =
         withContext(Dispatchers.IO) { toolExecutor.execute(name, args) }
 
+    override suspend fun describeLoggedMeal(args: Map<String, String>): String =
+        withContext(Dispatchers.IO) { toolExecutor.describeLoggedMeal(args) }
+
     override suspend fun systemPromptSnapshot(): String {
         val prefs = planRepository.preferences.first()
         val profile = userProfileStore.preferences.first()

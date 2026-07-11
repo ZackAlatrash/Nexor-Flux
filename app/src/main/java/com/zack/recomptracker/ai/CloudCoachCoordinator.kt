@@ -33,6 +33,13 @@ interface CoachReadTools {
     suspend fun execute(name: String, args: Map<String, String>): String
     /** The full system prompt (plan, profile, today's snapshot, rules) for a new conversation. */
     suspend fun systemPromptSnapshot(): String
+
+    /**
+     * Confirmation-dialog text for a pending log_meal, resolved the SAME way execution resolves it
+     * (library match + planned/date), so the dialog can't describe a different action than the one
+     * performed (review P1-9). Null → the caller falls back to a generic description of the args.
+     */
+    suspend fun describeLoggedMeal(args: Map<String, String>): String? = null
 }
 
 /**
@@ -217,10 +224,15 @@ class CloudCoachCoordinator(
     }
 
     private suspend fun confirmAndRun(call: ParsedToolCall): String {
+        // For log_meal, describe what will ACTUALLY be written (library-resolved food/macros,
+        // planned-vs-logged date) rather than the model's raw args (review P1-9); other tools use the
+        // static description. Null from the adapter → fall back to the static text.
+        val displayText = (if (call.name == "log_meal") tools.describeLoggedMeal(call.arguments) else null)
+            ?: pendingActionDisplayText(call.name, call.arguments)
         val action = PendingCoachAction(
             toolName = call.name,
             args = call.arguments,
-            displayText = pendingActionDisplayText(call.name, call.arguments),
+            displayText = displayText,
         )
         val deferred = CompletableDeferred<Boolean>()
         pendingConfirmation.set(deferred)

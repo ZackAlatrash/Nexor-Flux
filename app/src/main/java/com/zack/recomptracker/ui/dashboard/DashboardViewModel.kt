@@ -351,8 +351,9 @@ class DashboardViewModel(
         if (verdict == lastPersistedVerdict && change == lastPersistedChange) return
         lastPersistedVerdict = verdict
         lastPersistedChange = change
-        val today = dateProvider.today()
-        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        // Use the day this state describes (not the wall clock) so a debounced emission whose
+        // collect resumes just after midnight still files the review under its own week.
+        val weekStart = state.today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         logRepository.saveWeeklyReview(
             WeeklyReviewEntity(
                 weekStart = weekStart.toString(),

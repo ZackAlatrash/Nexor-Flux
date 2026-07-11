@@ -96,9 +96,8 @@ class TrainViewModel(
         workoutRepository.observeAll(),
         exerciseLibraryRepository.observeAll(),
         sessionRepository.observeCompletedSessions(),
-        // Bundle logs+profile into one source so the reactive "today" fits as a *direct* 5th source
-        // (combine's typed max is 5). It must be direct — folding it into another source doesn't
-        // re-propagate on change — so plan/readiness recomputes at midnight (P1-10), matching core.
+        // Bundle logs+profile into one source so the reactive "today" fits as a 5th source within
+        // combine's 5-argument typed arity, so plan/readiness recomputes at midnight (P1-10).
         combine(logRepository.observeDailyLogs(), userProfileStore.preferences) { logs, profile -> logs to profile },
         dateProvider.todayFlow(),
     ) { routines, library, history, logsAndProfile, today ->

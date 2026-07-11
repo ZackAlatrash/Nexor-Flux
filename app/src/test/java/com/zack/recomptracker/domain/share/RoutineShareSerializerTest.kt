@@ -61,8 +61,22 @@ class RoutineShareSerializerTest {
     }
 
     @Test
+    fun `rejects a blank routine name`() {
+        val blank = RoutineShareSerializer.encode(sample.copy(name = "   "))
+        assertEquals(RoutineShareResult.Damaged, RoutineShareSerializer.decode(blank))
+    }
+
+    @Test
+    fun `rejects an exercise with no sets`() {
+        val noSets = RoutineShareSerializer.encode(
+            sample.copy(exercises = listOf(sample.exercises.first().copy(sets = emptyList()))),
+        )
+        assertEquals(RoutineShareResult.Damaged, RoutineShareSerializer.decode(noSets))
+    }
+
+    @Test
     fun `tolerates unknown fields for forward compat`() {
-        val withExtra = """{"version":1,"app":"recomptracker","name":"X","futureField":true,"exercises":[{"source":"s","externalId":"e","name":"E","sets":[]}]}"""
+        val withExtra = """{"version":1,"app":"recomptracker","name":"X","futureField":true,"exercises":[{"source":"s","externalId":"e","name":"E","sets":[{"setNumber":1,"targetReps":8,"targetWeightKg":null}]}]}"""
         assertTrue(RoutineShareSerializer.decode(withExtra) is RoutineShareResult.Success)
     }
 }

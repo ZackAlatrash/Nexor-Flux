@@ -29,7 +29,12 @@ object RoutineShareSerializer {
 
         if (payload.app != APP_ID) return RoutineShareResult.NotARoutineFile
         if (payload.version > CURRENT_SHARE_VERSION) return RoutineShareResult.UnsupportedVersion
+        // Structurally sane = a name, at least one exercise, and every exercise carrying at least one
+        // set. A blank name or a set-less exercise would otherwise throw out of WorkoutRepository
+        // .saveWorkout on import; reject here so a bad file degrades to Damaged instead of crashing.
+        if (payload.name.isBlank()) return RoutineShareResult.Damaged
         if (payload.exercises.isEmpty()) return RoutineShareResult.Damaged
+        if (payload.exercises.any { it.sets.isEmpty() }) return RoutineShareResult.Damaged
         return RoutineShareResult.Success(payload)
     }
 }

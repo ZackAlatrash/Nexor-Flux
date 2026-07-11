@@ -71,14 +71,15 @@ class RoutineShareRepository(
     /**
      * The per-exercise import decisions against the current library — drives the preview "new" badge.
      */
-    suspend fun resolve(payload: RoutineSharePayload) =
+    suspend fun resolve(payload: RoutineSharePayload) = withContext(Dispatchers.Default) {
         RoutineShareResolver.resolve(payload.exercises, exerciseLibraryRepository.all())
+    }
 
     /**
      * Imports [payload] as a brand-new routine and returns its id. Never edits/overwrites existing
      * routines. Unresolved exercises are created as custom (idempotent via insertCustomOrGetExisting).
      */
-    suspend fun importRoutine(payload: RoutineSharePayload): Long {
+    suspend fun importRoutine(payload: RoutineSharePayload): Long = withContext(Dispatchers.Default) {
         val resolutions = resolve(payload)
         val lines = resolutions.map { r ->
             val exerciseId = r.existingId ?: exerciseLibraryRepository.addCustomExercise(r.shared.name)
@@ -88,7 +89,7 @@ class RoutineShareRepository(
                 note = r.shared.note,
             )
         }
-        return workoutRepository.saveWorkout(payload.name, payload.note, lines)
+        workoutRepository.saveWorkout(payload.name, payload.note, lines)
     }
 
     // Cache filename only — strip anything that isn't filename-safe; the display name lives in JSON.

@@ -45,8 +45,9 @@ open class ExerciseLibraryRepository(private val exerciseDao: ExerciseDao) {
             images = "[]",
             userCreated = true,
         )
-        // Idempotent: re-adding a same-named custom exercise returns the existing one instead of
-        // REPLACE-deleting it (which crashed on the FK when it was already in a routine — P1-20).
+        // Idempotent: re-adding a same-named custom exercise returns the existing one (reused as-is —
+        // any newly-supplied muscles are ignored) instead of REPLACE-deleting it, which crashed on the
+        // FK when it was already in a routine (P1-20). There is no edit-exercise path, so reuse is safe.
         return exerciseDao.insertCustomOrGetExisting(entity)
     }
 

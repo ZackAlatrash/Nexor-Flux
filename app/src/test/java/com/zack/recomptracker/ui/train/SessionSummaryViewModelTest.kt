@@ -37,6 +37,7 @@ class SessionSummaryViewModelTest {
 
     /** Minimal in-memory session DAO holding one ACTIVE session with one exercise + set. */
     private class FakeDao : WorkoutSessionDao() {
+        override suspend fun abandonActiveSessions() {}
         val sessions = mutableMapOf<Long, WorkoutSessionEntity>()
         val exercises = mutableMapOf<Long, SessionExerciseEntity>()
         val sets = mutableMapOf<Long, SessionSetEntity>()

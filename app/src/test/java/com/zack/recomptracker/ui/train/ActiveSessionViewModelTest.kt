@@ -105,6 +105,7 @@ private class NoopExerciseDao : ExerciseDao {
 /** No-op session DAO; FakeRepo overrides the only methods exercised here. */
 private class NoopSessionDao : WorkoutSessionDao() {
     override suspend fun insertSession(session: com.zack.recomptracker.data.local.entity.WorkoutSessionEntity): Long = 0L
+    override suspend fun abandonActiveSessions() {}
     override suspend fun updateSession(session: com.zack.recomptracker.data.local.entity.WorkoutSessionEntity) {}
     override suspend fun deleteSessionById(id: Long) {}
     override suspend fun insertSessionExercise(exercise: com.zack.recomptracker.data.local.entity.SessionExerciseEntity): Long = 0L

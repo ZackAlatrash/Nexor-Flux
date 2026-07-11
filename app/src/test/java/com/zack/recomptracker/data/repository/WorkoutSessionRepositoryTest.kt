@@ -34,6 +34,12 @@ class WorkoutSessionRepositoryTest {
         override suspend fun insertSession(session: WorkoutSessionEntity): Long {
             val id = ++sId; sessions[id] = session.copy(id = id); return id
         }
+        override suspend fun abandonActiveSessions() {
+            sessions.keys.toList().forEach { id ->
+                val s = sessions.getValue(id)
+                if (s.status == SessionStatus.ACTIVE.name) sessions[id] = s.copy(status = SessionStatus.ABANDONED.name)
+            }
+        }
         override suspend fun updateSession(session: WorkoutSessionEntity) { sessions[session.id] = session }
         override suspend fun deleteSessionById(id: Long) { sessions.remove(id) }
         override suspend fun insertSessionExercise(exercise: SessionExerciseEntity): Long {
@@ -416,5 +422,27 @@ class WorkoutSessionRepositoryTest {
         val otherSets = dao.sets.values.filter { it.sessionExerciseId == otherId }
         assertEquals(1, otherSets.size)
         assertEquals(8, otherSets.first().reps)
+    }
+
+    // ── P1-16: starting a session must not leave two ACTIVE sessions ─────────────
+
+    @Test
+    fun `starting a session abandons any existing active session so there is never a double-active`() = runTest {
+        val dao = FakeSessionDao()
+        val repo = repo(dao)
+
+        val first = repo.startSession(template())   // in-progress workout
+        val second = repo.startSession(template())  // user starts another before finishing the first
+
+        // Exactly one ACTIVE session — the new one; the first is retired (not orphaned/double-active).
+        assertEquals(1, dao.getAllSessions().count { it.status == SessionStatus.ACTIVE.name })
+        assertEquals(SessionStatus.ACTIVE.name, dao.sessions.getValue(second).status)
+        assertEquals(SessionStatus.ABANDONED.name, dao.sessions.getValue(first).status)
+
+        // The retired session's logged sets are preserved (status change only, no delete).
+        val firstExerciseIds = dao.exercises.values.filter { ex ->
+            ex.sessionId == first
+        }.map { it.id }.toSet()
+        assertTrue(dao.sets.values.any { it.sessionExerciseId in firstExerciseIds })
     }
 }

@@ -151,6 +151,7 @@ private class PrNoopExerciseDao : ExerciseDao {
 /** No-op session DAO; FakeRepo overrides the only methods exercised here. */
 private class PrNoopSessionDao : WorkoutSessionDao() {
     override suspend fun insertSession(session: WorkoutSessionEntity): Long = 0L
+    override suspend fun abandonActiveSessions() {}
     override suspend fun updateSession(session: WorkoutSessionEntity) {}
     override suspend fun deleteSessionById(id: Long) {}
     override suspend fun insertSessionExercise(exercise: SessionExerciseEntity): Long = 0L

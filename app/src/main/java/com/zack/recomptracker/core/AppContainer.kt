@@ -696,6 +696,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 adherenceCalculator = container.adherenceCalculator,
+                trendCalculator = container.trendCalculator,
                 // Q6a: Trends PROGRESS_TREND card now binds directly to the cloud coordinator.
                 aiInsightCoordinator = container.cloudInsightCoordinator,
                 userProfileStore = container.userProfilePreferencesStore,

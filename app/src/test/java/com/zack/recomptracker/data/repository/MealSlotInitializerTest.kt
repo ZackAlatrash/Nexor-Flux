@@ -57,4 +57,20 @@ class MealSlotInitializerTest {
 
         assertEquals(listOf("Custom"), database.mealSlotDao().getAll().map { it.name })
     }
+
+    @Test
+    fun `a fresh install seeded by onCreate is not double-seeded by the startup initializer`() = runTest {
+        // The real production combination: onCreate seeds 3, then the startup seedIfEmpty runs.
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val seeded = Room.inMemoryDatabaseBuilder(context, RecompDatabase::class.java)
+            .allowMainThreadQueries()
+            .addCallback(RecompDatabase.SEED_DEFAULT_SLOTS)
+            .build()
+        try {
+            MealSlotInitializer(seeded.mealSlotDao()).seedIfEmpty()
+            assertEquals(3, seeded.mealSlotDao().getAll().size) // still 3, not 6
+        } finally {
+            seeded.close()
+        }
+    }
 }

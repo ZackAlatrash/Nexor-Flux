@@ -119,6 +119,7 @@ class CloudCoachCoordinator(
             }
             history.add(ChatMessage(Role.User, userText))
             thinkingSteps.clear()
+            committedWrites.clear()
             pushThinking("Thinking…")
             try {
                 if (!systemSeeded) {
@@ -143,7 +144,7 @@ class CloudCoachCoordinator(
                         requestMessages.clear()
                         systemSeeded = false
                         lastReferenceMessage = null
-                        _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
+                        _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
                         break
                     }
                     // Timeout applies to each network completion call; user-confirmation
@@ -168,7 +169,7 @@ class CloudCoachCoordinator(
                             lastReferenceMessage = null
                             _state.value = CoachState.Error(
                                 history.toList(),
-                                "The AI didn't complete that action — please try again.",
+                                failureMessage("The AI didn't complete that action — please try again."),
                             )
                             break
                         }
@@ -211,14 +212,14 @@ class CloudCoachCoordinator(
                 requestMessages.clear()
                 systemSeeded = false
                 lastReferenceMessage = null
-                _state.value = CoachState.Error(history.toList(), "Took too long — try again.")
+                _state.value = CoachState.Error(history.toList(), failureMessage("Took too long — try again."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 requestMessages.clear()
                 systemSeeded = false
                 lastReferenceMessage = null
-                _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
+                _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
             }
         }
     }
@@ -241,7 +242,11 @@ class CloudCoachCoordinator(
         pendingConfirmation.compareAndSet(deferred, null)
         if (!confirmed) return """{"cancelled":true}"""
         pushThinking(toolStatusText(call.name))
-        return tools.execute(call.name, call.arguments)
+        val result = tools.execute(call.name, call.arguments)
+        // Executor writes return {"success":true,...} only when the row actually persisted (errors
+        // and disambiguation prompts do not). Record it so a later failure can say the data is saved.
+        if (result.contains("\"success\":true")) committedWrites.add(writeNoun(call.name))
+        return result
     }
 
     private fun encodeToolCalls(calls: List<ParsedToolCall>): String {
@@ -271,6 +276,35 @@ class CloudCoachCoordinator(
     // Running process log for the current turn (thinking + tool steps). Safe as a single field
     // because turnLock serialises turns; cleared at the start of each turn.
     private val thinkingSteps = mutableListOf<String>()
+
+    // Short nouns for the writes that were CONFIRMED and actually persisted this turn (review P2-1).
+    // Same single-field-under-turnLock safety as thinkingSteps; cleared at the start of each turn.
+    // Consulted only on the error paths: if a write already committed, the failure message must say
+    // the data is saved rather than a bare "try again" (which invites re-issuing → double-logging).
+    private val committedWrites = mutableListOf<String>()
+
+    /**
+     * The user-facing message for a turn that failed. When a write already persisted this turn,
+     * reassure the user it is saved so they don't re-send the command; otherwise use [base].
+     */
+    private fun failureMessage(base: String): String =
+        if (committedWrites.isEmpty()) {
+            base
+        } else {
+            "I already saved your ${committedWrites.distinct().joinToString(", ")} — no need to send " +
+                "that again. Something went wrong finishing my reply."
+        }
+
+    /** A short noun for a persisted write tool, used in [failureMessage]. */
+    private fun writeNoun(toolName: String): String = when (toolName) {
+        "log_meal" -> "meal"
+        "log_metric" -> "metric"
+        "update_calorie_target" -> "calorie target"
+        "create_routine", "edit_routine" -> "routine"
+        "create_exercise" -> "exercise"
+        "delete_meal", "edit_meal" -> "meal change"
+        else -> "change"
+    }
 
     /** Appends a process step (dedupes consecutive duplicates) and emits the updated Thinking state. */
     private fun pushThinking(label: String) {

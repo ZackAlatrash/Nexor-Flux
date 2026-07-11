@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -107,6 +108,7 @@ fun TrainHomeScreen(
     onOpenSession: (Long) -> Unit = {},
     onOpenExerciseStats: (Long) -> Unit = {},
     onLogRecovery: () -> Unit = {},
+    onShareRoutine: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -340,6 +342,7 @@ fun TrainHomeScreen(
                         },
                         onEditClick = { onEditRoutine(template.id) },
                         onDeleteClick = { viewModel.deleteRoutine(template.id) },
+                        onShareClick = { onShareRoutine(template.id) },
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .padding(bottom = 12.dp),
@@ -549,6 +552,7 @@ private fun RoutineCard(
     onStart: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onShareClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
@@ -607,6 +611,16 @@ private fun RoutineCard(
                         onClick = {
                             menuOpen = false
                             onEditClick()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Share") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                        },
+                        onClick = {
+                            menuOpen = false
+                            onShareClick()
                         },
                     )
                     DropdownMenuItem(

@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ai
 
+import android.util.Log
 import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
 import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
 import com.zack.recomptracker.core.time.DateProvider
@@ -237,6 +238,9 @@ class CloudCoachCoordinator(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // Surface the real cause (e.g. a parse failure) instead of only the generic message,
+                // so an unexpected turn failure is debuggable rather than silently swallowed (P2-6).
+                Log.w(TAG, "Coach turn failed", e)
                 revertFailedTurn(priorContextSize)
                 _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
             }
@@ -409,6 +413,7 @@ class CloudCoachCoordinator(
         }
 
     private companion object {
+        private const val TAG = "CloudCoachCoordinator"
         private const val MAX_TOOL_ROUNDS = 12
         private const val TURN_TIMEOUT_MS = 180_000L
 

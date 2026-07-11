@@ -7,7 +7,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -70,10 +72,14 @@ import com.zack.recomptracker.ui.train.SessionSummaryScreen
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainHomeScreen
 import com.zack.recomptracker.ui.train.TrainViewModel
+import com.zack.recomptracker.ui.share.SharedRoutineImportScreen
+import com.zack.recomptracker.ui.share.SharedRoutineImportViewModel
+import com.zack.recomptracker.ui.share.shareRoutineFile
 import com.zack.recomptracker.ui.usage.UsageStatsScreen
 import com.zack.recomptracker.ui.usage.UsageStatsViewModel
 import com.zack.recomptracker.data.local.entity.RecipeIngredientEntity
 import java.time.LocalDate
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -105,6 +111,7 @@ object Routes {
     const val Usage        = "usage"
     const val Developer    = "developer"
     const val Train          = "train"
+    const val SharedRoutineImport = "shared_routine_import"
     const val ActiveSession  = "active_session"
     const val ExercisePicker = "exercise_picker"
     // Single composable, optional replaceTargetId arg: omitted (-1) = add mode; >=0 = replace that
@@ -275,6 +282,8 @@ fun AppNavGraph(
             exitTransition  = { tabExit },
         ) {
             val trainViewModel = viewModel<TrainViewModel>(factory = factory)
+            val shareContext = LocalContext.current
+            val shareScope = rememberCoroutineScope()
             TrainHomeScreen(
                 viewModel = trainViewModel,
                 onCreateRoutine = { navController.navigate(Routes.routineBuilder()) },
@@ -288,6 +297,33 @@ fun AppNavGraph(
                         popUpTo(TopLevelDestination.Home.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
+                    }
+                },
+                onShareRoutine = { id ->
+                    shareScope.launch {
+                        trainViewModel.buildShareFile(id)?.let { uri -> shareRoutineFile(shareContext, uri) }
+                    }
+                },
+                modifier = Modifier,
+            )
+        }
+        composable(
+            route = Routes.SharedRoutineImport,
+            enterTransition = { screenEnter },
+            exitTransition  = { screenExit },
+        ) {
+            SharedRoutineImportScreen(
+                viewModel = viewModel<SharedRoutineImportViewModel>(factory = factory),
+                onClose = {
+                    // Land on Train whether opened cold (empty back stack) or over an existing screen.
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Routes.Train) { launchSingleTop = true }
+                    }
+                },
+                onImported = {
+                    navController.navigate(Routes.Train) {
+                        popUpTo(Routes.SharedRoutineImport) { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
                 modifier = Modifier,

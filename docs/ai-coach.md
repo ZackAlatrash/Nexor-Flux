@@ -51,9 +51,14 @@ fallback verbatim on any failure. Insight prompts embed pre-computed, signed-for
 - **Empty-response recovery** (the fix for the historical "Done." bug): blank text + no tool calls →
   one `EMPTY_RESPONSE_NUDGE`, then an honest error ("The AI didn't complete that action — please try
   again."). Success is never fabricated.
-- **Errors** (timeout / exception / round-cap): the model-side context (`requestMessages`) is cleared
-  and reseeded on the next message; the visible transcript (`history`) is preserved. Chat history is
-  **in-memory only** — process death drops the conversation (confirmed tool writes are already in Room).
+- **Errors** (timeout / exception / round-cap): only the **failed turn** is reverted
+  (`revertFailedTurn` truncates `requestMessages` back to the pre-turn size); prior completed turns
+  and the system snapshot — including its already-consumed briefing handoff — survive, so the model
+  keeps its memory (P2-4). The failed turn's partial tool-call scaffolding is dropped, so the retained
+  context stays a valid sequence. The accumulated context is bounded by a sliding trim of the oldest
+  `[user … ]` blocks (`trimOldTurns`, `MAX_CONTEXT_CHARS`) so a long conversation can't grow into a
+  provider 400. Chat history is **in-memory only** — process death drops the conversation (confirmed
+  tool writes are already in Room).
 
 ### Tools (19, defined in `CoachTools.kt` as `CLOUD_COACH_TOOL_SCHEMAS`)
 
@@ -116,6 +121,7 @@ a `CoachActionType` extra on `MainActivity`.
 |---|---|---|
 | Tool rounds per turn | 12 | `CloudCoachCoordinator.MAX_TOOL_ROUNDS` |
 | Per-completion timeout (chat) | 180 s | `TURN_TIMEOUT_MS` |
+| Request-context budget (chat) | 24 000 chars | `CloudCoachCoordinator.MAX_CONTEXT_CHARS` (`trimOldTurns`) |
 | Insight / recipe / phrasing timeouts | 60 s / 45 s / 15 s | respective services |
 | Knowledge block budget | 2000 chars, top 3 chunks | `RetrievalKnowledgeInjector` |
 | Coach memory | ≤ 50 facts, case-insensitive dedup | `CoachMemoryStore` |

@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
  * creating a custom exercise for anything the recipient doesn't have — then saves a NEW routine.
  * All disk/CPU work is off the main dispatcher.
  */
-class RoutineShareRepository(
+open class RoutineShareRepository(
     private val appContext: Context,
     private val workoutDao: WorkoutDao,
     private val workoutRepository: WorkoutRepository,
@@ -34,7 +34,7 @@ class RoutineShareRepository(
      * if the routine no longer exists. `source`/`externalId`/`name` come straight off the joined
      * ExerciseEntity in the workout graph — never the local exerciseId.
      */
-    suspend fun buildShareFile(workoutId: Long): Uri? = withContext(Dispatchers.IO) {
+    open suspend fun buildShareFile(workoutId: Long): Uri? = withContext(Dispatchers.IO) {
         val db = workoutDao.getWithExercises(workoutId) ?: return@withContext null
         val payload = RoutineSharePayload(
             name = db.workout.name,

@@ -6,6 +6,7 @@ import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.RoutineShareRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.workout.MuscleCategory
@@ -60,6 +61,7 @@ class TrainViewModel(
     private val exerciseLibraryRepository: ExerciseLibraryRepository,
     private val logRepository: LogRepository,
     private val userProfileStore: UserProfilePreferencesStore,
+    private val routineShareRepository: RoutineShareRepository,
     dateProvider: DateProvider,
     // Off-main dispatcher for the stats/plan/readiness transforms (TrainStatsBuilder, LocalDate.parse
     // over history + logs, TrainingReadinessMapper, TrainingPlanBuilder). Injectable for tests;
@@ -67,6 +69,13 @@ class TrainViewModel(
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val tab = MutableStateFlow(TrainTab.ROUTINES)
+
+    /**
+     * Builds a shareable `.rtroutine` file for [templateId] and returns its Uri, or null if the
+     * routine no longer exists. The caller (UI) launches the Android share sheet with it.
+     */
+    suspend fun buildShareFile(templateId: Long): android.net.Uri? =
+        routineShareRepository.buildShareFile(templateId)
 
     // dateProvider.todayFlow() is folded into both combines below so every "today"-derived value
     // (recovery, plan, "trained today") advances at midnight instead of freezing on the day the

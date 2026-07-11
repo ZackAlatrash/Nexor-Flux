@@ -8,7 +8,6 @@ import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.toToolJson
-import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
@@ -482,23 +481,9 @@ class CoachToolExecutor(
             else -> null
         }
         if (rangeError != null) return """{"error":"$rangeError"}"""
-        val today = dateProvider.today()
-        val existing = logRepository.getDay(today).dailyLog
-        logRepository.saveDailyMetrics(
-            DailyMetricsInput(
-                date = today,
-                bodyWeightKg = if (metric == "weight_kg") value else existing?.bodyWeightKg,
-                waistCm = if (metric == "waist_cm") value else existing?.waistCm,
-                waistSkinfoldMm = existing?.waistSkinfoldMm,
-                steps = existing?.steps,
-                sleepHours = if (metric == "sleep_hours") value else existing?.sleepHours,
-                energyScore = if (metric == "energy_score") value.toInt() else existing?.energyScore,
-                hungerScore = if (metric == "hunger_score") value.toInt() else existing?.hungerScore,
-                sorenessScore = if (metric == "soreness_score") value.toInt() else existing?.sorenessScore,
-                trained = existing?.trained ?: false,
-                notes = existing?.notes ?: "",
-            ),
-        )
+        // Partial single-column write (review P2-7): must not read + rewrite the whole row, or a
+        // concurrent check-in sheet save gets clobbered by this stale snapshot.
+        logRepository.setDailyMetric(dateProvider.today(), metric, value)
         return """{"success":true,"metric":"${metric.esc()}","value":$value}"""
     }
 

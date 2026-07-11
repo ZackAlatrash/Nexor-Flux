@@ -53,8 +53,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
@@ -69,6 +71,8 @@ data class DayCalories(
 )
 
 data class DashboardUiState(
+    /** The calendar day this state describes; advances at midnight so the header date stays live. */
+    val today: LocalDate = LocalDate.now(),
     val preferences: PlanPreferences = PlanPreferences(),
     val todayTotals: MacroTotals = MacroTotals(),
     val todaySteps: Int = 0,
@@ -110,7 +114,7 @@ internal fun initialsOf(name: String?): String? {
     }
 }
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
     private val logRepository: LogRepository,
     private val planRepository: PlanRepository,
@@ -151,30 +155,36 @@ class DashboardViewModel(
     private var lastPersistedChange: Int = Int.MIN_VALUE
 
     init {
-        val windowStart = dateProvider.today().minusDays(27)
         viewModelScope.launch {
-            combine(
-                logRepository.observeDailyLogs(),
-                logRepository.observeMealEntriesSince(windowStart),
-                logRepository.observePerformances(),
-                planRepository.preferences,
-                // The 5-slot combine is full, so fold the plan-version history + rebalance state
-                // into one nested typed combine and unpack it below (mirrors ProgressViewModel's
-                // TrainingInputs pattern) — no unchecked casts.
+            // Re-subscribe the whole pipeline when the calendar day rolls (P1-10): a tab ViewModel
+            // outlives midnight, so a frozen windowStart/today kept aggregating the opening day.
+            // flatMapLatest recomputes windowStart and re-runs buildState against the new day.
+            dateProvider.todayFlow().flatMapLatest { today ->
+                val windowStart = today.minusDays(27)
                 combine(
-                    planRepository.observeVersions(),
-                    rebalanceStore.state,
-                ) { versions, rebalanceState -> DashboardStreams(versions, rebalanceState) },
-            ) { logs, allMeals, performances, preferences, streams ->
-                val (versions, rebalanceState) = streams
-                buildState(
-                    logs = logs,
-                    allMeals = allMeals,
-                    performances = performances,
-                    preferences = preferences,
-                    versions = versions,
-                    rebalanceState = rebalanceState,
-                )
+                    logRepository.observeDailyLogs(),
+                    logRepository.observeMealEntriesSince(windowStart),
+                    logRepository.observePerformances(),
+                    planRepository.preferences,
+                    // The 5-slot combine is full, so fold the plan-version history + rebalance state
+                    // into one nested typed combine and unpack it below (mirrors ProgressViewModel's
+                    // TrainingInputs pattern) — no unchecked casts.
+                    combine(
+                        planRepository.observeVersions(),
+                        rebalanceStore.state,
+                    ) { versions, rebalanceState -> DashboardStreams(versions, rebalanceState) },
+                ) { logs, allMeals, performances, preferences, streams ->
+                    val (versions, rebalanceState) = streams
+                    buildState(
+                        today = today,
+                        logs = logs,
+                        allMeals = allMeals,
+                        performances = performances,
+                        preferences = preferences,
+                        versions = versions,
+                        rebalanceState = rebalanceState,
+                    )
+                }
             }
             .debounce(300L)
             // Run the combine transform and debounce off the main thread; the terminal collect
@@ -188,6 +198,7 @@ class DashboardViewModel(
     }
 
     private fun buildState(
+        today: LocalDate,
         logs: List<DailyLogEntity>,
         allMeals: List<MealEntryEntity>,
         performances: List<LiftPerformanceEntity>,
@@ -195,7 +206,6 @@ class DashboardViewModel(
         versions: List<PlanVersion>,
         rebalanceState: RebalanceState,
     ): DashboardUiState {
-        val today = dateProvider.today()
         // Planned (not-yet-eaten) entries never count toward reality — totals, adherence, trend.
         val meals = allMeals.filterNot { it.planned }
         val todayTotals = meals.filter { it.date == today.toString() }.macroTotals()
@@ -312,6 +322,7 @@ class DashboardViewModel(
         )
 
         return DashboardUiState(
+            today = today,
             preferences = effectivePreferences,
             todayTotals = todayTotals,
             todaySteps = todaySteps,

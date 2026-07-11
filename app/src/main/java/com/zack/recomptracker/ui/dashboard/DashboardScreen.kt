@@ -305,6 +305,7 @@ fun HomeDashboardContent(
 
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(
+                today = state.today,
                 onOpenSettings = onOpenSettings,
                 avatarPhotoUri = avatarPhotoUri,
                 avatarInitials = avatarInitials,
@@ -444,12 +445,12 @@ fun HomeDashboardContent(
 
 @Composable
 private fun ScreenHeader(
+    today: LocalDate,
     onOpenSettings: (() -> Unit)? = null,
     avatarPhotoUri: String? = null,
     avatarInitials: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    val today = remember { LocalDate.now() }
     val dateStr = remember(today) {
         today.format(DateTimeFormatter.ofPattern("EEE, MMMM d", Locale.getDefault()))
     }

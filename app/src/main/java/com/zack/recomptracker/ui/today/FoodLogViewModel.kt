@@ -93,16 +93,30 @@ class FoodLogViewModel(
     private val clock: () -> LocalTime = { LocalTime.now() },
 ) : ViewModel() {
 
-    val today: LocalDate = dateProvider.today()
-    private val _selectedDate = MutableStateFlow(today)
+    private val initialToday = dateProvider.today()
+    // "today" as a live value: advances at midnight so the week strip and isToday/isFuture/isPast
+    // labels track the real calendar day (P1-10). Read via the getter so click handlers (the
+    // selectDate clamp, postponeMeal's planned-vs-eaten decision) use the current day, not the
+    // one the tab was opened on.
+    private val _today = MutableStateFlow(initialToday)
+    private val today: LocalDate get() = _today.value
+    private val _selectedDate = MutableStateFlow(initialToday)
 
-    private val _uiState = MutableStateFlow(FoodLogUiState(selectedDate = today, today = today))
+    private val _uiState = MutableStateFlow(FoodLogUiState(selectedDate = initialToday, today = initialToday))
     val uiState: StateFlow<FoodLogUiState> = _uiState.asStateFlow()
 
     /** Coach seed for the meal-suggestion card's "Get meal ideas" action, if the card is showing. */
     fun askCoachSeed(): String? = _uiState.value.mealSuggestion?.coachSeed
 
     init {
+        // Advance the live "today" when the calendar day rolls; the day-scoped pipelines below
+        // (meal suggestion, stale-plan window, week strip) re-subscribe off this via flatMapLatest.
+        viewModelScope.launch {
+            dateProvider.todayFlow().collect { day ->
+                _today.value = day
+                _uiState.update { if (it.today == day) it else it.copy(today = day) }
+            }
+        }
         viewModelScope.launch {
             _selectedDate.flatMapLatest { date ->
                 combine(
@@ -156,53 +170,58 @@ class FoodLogViewModel(
         }
 
         viewModelScope.launch {
-            combine(
-                logRepository.observeDay(today),
-                planRepository.preferences,
-                planRepository.observePlanOn(today),
-                logRepository.observeSavedFoods(),
-            ) { day, _, dayPlan, foods ->
-                val target = MealSuggester.MacroTargets(
-                    calories = dayPlan.calories, proteinG = dayPlan.proteinG,
-                    carbsG = dayPlan.carbsG, fatG = dayPlan.fatG,
-                )
-                MealSuggestionCardMapper.build(
-                    target = target,
-                    eaten = day.totals,
-                    library = foods.map { it.toSuggestionFood() },
-                    fractionOfDayElapsed = MealSuggestionCardMapper.eatingDayFraction(clock()),
-                )
+            _today.flatMapLatest { today ->
+                combine(
+                    logRepository.observeDay(today),
+                    planRepository.preferences,
+                    planRepository.observePlanOn(today),
+                    logRepository.observeSavedFoods(),
+                ) { day, _, dayPlan, foods ->
+                    val target = MealSuggester.MacroTargets(
+                        calories = dayPlan.calories, proteinG = dayPlan.proteinG,
+                        carbsG = dayPlan.carbsG, fatG = dayPlan.fatG,
+                    )
+                    MealSuggestionCardMapper.build(
+                        target = target,
+                        eaten = day.totals,
+                        library = foods.map { it.toSuggestionFood() },
+                        fractionOfDayElapsed = MealSuggestionCardMapper.eatingDayFraction(clock()),
+                    )
+                }
             }.flowOn(computeDispatcher).collect { card -> _uiState.update { it.copy(mealSuggestion = card) } }
         }
 
         viewModelScope.launch {
-            logRepository.observeStalePlannedCount(today, today.minusDays(NAV_WINDOW_DAYS))
-                .collect { count ->
-                    _uiState.update { it.copy(stalePlannedCount = count) }
-                }
+            _today.flatMapLatest { today ->
+                logRepository.observeStalePlannedCount(today, today.minusDays(NAV_WINDOW_DAYS))
+            }.collect { count ->
+                _uiState.update { it.copy(stalePlannedCount = count) }
+            }
         }
 
         viewModelScope.launch {
-            val weekDates = (0..6).map { today.minusDays((6 - it).toLong()) }
-            combine(
-                logRepository.observeWeekCalories(today.minusDays(6), today),
-                planRepository.observeVersions(),
-                planRepository.preferences,
-                rebalanceStore.state,
-            ) { weekMap, versions, prefs, rebalanceState ->
-                val fallback = prefs.toPlanTargets()
-                weekDates.map { d ->
-                    val base = PlanHistory.planOnOrFallback(versions, d, fallback)
-                    // Effective (reduced) target on a rebalance day; base on every other day.
-                    val z = EffectiveTargets.resolve(base, d, rebalanceState)
-                    DayCalorieSummary(
-                        date = d,
-                        calories = weekMap[d] ?: 0,
-                        targetCalories = z.calories,
-                        zoneLowerBound = z.zoneLowerBound,
-                        zoneUpperBound = z.zoneUpperBound,
-                    )
-                }.toImmutableList()
+            _today.flatMapLatest { today ->
+                val weekDates = (0..6).map { today.minusDays((6 - it).toLong()) }
+                combine(
+                    logRepository.observeWeekCalories(today.minusDays(6), today),
+                    planRepository.observeVersions(),
+                    planRepository.preferences,
+                    rebalanceStore.state,
+                ) { weekMap, versions, prefs, rebalanceState ->
+                    val fallback = prefs.toPlanTargets()
+                    weekDates.map { d ->
+                        val base = PlanHistory.planOnOrFallback(versions, d, fallback)
+                        // Effective (reduced) target on a rebalance day; base on every other day.
+                        val z = EffectiveTargets.resolve(base, d, rebalanceState)
+                        DayCalorieSummary(
+                            date = d,
+                            calories = weekMap[d] ?: 0,
+                            targetCalories = z.calories,
+                            zoneLowerBound = z.zoneLowerBound,
+                            zoneUpperBound = z.zoneUpperBound,
+                        )
+                    }.toImmutableList()
+                }
             }.flowOn(computeDispatcher).collect { summaries -> _uiState.update { it.copy(weekSummary = summaries) } }
         }
     }

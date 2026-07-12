@@ -97,6 +97,13 @@ private abstract class NoopDailyLogDao : DailyLogDao {
     override suspend fun upsert(log: DailyLogEntity) = Unit
     override suspend fun insertAll(logs: List<DailyLogEntity>) = Unit
     override suspend fun deleteAll() = Unit
+    override suspend fun insertEmptyIfAbsent(date: String) = Unit
+    override suspend fun updateBodyWeightKg(date: String, v: Double) = Unit
+    override suspend fun updateWaistCm(date: String, v: Double) = Unit
+    override suspend fun updateSleepHours(date: String, v: Double) = Unit
+    override suspend fun updateEnergyScore(date: String, v: Int) = Unit
+    override suspend fun updateHungerScore(date: String, v: Int) = Unit
+    override suspend fun updateSorenessScore(date: String, v: Int) = Unit
 }
 
 private object NoopMealEntryDao : MealEntryDao {

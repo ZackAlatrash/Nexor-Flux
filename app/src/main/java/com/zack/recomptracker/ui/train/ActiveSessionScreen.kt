@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.zack.recomptracker.domain.workout.SessionExercise
+import com.zack.recomptracker.domain.workout.hasLoggedSets
 import com.zack.recomptracker.domain.workout.moveByKey
 import com.zack.recomptracker.ui.component.ConfirmDialog
 import com.zack.recomptracker.ui.component.FrostedCard
@@ -130,6 +131,9 @@ fun ActiveSessionScreen(
     // Pending replacement awaiting confirmation: (targetSessionExerciseId, chosenExerciseId, oldName).
     // Only set when the target already has logged sets that the replacement would clear.
     var pendingReplacement by remember { mutableStateOf<Triple<Long, Long, String>?>(null) }
+    // Pending removal awaiting confirmation — set only when the exercise has logged sets that removing
+    // would delete (P1-17); mirrors the replace guard so a mis-tap can't silently drop logged work.
+    var pendingRemoval by remember { mutableStateOf<SessionExercise?>(null) }
 
     // Consume picked exercise IDs returned from Exercise Picker
     LaunchedEffect(pickedExerciseIds) {
@@ -147,7 +151,7 @@ fun ActiveSessionScreen(
             val targetSeId = result[0]
             val chosenExerciseId = result[1]
             val target = viewModel.session.value?.exercises?.firstOrNull { it.id == targetSeId }
-            val hasLoggedSets = target?.sets?.any { it.completed || it.reps > 0 || it.weightKg != null } == true
+            val hasLoggedSets = target?.hasLoggedSets() == true
             if (hasLoggedSets) {
                 pendingReplacement = Triple(targetSeId, chosenExerciseId, target?.exerciseName ?: "this exercise")
             } else {
@@ -287,7 +291,11 @@ fun ActiveSessionScreen(
                                     }
                                 }
                             } else null,
-                            onRemove = { viewModel.removeExercise(se) },
+                            onRemove = {
+                                // Confirm before deleting an exercise that has logged sets (P1-17);
+                                // remove immediately when there's nothing to lose.
+                                if (se.hasLoggedSets()) pendingRemoval = se else viewModel.removeExercise(se)
+                            },
                             onReplace = { onReplaceExercise(se.id) },
                             onShowDetails = { viewModel.showExerciseDetails(se.exerciseId) },
                             isDragging = isDragging,
@@ -436,6 +444,20 @@ fun ActiveSessionScreen(
                     pendingReplacement = null
                 },
                 onDismiss = { pendingReplacement = null },
+            )
+        }
+
+        // ── Remove confirmation (only when logged sets would be deleted) ─────────────
+        pendingRemoval?.let { se ->
+            ConfirmDialog(
+                title = "Remove exercise?",
+                body = "You've logged sets for ${se.exerciseName}. Removing it will delete those sets.",
+                confirmLabel = "Remove",
+                onConfirm = {
+                    viewModel.removeExercise(se)
+                    pendingRemoval = null
+                },
+                onDismiss = { pendingRemoval = null },
             )
         }
 

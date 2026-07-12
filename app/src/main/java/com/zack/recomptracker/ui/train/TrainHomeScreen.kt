@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -107,12 +108,21 @@ fun TrainHomeScreen(
     onOpenSession: (Long) -> Unit = {},
     onOpenExerciseStats: (Long) -> Unit = {},
     onLogRecovery: () -> Unit = {},
+    onShareRoutine: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val accent = LocalAppAccent.current
     val appColors = LocalAppColors.current
     val scope = rememberCoroutineScope()
+
+    // Confirm before discarding an in-progress workout (P1-16): requestStart runs the start action
+    // immediately when nothing is active, otherwise it stashes it behind a confirm dialog. The
+    // repository also retires any prior session atomically, so a slipped double-tap can't double-start.
+    var pendingStart by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
+    val requestStart: (suspend () -> Unit) -> Unit = { action ->
+        if (state.activeSession != null) pendingStart = action else scope.launch { action() }
+    }
 
     val streakVm: StreakViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = LocalAppContainer.current.viewModelFactory,
@@ -184,7 +194,7 @@ fun TrainHomeScreen(
                     recoveryLoggedToday = state.recoveryLoggedToday,
                     onStartRoutine = { routineId ->
                         state.routines.firstOrNull { it.id == routineId }?.let { template ->
-                            scope.launch {
+                            requestStart {
                                 viewModel.startSession(template)
                                 onStart()
                             }
@@ -192,7 +202,7 @@ fun TrainHomeScreen(
                     },
                     onStartLight = { routineId ->
                         state.routines.firstOrNull { it.id == routineId }?.let { template ->
-                            scope.launch {
+                            requestStart {
                                 viewModel.startLightSession(template)
                                 onStart()
                             }
@@ -325,13 +335,14 @@ fun TrainHomeScreen(
                         template = template,
                         onCardClick = { onEditRoutine(template.id) },
                         onStart = {
-                            scope.launch {
+                            requestStart {
                                 viewModel.startSession(template)
                                 onStart()
                             }
                         },
                         onEditClick = { onEditRoutine(template.id) },
                         onDeleteClick = { viewModel.deleteRoutine(template.id) },
+                        onShareClick = { onShareRoutine(template.id) },
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .padding(bottom = 12.dp),
@@ -385,6 +396,19 @@ fun TrainHomeScreen(
         if (state.tab == TrainTab.STATS) {
             item { StatsContent(state = state, onOpenExerciseStats = onOpenExerciseStats) }
         }
+    }
+
+    pendingStart?.let { action ->
+        ConfirmDialog(
+            title = "Workout in progress",
+            body = "You already have an active workout. Starting a new one will discard it. Continue?",
+            confirmLabel = "Discard & start",
+            onConfirm = {
+                pendingStart = null
+                scope.launch { action() }
+            },
+            onDismiss = { pendingStart = null },
+        )
     }
 }
 
@@ -528,6 +552,7 @@ private fun RoutineCard(
     onStart: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onShareClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalAppAccent.current
@@ -586,6 +611,16 @@ private fun RoutineCard(
                         onClick = {
                             menuOpen = false
                             onEditClick()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Share") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                        },
+                        onClick = {
+                            menuOpen = false
+                            onShareClick()
                         },
                     )
                     DropdownMenuItem(

@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -55,6 +56,7 @@ import com.zack.recomptracker.ui.theme.RecompTrackerTheme
 import com.zack.recomptracker.ui.toast.LocalToastController
 import com.zack.recomptracker.ui.toast.ToastController
 import com.zack.recomptracker.ui.toast.ToastOverlay
+import kotlinx.coroutines.flow.first
 
 val LocalAppContainer = compositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
@@ -113,12 +115,23 @@ private fun CoachActionType?.toDeepLinkRoute(): String? = when (this) {
     CoachActionType.TRACK_EXPERIMENT, CoachActionType.NONE, null -> null
 }
 
+/**
+ * The route a pending notification deep-link should navigate to, or null when navigation must not
+ * happen: no/unmappable action, onboarding state still unknown (`null` = the DataStore read is
+ * pending and the NavHost is not composed yet — navigating would throw "You must call setGraph()
+ * before…"), or onboarding incomplete (never route over the onboarding flow).
+ */
+internal fun deepLinkNavRoute(action: CoachActionType?, onboardingComplete: Boolean?): String? =
+    if (onboardingComplete == true) action.toDeepLinkRoute() else null
+
 @Composable
 fun RecompApp(
     container: AppContainer,
     darkMode: Boolean,
     deepLinkAction: State<CoachActionType?> = remember { mutableStateOf(null) },
     onDeepLinkHandled: () -> Unit = {},
+    shareRoutineUri: State<Uri?> = remember { mutableStateOf(null) },
+    onShareRoutineHandled: () -> Unit = {},
 ) {
     val accentTheme by container.uiPreferences.accentTheme
         .collectAsStateWithLifecycle(initialValue = AccentTheme.VIOLET)
@@ -136,12 +149,23 @@ fun RecompApp(
             }
         }
 
+        // Null until the flag is read, so the NavHost is not composed with the wrong start
+        // destination (which would flash Home before redirecting to onboarding, or vice versa).
+        val onboardingComplete by produceState<Boolean?>(initialValue = null) {
+            container.uiPreferences.onboardingComplete.collect { value = it }
+        }
+
         // Notification-tap deep-link: navigate to the mapped tab, then clear the pending action so a
-        // recomposition/rotation doesn't re-navigate. Guarded on onboardingComplete so we never route
-        // over the onboarding flow.
+        // recomposition/rotation doesn't re-navigate. deepLinkNavRoute gates on onboardingComplete —
+        // on a cold start from a push the action is set before the flag has loaded and the NavHost
+        // isn't composed yet (navigate() would throw), and an onboarding user must never be routed
+        // over the flow; keying the effect on the flag re-fires it once onboarding turns complete.
+        // The NavHost assigns its graph in its own composition effects, which can run after this
+        // one — wait for the first back-stack entry rather than racing setGraph().
         val pendingAction by deepLinkAction
-        LaunchedEffect(pendingAction) {
-            val route = pendingAction.toDeepLinkRoute() ?: return@LaunchedEffect
+        LaunchedEffect(pendingAction, onboardingComplete) {
+            val route = deepLinkNavRoute(pendingAction, onboardingComplete) ?: return@LaunchedEffect
+            navController.currentBackStackEntryFlow.first()
             navController.navigate(route) {
                 popUpTo(TopLevelDestination.Home.route) { saveState = true }
                 launchSingleTop = true
@@ -150,10 +174,18 @@ fun RecompApp(
             onDeepLinkHandled()
         }
 
-        // Null until the flag is read, so the NavHost is not composed with the wrong start
-        // destination (which would flash Home before redirecting to onboarding, or vice versa).
-        val onboardingComplete by produceState<Boolean?>(initialValue = null) {
-            container.uiPreferences.onboardingComplete.collect { value = it }
+        // Tapped shared-routine file: hand the Uri to the import inbox, then navigate to the preview
+        // screen. Gated on onboardingComplete for the same reason as the coach deep-link above (the
+        // NavHost isn't composed until the flag loads, and we never route over onboarding). Waits for
+        // the first back-stack entry so we don't race setGraph().
+        val pendingShareUriValue by shareRoutineUri
+        LaunchedEffect(pendingShareUriValue, onboardingComplete) {
+            val uri = pendingShareUriValue ?: return@LaunchedEffect
+            if (onboardingComplete != true) return@LaunchedEffect
+            container.routineShareInbox.offer(uri)
+            navController.currentBackStackEntryFlow.first()
+            navController.navigate(Routes.SharedRoutineImport) { launchSingleTop = true }
+            onShareRoutineHandled()
         }
 
         // Two separate backdrops to avoid a circular GraphicsLayer read:

@@ -3,6 +3,7 @@ package com.zack.recomptracker
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -30,6 +31,9 @@ class MainActivity : ComponentActivity() {
     /** The deep-link a tapped coach push wants to open; consumed once by RecompApp then cleared. */
     private val pendingDeepLink = mutableStateOf<CoachActionType?>(null)
 
+    /** A tapped shared-routine file's Uri; consumed once by RecompApp then cleared. */
+    private val pendingShareUri = mutableStateOf<Uri?>(null)
+
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* denied is fine — push just won't show */ }
 
@@ -44,7 +48,13 @@ class MainActivity : ComponentActivity() {
         app.container.coachNotifier.ensureChannels()
         maybeRequestNotificationPermission(app)
 
-        pendingDeepLink.value = intent.readCoachAction()
+        // Only consume the launch intent on a fresh start. On a recreation (rotation) savedInstanceState
+        // is non-null and re-reading the same intent would re-navigate into the deep-link/import screen
+        // after the user already handled it; warm taps come through onNewIntent instead.
+        if (savedInstanceState == null) {
+            pendingDeepLink.value = intent.readCoachAction()
+            pendingShareUri.value = intent.readShareUri()
+        }
 
         setContent {
             val themeMode by app.container.uiPreferences.themeMode
@@ -68,6 +78,8 @@ class MainActivity : ComponentActivity() {
                 darkMode = darkMode,
                 deepLinkAction = pendingDeepLink as State<CoachActionType?>,
                 onDeepLinkHandled = { pendingDeepLink.value = null },
+                shareRoutineUri = pendingShareUri as State<Uri?>,
+                onShareRoutineHandled = { pendingShareUri.value = null },
             )
         }
     }
@@ -77,6 +89,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.readCoachAction()?.let { pendingDeepLink.value = it }
+        intent.readShareUri()?.let { pendingShareUri.value = it }
     }
 
     private fun Intent.readCoachAction(): CoachActionType? {
@@ -84,6 +97,10 @@ class MainActivity : ComponentActivity() {
         return runCatching { CoachActionType.valueOf(name) }.getOrNull()
             ?.takeIf { it != CoachActionType.NONE }
     }
+
+    /** The Uri of a tapped shared-routine file, or null for any non-VIEW intent. */
+    private fun Intent.readShareUri(): Uri? =
+        if (action == Intent.ACTION_VIEW) data else null
 
     private fun maybeRequestNotificationPermission(app: RecompTrackerApp) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return

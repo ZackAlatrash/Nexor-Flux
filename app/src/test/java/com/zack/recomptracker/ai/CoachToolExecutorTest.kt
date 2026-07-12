@@ -9,7 +9,6 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.remote.WebResult
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.WebSearchResult
-import com.zack.recomptracker.data.repository.DailyMetricsInput
 import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.MealEntryInput
@@ -296,6 +295,28 @@ class CoachToolExecutorTest {
     }
 
     @Test
+    fun `log_meal falls back to the first slot when no slot name matches the meal_type`() = runTest {
+        var capturedSlotId: Long? = -1L
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        // Default slots have no "snack"; the model asks to log a snack.
+        val meal1 = MealSlotEntity(id = 7L, name = "Meal 1", sortOrder = 0)
+        val dinner = MealSlotEntity(id = 9L, name = "Dinner", sortOrder = 2)
+        whenever(logRepo.getSavedFoods()).thenReturn(emptyList())
+        whenever(logRepo.getSlots()).thenReturn(listOf(meal1, dinner))
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv ->
+            capturedSlotId = inv.getArgument(1)
+            1L
+        }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        executor.execute("log_meal", mapOf("name" to "Trail mix", "calories" to "300", "meal_type" to "snack"))
+
+        // No slot named "snack" → falls back to the first slot (Meal 1), never a null slot (P1-22).
+        assertTrue("Should fall back to the first slot, not null", capturedSlotId == 7L)
+    }
+
+    @Test
     fun `log_meal without name returns error JSON`() = runTest {
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
@@ -319,13 +340,15 @@ class CoachToolExecutorTest {
     }
 
     @Test
-    fun `log_metric weight_kg saves weight and returns success`() = runTest {
-        var saved: DailyMetricsInput? = null
+    fun `log_metric weight_kg saves weight via a partial write and returns success`() = runTest {
+        var savedDate: java.time.LocalDate? = null
+        var savedMetric: String? = null
+        var savedValue: Double? = null
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
-        whenever(logRepo.getDay(fixedDate)).thenReturn(emptyDayLog())
-        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
-            saved = inv.getArgument(0); Unit
+        // P2-7: a single metric goes through the partial-column write, NOT a whole-row save.
+        whenever(logRepo.setDailyMetric(any(), any(), any())).thenAnswer { inv ->
+            savedDate = inv.getArgument(0); savedMetric = inv.getArgument(1); savedValue = inv.getArgument(2); Unit
         }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
@@ -334,24 +357,27 @@ class CoachToolExecutorTest {
         assertTrue("Should succeed", result.contains("\"success\":true"))
         assertTrue("Should echo metric", result.contains("weight_kg"))
         assertTrue("Should echo value", result.contains("82.5"))
-        assertTrue("Weight should be saved", saved?.bodyWeightKg == 82.5)
+        assertEquals(fixedDate, savedDate)
+        assertEquals("weight_kg", savedMetric)
+        assertEquals(82.5, savedValue!!, 0.0)
     }
 
     @Test
-    fun `log_metric sleep_hours saves sleep and returns success`() = runTest {
-        var saved: DailyMetricsInput? = null
+    fun `log_metric sleep_hours saves sleep via a partial write and returns success`() = runTest {
+        var savedMetric: String? = null
+        var savedValue: Double? = null
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
-        whenever(logRepo.getDay(fixedDate)).thenReturn(emptyDayLog())
-        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
-            saved = inv.getArgument(0); Unit
+        whenever(logRepo.setDailyMetric(any(), any(), any())).thenAnswer { inv ->
+            savedMetric = inv.getArgument(1); savedValue = inv.getArgument(2); Unit
         }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("log_metric", mapOf("metric" to "sleep_hours", "value" to "7.5"))
 
         assertTrue("Should succeed", result.contains("\"success\":true"))
-        assertTrue("Sleep should be saved", saved?.sleepHours == 7.5)
+        assertEquals("sleep_hours", savedMetric)
+        assertEquals(7.5, savedValue!!, 0.0)
     }
 
     @Test
@@ -413,19 +439,21 @@ class CoachToolExecutorTest {
 
     @Test
     fun `log_metric energy_score accepts whole numbers`() = runTest {
-        var saved: DailyMetricsInput? = null
+        var savedMetric: String? = null
+        var savedValue: Double? = null
         val logRepo = mock<LogRepository>()
         val planRepo = mock<PlanRepository>()
-        whenever(logRepo.getDay(fixedDate)).thenReturn(emptyDayLog())
-        whenever(logRepo.saveDailyMetrics(any())).thenAnswer { inv ->
-            saved = inv.getArgument(0); Unit
+        whenever(logRepo.setDailyMetric(any(), any(), any())).thenAnswer { inv ->
+            savedMetric = inv.getArgument(1); savedValue = inv.getArgument(2); Unit
         }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
         val result = executor.execute("log_metric", mapOf("metric" to "energy_score", "value" to "8.0"))
 
         assertTrue("Should succeed", result.contains("\"success\":true"))
-        assertTrue("Should save as integer", saved?.energyScore == 8)
+        // The partial write receives the score; the DAO stores its integer part (see DailyLogPartialMetricTest).
+        assertEquals("energy_score", savedMetric)
+        assertEquals(8.0, savedValue!!, 0.0)
     }
 
     @Test
@@ -709,7 +737,10 @@ class CoachToolExecutorTest {
     // ── log_meal library lookup ────────────────────────────────────────────────
 
     @Test
-    fun `log_meal uses library macros when food found by name`() = runTest {
+    fun `log_meal with no grams logs the household serving with amount and macros on one basis`() = runTest {
+        // 15 kcal per 100 g, household serving 15 g. Logging with no grams must scale the per-100g
+        // macros to the 15 g serving AND display 15 g — one basis, so the entry is self-consistent.
+        // The old code scaled macros at 100 g (15 kcal) while displaying 15 g (review P1-8).
         val ketchup = SavedFoodEntity(
             name = "Ketchup", servingName = "1 tbsp",
             calories = 15, proteinG = 0.2, carbsG = 3.0, fatG = 0.0,
@@ -723,13 +754,14 @@ class CoachToolExecutorTest {
         whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
 
         val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
-        // Model passes a wrong calorie estimate — tool should override with library value
+        // Model passes a wrong calorie estimate — tool should override with the library value.
         executor.execute("log_meal", mapOf("name" to "ketchup", "calories" to "999"))
 
         assertTrue("Should use library name (capitalized)", captured?.name == "Ketchup")
-        assertTrue("Should use library calories (15)", captured?.calories == 15)
-        assertTrue("Should use library protein", captured?.proteinG == 0.2)
-        assertTrue("Should use library carbs", captured?.carbsG == 3.0)
+        assertTrue("Amount is the 15 g household serving", captured?.amountGrams == 15.0)
+        assertTrue("Calories = 15/100g × 15/100 = 2, matching the 15 g amount", captured?.calories == 2)
+        // Protein scales on the SAME basis as the amount (0.2/100g × 15/100 ≈ 0.03).
+        assertTrue("Protein scaled to the 15 g serving", (captured?.proteinG ?: -1.0) in 0.029..0.031)
     }
 
     @Test
@@ -769,6 +801,81 @@ class CoachToolExecutorTest {
 
         assertTrue("Should use model calories as fallback", captured?.calories == 500)
         assertTrue("Should use model protein as fallback", captured?.proteinG == 30.0)
+    }
+
+    @Test
+    fun `log_meal ignores a loose score-0 library match and keeps the model macros`() = runTest {
+        // "bar protein" — both words appear in "Chocolate Protein Bar XL" but not as a substring, so
+        // it scores 0. Too loose to silently override the food/macros the user confirmed (review P1-9).
+        val libFood = SavedFoodEntity(
+            name = "Chocolate Protein Bar XL", servingName = "1 bar",
+            calories = 400, proteinG = 20.0, carbsG = 40.0, fatG = 12.0, householdServingGrams = 60.0,
+        )
+        var captured: MealEntryInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getSavedFoods()).thenReturn(listOf(libFood))
+        whenever(logRepo.getSlots()).thenReturn(emptyList())
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
+
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        executor.execute("log_meal", mapOf("name" to "bar protein", "calories" to "250"))
+
+        assertTrue("A score-0 match must NOT override the model's name", captured?.name == "bar protein")
+        assertTrue("Model calories used, not the library's", captured?.calories == 250)
+    }
+
+    @Test
+    fun `describeLoggedMeal matches what log_meal writes for a library food`() = runTest {
+        val ketchup = SavedFoodEntity(
+            name = "Ketchup", servingName = "1 tbsp",
+            calories = 100, proteinG = 1.2, carbsG = 25.0, fatG = 0.1, householdServingGrams = 15.0,
+        )
+        var captured: MealEntryInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getSavedFoods()).thenReturn(listOf(ketchup))
+        whenever(logRepo.getSlots()).thenReturn(emptyList())
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        // Model passes the wrong name case and a wrong calorie estimate.
+        val args = mapOf("name" to "ketchup", "grams" to "30", "meal_type" to "Lunch", "calories" to "999")
+
+        val description = executor.describeLoggedMeal(args)
+        executor.execute("log_meal", args)
+
+        // The dialog describes the RESOLVED food + macros the executor will write, not the model args.
+        assertTrue("names the resolved library food", description.contains("Ketchup"))
+        assertTrue("shows the executed calories (30 g × 100/100)", description.contains("30 kcal"))
+        assertTrue("does not leak the model's wrong 999", !description.contains("999"))
+        assertTrue("says logged to today", description.contains("to today's food log"))
+        // …and execution agrees with what the dialog said.
+        assertTrue(captured?.name == "Ketchup")
+        assertTrue(captured?.calories == 30)
+    }
+
+    @Test
+    fun `describeLoggedMeal and log_meal agree that a future date plans the meal`() = runTest {
+        val ketchup = SavedFoodEntity(
+            name = "Ketchup", servingName = "1 tbsp",
+            calories = 100, proteinG = 1.2, carbsG = 25.0, fatG = 0.1, householdServingGrams = 15.0,
+        )
+        var captured: MealEntryInput? = null
+        val logRepo = mock<LogRepository>()
+        val planRepo = mock<PlanRepository>()
+        whenever(logRepo.getSavedFoods()).thenReturn(listOf(ketchup))
+        whenever(logRepo.getSlots()).thenReturn(emptyList())
+        whenever(logRepo.addMealToSlot(any(), anyOrNull())).thenAnswer { inv -> captured = inv.getArgument(0); 1L }
+        val executor = CoachToolExecutor(logRepo, planRepo, fixedDateProvider)
+        val tomorrow = fixedDate.plusDays(1).toString()
+        val args = mapOf("name" to "ketchup", "grams" to "30", "date" to tomorrow)
+
+        val description = executor.describeLoggedMeal(args)
+        executor.execute("log_meal", args)
+
+        assertTrue("dialog says the meal is planned, with the date", description.contains("planned for $tomorrow"))
+        assertTrue("dialog does NOT claim today's food log", !description.contains("to today's food log"))
+        assertTrue("executor actually plans it", captured?.planned == true)
     }
 
     // ── search_web ─────────────────────────────────────────────────────────────

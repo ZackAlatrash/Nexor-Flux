@@ -9,15 +9,20 @@ import org.junit.Test
 class ProgressInsightMapperTest {
 
     @Test
-    fun `maps counts and range`() {
+    fun `passes through pre-computed trends, counts and range`() {
         val ctx = buildProgressInsightContext(
             rangeDays = 28,
-            weightValues = listOf(80f, 79.5f, 79f),
-            waistValues = listOf(85f, 84f),
-            liftValues = listOf(100f, 102f),
+            weightTrendKgPerWeek = -0.25,
+            waistTrendCmPerWeek = -0.10,
+            liftTrendKgPerWeek = 1.5,
+            weightPointCount = 3,
+            waistPointCount = 2,
             adherencePercent = 90f,
         )
         assertEquals(28, ctx.rangeDays)
+        assertEquals(-0.25, ctx.weightTrendKgPerWeek!!, 1e-9)
+        assertEquals(-0.10, ctx.waistTrendCmPerWeek!!, 1e-9)
+        assertEquals(1.5, ctx.liftTrendKgPerWeek!!, 1e-9)
         assertEquals(3, ctx.weightPointCount)
         assertEquals(2, ctx.waistPointCount)
         assertEquals(90.0, ctx.adherencePercent!!, 0.001)
@@ -25,29 +30,18 @@ class ProgressInsightMapperTest {
     }
 
     @Test
-    fun `single point yields null trend`() {
+    fun `null trends and sparse counts propagate`() {
         val ctx = buildProgressInsightContext(
             rangeDays = 7,
-            weightValues = listOf(80f),
-            waistValues = emptyList(),
-            liftValues = emptyList(),
+            weightTrendKgPerWeek = null,
+            waistTrendCmPerWeek = null,
+            liftTrendKgPerWeek = null,
+            weightPointCount = 1,
+            waistPointCount = 0,
             adherencePercent = null,
         )
         assertNull(ctx.weightTrendKgPerWeek)
         assertNull(ctx.adherencePercent)
         assertFalse(ctx.hasSufficientData)
-    }
-
-    @Test
-    fun `computes a weekly trend from two weeks of points`() {
-        // 8 points span 7 days = 1.0 week; (last - first) / 1.0 week
-        val ctx = buildProgressInsightContext(
-            rangeDays = 7,
-            weightValues = listOf(80f, 80f, 80f, 80f, 80f, 80f, 80f, 79f),
-            waistValues = emptyList(),
-            liftValues = emptyList(),
-            adherencePercent = null,
-        )
-        assertEquals(-1.0, ctx.weightTrendKgPerWeek!!, 0.001)
     }
 }

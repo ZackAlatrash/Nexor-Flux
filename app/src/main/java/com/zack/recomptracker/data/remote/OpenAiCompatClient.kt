@@ -11,10 +11,17 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
-/** Config snapshot for one cloud call. [baseUrl] has no trailing slash. */
+/**
+ * Config for one cloud call. [baseUrl] has no trailing slash. [apiKey] is a provider read fresh at
+ * request time (not a captured value): replacing the stored key takes effect on the very next
+ * request without rebuilding the config, and the plaintext key never lives in this long-lived object
+ * or its `toString`. Mirrors [com.zack.recomptracker.data.remote.TavilyWebSearchProvider]'s
+ * keyProvider. See review P1-5 — the old captured-String field left a rotated key unused until
+ * restart because `cloudConfigFlow` combines on a `hasKey` boolean that conflates true→true.
+ */
 data class CloudConfig(
     val baseUrl: String,
-    val apiKey: String,
+    val apiKey: () -> String,
     val model: String,
 )
 
@@ -88,10 +95,11 @@ open class OpenAiCompatClient(
         }
     }
 
-    private fun newRequest(config: CloudConfig, bodyJson: String): Request =
+    // internal so the auth-header/key-rotation behavior is unit-testable.
+    internal fun newRequest(config: CloudConfig, bodyJson: String): Request =
         Request.Builder()
             .url("${config.baseUrl.trimEnd('/')}/chat/completions")
-            .addHeader("Authorization", "Bearer ${config.apiKey}")
+            .addHeader("Authorization", "Bearer ${config.apiKey()}")
             .post(bodyJson.toRequestBody(jsonMedia))
             .build()
 }

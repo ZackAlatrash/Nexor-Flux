@@ -312,6 +312,39 @@ fun FoodContent(
                     }
                 }
 
+                // Entries with no slot (e.g. some coach-logged or older meals) — visible + editable
+                // + deletable here instead of counting toward totals while hidden (P1-22).
+                if (state.unslottedEntries.isNotEmpty()) {
+                    item { SectionLabel("Unassigned") }
+                    item {
+                        FrostedCard {
+                            val dividerColor = LocalAppColors.current.cardBorder
+                            state.unslottedEntries.forEachIndexed { index, entry ->
+                                // Key each row so SlotEntryRow's per-row remember state (open
+                                // macro-edit / delete dialogs) follows the entry, not its index,
+                                // when the list mutates — matching LockedSlotCard.
+                                key(entry.id) {
+                                    if (index > 0) {
+                                        Box(Modifier.fillMaxWidth().height(1.dp).background(dividerColor))
+                                    }
+                                    SlotEntryRow(
+                                        entry = entry,
+                                        canConfirm = entry.planned && !state.isFuture,
+                                        canPostpone = !state.isPast,
+                                        onDelete = actions.onDeleteMeal,
+                                        onConfirm = { actions.onConfirmMeal(entry.id) },
+                                        onPostpone = { actions.onPostponeMeal(entry.id) },
+                                        // null (not 0L) is the "no slot" sentinel everywhere else; the
+                                        // amount edit preserves the entry's real slotId regardless.
+                                        onEditAmount = { onEditEntryAmount(null, "Unassigned", entry.id) },
+                                        onEditMacros = actions.onEditMacros,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item {
                     LiquidSecondaryButton(
                         text = "+ Add meal slot",

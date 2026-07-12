@@ -113,6 +113,15 @@ class LogRepository(
     fun observePerformances(): Flow<List<LiftPerformanceEntity>> = performanceDao.observeAll()
     fun observeWeeklyReviews(): Flow<List<WeeklyReviewEntity>> = weeklyReviewDao.observeAll()
 
+    /**
+     * Writes a SINGLE daily metric via a partial column update (review P2-7). Unlike [saveDailyMetrics]
+     * (a whole-row snapshot save from the check-in sheet), this never reads or rewrites the sibling
+     * columns, so a concurrent check-in save can't be clobbered. [metric] uses the coach vocabulary.
+     */
+    suspend fun setDailyMetric(date: LocalDate, metric: String, value: Double) {
+        dailyLogDao.upsertMetric(date.toString(), metric, value)
+    }
+
     suspend fun saveDailyMetrics(input: DailyMetricsInput) {
         val existing = dailyLogDao.getByDate(input.date.toString())
         val steps = resolveSavedSteps(input.stepsEdited, input.steps, existing?.steps, existing?.stepsSource)

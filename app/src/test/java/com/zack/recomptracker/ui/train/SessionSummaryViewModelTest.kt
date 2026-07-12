@@ -37,6 +37,12 @@ class SessionSummaryViewModelTest {
 
     /** Minimal in-memory session DAO holding one ACTIVE session with one exercise + set. */
     private class FakeDao : WorkoutSessionDao() {
+        override suspend fun abandonActiveSessions() {}
+        override suspend fun updateSetWeight(setId: Long, weightKg: Double?) {}
+        override suspend fun updateSetReps(setId: Long, reps: Int) {}
+        override suspend fun updateSetRir(setId: Long, rir: Int?) {}
+        override suspend fun updateSetCompleted(setId: Long, completed: Boolean) {}
+        override suspend fun getSetById(setId: Long): com.zack.recomptracker.data.local.entity.SessionSetEntity? = null
         val sessions = mutableMapOf<Long, WorkoutSessionEntity>()
         val exercises = mutableMapOf<Long, SessionExerciseEntity>()
         val sets = mutableMapOf<Long, SessionSetEntity>()
@@ -49,6 +55,9 @@ class SessionSummaryViewModelTest {
             exercises[exercise.id] = exercise; return exercise.id
         }
         override suspend fun insertSet(set: SessionSetEntity): Long { sets[set.id] = set; return set.id }
+        override suspend fun getAllSessions(): List<WorkoutSessionEntity> = sessions.values.toList()
+        override suspend fun getAllSessionExercises(): List<SessionExerciseEntity> = exercises.values.toList()
+        override suspend fun getAllSessionSets(): List<SessionSetEntity> = sets.values.toList()
         override suspend fun updateSet(set: SessionSetEntity) { sets[set.id] = set }
         override suspend fun deleteSetById(id: Long) { sets.remove(id) }
         override suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int =
@@ -85,9 +94,13 @@ class SessionSummaryViewModelTest {
         override suspend fun getById(id: Long) = null
     }
     private class NoopExerciseDao : ExerciseDao {
+        override suspend fun update(exercise: com.zack.recomptracker.data.local.entity.ExerciseEntity) {}
+        override suspend fun findIdBySourceAndExternalId(source: String, externalId: String): Long? = null
+        override suspend fun stampSourceVersion(source: String, version: String) {}
         override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(emptyList())
         override suspend fun search(query: String): List<ExerciseEntity> = emptyList()
         override suspend fun getById(id: Long): ExerciseEntity? = null
+        override suspend fun getAll(): List<ExerciseEntity> = emptyList()
         override suspend fun count(): Int = 0
         override suspend fun sourceVersion(source: String): String? = null
         override suspend fun insertAll(exercises: List<ExerciseEntity>) {}

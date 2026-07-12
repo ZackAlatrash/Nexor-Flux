@@ -19,6 +19,7 @@ class ExerciseLibraryRepositoryTest {
         override suspend fun search(query: String): List<ExerciseEntity> =
             rows.filter { it.name.contains(query, ignoreCase = true) }
         override suspend fun getById(id: Long): ExerciseEntity? = rows.firstOrNull { it.id == id }
+        override suspend fun getAll(): List<ExerciseEntity> = rows.toList()
         override suspend fun count(): Int = rows.size
         override suspend fun sourceVersion(source: String): String? =
             rows.firstOrNull { it.source == source }?.sourceVersion
@@ -35,6 +36,15 @@ class ExerciseLibraryRepositoryTest {
             val entity = exercise.copy(id = nextId)
             rows.add(entity)
             return nextId
+        }
+        override suspend fun update(exercise: ExerciseEntity) {
+            val idx = rows.indexOfFirst { it.id == exercise.id }
+            if (idx >= 0) rows[idx] = exercise
+        }
+        override suspend fun findIdBySourceAndExternalId(source: String, externalId: String): Long? =
+            rows.firstOrNull { it.source == source && it.externalId == externalId }?.id
+        override suspend fun stampSourceVersion(source: String, version: String) {
+            for (i in rows.indices) if (rows[i].source == source) rows[i] = rows[i].copy(sourceVersion = version)
         }
     }
 
@@ -59,11 +69,12 @@ class ExerciseLibraryRepositoryTest {
         val dao = FakeExerciseDao()
         val repo = ExerciseLibraryRepository(dao)
         repo.seedIfEmpty(version = "v1") { sampleJson.byteInputStream() }
-        val callsAfterFirst = dao.insertCalls
+        val rowsAfterFirst = dao.rows.toList()
 
         repo.seedIfEmpty(version = "v1") { sampleJson.byteInputStream() }
 
-        assertEquals(callsAfterFirst, dao.insertCalls)
+        // The version gate skips the re-seed entirely — rows are untouched (no duplicate insert).
+        assertEquals(rowsAfterFirst, dao.rows.toList())
     }
 
     @Test
@@ -93,6 +104,12 @@ class ExerciseLibraryRepositoryTest {
     /** Fake DAO that captures the inserted entity and returns a fixed id. */
     private class CapturingExerciseDao : ExerciseDao by mock() {
         var inserted: ExerciseEntity? = null
+        // addCustomExercise now routes through the idempotent insertCustomOrGetExisting (P1-20);
+        // capture the entity it builds here.
+        override suspend fun insertCustomOrGetExisting(entity: ExerciseEntity): Long {
+            inserted = entity
+            return 42L
+        }
         override suspend fun insertReturningId(entity: ExerciseEntity): Long {
             inserted = entity
             return 42L

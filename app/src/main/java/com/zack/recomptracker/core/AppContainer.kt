@@ -15,6 +15,7 @@ import com.zack.recomptracker.data.repository.BackupRepository
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.MealSlotInitializer
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanHistoryInitializer
 import com.zack.recomptracker.data.repository.PlanRepository
@@ -193,6 +194,13 @@ class AppContainer(context: Context) {
 
     val exerciseLibraryRepository = ExerciseLibraryRepository(database.exerciseDao())
     val workoutRepository = WorkoutRepository(database.workoutDao())
+    val routineShareInbox = com.zack.recomptracker.data.share.RoutineShareInbox()
+    val routineShareRepository = com.zack.recomptracker.data.repository.RoutineShareRepository(
+        appContext = context.applicationContext,
+        workoutDao = database.workoutDao(),
+        workoutRepository = workoutRepository,
+        exerciseLibraryRepository = exerciseLibraryRepository,
+    )
     val workoutSessionRepository = WorkoutSessionRepository(
         database.workoutSessionDao(),
         dailyLogDao = database.dailyLogDao(),
@@ -213,6 +221,7 @@ class AppContainer(context: Context) {
         rebalanceStore = rebalanceStore,
     )
     val planHistoryInitializer = PlanHistoryInitializer.from(database.planVersionDao(), planRepository)
+    val mealSlotInitializer = MealSlotInitializer(database.mealSlotDao())
     val healthSyncCoordinator = HealthSyncCoordinator(
         hcRepository = healthConnectRepository,
         logRepository = logRepository,
@@ -239,6 +248,15 @@ class AppContainer(context: Context) {
                 planHistoryInitializer.seedIfEmpty()
             }.onFailure {
                 Log.w("RecompPlan", "Plan history baseline seed failed", it)
+            }
+        }
+        appScope.launch {
+            // Remediate fresh installs first created at schema v>=2 (which skipped MIGRATION_1_2's
+            // meal-slot seed) — they reach v15 with an empty Food Log until this self-heals (P1-21).
+            runCatching {
+                mealSlotInitializer.seedIfEmpty()
+            }.onFailure {
+                Log.w("RecompMeals", "Meal slot seed failed", it)
             }
         }
         appScope.launch {
@@ -277,12 +295,17 @@ class AppContainer(context: Context) {
     // Effective cloud config: non-null only when base URL, model id, and API key are all present.
     private val cloudConfigFlow: StateFlow<CloudConfig?> =
         combine(
-            uiPreferences.cloudBaseUrl,
-            uiPreferences.cloudModelId,
+            // distinctUntilChanged so an unrelated UiPreferences write doesn't re-emit a new
+            // CloudConfig every time (its apiKey lambda makes each instance non-equal, so stateIn
+            // can't conflate them).
+            uiPreferences.cloudBaseUrl.distinctUntilChanged(),
+            uiPreferences.cloudModelId.distinctUntilChanged(),
             secureKeyStore.hasKey,
         ) { baseUrl, model, hasKey ->
             if (baseUrl.isNotBlank() && model.isNotBlank() && hasKey) {
-                CloudConfig(baseUrl = baseUrl, apiKey = secureKeyStore.getApiKey(), model = model)
+                // apiKey is a provider read fresh per request, so rotating the key (hasKey stays
+                // true, so this combine does not re-fire) still takes effect immediately (review P1-5).
+                CloudConfig(baseUrl = baseUrl, apiKey = { secureKeyStore.getApiKey() }, model = model)
             } else {
                 null
             }
@@ -536,6 +559,7 @@ class AppContainer(context: Context) {
         scope = appScope,
         knowledgeInjector = knowledgeInjector,
         toolSchemas = CLOUD_COACH_TOOL_SCHEMAS,
+        dateProvider = dateProvider,
     )
 
     // ── Proactive coaching spine (deterministic engine → inbox; cloud phrasing on open) ──
@@ -671,7 +695,7 @@ private class AppViewModelFactory(
                 logRepository = container.logRepository,
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
-                hcRepository = container.healthConnectRepository,
+                healthSyncCoordinator = container.healthSyncCoordinator,
                 // Q6a: Body RECOVERY_READINESS card now binds directly to the cloud coordinator.
                 aiInsightCoordinator = container.cloudInsightCoordinator,
             )
@@ -691,6 +715,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 dateProvider = container.dateProvider,
                 adherenceCalculator = container.adherenceCalculator,
+                trendCalculator = container.trendCalculator,
                 // Q6a: Trends PROGRESS_TREND card now binds directly to the cloud coordinator.
                 aiInsightCoordinator = container.cloudInsightCoordinator,
                 userProfileStore = container.userProfilePreferencesStore,
@@ -824,6 +849,7 @@ private class AppViewModelFactory(
                 exerciseLibraryRepository = container.exerciseLibraryRepository,
                 logRepository = container.logRepository,
                 userProfileStore = container.userProfilePreferencesStore,
+                routineShareRepository = container.routineShareRepository,
                 dateProvider = container.dateProvider,
             )
             ExercisePickerViewModel::class.java -> ExercisePickerViewModel(
@@ -854,6 +880,11 @@ private class AppViewModelFactory(
             UsageStatsViewModel::class.java -> UsageStatsViewModel(
                 dao = container.database.usageEventDao(),
             )
+            com.zack.recomptracker.ui.share.SharedRoutineImportViewModel::class.java ->
+                com.zack.recomptracker.ui.share.SharedRoutineImportViewModel(
+                    routineShareRepository = container.routineShareRepository,
+                    inbox = container.routineShareInbox,
+                )
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T
     }

@@ -1,7 +1,10 @@
 package com.zack.recomptracker.ai
 
+import android.util.Log
 import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
 import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
+import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.core.time.SystemDateProvider
 import com.zack.recomptracker.data.remote.ChatRequestMessage
 import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
@@ -18,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -33,6 +37,13 @@ interface CoachReadTools {
     suspend fun execute(name: String, args: Map<String, String>): String
     /** The full system prompt (plan, profile, today's snapshot, rules) for a new conversation. */
     suspend fun systemPromptSnapshot(): String
+
+    /**
+     * Confirmation-dialog text for a pending log_meal, resolved the SAME way execution resolves it
+     * (library match + planned/date), so the dialog can't describe a different action than the one
+     * performed (review P1-9). Null → the caller falls back to a generic description of the args.
+     */
+    suspend fun describeLoggedMeal(args: Map<String, String>): String? = null
 }
 
 /**
@@ -51,6 +62,9 @@ class CloudCoachCoordinator(
     private val scope: CoroutineScope,
     private val knowledgeInjector: KnowledgeInjector = NoOpKnowledgeInjector,
     private val toolSchemas: List<String> = COACH_TOOL_SCHEMAS,
+    // Used only to detect a calendar-day rollover mid-conversation, so the once-seeded system
+    // snapshot (Today's date + totals) can be rebuilt instead of answering with yesterday's data.
+    private val dateProvider: DateProvider = SystemDateProvider(),
 ) : CoachCoordinator {
 
     private val _state = MutableStateFlow<CoachState>(CoachState.Unavailable)
@@ -60,6 +74,8 @@ class CloudCoachCoordinator(
     private val turnLock = Mutex()
     private val requestMessages = mutableListOf<ChatRequestMessage>()
     private var systemSeeded = false
+    // The calendar day the system snapshot was (re)seeded for; a change means the snapshot is stale.
+    private var seededDate: LocalDate? = null
     // The previous turn's injected reference message, dropped before injecting the next turn's so
     // multi-turn context never accumulates reference blocks.
     private var lastReferenceMessage: ChatRequestMessage? = null
@@ -95,6 +111,7 @@ class CloudCoachCoordinator(
                 history.clear()
                 requestMessages.clear()
                 systemSeeded = false
+                seededDate = null
                 lastReferenceMessage = null
                 if (_state.value != CoachState.Unavailable) _state.value = CoachState.Ready
             }
@@ -112,15 +129,34 @@ class CloudCoachCoordinator(
             }
             history.add(ChatMessage(Role.User, userText))
             thinkingSteps.clear()
+            committedWrites.clear()
             pushThinking("Thinking…")
+            // Count of messages that predate THIS turn (system + prior completed turns). A failed
+            // turn reverts to exactly this, so prior turns survive an error. Finalised below, after
+            // seeding + trimming, before this turn's own messages are appended.
+            var priorContextSize = 0
             try {
+                val today = dateProvider.today()
+                // The system snapshot embeds Today's date + totals and is seeded once. If the day
+                // rolled over mid-conversation, rebuild it in place (index 0 is always the snapshot)
+                // so the coach stops answering "today" with yesterday's data (review P2-3).
+                if (systemSeeded && seededDate != today && requestMessages.firstOrNull()?.role == "system") {
+                    requestMessages[0] = ChatRequestMessage(role = "system", content = tools.systemPromptSnapshot())
+                    seededDate = today
+                }
                 if (!systemSeeded) {
                     requestMessages.add(ChatRequestMessage(role = "system", content = tools.systemPromptSnapshot()))
                     systemSeeded = true
+                    seededDate = today
                 }
-                // Refresh the per-turn knowledge block: drop the previous turn's block, inject a
-                // fresh one for THIS question, positioned immediately before the user message.
+                // Drop the previous turn's knowledge block, then bound the accumulated context so a
+                // long conversation can't grow without limit into a provider 400 (review P2-4). What
+                // remains is the durable pre-turn context a failure reverts to.
                 lastReferenceMessage?.let { requestMessages.remove(it) }
+                lastReferenceMessage = null
+                trimOldTurns()
+                priorContextSize = requestMessages.size
+                // Inject a fresh knowledge block for THIS question, immediately before the user message.
                 val reference = knowledgeInjector.referenceBlock(userText)
                 lastReferenceMessage = if (reference.isNotBlank()) {
                     ChatRequestMessage(role = "system", content = reference).also { requestMessages.add(it) }
@@ -133,10 +169,8 @@ class CloudCoachCoordinator(
                 var nudged = false
                 while (true) {
                     if (rounds++ >= MAX_TOOL_ROUNDS) {
-                        requestMessages.clear()
-                        systemSeeded = false
-                        lastReferenceMessage = null
-                        _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
+                        revertFailedTurn(priorContextSize)
+                        _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
                         break
                     }
                     // Timeout applies to each network completion call; user-confirmation
@@ -156,12 +190,10 @@ class CloudCoachCoordinator(
                                 requestMessages.add(ChatRequestMessage(role = "user", content = EMPTY_RESPONSE_NUDGE))
                                 continue
                             }
-                            requestMessages.clear()
-                            systemSeeded = false
-                            lastReferenceMessage = null
+                            revertFailedTurn(priorContextSize)
                             _state.value = CoachState.Error(
                                 history.toList(),
-                                "The AI didn't complete that action — please try again.",
+                                failureMessage("The AI didn't complete that action — please try again."),
                             )
                             break
                         }
@@ -201,26 +233,66 @@ class CloudCoachCoordinator(
                     }
                 }
             } catch (e: TimeoutCancellationException) {
-                requestMessages.clear()
-                systemSeeded = false
-                lastReferenceMessage = null
-                _state.value = CoachState.Error(history.toList(), "Took too long — try again.")
+                revertFailedTurn(priorContextSize)
+                _state.value = CoachState.Error(history.toList(), failureMessage("Took too long — try again."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                requestMessages.clear()
-                systemSeeded = false
-                lastReferenceMessage = null
-                _state.value = CoachState.Error(history.toList(), "Something went wrong — try again.")
+                // Surface the real cause (e.g. a parse failure) instead of only the generic message,
+                // so an unexpected turn failure is debuggable rather than silently swallowed (P2-6).
+                Log.w(TAG, "Coach turn failed", e)
+                revertFailedTurn(priorContextSize)
+                _state.value = CoachState.Error(history.toList(), failureMessage("Something went wrong — try again."))
             }
         }
     }
 
+    /**
+     * Reverts the current (failed) turn's messages, truncating [requestMessages] back to
+     * [toSize] — the context that predated this turn. Prior completed turns and the system snapshot
+     * (with its already-consumed briefing handoff) survive the error, so the model keeps its memory
+     * instead of being wiped (review P2-4). Any partial tool-call scaffolding from the failed turn
+     * is dropped too, so the retained context stays a valid message sequence.
+     */
+    private fun revertFailedTurn(toSize: Int) {
+        while (requestMessages.size > toSize) requestMessages.removeAt(requestMessages.size - 1)
+        lastReferenceMessage = null
+        // If the revert left no system message — e.g. the failure was in systemPromptSnapshot() itself,
+        // before priorContextSize was set past 0 — force a clean reseed next turn rather than sending
+        // a context with no system prompt.
+        if (requestMessages.firstOrNull()?.role != "system") {
+            systemSeeded = false
+            seededDate = null
+        }
+    }
+
+    /**
+     * Bounds the accumulated request context: while it exceeds [MAX_CONTEXT_CHARS] and more than one
+     * prior user turn remains, drops the OLDEST complete `[user … ]` block (up to the next user
+     * message). Whole blocks are dropped so assistant tool_calls stay paired with their tool results,
+     * and the system message at index 0 is never touched. The most recent turn is always kept.
+     */
+    private fun trimOldTurns() {
+        while (estimatedContextChars() > MAX_CONTEXT_CHARS) {
+            val firstUser = (1 until requestMessages.size).firstOrNull { requestMessages[it].role == "user" } ?: break
+            val nextUser = ((firstUser + 1) until requestMessages.size).firstOrNull { requestMessages[it].role == "user" } ?: break
+            repeat(nextUser - firstUser) { requestMessages.removeAt(firstUser) }
+        }
+    }
+
+    private fun estimatedContextChars(): Int =
+        requestMessages.sumOf { (it.content?.length ?: 0) + (it.assistantToolCallsJson?.length ?: 0) }
+
     private suspend fun confirmAndRun(call: ParsedToolCall): String {
+        // For log_meal, describe what will ACTUALLY be written (library-resolved food/macros,
+        // planned-vs-logged date) rather than the model's raw args (review P1-9); other tools use the
+        // static description. Null from the adapter → fall back to the static text.
+        val displayText = (if (call.name == "log_meal") tools.describeLoggedMeal(call.arguments) else null)
+            ?: pendingActionDisplayText(call.name, call.arguments)
         val action = PendingCoachAction(
             toolName = call.name,
             args = call.arguments,
-            displayText = pendingActionDisplayText(call.name, call.arguments),
+            displayText = displayText,
         )
         val deferred = CompletableDeferred<Boolean>()
         pendingConfirmation.set(deferred)
@@ -229,7 +301,11 @@ class CloudCoachCoordinator(
         pendingConfirmation.compareAndSet(deferred, null)
         if (!confirmed) return """{"cancelled":true}"""
         pushThinking(toolStatusText(call.name))
-        return tools.execute(call.name, call.arguments)
+        val result = tools.execute(call.name, call.arguments)
+        // Executor writes return {"success":true,...} only when the row actually persisted (errors
+        // and disambiguation prompts do not). Record it so a later failure can say the data is saved.
+        if (result.contains("\"success\":true")) committedWrites.add(writeNoun(call.name))
+        return result
     }
 
     private fun encodeToolCalls(calls: List<ParsedToolCall>): String {
@@ -259,6 +335,35 @@ class CloudCoachCoordinator(
     // Running process log for the current turn (thinking + tool steps). Safe as a single field
     // because turnLock serialises turns; cleared at the start of each turn.
     private val thinkingSteps = mutableListOf<String>()
+
+    // Short nouns for the writes that were CONFIRMED and actually persisted this turn (review P2-1).
+    // Same single-field-under-turnLock safety as thinkingSteps; cleared at the start of each turn.
+    // Consulted only on the error paths: if a write already committed, the failure message must say
+    // the data is saved rather than a bare "try again" (which invites re-issuing → double-logging).
+    private val committedWrites = mutableListOf<String>()
+
+    /**
+     * The user-facing message for a turn that failed. When a write already persisted this turn,
+     * reassure the user it is saved so they don't re-send the command; otherwise use [base].
+     */
+    private fun failureMessage(base: String): String =
+        if (committedWrites.isEmpty()) {
+            base
+        } else {
+            "I already saved your ${committedWrites.distinct().joinToString(", ")} — no need to send " +
+                "that again. Something went wrong finishing my reply."
+        }
+
+    /** A short noun for a persisted write tool, used in [failureMessage]. */
+    private fun writeNoun(toolName: String): String = when (toolName) {
+        "log_meal" -> "meal"
+        "log_metric" -> "metric"
+        "update_calorie_target" -> "calorie target"
+        "create_routine", "edit_routine" -> "routine"
+        "create_exercise" -> "exercise"
+        "delete_meal", "edit_meal" -> "meal change"
+        else -> "change"
+    }
 
     /** Appends a process step (dedupes consecutive duplicates) and emits the updated Thinking state. */
     private fun pushThinking(label: String) {
@@ -308,8 +413,14 @@ class CloudCoachCoordinator(
         }
 
     private companion object {
+        private const val TAG = "CloudCoachCoordinator"
         private const val MAX_TOOL_ROUNDS = 12
         private const val TURN_TIMEOUT_MS = 180_000L
+
+        // Soft budget (characters, ~4 chars/token) for the accumulated request context. When the
+        // conversation exceeds it, the oldest turns are trimmed so token use can't grow without
+        // limit into a provider 400 (review P2-4). The system message (index 0) is never trimmed.
+        private const val MAX_CONTEXT_CHARS = 24_000
 
         /** One-shot prompt sent when a completion returns no tool call and no text, to recover the turn. */
         private const val EMPTY_RESPONSE_NUDGE =

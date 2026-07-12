@@ -22,7 +22,7 @@ import org.junit.Test
 class CloudCoachCoordinatorTest {
 
     private fun config() = MutableStateFlow<CloudConfig?>(
-        CloudConfig(baseUrl = "https://x", apiKey = "k", model = "m"),
+        CloudConfig(baseUrl = "https://x", apiKey = { "k" }, model = "m"),
     )
 
     private class ScriptedClient(private val responses: ArrayDeque<ParsedChatResponse>) : OpenAiCompatClient() {

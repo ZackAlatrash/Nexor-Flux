@@ -20,6 +20,13 @@ class MarkDayTrainedTest {
         override suspend fun upsert(log: DailyLogEntity) { store[log.date] = log }
         override suspend fun insertAll(logs: List<DailyLogEntity>) { logs.forEach { store[it.date] = it } }
         override suspend fun deleteAll() { store.clear() }
+        override suspend fun insertEmptyIfAbsent(date: String) { store.getOrPut(date) { DailyLogEntity(date = date) } }
+        override suspend fun updateBodyWeightKg(date: String, v: Double) { store[date]?.let { store[date] = it.copy(bodyWeightKg = v) } }
+        override suspend fun updateWaistCm(date: String, v: Double) { store[date]?.let { store[date] = it.copy(waistCm = v) } }
+        override suspend fun updateSleepHours(date: String, v: Double) { store[date]?.let { store[date] = it.copy(sleepHours = v) } }
+        override suspend fun updateEnergyScore(date: String, v: Int) { store[date]?.let { store[date] = it.copy(energyScore = v) } }
+        override suspend fun updateHungerScore(date: String, v: Int) { store[date]?.let { store[date] = it.copy(hungerScore = v) } }
+        override suspend fun updateSorenessScore(date: String, v: Int) { store[date]?.let { store[date] = it.copy(sorenessScore = v) } }
     }
 
     @Test fun createsRowWhenAbsent() = runTest {

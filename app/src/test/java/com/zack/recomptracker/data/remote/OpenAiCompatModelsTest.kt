@@ -45,6 +45,22 @@ class OpenAiCompatModelsTest {
     }
 
     @Test
+    fun `parseChatResponse flattens array content-parts (P2-6)`() {
+        // Some OpenAI-compatible routes return content as a content-parts array rather than a string;
+        // reading it as a primitive used to throw and fail the whole turn.
+        val body = """{"choices":[{"message":{"role":"assistant","content":[{"type":"text","text":"Hello "},{"type":"text","text":"world."}]}}]}"""
+        val parsed = parseChatResponse(body)
+        assertEquals("Hello world.", parsed.text)
+        assertTrue(parsed.toolCalls.isEmpty())
+    }
+
+    @Test
+    fun `parseChatResponse tolerates an empty content array`() {
+        val body = """{"choices":[{"message":{"role":"assistant","content":[]}}]}"""
+        assertEquals("", parseChatResponse(body).text)
+    }
+
+    @Test
     fun `parseChatResponse extracts tool calls with arguments`() {
         val body = """
             {"choices":[{"message":{"role":"assistant","content":null,

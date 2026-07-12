@@ -13,8 +13,8 @@ data class HarnessEnv(
     val model: String,
     val judgeModel: String,
 ) {
-    fun generationConfig() = CloudConfig(baseUrl = baseUrl, apiKey = apiKey, model = model)
-    fun judgeConfig() = CloudConfig(baseUrl = baseUrl, apiKey = apiKey, model = judgeModel)
+    fun generationConfig() = CloudConfig(baseUrl = baseUrl, apiKey = { apiKey }, model = model)
+    fun judgeConfig() = CloudConfig(baseUrl = baseUrl, apiKey = { apiKey }, model = judgeModel)
 
     companion object {
         /** Parses dotenv-style text. Returns null if any required key is missing/blank. */

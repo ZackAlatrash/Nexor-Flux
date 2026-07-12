@@ -15,8 +15,33 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class WorkoutSessionDao {
 
+    /** Flat one-shot reads of the whole session graph — for backup export. */
+    @Query("SELECT * FROM workout_sessions ORDER BY id")
+    abstract suspend fun getAllSessions(): List<WorkoutSessionEntity>
+
+    @Query("SELECT * FROM session_exercises ORDER BY id")
+    abstract suspend fun getAllSessionExercises(): List<SessionExerciseEntity>
+
+    @Query("SELECT * FROM session_sets ORDER BY id")
+    abstract suspend fun getAllSessionSets(): List<SessionSetEntity>
+
     @Insert
     abstract suspend fun insertSession(session: WorkoutSessionEntity): Long
+
+    /** Marks every currently-ACTIVE session as ABANDONED. Used to guarantee a single active session. */
+    @Query("UPDATE workout_sessions SET status = 'ABANDONED' WHERE status = 'ACTIVE'")
+    abstract suspend fun abandonActiveSessions()
+
+    /**
+     * Atomically retires any in-progress session and inserts [session] as the new one, so starting a
+     * workout can never leave two ACTIVE sessions (which orphans the older one — P1-16). The prior
+     * session's logged sets are preserved; only its status changes.
+     */
+    @Transaction
+    open suspend fun abandonActiveAndInsertSession(session: WorkoutSessionEntity): Long {
+        abandonActiveSessions()
+        return insertSession(session)
+    }
 
     @Update
     abstract suspend fun updateSession(session: WorkoutSessionEntity)
@@ -32,6 +57,24 @@ abstract class WorkoutSessionDao {
 
     @Update
     abstract suspend fun updateSet(set: SessionSetEntity)
+
+    // Per-column updates so a fast edit of one field never writes back a stale snapshot of the
+    // others (P1-18). Each keystroke/toggle touches only its own column.
+    @Query("UPDATE session_sets SET weightKg = :weightKg WHERE id = :setId")
+    abstract suspend fun updateSetWeight(setId: Long, weightKg: Double?)
+
+    @Query("UPDATE session_sets SET reps = :reps WHERE id = :setId")
+    abstract suspend fun updateSetReps(setId: Long, reps: Int)
+
+    @Query("UPDATE session_sets SET rir = :rir WHERE id = :setId")
+    abstract suspend fun updateSetRir(setId: Long, rir: Int?)
+
+    @Query("UPDATE session_sets SET completed = :completed WHERE id = :setId")
+    abstract suspend fun updateSetCompleted(setId: Long, completed: Boolean)
+
+    /** Reads a single set's current row — used to re-read reps before deciding a complete-toggle. */
+    @Query("SELECT * FROM session_sets WHERE id = :setId")
+    abstract suspend fun getSetById(setId: Long): SessionSetEntity?
 
     @Query("DELETE FROM session_sets WHERE id = :id")
     abstract suspend fun deleteSetById(id: Long)

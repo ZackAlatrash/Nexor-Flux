@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+) backup/transfer rules. Everything is backed up by default; we only EXCLUDE
+  the EncryptedSharedPreferences store holding the cloud/Tavily API keys. Its Tink keyset is wrapped
+  by an Android Keystore master key that never leaves the device, so a restored copy on a new device
+  can't be decrypted and EncryptedSharedPreferences.create() throws in Application.onCreate — a
+  launch crash-loop whose only escape is Clear Data (wiping every log). See review P1-4.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="secure_ai_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="secure_ai_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

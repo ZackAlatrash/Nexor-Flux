@@ -260,6 +260,13 @@ private class FakeDailyLogDao : DailyLogDao {
         flow { emit(emptyList()) }
     override suspend fun insertAll(logs: List<DailyLogEntity>) = logs.forEach { this.logs[it.date] = it }
     override suspend fun deleteAll() = this.logs.clear()
+    override suspend fun insertEmptyIfAbsent(date: String) { logs.getOrPut(date) { DailyLogEntity(date = date) } }
+    override suspend fun updateBodyWeightKg(date: String, v: Double) { logs[date]?.let { logs[date] = it.copy(bodyWeightKg = v) } }
+    override suspend fun updateWaistCm(date: String, v: Double) { logs[date]?.let { logs[date] = it.copy(waistCm = v) } }
+    override suspend fun updateSleepHours(date: String, v: Double) { logs[date]?.let { logs[date] = it.copy(sleepHours = v) } }
+    override suspend fun updateEnergyScore(date: String, v: Int) { logs[date]?.let { logs[date] = it.copy(energyScore = v) } }
+    override suspend fun updateHungerScore(date: String, v: Int) { logs[date]?.let { logs[date] = it.copy(hungerScore = v) } }
+    override suspend fun updateSorenessScore(date: String, v: Int) { logs[date]?.let { logs[date] = it.copy(sorenessScore = v) } }
 }
 
 // ── Noop stubs for DAOs not under test ──────────────────────────────────────

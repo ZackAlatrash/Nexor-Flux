@@ -24,7 +24,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import com.zack.recomptracker.domain.foodimport.FoodImportCandidate
 
-class HealthConnectRepository(context: Context) {
+class HealthConnectRepository(context: Context) : HealthDataSource {
 
     private val appContext: Context = context.applicationContext
 
@@ -56,7 +56,7 @@ class HealthConnectRepository(context: Context) {
     fun permissionsContract(): ActivityResultContract<Set<String>, Set<String>> =
         PermissionController.createRequestPermissionResultContract()
 
-    suspend fun hasPermissions(): Boolean = runCatching {
+    override suspend fun hasPermissions(): Boolean = runCatching {
         client.permissionController.getGrantedPermissions().containsAll(requiredPermissions)
     }.getOrDefault(false)
 
@@ -73,15 +73,17 @@ class HealthConnectRepository(context: Context) {
         client.permissionController.getGrantedPermissions().containsAll(historicalNutritionPermissions)
     }.getOrDefault(false)
 
-    suspend fun readToday(date: LocalDate): HealthConnectReadResult = runCatching {
+    override suspend fun readToday(date: LocalDate): HealthConnectReadResult = runCatching {
         val zone = ZoneId.systemDefault()
         val startOfDay: Instant = date.atStartOfDay(zone).toInstant()
         val now: Instant = Instant.now()
-        val thirtyDaysAgo: Instant = date.minusDays(30).atStartOfDay(zone).toInstant()
         val yesterdayNoon: Instant = date.minusDays(1).atTime(12, 0).atZone(zone).toInstant()
 
         val steps = readSteps(startOfDay, now)
-        val weightKg = readLatestWeight(thirtyDaysAgo, now)
+        // Weight is attributed to the day it was measured: only read [date]'s own window, so a
+        // stale weigh-in (e.g. a weekly smart-scale reading) is not copied forward onto every
+        // intervening day, which would flatten the weight trend and silence the weigh-in reminder.
+        val weightKg = readLatestWeight(startOfDay, now)
         val sleepHours = readLatestSleep(yesterdayNoon, now)
 
         HealthConnectReadResult(steps = steps, weightKg = weightKg, sleepHours = sleepHours)
@@ -117,7 +119,7 @@ class HealthConnectRepository(context: Context) {
      * why raw-record summing is wrong). Days with no data are simply absent from the map. Returns
      * an empty map on any failure.
      */
-    suspend fun readStepsHistory(days: Long = 30): Map<LocalDate, Int> = runCatching {
+    override suspend fun readStepsHistory(days: Long): Map<LocalDate, Int> = runCatching {
         val zone = ZoneId.systemDefault()
         val start: LocalDateTime = LocalDate.now(zone).minusDays(days - 1).atStartOfDay()
         val end: LocalDateTime = LocalDateTime.now(zone)

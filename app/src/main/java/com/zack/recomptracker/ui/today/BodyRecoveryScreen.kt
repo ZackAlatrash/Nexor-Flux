@@ -67,6 +67,8 @@ import com.zack.recomptracker.ui.theme.LocalAppAccent
 import com.zack.recomptracker.ui.theme.LocalAppColors
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 @Composable
 fun BodyRecoveryScreen(
@@ -90,6 +92,7 @@ fun BodyRecoveryScreen(
         recoveryInsightState = recoveryInsightState,
         onRetryRecoveryInsight = viewModel::retryRecoveryInsight,
         onViewHistory = onViewHistory,
+        savedEvent = viewModel.savedEvent,
         actions = BodyCheckInFormActions(
             onBodyWeightChanged = viewModel::onBodyWeightChanged,
             onWaistChanged = viewModel::onWaistChanged,
@@ -115,6 +118,9 @@ fun BodyRecoveryContent(
     onViewHistory: () -> Unit,
     recoveryInsightState: AiInsightState = AiInsightState.Disabled,
     onRetryRecoveryInsight: () -> Unit = {},
+    // Emits on a successful save. The sheet no longer self-dismisses (P1-11): an invalid entry sets
+    // a message and never emits here, so the sheet stays open; only a real save closes it.
+    savedEvent: Flow<Unit> = emptyFlow(),
     modifier: Modifier = Modifier,
 ) {
     val streakVm: StreakViewModel =
@@ -147,6 +153,9 @@ fun BodyRecoveryContent(
     var initialSection by remember { mutableIntStateOf(0) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val hasData = state.bodyWeightKg.isNotEmpty() || state.waistCm.isNotEmpty()
+
+    // Close the sheet only when the save actually succeeds (P1-11).
+    LaunchedEffect(savedEvent) { savedEvent.collect { showSheet = false } }
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(

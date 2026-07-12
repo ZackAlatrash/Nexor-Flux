@@ -137,9 +137,13 @@ private class PrNoopLibraryRepo : ExerciseLibraryRepository(PrNoopExerciseDao())
 }
 
 private class PrNoopExerciseDao : ExerciseDao {
+    override suspend fun update(exercise: com.zack.recomptracker.data.local.entity.ExerciseEntity) {}
+    override suspend fun findIdBySourceAndExternalId(source: String, externalId: String): Long? = null
+    override suspend fun stampSourceVersion(source: String, version: String) {}
     override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(emptyList())
     override suspend fun search(query: String): List<ExerciseEntity> = emptyList()
     override suspend fun getById(id: Long): ExerciseEntity? = null
+    override suspend fun getAll(): List<ExerciseEntity> = emptyList()
     override suspend fun count(): Int = 0
     override suspend fun sourceVersion(source: String): String? = null
     override suspend fun insertAll(exercises: List<ExerciseEntity>) {}
@@ -150,10 +154,19 @@ private class PrNoopExerciseDao : ExerciseDao {
 /** No-op session DAO; FakeRepo overrides the only methods exercised here. */
 private class PrNoopSessionDao : WorkoutSessionDao() {
     override suspend fun insertSession(session: WorkoutSessionEntity): Long = 0L
+    override suspend fun abandonActiveSessions() {}
+    override suspend fun updateSetWeight(setId: Long, weightKg: Double?) {}
+    override suspend fun updateSetReps(setId: Long, reps: Int) {}
+    override suspend fun updateSetRir(setId: Long, rir: Int?) {}
+    override suspend fun updateSetCompleted(setId: Long, completed: Boolean) {}
+    override suspend fun getSetById(setId: Long): com.zack.recomptracker.data.local.entity.SessionSetEntity? = null
     override suspend fun updateSession(session: WorkoutSessionEntity) {}
     override suspend fun deleteSessionById(id: Long) {}
     override suspend fun insertSessionExercise(exercise: SessionExerciseEntity): Long = 0L
     override suspend fun insertSet(set: SessionSetEntity): Long = 0L
+    override suspend fun getAllSessions(): List<WorkoutSessionEntity> = emptyList()
+    override suspend fun getAllSessionExercises(): List<SessionExerciseEntity> = emptyList()
+    override suspend fun getAllSessionSets(): List<SessionSetEntity> = emptyList()
     override suspend fun updateSet(set: SessionSetEntity) {}
     override suspend fun deleteSetById(id: Long) {}
     override suspend fun getSessionExerciseSetCount(sessionExerciseId: Long): Int = 0

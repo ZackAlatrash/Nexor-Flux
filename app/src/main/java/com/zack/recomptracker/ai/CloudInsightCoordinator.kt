@@ -6,6 +6,7 @@ import com.zack.recomptracker.data.remote.CloudConfig
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,12 @@ class CloudInsightCoordinator(
     private val insightStates: Map<InsightKind, MutableStateFlow<AiInsightState>> =
         InsightKind.entries.associateWith { MutableStateFlow<AiInsightState>(AiInsightState.ModelReady) }
     private val lastInsightKeys = java.util.concurrent.ConcurrentHashMap<InsightKind, String>()
+
+    // The in-flight generation job per kind. Launching a new generation cancels the previous one for
+    // the same kind, so a slower stale generation can never finish last and overwrite a newer result
+    // (review P2-2). Each job removes its own entry on completion (conditionally, so a stale job's
+    // cleanup can't evict its replacement).
+    private val insightJobs = java.util.concurrent.ConcurrentHashMap<InsightKind, Job>()
 
     // Caches the latest enabled emission so the configFlow collector can re-derive state
     // when config appears or disappears while the enabled flag is unchanged.
@@ -83,7 +90,11 @@ class CloudInsightCoordinator(
             is InsightRequest.RecoveryReadiness -> promptBuilder.buildRecoveryReadinessPrompt(request.context)
         }
         val prompt = withKnowledge(request.kind, basePrompt)
-        scope.launch { streamInto(flow, prompt) }
+        val kind = request.kind
+        val job = scope.launch { streamInto(kind, key, flow, prompt) }
+        job.invokeOnCompletion { insightJobs.remove(kind, job) }
+        // Atomically install the new job and cancel whatever generation it replaced for this kind.
+        insightJobs.put(kind, job)?.cancel()
     }
 
     /**
@@ -108,7 +119,7 @@ class CloudInsightCoordinator(
 
     private fun isModelUsable(): Boolean = _state.value != AiInsightState.Disabled
 
-    private suspend fun streamInto(flow: MutableStateFlow<AiInsightState>, prompt: String) {
+    private suspend fun streamInto(kind: InsightKind, key: String, flow: MutableStateFlow<AiInsightState>, prompt: String) {
         val config = configFlow.value ?: run {
             flow.value = AiInsightState.Error("Cloud AI not configured.")
             return
@@ -133,7 +144,16 @@ class CloudInsightCoordinator(
                     .replace(Regex("""[*_`#>]"""), "")
                     .replace(Regex("""\n{2,}"""), " ")
                     .let { InsightPromptBuilder.limitToSentences(it, 2) }
-                flow.value = AiInsightState.Ready(finalText)
+                if (finalText.isBlank()) {
+                    // An empty stream must not become a stuck blank card. Surface an error and drop
+                    // the dedup key so the next visibility (or a retry) regenerates (review P2-2). The
+                    // conditional remove(kind, key) mirrors the job-map cleanup: a stale blank result
+                    // can't evict a newer generation's key.
+                    lastInsightKeys.remove(kind, key)
+                    flow.value = AiInsightState.Error("No insight returned — try again.")
+                } else {
+                    flow.value = AiInsightState.Ready(finalText)
+                }
             }
         } catch (e: TimeoutCancellationException) {
             if (flow.value is AiInsightState.LoadingModel || flow.value is AiInsightState.Generating) {

@@ -6,6 +6,7 @@ import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
+import com.zack.recomptracker.data.repository.RoutineShareRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
 import com.zack.recomptracker.domain.workout.MuscleCategory
@@ -60,6 +61,7 @@ class TrainViewModel(
     private val exerciseLibraryRepository: ExerciseLibraryRepository,
     private val logRepository: LogRepository,
     private val userProfileStore: UserProfilePreferencesStore,
+    private val routineShareRepository: RoutineShareRepository,
     dateProvider: DateProvider,
     // Off-main dispatcher for the stats/plan/readiness transforms (TrainStatsBuilder, LocalDate.parse
     // over history + logs, TrainingReadinessMapper, TrainingPlanBuilder). Injectable for tests;
@@ -67,14 +69,24 @@ class TrainViewModel(
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val tab = MutableStateFlow(TrainTab.ROUTINES)
-    private val today: LocalDate = dateProvider.today()
 
+    /**
+     * Builds a shareable `.rtroutine` file for [templateId] and returns its Uri, or null if the
+     * routine no longer exists. The caller (UI) launches the Android share sheet with it.
+     */
+    suspend fun buildShareFile(templateId: Long): android.net.Uri? =
+        routineShareRepository.buildShareFile(templateId)
+
+    // dateProvider.todayFlow() is folded into both combines below so every "today"-derived value
+    // (recovery, plan, "trained today") advances at midnight instead of freezing on the day the
+    // Train tab was opened (P1-10).
     private val core = combine(
         workoutRepository.observeAll(),
         sessionRepository.observeActiveSession(),
         sessionRepository.observeCompletedSessions(),
         exerciseLibraryRepository.observeAll(),
-    ) { routines, active, history, library ->
+        dateProvider.todayFlow(),
+    ) { routines, active, history, library, today ->
         // Per-muscle recovery is derived from the same history+library already loaded here (no new
         // repo/dependency). Ordered so still-recovering groups come first for the compact UI strip.
         val recovery = MuscleTrainingAggregator.aggregate(history, library, today)
@@ -93,9 +105,12 @@ class TrainViewModel(
         workoutRepository.observeAll(),
         exerciseLibraryRepository.observeAll(),
         sessionRepository.observeCompletedSessions(),
-        logRepository.observeDailyLogs(),
-        userProfileStore.preferences,
-    ) { routines, library, history, logs, profile ->
+        // Bundle logs+profile into one source so the reactive "today" fits as a 5th source within
+        // combine's 5-argument typed arity, so plan/readiness recomputes at midnight (P1-10).
+        combine(logRepository.observeDailyLogs(), userProfileStore.preferences) { logs, profile -> logs to profile },
+        dateProvider.todayFlow(),
+    ) { routines, library, history, logsAndProfile, today ->
+        val (logs, profile) = logsAndProfile
         val weeklyTarget = profile.weeklyGymSessions?.takeIf { it > 0 }
 
         // Recovery verdict from the recovery mapper (recent 14-day baseline + today's log).

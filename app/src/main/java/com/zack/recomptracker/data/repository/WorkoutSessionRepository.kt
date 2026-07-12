@@ -7,6 +7,7 @@ import com.zack.recomptracker.data.local.entity.SessionExerciseEntity
 import com.zack.recomptracker.data.local.entity.SessionSetEntity
 import com.zack.recomptracker.data.local.entity.WorkoutSessionEntity
 import com.zack.recomptracker.domain.workout.ExerciseHistoryPoint
+import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.ValidationResult
 import com.zack.recomptracker.domain.workout.WorkoutSession
@@ -30,7 +31,9 @@ open class WorkoutSessionRepository(
      *  session — or no matching set — the set is left blank (reps=0, weightKg=null).
      *  Routine plan targets are not used for prefill. All sets start uncompleted. */
     open suspend fun startSession(template: WorkoutTemplate): Long {
-        val sessionId = sessionDao.insertSession(
+        // Retire any in-progress session and insert the new one atomically, so two ACTIVE sessions
+        // can never coexist (which would orphan the older workout's logged sets — P1-16).
+        val sessionId = sessionDao.abandonActiveAndInsertSession(
             WorkoutSessionEntity(
                 workoutId = template.id,
                 workoutName = template.name,
@@ -101,6 +104,30 @@ open class WorkoutSessionRepository(
         if (result is ValidationResult.Invalid) throw IllegalArgumentException(result.reasons.joinToString(" "))
         sessionDao.updateSet(set)
     }
+
+    // Per-column set updates (P1-18): each edits only its own column so a fast edit of one field can
+    // never write back a stale snapshot of the others. Each validates only the field it touches
+    // (WorkoutValidation checks fields independently).
+    open suspend fun updateSetWeight(setId: Long, weightKg: Double?) {
+        require(weightKg == null || weightKg >= 0.0) { "Weight must not be negative." }
+        sessionDao.updateSetWeight(setId, weightKg)
+    }
+
+    open suspend fun updateSetReps(setId: Long, reps: Int) {
+        require(reps >= 0) { "Reps must not be negative." }
+        sessionDao.updateSetReps(setId, reps)
+    }
+
+    open suspend fun updateSetRir(setId: Long, rir: Int?) {
+        require(rir == null || rir in 0..10) { "RIR must be between 0 and 10." }
+        sessionDao.updateSetRir(setId, rir)
+    }
+
+    open suspend fun updateSetCompleted(setId: Long, completed: Boolean) =
+        sessionDao.updateSetCompleted(setId, completed)
+
+    /** Current persisted state of a single set, for re-reading before a complete-toggle decision. */
+    open suspend fun getSet(setId: Long): SessionSet? = sessionDao.getSetById(setId)?.toDomain()
 
     open suspend fun removeSet(setId: Long) = sessionDao.deleteSetById(setId)
 

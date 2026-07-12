@@ -58,7 +58,7 @@ class CloudInsightCoordinatorTest {
     }
 
     private fun config() = MutableStateFlow<CloudConfig?>(
-        CloudConfig(baseUrl = "https://x", apiKey = "k", model = "m"),
+        CloudConfig(baseUrl = "https://x", apiKey = { "k" }, model = "m"),
     )
 
     @Test

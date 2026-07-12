@@ -36,6 +36,9 @@ class WorkoutRepositoryTest {
         override fun observeAllWithExercises(): Flow<List<WorkoutWithExercisesDb>> = flowOf(snapshot())
         override suspend fun getWithExercises(id: Long): WorkoutWithExercisesDb? =
             workouts[id]?.let { buildDb(it) }
+        override suspend fun getAllWorkouts(): List<WorkoutEntity> = workouts.values.toList()
+        override suspend fun getAllWorkoutExercises(): List<WorkoutExerciseEntity> = lines.map { it.first }
+        override suspend fun getAllPlannedSets(): List<PlannedSetEntity> = lines.flatMap { it.second }
         override suspend fun insertWorkout(workout: WorkoutEntity): Long {
             val id = ++nextWorkoutId
             workouts[id] = workout.copy(id = id)

@@ -15,6 +15,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Static coach guidelines appended to every system prompt. Extracted as a constant so the
@@ -101,7 +102,7 @@ class CoachToolsAdapter(
         val profileParts = buildList {
             profile.goal?.let { add("Goal: ${it.displayName()}") }
             profile.biologicalSex?.let { add("Sex: ${it.displayName()}") }
-            profile.ageYears()?.let { add("Age: $it") }
+            profile.ageYears(today.toKotlinLocalDate())?.let { add("Age: $it") }
             profile.heightCm?.let { add("Height: $it cm") }
             profile.activityLevel?.let { add("Activity: ${it.displayName()}") }
             profile.weeklyGymSessions?.let { add("Gym sessions/week: $it") }

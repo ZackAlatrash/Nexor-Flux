@@ -142,7 +142,7 @@ object CoachContextAssembler {
         return ProfileContext(
             goal = p.goal?.name,
             sex = p.biologicalSex?.name,
-            ageYears = p.ageYears(today),
+            ageYears = p.ageYears(today.toKotlinLocalDate()),
             heightCm = p.heightCm,
             activityLevel = p.activityLevel?.name,
             weeklyGymSessions = p.weeklyGymSessions,

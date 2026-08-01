@@ -41,10 +41,13 @@ class AppPreferences(
             prefs[Keys.TargetProteinG] = preferences.targetProteinG
             prefs[Keys.TargetCarbsG] = preferences.targetCarbsG
             prefs[Keys.TargetFatG] = preferences.targetFatG
-            if (preferences.maintenancePhaseStartDate == null) {
+            // Bound to a local: PlanPreferences now lives in :shared, so its nullable properties
+            // cannot be smart-cast across the module boundary.
+            val phaseStart = preferences.maintenancePhaseStartDate
+            if (phaseStart == null) {
                 prefs.remove(Keys.MaintenancePhaseStartDate)
             } else {
-                prefs[Keys.MaintenancePhaseStartDate] = preferences.maintenancePhaseStartDate
+                prefs[Keys.MaintenancePhaseStartDate] = phaseStart
             }
             prefs[Keys.WeightTrendThresholdKgPerWeek] = preferences.weightTrendThresholdKgPerWeek
             prefs[Keys.WaistIncreaseThresholdCm] = preferences.waistIncreaseThresholdCm
@@ -54,10 +57,11 @@ class AppPreferences(
             prefs[Keys.CalorieZoneLowerBound] = preferences.calorieZoneLowerBound
             prefs[Keys.CalorieZoneUpperBound] = preferences.calorieZoneUpperBound
             prefs[Keys.HealthConnectEnabled] = preferences.healthConnectEnabled
-            if (preferences.healthConnectLastSyncEpochMs == null) {
+            val lastSync = preferences.healthConnectLastSyncEpochMs
+            if (lastSync == null) {
                 prefs.remove(Keys.HealthConnectLastSyncEpochMs)
             } else {
-                prefs[Keys.HealthConnectLastSyncEpochMs] = preferences.healthConnectLastSyncEpochMs
+                prefs[Keys.HealthConnectLastSyncEpochMs] = lastSync
             }
         }
     }

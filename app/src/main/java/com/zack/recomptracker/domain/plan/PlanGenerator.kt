@@ -3,6 +3,7 @@ package com.zack.recomptracker.domain.plan
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.ageYears
 import java.time.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 /** Outcome of attempting to generate a plan from the current profile + weight. */
 sealed interface PlanGenerationOutcome {
@@ -23,7 +24,7 @@ class PlanGenerator(
         weightKg: Double?,
         today: LocalDate = LocalDate.now(),
     ): PlanGenerationOutcome {
-        val age = profile.ageYears(today)
+        val age = profile.ageYears(today.toKotlinLocalDate())
         val missing = buildList {
             if (profile.heightCm == null) add("Height")
             if (age == null) add("Age")

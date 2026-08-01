@@ -1,8 +1,8 @@
 package com.zack.recomptracker.data.preferences
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import kotlinx.serialization.Serializable
-import java.time.LocalDate
-import java.time.Period
 
 @Serializable
 data class UserProfilePreferences(
@@ -61,9 +61,14 @@ fun ActivityLevel.displayName(): String = when (this) {
     ActivityLevel.VERY_ACTIVE -> "Very Active"
 }
 
-/** Age in whole years derived from birthDate, relative to [today]. Null if unset/invalid. */
-fun UserProfilePreferences.ageYears(today: LocalDate = LocalDate.now()): Int? {
+/** Age in whole years derived from birthDate, relative to [today]. Null if unset/invalid/future. */
+fun UserProfilePreferences.ageYears(today: LocalDate): Int? {
     val dob = birthDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
-    if (dob.isAfter(today)) return null
-    return Period.between(dob, today).years
+    var age = today.year - dob.year
+    if (today.month.number < dob.month.number ||
+        (today.month.number == dob.month.number && today.day < dob.day)
+    ) {
+        age -= 1
+    }
+    return age.takeIf { it >= 0 }
 }

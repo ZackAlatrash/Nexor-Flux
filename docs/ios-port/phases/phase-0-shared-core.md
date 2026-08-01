@@ -754,8 +754,10 @@ remaining task.
 | `ChronoUnit.DAYS.between(a, b)` | `a.daysUntil(b)` |
 | `a.isBefore(b)` | `a < b` |
 | `a.isAfter(b)` | `a > b` |
-| `date.monthValue` | `date.monthNumber` |
-| `date.toEpochDay()` | `date.toEpochDays()` *(Int, not Long)* |
+| `date.monthValue` | ⚠️ `date.month.number` — `monthNumber` is **deprecated** in 0.8.0 |
+| `date.dayOfMonth` | ⚠️ `date.day` — `dayOfMonth` is **deprecated** in 0.8.0 |
+| `date.toEpochDay()` | ⚠️ `date.toEpochDays()` — returns **`Long`**, not `Int` |
+| `set.toSortedSet()` | ⚠️ `.sorted()` — `toSortedSet()` is JVM-only and the grep below **cannot see it** (no `java.util` text appears at the call site) |
 | `dt.toLocalDate()` | `dt.date` |
 | `dt.toLocalTime()` | `dt.time` |
 | `LocalDate.parse(s)` / `date.toString()` | unchanged (both ISO-8601) |
@@ -763,6 +765,28 @@ remaining task.
 | `dow.getDisplayName(TextStyle.FULL, Locale.US)` | `dow.fullNameEnglish()` from `shared.time` |
 | `String.format(Locale.US, "%.Nf", v)` | `formatFixed(v, N)` from `shared.format` |
 | `LocalDate.now()` | **remove** — the caller must pass `today` |
+
+**Corrections learned in wave 1 — every later move task depends on these:**
+
+- ⚠️ **`.month` resolves to `java.time.Month` on the JVM side**, so `.month.number` will not compile in
+  `:app`. Inside `commonMain` it is correct; at a `:app` call site, convert first.
+- ⚠️ **kotlinx-datetime must be `api`, not `implementation`, in `shared/build.gradle.kts`** — its types
+  appear in the shared module's public API, so consumers need them on the compile classpath.
+- ✅ **Prefer the shipped bridges over string round-tripping.** kotlinx-datetime provides
+  `javaDate.toKotlinLocalDate()` and `kotlinDate.toJavaLocalDate()`. Use those at `:app` call sites
+  instead of `LocalDate.parse(javaDate.toString())`.
+- ⚠️ **The JVM-only grep must exclude comments**, or it trips over KDoc in `DecimalFormat.kt` that
+  names the APIs it replaces. Use:
+  ```bash
+  grep -rn "java\.time\|java\.util\|java\.io\|String\.format" shared/src/commonMain/ \
+    | grep -v "^\s*\*" | grep -vE ":\s*(//|\*|/\*)"
+  ```
+- ⚠️ **Not every domain test lives in a per-package directory.** `streak`, `trend` and `adherence`
+  had loose test files directly under `app/src/test/java/com/zack/recomptracker/domain/`, which a
+  `for pkg in …` loop silently misses. Before each move, list the test root and check for stragglers:
+  ```bash
+  ls app/src/test/java/com/zack/recomptracker/domain/*.kt 2>/dev/null
+  ```
 
 **Files:** Move `domain/{trend,adherence,activity,streak}` and their tests.
 
@@ -1589,7 +1613,8 @@ built it."
 | 1 | All 1,300 Android tests still green | `:app:testDebugUnitTest` BUILD SUCCESSFUL | |
 | 2 | Shared tests green on **both** JVM and Kotlin/Native | both test tasks pass | |
 | 3 | Golden corpus reproduced **exactly** on iOS | `GoldenFormatTest` passes on `iosSimulatorArm64` | |
-| 4 | `java.time` conversion sites in `:app` | ≤ 10 — more means the boundary is leaky | |
+| 4 | `java.time` ↔ `kotlinx.datetime` conversion sites in `:app` | **Recalibrated — see 4a** | |
+| 4a | *(the original ≤10 target was wrong)* Wave 1 alone produced **43 conversions across 12 files**, because `:app`'s UI and data layers pass `LocalDate` into shared code everywhere. Judge instead on: (i) are they all mechanical `toKotlinLocalDate()`/`toJavaLocalDate()` calls the compiler forces you to write, and (ii) is the count *stable* rather than growing per feature? A full `:app` migration to kotlinx-datetime would remove them, but is **not** viable — the UI needs locale-aware formatting, which kotlinx-datetime explicitly does not do. So some boundary conversion is inherent to this architecture. | judgement | |
 | 5 | Kotlin/Native compile time | < 3 min clean — more is a real daily tax | |
 | 6 | Swift call sites readable without a wrapper layer | subjective; Task 14 Step 7 notes | |
 | 7 | No Kotlin/AGP/Gradle upgrade **and** no unacceptable dependency downgrade | see 7a below | |

@@ -15,7 +15,7 @@ per-screen notes.
 
 | Bucket | Total | ✅ | 🔨 | ⬜ | ⏭️ v1.1 | ❌ |
 |---|---:|---:|---:|---:|---:|---:|
-| Foundations | 8 | 0 | 0 | 8 | 0 | 0 |
+| Foundations | 8 | 3 | 0 | 5 | 0 | 0 |
 | Design system | 7 | 0 | 0 | 7 | 0 | 0 |
 | Screens (v1) | 20 | 0 | 0 | 20 | 0 | 0 |
 | Overlays & sheets | 11 | 0 | 0 | 10 | 1 | 0 |
@@ -23,7 +23,7 @@ per-screen notes.
 | Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **85** | **0** | **0** | **67** | **16** | **2** |
+| **Total** | **85** | **3** | **0** | **64** | **16** | **2** |
 
 ---
 
@@ -31,9 +31,9 @@ per-screen notes.
 
 | Item | Android reference | Status |
 |---|---|---|
-| `:shared` KMP module extracted | `settings.gradle.kts` | ⬜ |
-| `java.time` → kotlinx-datetime (27 files, +3 inline FQNs) | blocker B2 | ⬜ |
-| ISO-week + signed-decimal formatters, golden-value tested | blocker B3/B4 🔴 | ⬜ |
+| `:shared` KMP module extracted | `settings.gradle.kts` | ✅ |
+| `java.time` → kotlinx-datetime (27 files, +3 inline FQNs) | blocker B2 | ✅ |
+| ISO-week + signed-decimal formatters, golden-value tested | blocker B3/B4 🔴 | ✅ |
 | Xcode project + SPM + GRDB | — | ⬜ |
 | 19 tables + 14 migrations (dates as strings) | `RecompDatabase.kt` | ⬜ |
 | 10 preference stores (actor-backed JSON) | see data-model §3 | ⬜ |

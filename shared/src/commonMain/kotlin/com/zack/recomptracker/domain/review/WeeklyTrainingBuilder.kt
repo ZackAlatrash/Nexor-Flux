@@ -3,8 +3,9 @@ package com.zack.recomptracker.domain.review
 import com.zack.recomptracker.domain.coach.TrainingDerivations
 import com.zack.recomptracker.domain.coach.TrendDirection
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import java.time.LocalDate
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 /**
  * Pure builder for the weekly briefing's SUPPORTING training domain (Phase 2B). Reuses the existing
@@ -27,22 +28,19 @@ object WeeklyTrainingBuilder {
     ): WeeklyTraining? {
         if (datedSessions.isEmpty()) return null
 
-        val weekStart = today.minusDays(6)
+        val weekStart = today.minus(6, DateTimeUnit.DAY)
         val sessionsThisWeek = datedSessions
             .map { it.first }
-            .filter { !it.isBefore(weekStart) && !it.isAfter(today) }
+            .filter { it >= weekStart && it <= today }
             .distinct()
             .size
 
         // Top lift = highest latest estimated 1RM across the window (from the shared derivation).
-        // `TrainingDerivations` lives in `:shared` and speaks kotlinx-datetime; convert at the call
-        // site (this builder still takes java.time until `domain/review` itself moves).
-        val kDatedSessions = datedSessions.map { it.first.toKotlinLocalDate() to it.second }
-        val topLiftEntry = TrainingDerivations.latestE1rmByExercise(kDatedSessions)
+        val topLiftEntry = TrainingDerivations.latestE1rmByExercise(datedSessions)
             .maxByOrNull { it.value }
         val topLift = topLiftEntry?.key
         val trend = topLift
-            ?.let { TrainingDerivations.trendDirection(kDatedSessions, it) }
+            ?.let { TrainingDerivations.trendDirection(datedSessions, it) }
             .toSignalDirection()
 
         val summary = buildSummary(sessionsThisWeek, topLift, trend)

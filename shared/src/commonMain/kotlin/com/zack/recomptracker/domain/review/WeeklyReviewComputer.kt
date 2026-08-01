@@ -5,6 +5,7 @@ import com.zack.recomptracker.domain.adjustment.AdjustmentResult
 import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
+import com.zack.recomptracker.shared.format.groupedInt
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -60,7 +61,7 @@ class WeeklyReviewComputer {
         return listOf(
             SignalSkeleton(
                 id = "steps", label = "Steps",
-                value = "${"%,d".format(avg)}/day",
+                value = "${groupedInt(avg)}/day",
                 direction = direction,
             ),
         )

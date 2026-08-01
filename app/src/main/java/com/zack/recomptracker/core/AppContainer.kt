@@ -453,7 +453,11 @@ class AppContainer(context: Context) {
         val datedSessions = completedSessions
             .mapNotNull { s -> runCatching { LocalDate.parse(s.date) }.getOrNull()?.let { it to s } }
             .filter { (d, _) -> d in last28Start..today }
-        val training = WeeklyTrainingBuilder.build(datedSessions, today)
+        // `WeeklyTrainingBuilder` lives in `:shared` and speaks kotlinx-datetime; convert here.
+        val training = WeeklyTrainingBuilder.build(
+            datedSessions.map { it.first.toKotlinLocalDate() to it.second },
+            today.toKotlinLocalDate(),
+        )
         // Weekly Pattern Spotlight (Phase 2D) — the top two deterministic pattern facts over the same
         // 14-day window, computed by InsightEngine (relocated from the dashboard card into the briefing).
         val patternDays = (0..13).map { off ->

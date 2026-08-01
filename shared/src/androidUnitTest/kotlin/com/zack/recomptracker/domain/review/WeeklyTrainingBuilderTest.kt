@@ -4,7 +4,9 @@ import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -12,7 +14,7 @@ import org.junit.Test
 
 class WeeklyTrainingBuilderTest {
 
-    private val today = LocalDate.of(2026, 7, 1)
+    private val today = LocalDate(2026, 7, 1)
 
     private fun set(reps: Int, weightKg: Double?) =
         SessionSet(id = 0, setNumber = 1, reps = reps, weightKg = weightKg, rir = null, completed = true)
@@ -35,8 +37,8 @@ class WeeklyTrainingBuilderTest {
         val t = WeeklyTrainingBuilder.build(
             dated(
                 session(today, "Bench", listOf(set(8, 100.0))),
-                session(today.minusDays(3), "Bench", listOf(set(8, 95.0))),
-                session(today.minusDays(10), "Bench", listOf(set(8, 90.0))), // outside this week
+                session(today.minus(3, DateTimeUnit.DAY), "Bench", listOf(set(8, 95.0))),
+                session(today.minus(10, DateTimeUnit.DAY), "Bench", listOf(set(8, 90.0))), // outside this week
             ),
             today,
         )!!
@@ -48,8 +50,8 @@ class WeeklyTrainingBuilderTest {
     fun `top lift trend up produces an up summary and never invents a number`() {
         val t = WeeklyTrainingBuilder.build(
             dated(
-                session(today.minusDays(6), "Bench", listOf(set(8, 90.0))),
-                session(today.minusDays(3), "Bench", listOf(set(8, 95.0))),
+                session(today.minus(6, DateTimeUnit.DAY), "Bench", listOf(set(8, 90.0))),
+                session(today.minus(3, DateTimeUnit.DAY), "Bench", listOf(set(8, 95.0))),
                 session(today, "Bench", listOf(set(8, 105.0))),
             ),
             today,

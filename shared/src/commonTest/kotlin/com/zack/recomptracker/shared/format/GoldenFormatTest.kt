@@ -259,6 +259,26 @@ class GoldenFormatTest {
         assertEquals("100", bucketInt(100, 5))
     }
 
+    /**
+     * `groupedInt` replaces `String.format(Locale.US, "%,d", v)` (added with the `domain/review`
+     * move). Values below are what the JVM `%,d` produces for `Locale.US`.
+     */
+    @Test
+    fun groupedIntMatchesJvmGolden() {
+        assertEquals("0", groupedInt(0))
+        assertEquals("7", groupedInt(7))
+        assertEquals("999", groupedInt(999))
+        assertEquals("1,000", groupedInt(1000))
+        assertEquals("9,200", groupedInt(9200))
+        assertEquals("12,345", groupedInt(12345))
+        assertEquals("123,456", groupedInt(123456))
+        assertEquals("1,234,567", groupedInt(1234567))
+        assertEquals("-1,000", groupedInt(-1000))
+        assertEquals("-999", groupedInt(-999))
+        assertEquals("2,147,483,647", groupedInt(Int.MAX_VALUE))
+        assertEquals("-2,147,483,648", groupedInt(Int.MIN_VALUE))
+    }
+
     /** Corpus section `=== PCT ===` (35 rows). */
     @Test
     fun pctMatchesJvmGolden() {

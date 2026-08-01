@@ -77,6 +77,24 @@ fun bucket(value: Double, step: Double, decimals: Int = 2): String {
     return formatFixed(safe, decimals)
 }
 
+/**
+ * Thousands-grouped integer, e.g. "9,200" — replacement for `String.format(Locale.US, "%,d", v)`,
+ * which is unavailable on Kotlin/Native. Always uses the US comma separator (the rest of the app
+ * pins `Locale.US` for this format explicitly), so output is locale-independent.
+ */
+fun groupedInt(value: Int): String {
+    val negative = value < 0
+    // Build from the absolute value as a string so Int.MIN_VALUE (which has no positive Int) is safe.
+    val digits = if (negative) value.toString().substring(1) else value.toString()
+    val out = StringBuilder(digits.length + digits.length / 3 + 1)
+    if (negative) out.append('-')
+    for ((i, c) in digits.withIndex()) {
+        if (i > 0 && (digits.length - i) % 3 == 0) out.append(',')
+        out.append(c)
+    }
+    return out.toString()
+}
+
 fun bucketInt(value: Int, step: Int): String {
     val safeStep = if (step <= 0) 1 else step
     return ((value.toDouble() / safeStep).roundToInt() * safeStep).toString()

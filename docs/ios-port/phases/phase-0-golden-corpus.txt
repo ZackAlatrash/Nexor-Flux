@@ -1,0 +1,331 @@
+# Golden corpus - ground truth for the KMP port of CoachDetectorSupport's formatters
+#
+# Captured:            2026-08-01
+# Captured by:         app/src/test/java/com/zack/recomptracker/domain/coach/FormatGoldenCorpusTest.kt
+# Source under test:   app/src/main/java/com/zack/recomptracker/domain/coach/CoachDetectorSupport.kt (unmodified)
+# JDK (test executor): Eclipse Adoptium 21.0.7+6, aarch64 macOS
+#                      (~/.gradle/jdks/eclipse_adoptium-21-aarch64-os_x.2/jdk-21.0.7+6)
+# Gradle:              9.5.1 (launcher JVM 11.0.31 Corretto; daemon + test JVM 21)
+# Locale:              Locale.US is hardcoded in CoachDetectorSupport; JVM default was en-NL
+#
+# THIS FILE IS THE CONTRACT. Everything below the header is the verbatim stdout of
+# FormatGoldenCorpusTest.printCorpus() - nothing reformatted, nothing "corrected".
+# The common-Kotlin reimplementation in :shared must reproduce these strings exactly.
+# dedupKey feeds the coach's 7-day cooldown ledger, so a rounding difference changes signal
+# suppression silently; fallbackText is user-visible copy.
+#
+# Sections (9): SIGNED1, FMT1, FMT2, FMT0, BUCKET step=0.1 dec=2, BUCKET step=50.0 dec=0,
+# BUCKETINT step=5, ISOWEEK, PCT. 35 double rows each except BUCKETINT (9 ints) and
+# ISOWEEK (14 dates).
+#
+# --- Sanity rows, confirmed as captured -------------------------------------------------
+#   FMT1     -0.25      -> -0.3      (HALF_UP away from zero, not -0.2)
+#   SIGNED1  -0.0       -> 0.0       (explicit -0.0 normalisation, CoachDetectorSupport.kt:32)
+#   ISOWEEK  2026-01-01 -> 2026-W01
+#   ISOWEEK  2027-01-03 -> 2026-W53  (early-January date lands in the previous week-based year)
+#
+# --- Behaviour a naive reimplementation will get wrong ----------------------------------
+# 1. java.util.Formatter does NOT round the exact binary value. It rounds HALF_UP over the
+#    SHORTEST decimal representation of the double, inspecting only the digit just past the
+#    requested precision. Hence, against C printf intuition:
+#      FMT2  1.005  -> 1.01   (C printf gives 1.00; the double is below 1.005)
+#      FMT2  2.675  -> 2.68   (C printf gives 2.67)
+#      FMT2  0.145  -> 0.15
+#    but at one decimal the next shortest-repr digit is '4', so it rounds DOWN:
+#      FMT1  0.145  -> 0.1    (NOT 0.2)
+#    A port that formats via BigDecimal-of-the-exact-double, or that uses Kotlin's
+#    toDouble/roundToInt chain, will disagree on these rows.
+# 2. fmt() preserves negative zero as a literal minus sign:
+#      FMT1  -0.0 -> -0.0 ;  -0.049 -> -0.0 ;  -0.001 -> -0.0
+#      FMT2  -0.0 -> -0.00 ; FMT0 -0.0 -> -0 ;  FMT0 -0.25 -> -0
+#    Only signed1() and bucket() normalise it away.
+# 3. roundToInt() rounds halves toward POSITIVE INFINITY, unlike Formatter's HALF_UP. The two
+#    live side by side in this file, so the sign asymmetry is real and must be preserved:
+#      PCT     0.5  -> 1%    but  -0.5  -> 0%
+#      BUCKET(step=0.1)  0.05 -> 0.10  but -0.05 -> 0.00
+#      BUCKET(step=0.1)  0.25 -> 0.30  but -0.25 -> -0.20
+#      BUCKETINT(step=5)   3  -> 5     and   -3  -> -5   (roundToInt(-0.6) = -1)
+#      BUCKETINT(step=5)   7  -> 5     and   -7  -> -5
+# 4. bucket() applies the -0.0 -> 0.0 normalisation AFTER bucketing, so no bucket row ever
+#    prints a signed zero, even where fmt() alone would.
+# 5. ISO week-based year != calendar year at both boundaries:
+#      2021-01-01 -> 2020-W53 ; 2025-12-29 -> 2026-W01 ; 2026-12-28 and 2026-12-31 -> 2026-W53
+#    2026 and 2020 are 53-week years. Week numbers are zero-padded to two digits, year to four.
+#
+=== SIGNED1 ===
+0.0 -> 0.0
+-0.0 -> 0.0
+1.0 -> +1.0
+-1.0 -> -1.0
+0.5 -> +0.5
+-0.5 -> -0.5
+0.05 -> +0.1
+-0.05 -> -0.1
+0.15 -> +0.2
+-0.15 -> -0.2
+0.25 -> +0.3
+-0.25 -> -0.3
+0.145 -> +0.1
+-0.145 -> -0.1
+1.005 -> +1.0
+-1.005 -> -1.0
+2.675 -> +2.7
+-2.675 -> -2.7
+0.999 -> +1.0
+-0.999 -> -1.0
+12.34 -> +12.3
+-12.34 -> -12.3
+99.995 -> +100.0
+-99.995 -> -100.0
+1234.5678 -> +1234.6
+-1234.5678 -> -1234.6
+0.049 -> 0.0
+-0.049 -> 0.0
+0.051 -> +0.1
+-0.051 -> -0.1
+7.0 -> +7.0
+-7.0 -> -7.0
+100.0 -> +100.0
+0.001 -> 0.0
+-0.001 -> 0.0
+=== FMT1 ===
+0.0 -> 0.0
+-0.0 -> -0.0
+1.0 -> 1.0
+-1.0 -> -1.0
+0.5 -> 0.5
+-0.5 -> -0.5
+0.05 -> 0.1
+-0.05 -> -0.1
+0.15 -> 0.2
+-0.15 -> -0.2
+0.25 -> 0.3
+-0.25 -> -0.3
+0.145 -> 0.1
+-0.145 -> -0.1
+1.005 -> 1.0
+-1.005 -> -1.0
+2.675 -> 2.7
+-2.675 -> -2.7
+0.999 -> 1.0
+-0.999 -> -1.0
+12.34 -> 12.3
+-12.34 -> -12.3
+99.995 -> 100.0
+-99.995 -> -100.0
+1234.5678 -> 1234.6
+-1234.5678 -> -1234.6
+0.049 -> 0.0
+-0.049 -> -0.0
+0.051 -> 0.1
+-0.051 -> -0.1
+7.0 -> 7.0
+-7.0 -> -7.0
+100.0 -> 100.0
+0.001 -> 0.0
+-0.001 -> -0.0
+=== FMT2 ===
+0.0 -> 0.00
+-0.0 -> -0.00
+1.0 -> 1.00
+-1.0 -> -1.00
+0.5 -> 0.50
+-0.5 -> -0.50
+0.05 -> 0.05
+-0.05 -> -0.05
+0.15 -> 0.15
+-0.15 -> -0.15
+0.25 -> 0.25
+-0.25 -> -0.25
+0.145 -> 0.15
+-0.145 -> -0.15
+1.005 -> 1.01
+-1.005 -> -1.01
+2.675 -> 2.68
+-2.675 -> -2.68
+0.999 -> 1.00
+-0.999 -> -1.00
+12.34 -> 12.34
+-12.34 -> -12.34
+99.995 -> 100.00
+-99.995 -> -100.00
+1234.5678 -> 1234.57
+-1234.5678 -> -1234.57
+0.049 -> 0.05
+-0.049 -> -0.05
+0.051 -> 0.05
+-0.051 -> -0.05
+7.0 -> 7.00
+-7.0 -> -7.00
+100.0 -> 100.00
+0.001 -> 0.00
+-0.001 -> -0.00
+=== FMT0 ===
+0.0 -> 0
+-0.0 -> -0
+1.0 -> 1
+-1.0 -> -1
+0.5 -> 1
+-0.5 -> -1
+0.05 -> 0
+-0.05 -> -0
+0.15 -> 0
+-0.15 -> -0
+0.25 -> 0
+-0.25 -> -0
+0.145 -> 0
+-0.145 -> -0
+1.005 -> 1
+-1.005 -> -1
+2.675 -> 3
+-2.675 -> -3
+0.999 -> 1
+-0.999 -> -1
+12.34 -> 12
+-12.34 -> -12
+99.995 -> 100
+-99.995 -> -100
+1234.5678 -> 1235
+-1234.5678 -> -1235
+0.049 -> 0
+-0.049 -> -0
+0.051 -> 0
+-0.051 -> -0
+7.0 -> 7
+-7.0 -> -7
+100.0 -> 100
+0.001 -> 0
+-0.001 -> -0
+=== BUCKET step=0.1 dec=2 ===
+0.0 -> 0.00
+-0.0 -> 0.00
+1.0 -> 1.00
+-1.0 -> -1.00
+0.5 -> 0.50
+-0.5 -> -0.50
+0.05 -> 0.10
+-0.05 -> 0.00
+0.15 -> 0.10
+-0.15 -> -0.10
+0.25 -> 0.30
+-0.25 -> -0.20
+0.145 -> 0.10
+-0.145 -> -0.10
+1.005 -> 1.00
+-1.005 -> -1.00
+2.675 -> 2.70
+-2.675 -> -2.70
+0.999 -> 1.00
+-0.999 -> -1.00
+12.34 -> 12.30
+-12.34 -> -12.30
+99.995 -> 100.00
+-99.995 -> -100.00
+1234.5678 -> 1234.60
+-1234.5678 -> -1234.60
+0.049 -> 0.00
+-0.049 -> 0.00
+0.051 -> 0.10
+-0.051 -> -0.10
+7.0 -> 7.00
+-7.0 -> -7.00
+100.0 -> 100.00
+0.001 -> 0.00
+-0.001 -> 0.00
+=== BUCKET step=50.0 dec=0 ===
+0.0 -> 0
+-0.0 -> 0
+1.0 -> 0
+-1.0 -> 0
+0.5 -> 0
+-0.5 -> 0
+0.05 -> 0
+-0.05 -> 0
+0.15 -> 0
+-0.15 -> 0
+0.25 -> 0
+-0.25 -> 0
+0.145 -> 0
+-0.145 -> 0
+1.005 -> 0
+-1.005 -> 0
+2.675 -> 0
+-2.675 -> 0
+0.999 -> 0
+-0.999 -> 0
+12.34 -> 0
+-12.34 -> 0
+99.995 -> 100
+-99.995 -> -100
+1234.5678 -> 1250
+-1234.5678 -> -1250
+0.049 -> 0
+-0.049 -> 0
+0.051 -> 0
+-0.051 -> 0
+7.0 -> 0
+-7.0 -> 0
+100.0 -> 100
+0.001 -> 0
+-0.001 -> 0
+=== BUCKETINT step=5 ===
+0 -> 0
+1 -> 0
+2 -> 0
+3 -> 5
+7 -> 5
+-3 -> -5
+-7 -> -5
+12 -> 10
+100 -> 100
+=== ISOWEEK ===
+2026-01-01 -> 2026-W01
+2026-01-04 -> 2026-W01
+2026-01-05 -> 2026-W02
+2026-12-28 -> 2026-W53
+2026-12-31 -> 2026-W53
+2025-01-01 -> 2025-W01
+2025-12-29 -> 2026-W01
+2027-01-03 -> 2026-W53
+2027-01-04 -> 2027-W01
+2020-12-31 -> 2020-W53
+2021-01-01 -> 2020-W53
+2021-01-04 -> 2021-W01
+2024-02-29 -> 2024-W09
+2026-07-06 -> 2026-W28
+=== PCT ===
+0.0 -> 0%
+-0.0 -> 0%
+1.0 -> 1%
+-1.0 -> -1%
+0.5 -> 1%
+-0.5 -> 0%
+0.05 -> 0%
+-0.05 -> 0%
+0.15 -> 0%
+-0.15 -> 0%
+0.25 -> 0%
+-0.25 -> 0%
+0.145 -> 0%
+-0.145 -> 0%
+1.005 -> 1%
+-1.005 -> -1%
+2.675 -> 3%
+-2.675 -> -3%
+0.999 -> 1%
+-0.999 -> -1%
+12.34 -> 12%
+-12.34 -> -12%
+99.995 -> 100%
+-99.995 -> -100%
+1234.5678 -> 1235%
+-1234.5678 -> -1235%
+0.049 -> 0%
+-0.049 -> 0%
+0.051 -> 0%
+-0.051 -> 0%
+7.0 -> 7%
+-7.0 -> -7%
+100.0 -> 100%
+0.001 -> 0%
+-0.001 -> 0%

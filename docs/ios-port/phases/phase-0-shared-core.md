@@ -468,48 +468,87 @@ Expected: **FAIL** — "Unresolved reference: signed1 / formatFixed / isoWeek".
 
 Create `shared/src/commonMain/kotlin/com/zack/recomptracker/shared/format/DecimalFormat.kt`:
 
+> ⚠️ **This implementation was rewritten after Task 2 captured ground truth.** Two assumptions in
+> the original draft were wrong, and the golden corpus caught both:
+>
+> 1. **Java rounds the *shortest decimal representation*, not the exact binary double.**
+>    `String.format("%.2f", 1.005)` is `"1.01"`, even though the exact double is
+>    `1.00499999999999989…`. A `floor(x * 100 + 0.5)` implementation yields `"1.00"` and diverges.
+>    Same for `2.675 → "2.68"` and `99.995 → "100.00"`.
+> 2. **`fmt()` emits negative zero.** `formatFixed(-0.049, 1)` is `"-0.0"` and
+>    `formatFixed(-0.25, 0)` is `"-0"`. Only `signed1()` and `bucket()` normalise it away.
+>
+> Java also looks at **only the single digit past the requested precision**, which is why
+> `0.145` is `"0.1"` at 1dp but `"0.15"` at 2dp.
+
 ```kotlin
 package com.zack.recomptracker.shared.format
 
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 /**
  * Replacement for `String.format(Locale.US, "%.Nf", value)` — unavailable on Kotlin/Native.
- * Matches Java's HALF_UP rounding (away from zero), which differs from `roundToInt()`
- * (half toward +infinity) on every negative half. Pinned by GoldenFormatTest.
+ *
+ * Reproduces `java.util.Formatter` exactly: it rounds the SHORTEST decimal representation of the
+ * double (what `toString()` gives), HALF_UP on the single digit past the requested precision.
+ * It does NOT round the exact binary value — that is why 1.005 formats as "1.01".
+ * Negative zero is preserved ("-0.0"), matching Java. Pinned by GoldenFormatTest.
  */
 fun formatFixed(value: Double, decimals: Int): String {
     if (value.isNaN()) return "NaN"
     if (value.isInfinite()) return if (value > 0) "Infinity" else "-Infinity"
 
-    val negative = value < 0.0
-    val magnitude = abs(value)
+    // 1.0 / -0.0 is -Infinity, which is how negative zero is detected.
+    val negative = value < 0.0 || (value == 0.0 && 1.0 / value < 0.0)
 
-    var factor = 1.0
-    repeat(decimals) { factor *= 10.0 }
+    val shortest = abs(value).toString()
+    check(!shortest.contains('e', ignoreCase = true)) {
+        "formatFixed cannot handle scientific notation: $value"
+    }
 
-    // HALF_UP on a non-negative magnitude == floor(x + 0.5).
-    val scaled = floor(magnitude * factor + 0.5).roundToLong()
-    val intPart = scaled / factor.roundToLong()
-    val fracPart = scaled % factor.roundToLong()
+    val intPart = shortest.substringBefore('.')
+    val fracPart = shortest.substringAfter('.', "")
+
+    // One digit string with `decimals` implied decimal places.
+    var digits = intPart + fracPart.take(decimals).padEnd(decimals, '0')
+    if (fracPart.length > decimals && fracPart[decimals] >= '5') {
+        digits = incrementDigits(digits)
+    }
 
     val body = if (decimals == 0) {
-        intPart.toString()
+        digits
     } else {
-        "$intPart.${fracPart.toString().padStart(decimals, '0')}"
+        val cut = digits.length - decimals
+        "${digits.substring(0, cut).ifEmpty { "0" }}.${digits.substring(cut)}"
     }
-    // "-0.0" is not produced: a zero result is unsigned.
-    return if (negative && scaled != 0L) "-$body" else body
+    return if (negative) "-$body" else body
 }
 
-/** Signed one-decimal string, e.g. "+0.4" / "-0.2"; ±0.0 normalises to "0.0". */
+/** Adds one to a non-negative decimal digit string, growing it on overflow ("99" -> "100"). */
+private fun incrementDigits(s: String): String {
+    val chars = s.toCharArray()
+    var i = chars.lastIndex
+    while (i >= 0) {
+        if (chars[i] == '9') {
+            chars[i] = '0'
+            i--
+        } else {
+            chars[i]++
+            return chars.concatToString()
+        }
+    }
+    return "1" + chars.concatToString()
+}
+
+/**
+ * Signed one-decimal string, e.g. "+0.4" / "-0.2". Mirrors `String.format("%+.1f", v)` followed by
+ * the ±0.0 normalisation at the original `CoachDetectorSupport.kt:32`.
+ */
 fun signed1(value: Double): String {
-    val body = formatFixed(abs(value), 1)
-    if (body == "0.0") return "0.0"
-    return if (value < 0.0) "-$body" else "+$body"
+    val body = formatFixed(value, 1)
+    if (body == "0.0" || body == "-0.0") return "0.0"
+    return if (body.startsWith("-")) body else "+$body"
 }
 
 /** Percent with no decimals, e.g. "83%". */
@@ -616,10 +655,18 @@ fun DayOfWeek.fullNameEnglish(): String = when (this) {
 ```
 Expected: **both PASS.**
 
-If a row fails, the implementation is wrong, not the corpus. The most likely culprits are
-`formatFixed` on values where `magnitude * factor` lands just under a `.5` boundary in binary
-floating point (e.g. `1.005`, `2.675`), and the ISO week for dates in the first/last week of a year.
-Fix the implementation until the corpus passes verbatim.
+If a row fails, the implementation is wrong, not the corpus. Fix until the corpus passes verbatim.
+
+🔴 **The one failure mode that is NOT an implementation bug:** `formatFixed` depends on
+`Double.toString()` producing the same shortest decimal representation on Kotlin/Native as on the
+JVM. If JVM passes but `iosSimulatorArm64` fails on rows like `1.005`, `2.675` or `0.145`, that is
+**Kotlin/Native's `Double.toString()` disagreeing with the JVM's** — a platform difference, not a
+logic error. Do not paper over it by special-casing those values.
+
+If that happens: record the exact failing rows in `docs/ios-port/STATUS.md`, implement the shortest-
+repr conversion by hand (Ryū/Grisu-style) rather than relying on `toString()`, and flag it at the
+gate — it means every double-formatting path in the shared core needs its own implementation, which
+materially raises the cost of the shared-core approach.
 
 - [ ] **Step 7: Delete the corpus generator**
 
@@ -1545,7 +1592,8 @@ built it."
 | 4 | `java.time` conversion sites in `:app` | ≤ 10 — more means the boundary is leaky | |
 | 5 | Kotlin/Native compile time | < 3 min clean — more is a real daily tax | |
 | 6 | Swift call sites readable without a wrapper layer | subjective; Task 14 Step 7 notes | |
-| 7 | Nothing in the phase required a Kotlin, AGP or Gradle upgrade | no version bumps in the diff | |
+| 7 | No Kotlin/AGP/Gradle upgrade **and** no unacceptable dependency downgrade | see 7a below | |
+| 7a | *(known, resolved)* Kotlin/Native klibs are strictly ABI-gated, so staying on Kotlin 2.2.21 **caps every `commonMain` dependency** at releases built with Kotlin ≤ 2.2.x. kotlinx-serialization was pinned **1.11.0 → 1.9.0 project-wide** (56 files in `:app`). No post-1.9.0 API is used and all tests pass — but every future shared dependency needs the same check. Weigh at the gate whether this standing tax is preferable to moving to Kotlin 2.3.x+. | judgement | accepted |
 | 8 | **Two-repo resync is tolerable** | `sync-shared.sh` + Xcode rebuild < 2 min, one command, no manual clean needed (Task 14 Step 8) | |
 
 - [ ] **Step 2: Decide**

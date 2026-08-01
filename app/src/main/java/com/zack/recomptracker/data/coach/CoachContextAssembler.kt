@@ -32,8 +32,11 @@ import com.zack.recomptracker.domain.streak.Streaks
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import java.time.LocalDate as JavaLocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.minus
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 
@@ -44,7 +47,7 @@ import kotlinx.datetime.toKotlinLocalDate
  * with hand-built fixtures — no mocks, no coroutines, no Android.
  */
 data class CoachContextInputs(
-    val today: LocalDate,
+    val today: JavaLocalDate,
     val plan: PlanPreferences,
     val profile: UserProfilePreferences,
     /** All daily logs (any date). Windowed internally. */
@@ -58,7 +61,7 @@ data class CoachContextInputs(
     val streaks: Streaks,
     val weeklyReviews: List<WeeklyReviewInput>,
     /** Per-day plan targets over the window — from PlanRepository.targetsByDate. */
-    val targetsByDate: Map<LocalDate, PlanTargets>,
+    val targetsByDate: Map<JavaLocalDate, PlanTargets>,
     /** Persisted weekly-rebalance state — resolves the effective per-day targets + the rebalance block. */
     val rebalanceState: RebalanceState = RebalanceState(),
 )
@@ -68,7 +71,7 @@ data class CoachContextInputs(
  * maps `WeeklyReviewEntity` into this before calling [CoachContextAssembler.assemble].
  */
 data class WeeklyReviewInput(
-    val weekStart: LocalDate,
+    val weekStart: JavaLocalDate,
     val verdict: String,
     val signature: String,
 )
@@ -93,8 +96,8 @@ object CoachContextAssembler {
     private val adherenceCalculator = AdherenceCalculator()
 
     fun assemble(inputs: CoachContextInputs): CoachContext {
-        val today = inputs.today
-        val windowStart = today.minusDays((WINDOW_DAYS - 1).toLong())
+        val today = inputs.today.toKotlinLocalDate()
+        val windowStart = today.minus(WINDOW_DAYS - 1, DateTimeUnit.DAY)
 
         val logsInWindow = inputs.dailyLogs
             .mapNotNull { log -> parseDate(log.date)?.let { it to log } }
@@ -106,7 +109,7 @@ object CoachContextAssembler {
         val effectiveTargets = EffectiveTargets.resolveAll(
             inputs.targetsByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
             inputs.rebalanceState,
-        ).mapKeys { (d, _) -> d.toJavaLocalDate() }
+        )
 
         return CoachContext(
             asOf = today,
@@ -125,9 +128,7 @@ object CoachContextAssembler {
     private fun buildPlan(inputs: CoachContextInputs, today: LocalDate): PlanContext {
         val plan = inputs.plan
         val phaseStart = plan.maintenancePhaseStartDate?.let { parseDate(it) }
-        val weeksSincePhase = phaseStart?.let {
-            (ChronoUnit.DAYS.between(it, today) / 7L).toInt().coerceAtLeast(0)
-        }
+        val weeksSincePhase = phaseStart?.let { (it.daysUntil(today) / 7).coerceAtLeast(0) }
         return PlanContext(
             targetCalories = plan.targetCalories,
             targetProteinG = plan.targetProteinG,
@@ -146,7 +147,7 @@ object CoachContextAssembler {
         return ProfileContext(
             goal = p.goal?.name,
             sex = p.biologicalSex?.name,
-            ageYears = p.ageYears(today.toKotlinLocalDate()),
+            ageYears = p.ageYears(today),
             heightCm = p.heightCm,
             activityLevel = p.activityLevel?.name,
             weeklyGymSessions = p.weeklyGymSessions,
@@ -176,14 +177,14 @@ object CoachContextAssembler {
 
         val nutritionDays = eatenByDate.mapNotNull { (date, totals) ->
             val target = effectiveTargets[date]?.calories ?: return@mapNotNull null
-            NutritionDay(date = date.toKotlinLocalDate(), calories = totals.calories, targetCalories = target)
+            NutritionDay(date = date, calories = totals.calories, targetCalories = target)
         }
         val adherence = if (nutritionDays.isEmpty()) null else adherenceCalculator.calculate(nutritionDays)
         val consistency = adherenceCalculator.loggingConsistency(nutritionDays, WINDOW_DAYS)
 
         // Unconfirmed = planned entries dated today or earlier that were never confirmed eaten.
         val unconfirmed = inputs.plannedMeals.count { meal ->
-            parseDate(meal.date)?.let { !it.isAfter(today) } ?: false
+            parseDate(meal.date)?.let { it <= today } ?: false
         }
 
         return NutritionContext(
@@ -220,16 +221,12 @@ object CoachContextAssembler {
             .map { it.first }
             .toSet()
 
-        val kStepsByDate = stepsByDate.mapKeys { it.key.toKotlinLocalDate() }
-        val avgSteps7 = ActivitySummary.averageDailySteps(kStepsByDate, today.toKotlinLocalDate(), days = 7)
-        val prevWindowToday = today.minusDays(7L)
-        val avgStepsPrev7 =
-            ActivitySummary.averageDailySteps(kStepsByDate, prevWindowToday.toKotlinLocalDate(), days = 7)
+        val avgSteps7 = ActivitySummary.averageDailySteps(stepsByDate, today, days = 7)
+        val prevWindowToday = today.minus(7, DateTimeUnit.DAY)
+        val avgStepsPrev7 = ActivitySummary.averageDailySteps(stepsByDate, prevWindowToday, days = 7)
 
         val lastWeighIn = weightSeries.maxByOrNull { it.date }?.date
-        val daysSinceLastWeighIn = lastWeighIn?.let {
-            ChronoUnit.DAYS.between(it, today).toInt().coerceAtLeast(0)
-        }
+        val daysSinceLastWeighIn = lastWeighIn?.let { it.daysUntil(today).coerceAtLeast(0) }
 
         return BodyContext(
             weightSeries = weightSeries,
@@ -269,12 +266,10 @@ object CoachContextAssembler {
             .filter { it.trained }
             .mapNotNull { parseDate(it.date) }
         val workoutDays = ActivitySummary.workoutDays(
-            completedSessionDates = inputs.completedSessions
-                .mapNotNull { parseDate(it.date)?.toKotlinLocalDate() },
-            trainedLogDates = trainedLogDates.map { it.toKotlinLocalDate() },
+            completedSessionDates = inputs.completedSessions.mapNotNull { parseDate(it.date) },
+            trainedLogDates = trainedLogDates,
         )
-        val weeklyFrequency =
-            ActivitySummary.weeklyTrainingFrequency(workoutDays, today.toKotlinLocalDate())
+        val weeklyFrequency = ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
 
         // e1RM series + recent RIR come from the shared pure derivation so the coach tool and this
         // assembler never duplicate the math (docs/ai-redesign/08-technical-architecture.md §6).
@@ -303,7 +298,7 @@ object CoachContextAssembler {
     private fun buildHistory(reviews: List<WeeklyReviewInput>): HistoryContext = HistoryContext(
         weeklyReviews = reviews
             .sortedBy { it.weekStart }
-            .map { WeeklyReviewSnapshot(it.weekStart, it.verdict, it.signature) },
+            .map { WeeklyReviewSnapshot(it.weekStart.toKotlinLocalDate(), it.verdict, it.signature) },
     )
 
     // ── Weekly rebalance ─────────────────────────────────────────────────────────
@@ -324,12 +319,11 @@ object CoachContextAssembler {
         effectiveTargets: Map<LocalDate, PlanTargets>,
     ): RebalanceContext? {
         val state = inputs.rebalanceState
-        val kToday = today.toKotlinLocalDate()
-        val info = EffectiveTargets.planDayInfo(kToday, state) ?: return null
+        val info = EffectiveTargets.planDayInfo(today, state) ?: return null
         val plan = info.plan
-        val baseToday = inputs.targetsByDate[today]
+        val baseToday = inputs.targetsByDate[today.toJavaLocalDate()]
         val effectiveCalories = effectiveTargets[today]?.calories
-            ?: baseToday?.let { EffectiveTargets.resolve(it, kToday, state).calories }
+            ?: baseToday?.let { EffectiveTargets.resolve(it, today, state).calories }
             ?: RebalancePlanMath.effectiveCalories(plan)
         return RebalanceContext(
             dayX = info.dayX,
@@ -354,11 +348,11 @@ object CoachContextAssembler {
     /** Linear trend per week via [TrendCalculator]; null when fewer than 2 points. */
     private fun trendOrNull(series: List<MetricPoint>): Double? {
         if (series.size < 2) return null
-        return trendCalculator.trendPerWeek(series.map { MeasurementPoint(it.date.toKotlinLocalDate(), it.value) })
+        return trendCalculator.trendPerWeek(series.map { MeasurementPoint(it.date, it.value) })
     }
 
     private fun inWindow(date: LocalDate, start: LocalDate, end: LocalDate): Boolean =
-        !date.isBefore(start) && !date.isAfter(end)
+        date >= start && date <= end
 
     private fun parseDate(raw: String): LocalDate? = runCatching { LocalDate.parse(raw) }.getOrNull()
 }

@@ -2,6 +2,8 @@ package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.TODAY
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.recoverySeries
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -11,7 +13,7 @@ class RecoveryActivityDetectorsTest {
 
     /** A recovery series that's [baseline] on the prior days and [todayValue] on today. */
     private fun seriesWithToday(baseline: Double, todayValue: Double, priorDays: Int = 10): List<MetricPoint> {
-        val prior = (1..priorDays).map { MetricPoint(TODAY.minusDays(it.toLong()), baseline) }
+        val prior = (1..priorDays).map { MetricPoint(TODAY.minus(it.toLong(), DateTimeUnit.DAY), baseline) }
         return prior + MetricPoint(TODAY, todayValue)
     }
 
@@ -140,9 +142,9 @@ class RecoveryActivityDetectorsTest {
         val ctx = CoachContextFixtures.context(
             body = CoachContextFixtures.body(
                 sleepSeries = seriesWithToday(baseline = 7.5, todayValue = 5.0),
-                energySeries = (1..10).map { MetricPoint(TODAY.minusDays(it.toLong()), 8.0) },
-                sorenessSeries = (1..10).map { MetricPoint(TODAY.minusDays(it.toLong()), 3.0) },
-                hungerSeries = (1..10).map { MetricPoint(TODAY.minusDays(it.toLong()), 4.0) },
+                energySeries = (1..10).map { MetricPoint(TODAY.minus(it.toLong(), DateTimeUnit.DAY), 8.0) },
+                sorenessSeries = (1..10).map { MetricPoint(TODAY.minus(it.toLong(), DateTimeUnit.DAY), 3.0) },
+                hungerSeries = (1..10).map { MetricPoint(TODAY.minus(it.toLong(), DateTimeUnit.DAY), 4.0) },
             ),
         )
         assertNull(MorningReadinessDetector().detect(ctx))

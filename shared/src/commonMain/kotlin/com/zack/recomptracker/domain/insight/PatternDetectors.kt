@@ -27,12 +27,7 @@ internal fun detectWeekdayWeekend(days: List<DayNutrition>, targets: NutritionTa
 private const val DERAILMENT_MIN_WEEKLY_SURPLUS = 700
 private const val DERAILMENT_MIN_SHARE_PCT = 60
 
-/**
- * Public (unlike its three siblings) because `DerailmentDayDetector` in the app module's
- * proactive-coach spine reuses this exact fact. `internal` is module-scoped, and this file now
- * lives in `:shared`.
- */
-fun detectDerailmentDay(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
+internal fun detectDerailmentDay(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
     val recent = days.filter { it.logged }.sortedBy { it.date }.takeLast(7)
     if (recent.size < 4) return null
     val surpluses = recent.map { it to (it.calories - targets.calories).coerceAtLeast(0) }

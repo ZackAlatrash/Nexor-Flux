@@ -1,6 +1,8 @@
 package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.TODAY
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -10,8 +12,8 @@ class BodyDetectorsTest {
 
     /** A weight series that reads [priorValue] on the most recent prior day and [todayValue] today. */
     private fun weightWithToday(todayValue: Double, priorValue: Double): List<MetricPoint> = listOf(
-        MetricPoint(TODAY.minusDays(2), priorValue),
-        MetricPoint(TODAY.minusDays(1), priorValue),
+        MetricPoint(TODAY.minus(2, DateTimeUnit.DAY), priorValue),
+        MetricPoint(TODAY.minus(1, DateTimeUnit.DAY), priorValue),
         MetricPoint(TODAY, todayValue),
     )
 
@@ -184,8 +186,8 @@ class BodyDetectorsTest {
         val ctx = CoachContextFixtures.context(
             body = CoachContextFixtures.body(
                 weightSeries = listOf(
-                    MetricPoint(TODAY.minusDays(2), 80.0),
-                    MetricPoint(TODAY.minusDays(1), 81.0),
+                    MetricPoint(TODAY.minus(2, DateTimeUnit.DAY), 80.0),
+                    MetricPoint(TODAY.minus(1, DateTimeUnit.DAY), 81.0),
                 ),
                 weightTrendKgPerWeek = -0.02,
             ),

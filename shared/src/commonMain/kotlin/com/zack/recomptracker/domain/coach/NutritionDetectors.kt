@@ -9,7 +9,8 @@ import com.zack.recomptracker.domain.insight.InsightFactType
 import com.zack.recomptracker.domain.insight.NutritionTargets
 import com.zack.recomptracker.domain.insight.detectDerailmentDay
 import kotlin.math.roundToInt
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 
 /** The plan's adherence floor (%). Mirrors `AdjustmentThresholds.adherenceMinimumPercent`. */
 private const val ADHERENCE_MINIMUM = 80.0
@@ -65,12 +66,12 @@ class ConsistencyCheckInDetector : CoachDetector {
         val today = ctx.asOf
         val logged = ctx.nutrition.eatenByDate.keys
 
-        val recentStart = today.minusDays((CONSISTENCY_RECENT_DAYS - 1).toLong())
-        val priorEnd = recentStart.minusDays(1)
-        val priorStart = priorEnd.minusDays((CONSISTENCY_PRIOR_DAYS - 1).toLong())
+        val recentStart = today.minus(CONSISTENCY_RECENT_DAYS - 1, DateTimeUnit.DAY)
+        val priorEnd = recentStart.minus(1, DateTimeUnit.DAY)
+        val priorStart = priorEnd.minus(CONSISTENCY_PRIOR_DAYS - 1, DateTimeUnit.DAY)
 
-        val recentLogged = logged.count { !it.isBefore(recentStart) && !it.isAfter(today) }
-        val priorLogged = logged.count { !it.isBefore(priorStart) && !it.isAfter(priorEnd) }
+        val recentLogged = logged.count { it >= recentStart && it <= today }
+        val priorLogged = logged.count { it >= priorStart && it <= priorEnd }
 
         // Recent slip AND a prior good stretch — otherwise stay silent.
         if (recentLogged >= CONSISTENCY_RECENT_MIN_LOGGED) return null
@@ -244,7 +245,7 @@ private fun CoachContext.toNutritionTargets() = NutritionTargets(
 private fun CoachContext.toDayNutrition(): List<DayNutrition> =
     nutrition.eatenByDate.entries.sortedBy { it.key }.map { (date, m: MacroTotals) ->
         DayNutrition(
-            date = date.toKotlinLocalDate(),
+            date = date,
             calories = m.calories,
             proteinG = m.proteinG,
             carbsG = m.carbsG,

@@ -1,6 +1,8 @@
 package com.zack.recomptracker.domain.coach
 
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -88,10 +90,10 @@ class ExperimentEvaluationTest {
         // Baseline (pre-experiment) hunger was 6.0; since starting the experiment hunger has run 3.0.
         // The evaluation must compare the SINCE-START window (3.0), not a blended full-window average
         // (~4.9) that barely moves off the overlapping baseline.
-        val start = LocalDate.of(2026, 6, 24)
+        val start = LocalDate(2026, 6, 24)
         val hunger = (0 until 22).map { i ->
-            val date = CoachContextFixtures.TODAY.minusDays(i.toLong()) // 2026-07-01 .. 2026-06-10
-            MetricPoint(date, if (date.isBefore(start)) 6.0 else 3.0)
+            val date = CoachContextFixtures.TODAY.minus(i.toLong(), DateTimeUnit.DAY) // 2026-07-01 .. 2026-06-10
+            MetricPoint(date, if (date < start) 6.0 else 3.0)
         }
         val ctx = CoachContextFixtures.context(body = CoachContextFixtures.body(hungerSeries = hunger))
         val experiment = ActiveExperiment(

@@ -212,15 +212,17 @@ class CoachToolExecutor(
             return """{"window_days":$TRAINING_WINDOW_DAYS,"sessions_per_week":${sessionsPerWeek.round1()},"lifts":[],"note":"no completed training sessions logged in this window"}"""
         }
 
-        val latestE1rm = TrainingDerivations.latestE1rmByExercise(datedSessions)
+        // TrainingDerivations lives in `:shared` (kotlinx-datetime); convert once at the call site.
+        val kDatedSessions = datedSessions.map { it.first.toKotlinLocalDate() to it.second }
+        val latestE1rm = TrainingDerivations.latestE1rmByExercise(kDatedSessions)
         val liftsJson = latestE1rm.entries
             .sortedByDescending { it.value }
             .joinToString(",") { (name, e1rm) ->
-                val trend = TrainingDerivations.trendDirection(datedSessions, name)
+                val trend = TrainingDerivations.trendDirection(kDatedSessions, name)
                 """{"name":"${name.esc()}","latest_e1rm_kg":${e1rm.round1()},"trend":"${trend.toJson()}"}"""
             }
-        val totalVolume = TrainingDerivations.totalTrainingVolume(datedSessions)
-        val recentRir = TrainingDerivations.recentRir(datedSessions)
+        val totalVolume = TrainingDerivations.totalTrainingVolume(kDatedSessions)
+        val recentRir = TrainingDerivations.recentRir(kDatedSessions)
 
         // Recent soreness: the last few non-null soreness scores from daily logs in the window,
         // newest first — a recovery-load signal alongside RIR.

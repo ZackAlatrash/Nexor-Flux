@@ -1,8 +1,10 @@
 package com.zack.recomptracker.domain.coach
 
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.minus
 import kotlinx.serialization.Serializable
 
 /**
@@ -36,7 +38,7 @@ class RateLimiter {
         quietHours: QuietHours = QuietHours(),
     ): PushDecision {
         // 1. Quiet hours — before anything else, never fire while the user is likely asleep.
-        if (quietHours.contains(now.toLocalTime())) {
+        if (quietHours.contains(now.time)) {
             return PushDecision(false, PushRejectionReason.QUIET_HOURS)
         }
 
@@ -48,15 +50,15 @@ class RateLimiter {
         // 3. One-push-a-day rule — reject if a push already landed today (no same-day doubles, e.g. a
         // daily P0 then the weekly push in one run) or yesterday (never on consecutive days). A weekly
         // push deferred by this rule isn't stamped, so it simply retries on the next eligible run.
-        val today = now.toLocalDate()
-        val yesterday = today.minusDays(1)
+        val today = now.date
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
         if (recentPushes.any { it.date == today || it.date == yesterday }) {
             return PushDecision(false, PushRejectionReason.CONSECUTIVE_DAY)
         }
 
         // Everything below is scoped to the rolling 7-day window ending at `now` (boundary inclusive).
-        val windowStart = now.minusDays(WINDOW_DAYS)
-        val inWindow = recentPushes.filter { !it.timestamp.isBefore(windowStart) }
+        val windowStart = LocalDateTime(now.date.minus(WINDOW_DAYS, DateTimeUnit.DAY), now.time)
+        val inWindow = recentPushes.filter { it.timestamp >= windowStart }
 
         // 4. Celebration cap — at most one *ambient* celebration push per rolling week. The weekly
         // check-in is exempt: it's the guaranteed spine push (a RECOMP_WIN weekly winner is a
@@ -106,13 +108,17 @@ data class PushCandidate(
  */
 @Serializable
 data class PushEvent(
-    /** ISO-8601 local date-time the push was emitted (e.g. `2026-07-01T13:00`). */
-    @Serializable(with = LocalDateTimeIsoSerializer::class)
+    /**
+     * ISO-8601 local date-time the push was emitted (e.g. `2026-07-01T13:00`). Serialized by
+     * kotlinx-datetime's built-in `LocalDateTime` serializer, which emits the same ISO-8601 string
+     * `java.time.LocalDateTime.toString()` did (seconds omitted when zero) — see
+     * `PushEventFormatTest`, which pins the persisted shape.
+     */
     val timestamp: LocalDateTime,
     val isCelebration: Boolean,
 ) {
     /** The calendar day the push landed on — the granularity of the consecutive-day rule. */
-    val date: LocalDate get() = timestamp.toLocalDate()
+    val date: LocalDate get() = timestamp.date
 }
 
 /**
@@ -122,8 +128,8 @@ data class PushEvent(
  * is treated as a same-day range; `start >= end` wraps past midnight.
  */
 data class QuietHours(
-    val start: LocalTime = LocalTime.of(22, 0),
-    val end: LocalTime = LocalTime.of(7, 0),
+    val start: LocalTime = LocalTime(22, 0),
+    val end: LocalTime = LocalTime(7, 0),
 ) {
     /** True when [time] falls inside the quiet window (start inclusive, end exclusive). */
     fun contains(time: LocalTime): Boolean =

@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -124,7 +125,7 @@ class CoachDigestCoordinatorTest {
         dateProvider: DateProvider = MutableDateProvider(today),
         scope: CoroutineScope,
         journey: CoachJourney = FakeJourney(),
-        contextProvider: suspend () -> CoachContext = { CoachContextFixtures.context(asOf = dateProvider.today()) },
+        contextProvider: suspend () -> CoachContext = { CoachContextFixtures.context(asOf = dateProvider.today().toKotlinLocalDate()) },
     ) = CoachDigestCoordinator(
         contextProvider = contextProvider,
         engine = engine,
@@ -142,9 +143,9 @@ class CoachDigestCoordinatorTest {
         signature: String = "2026-06-22|2400|HOLD",
     ): suspend () -> CoachContext = {
         CoachContextFixtures.context(
-            asOf = today,
+            asOf = today.toKotlinLocalDate(),
             history = HistoryContext(
-                weeklyReviews = listOf(WeeklyReviewSnapshot(weekStart, verdict, signature)),
+                weeklyReviews = listOf(WeeklyReviewSnapshot(weekStart.toKotlinLocalDate(), verdict, signature)),
             ),
         )
     }
@@ -195,7 +196,7 @@ class CoachDigestCoordinatorTest {
         ).copy(action = com.zack.recomptracker.domain.coach.CoachAction(
             com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT, "Log weight"))
         val coordinator = CoachDigestCoordinator(
-            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            contextProvider = { CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
             engine = engineWith(p0), selector = SignalSelector(), inbox = inbox,
             aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
             appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
@@ -222,7 +223,7 @@ class CoachDigestCoordinatorTest {
         ).copy(action = com.zack.recomptracker.domain.coach.CoachAction(
             com.zack.recomptracker.domain.coach.CoachActionType.LOG_WEIGHT, "Log weight"))
         val coordinator = CoachDigestCoordinator(
-            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            contextProvider = { CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
             engine = engineWith(p0), selector = SignalSelector(), inbox = inbox,
             aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
             appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
@@ -245,7 +246,7 @@ class CoachDigestCoordinatorTest {
         val prefs = FakeNotifPrefs(ambient = true)
         val emitter = CoachPushEmitter(notifier, history, prefs) { nowInstant }
         val coordinator = CoachDigestCoordinator(
-            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            contextProvider = { CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
             engine = engineWith(signal(tier = SignalTier.P2)), selector = SignalSelector(), inbox = inbox,
             aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
             appScope = this, pushEmitter = emitter, notificationPreferences = prefs,
@@ -305,7 +306,7 @@ class CoachDigestCoordinatorTest {
             engine = engineWith(signal()),
             aiEnabled = false,
             scope = this,
-            contextProvider = { built = true; CoachContextFixtures.context(asOf = today) },
+            contextProvider = { built = true; CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
         )
 
         coordinator.run()
@@ -484,7 +485,7 @@ class CoachDigestCoordinatorTest {
         val experiments = FakeCoachExperiments(matureExperiment())
         val inbox = FakeInbox()
         val coordinator = CoachDigestCoordinator(
-            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            contextProvider = { CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
             engine = engineWith(null), // no competitor → the EXPERIMENT_RESULT wins the Today slot
             selector = SignalSelector(), inbox = inbox,
             aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
@@ -505,7 +506,7 @@ class CoachDigestCoordinatorTest {
         val inbox = FakeInbox()
         val p0 = signal(kind = SignalKind.FAT_GAIN_WARNING, tier = SignalTier.P0, dedupKey = "FGW|w27")
         val coordinator = CoachDigestCoordinator(
-            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            contextProvider = { CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
             engine = engineWith(p0), selector = SignalSelector(), inbox = inbox,
             aiEnabledFlow = MutableStateFlow(true), dateProvider = MutableDateProvider(today),
             appScope = this, experiments = experiments,
@@ -569,7 +570,7 @@ class CoachDigestCoordinatorTest {
             override fun disable() { disables.incrementAndGet() }
         }
         val coordinator = CoachDigestCoordinator(
-            contextProvider = { CoachContextFixtures.context(asOf = today) },
+            contextProvider = { CoachContextFixtures.context(asOf = today.toKotlinLocalDate()) },
             engine = engineWith(),
             selector = SignalSelector(),
             inbox = FakeInbox(),

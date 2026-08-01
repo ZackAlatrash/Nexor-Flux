@@ -1,7 +1,7 @@
 package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.core.model.MacroTotals
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * The single canonical snapshot of all coaching-relevant user data — the one input to the

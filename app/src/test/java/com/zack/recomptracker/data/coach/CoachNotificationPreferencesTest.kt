@@ -5,7 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import java.io.File
 import java.nio.file.Files
-import java.time.LocalTime
+import kotlinx.datetime.LocalTime
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -50,16 +50,16 @@ class CoachNotificationPreferencesTest {
     @Test
     fun `quiet hours default to 22 to 7`() = runTest {
         val quiet = prefs.quietHours()
-        assertEquals(LocalTime.of(22, 0), quiet.start)
-        assertEquals(LocalTime.of(7, 0), quiet.end)
+        assertEquals(LocalTime(22, 0), quiet.start)
+        assertEquals(LocalTime(7, 0), quiet.end)
     }
 
     @Test
     fun `default quiet window suppresses late-night and allows mid-day`() = runTest {
         val quiet = prefs.quietHours()
-        assertTrue("23:30 is quiet", quiet.contains(LocalTime.of(23, 30)))
-        assertTrue("06:00 is quiet", quiet.contains(LocalTime.of(6, 0)))
-        assertFalse("13:00 is allowed", quiet.contains(LocalTime.of(13, 0)))
+        assertTrue("23:30 is quiet", quiet.contains(LocalTime(23, 30)))
+        assertTrue("06:00 is quiet", quiet.contains(LocalTime(6, 0)))
+        assertFalse("13:00 is allowed", quiet.contains(LocalTime(13, 0)))
     }
 
     @Test
@@ -70,7 +70,7 @@ class CoachNotificationPreferencesTest {
 
         assertFalse(prefs.weeklyCheckInPushEnabled.first())
         assertTrue(prefs.ambientNudgesEnabled.first())
-        assertEquals(LocalTime.of(21, 0), prefs.quietHours().start)
-        assertEquals(LocalTime.of(8, 0), prefs.quietHours().end)
+        assertEquals(LocalTime(21, 0), prefs.quietHours().start)
+        assertEquals(LocalTime(8, 0), prefs.quietHours().end)
     }
 }

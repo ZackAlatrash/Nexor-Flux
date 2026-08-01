@@ -1,8 +1,10 @@
 package com.zack.recomptracker.domain.coach
 
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,13 +23,16 @@ class RateLimiterTest {
     private val limiter = RateLimiter()
 
     // 2026-07-01 is a Wednesday; 13:00 is safely outside the default 22:00–07:00 quiet window.
-    private val now: LocalDateTime = LocalDateTime.of(2026, 7, 1, 13, 0)
+    private val now: LocalDateTime = LocalDateTime(2026, 7, 1, 13, 0)
 
     private fun p0(isCelebration: Boolean = false, isWeeklyCheckIn: Boolean = false) =
         PushCandidate(tier = SignalTier.P0, isCelebration = isCelebration, isWeeklyCheckIn = isWeeklyCheckIn)
 
     private fun event(daysAgo: Long, hour: Int = 13, isCelebration: Boolean = false) =
-        PushEvent(timestamp = now.minusDays(daysAgo).withHour(hour).withMinute(0), isCelebration = isCelebration)
+        PushEvent(
+            timestamp = LocalDateTime(now.date.minus(daysAgo, DateTimeUnit.DAY), LocalTime(hour, 0)),
+            isCelebration = isCelebration,
+        )
 
     // ── Happy path ─────────────────────────────────────────────────────────────
 
@@ -97,7 +102,8 @@ class RateLimiterTest {
     @Test
     fun `an event exactly 7 days ago is inside the window (boundary inclusive)`() {
         // Exactly-7-days-ago pushes count; two of them fills the weekly cap.
-        val onBoundary = PushEvent(timestamp = now.minusDays(7), isCelebration = false)
+        val onBoundary =
+            PushEvent(timestamp = LocalDateTime(now.date.minus(7, DateTimeUnit.DAY), now.time), isCelebration = false)
         val history = listOf(onBoundary, event(daysAgo = 3))
         val decision = limiter.decide(p0(), now, recentPushes = history)
         assertFalse(decision.allowed)
@@ -178,7 +184,7 @@ class RateLimiterTest {
 
     @Test
     fun `2330 is inside the default quiet window and is rejected`() {
-        val late = LocalDateTime.of(2026, 7, 1, 23, 30)
+        val late = LocalDateTime(2026, 7, 1, 23, 30)
         val decision = limiter.decide(p0(), late, emptyList())
         assertFalse(decision.allowed)
         assertEquals(PushRejectionReason.QUIET_HOURS, decision.reason)
@@ -186,7 +192,7 @@ class RateLimiterTest {
 
     @Test
     fun `0630 is inside the default quiet window and is rejected`() {
-        val early = LocalDateTime.of(2026, 7, 1, 6, 30)
+        val early = LocalDateTime(2026, 7, 1, 6, 30)
         val decision = limiter.decide(p0(), early, emptyList())
         assertFalse(decision.allowed)
         assertEquals(PushRejectionReason.QUIET_HOURS, decision.reason)
@@ -194,7 +200,7 @@ class RateLimiterTest {
 
     @Test
     fun `1200 is outside the default quiet window and is allowed`() {
-        val noon = LocalDateTime.of(2026, 7, 1, 12, 0)
+        val noon = LocalDateTime(2026, 7, 1, 12, 0)
         val decision = limiter.decide(p0(), noon, emptyList())
         assertTrue(decision.allowed)
         assertEquals(PushRejectionReason.ELIGIBLE, decision.reason)
@@ -203,19 +209,19 @@ class RateLimiterTest {
     @Test
     fun `quiet-window start is inclusive and end is exclusive`() {
         // 22:00 sharp is quiet; 07:00 sharp is the first allowed minute.
-        assertFalse(limiter.decide(p0(), LocalDateTime.of(2026, 7, 1, 22, 0), emptyList()).allowed)
-        assertTrue(limiter.decide(p0(), LocalDateTime.of(2026, 7, 1, 7, 0), emptyList()).allowed)
+        assertFalse(limiter.decide(p0(), LocalDateTime(2026, 7, 1, 22, 0), emptyList()).allowed)
+        assertTrue(limiter.decide(p0(), LocalDateTime(2026, 7, 1, 7, 0), emptyList()).allowed)
     }
 
     @Test
     fun `quiet hours are configurable`() {
-        val quiet = QuietHours(start = LocalTime.of(9, 0), end = LocalTime.of(17, 0))
+        val quiet = QuietHours(start = LocalTime(9, 0), end = LocalTime(17, 0))
         // A non-wrapping daytime window: 13:00 now falls inside it → rejected.
         val decision = limiter.decide(p0(), now, emptyList(), quietHours = quiet)
         assertFalse(decision.allowed)
         assertEquals(PushRejectionReason.QUIET_HOURS, decision.reason)
         // 20:00 is outside the daytime window → allowed.
-        val evening = limiter.decide(p0(), LocalDateTime.of(2026, 7, 1, 20, 0), emptyList(), quietHours = quiet)
+        val evening = limiter.decide(p0(), LocalDateTime(2026, 7, 1, 20, 0), emptyList(), quietHours = quiet)
         assertTrue(evening.allowed)
     }
 
@@ -224,7 +230,7 @@ class RateLimiterTest {
     @Test
     fun `quiet hours takes precedence over the tier gate`() {
         val candidate = PushCandidate(SignalTier.P2, isCelebration = false, isWeeklyCheckIn = false)
-        val late = LocalDateTime.of(2026, 7, 1, 23, 30)
+        val late = LocalDateTime(2026, 7, 1, 23, 30)
         val decision = limiter.decide(candidate, late, emptyList())
         assertFalse(decision.allowed)
         assertEquals(PushRejectionReason.QUIET_HOURS, decision.reason)
@@ -232,26 +238,26 @@ class RateLimiterTest {
 
     @Test
     fun `QuietHours contains handles a non-wrapping window`() {
-        val window = QuietHours(start = LocalTime.of(9, 0), end = LocalTime.of(17, 0))
-        assertTrue(window.contains(LocalTime.of(12, 0)))
-        assertFalse(window.contains(LocalTime.of(8, 0)))
-        assertFalse(window.contains(LocalTime.of(17, 0)))
+        val window = QuietHours(start = LocalTime(9, 0), end = LocalTime(17, 0))
+        assertTrue(window.contains(LocalTime(12, 0)))
+        assertFalse(window.contains(LocalTime(8, 0)))
+        assertFalse(window.contains(LocalTime(17, 0)))
     }
 
     @Test
     fun `QuietHours contains handles the midnight-wrapping default`() {
         val window = QuietHours()
-        assertTrue(window.contains(LocalTime.of(23, 30)))
-        assertTrue(window.contains(LocalTime.of(0, 30)))
-        assertTrue(window.contains(LocalTime.of(6, 30)))
-        assertTrue(window.contains(LocalTime.of(22, 0)))
-        assertFalse(window.contains(LocalTime.of(7, 0)))
-        assertFalse(window.contains(LocalTime.of(12, 0)))
+        assertTrue(window.contains(LocalTime(23, 30)))
+        assertTrue(window.contains(LocalTime(0, 30)))
+        assertTrue(window.contains(LocalTime(6, 30)))
+        assertTrue(window.contains(LocalTime(22, 0)))
+        assertFalse(window.contains(LocalTime(7, 0)))
+        assertFalse(window.contains(LocalTime(12, 0)))
     }
 
     @Test
     fun `PushEvent exposes its date for the consecutive-day comparison`() {
-        val e = PushEvent(timestamp = LocalDateTime.of(2026, 6, 30, 13, 0), isCelebration = false)
-        assertEquals(LocalDate.of(2026, 6, 30), e.date)
+        val e = PushEvent(timestamp = LocalDateTime(2026, 6, 30, 13, 0), isCelebration = false)
+        assertEquals(LocalDate(2026, 6, 30), e.date)
     }
 }

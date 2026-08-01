@@ -3,8 +3,10 @@ package com.zack.recomptracker.domain.coach
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.fmt
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.isoWeek
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.severityFromDistance
-import java.time.DayOfWeek
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import kotlin.math.abs
 
 /**
@@ -103,7 +105,7 @@ internal object CrossSignalCorrelations {
         val hitNextHunger = ArrayList<Double>()
         val missNextHunger = ArrayList<Double>()
         for ((date, macros) in ctx.nutrition.eatenByDate) {
-            val nextHunger = hungerByDate[date.plusDays(1)] ?: continue
+            val nextHunger = hungerByDate[date.plus(1, DateTimeUnit.DAY)] ?: continue
             if (macros.proteinG >= target * PROTEIN_HIT_FRACTION) hitNextHunger += nextHunger
             else missNextHunger += nextHunger
         }
@@ -151,7 +153,7 @@ internal object CrossSignalCorrelations {
         val goodSleepEnergy = ArrayList<Double>()
         val poorSleepEnergy = ArrayList<Double>()
         for (night in ctx.body.sleepSeries) {
-            val nextEnergy = energyByDate[night.date.plusDays(1)] ?: continue
+            val nextEnergy = energyByDate[night.date.plus(1, DateTimeUnit.DAY)] ?: continue
             when {
                 night.value >= GOOD_SLEEP_HOURS -> goodSleepEnergy += nextEnergy
                 night.value < POOR_SLEEP_HOURS -> poorSleepEnergy += nextEnergy
@@ -423,11 +425,11 @@ object ExperimentEvaluation {
     fun currentValue(experiment: ActiveExperiment, ctx: CoachContext): Double? {
         val start = runCatching { LocalDate.parse(experiment.startDateIso) }.getOrNull() ?: return null
         return when (experiment.trackedMetric) {
-            "hunger" -> ctx.body.hungerSeries.filter { !it.date.isBefore(start) }.map { it.value }.averageOrNull()
-            "energy" -> ctx.body.energySeries.filter { !it.date.isBefore(start) }.map { it.value }.averageOrNull()
+            "hunger" -> ctx.body.hungerSeries.filter { it.date >= start }.map { it.value }.averageOrNull()
+            "energy" -> ctx.body.energySeries.filter { it.date >= start }.map { it.value }.averageOrNull()
             "weekend_calories" -> ctx.nutrition.eatenByDate
                 .filterKeys {
-                    (it.dayOfWeek == DayOfWeek.SATURDAY || it.dayOfWeek == DayOfWeek.SUNDAY) && !it.isBefore(start)
+                    (it.dayOfWeek == DayOfWeek.SATURDAY || it.dayOfWeek == DayOfWeek.SUNDAY) && it >= start
                 }
                 .values.map { it.calories.toDouble() }.averageOrNull()
             else -> null

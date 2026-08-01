@@ -1,6 +1,8 @@
 package com.zack.recomptracker.domain.coach
 
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -12,7 +14,7 @@ import org.junit.Test
  */
 class SignalSelectorTest {
 
-    private val today: LocalDate = LocalDate.of(2026, 7, 1)
+    private val today: LocalDate = LocalDate(2026, 7, 1)
     private val selector = SignalSelector()
 
     /** Minimal real [CoachSignal]; only the fields the selector reads are meaningful. */
@@ -109,7 +111,7 @@ class SignalSelectorTest {
     fun `a signal within cooldown is suppressed and cannot win`() {
         val recent = signal(SignalKind.LOW_ADHERENCE, SignalTier.P0, severity = 90, dedupKey = "cool")
         // Surfaced 3 days ago; cooldown is 7 days -> still on cooldown.
-        val seen = mapOf("cool" to today.minusDays(3))
+        val seen = mapOf("cool" to today.minus(3, DateTimeUnit.DAY))
 
         val result = selector.select(listOf(recent), seen, today, cooldownDays = 7)
 
@@ -122,7 +124,7 @@ class SignalSelectorTest {
     fun `a signal past cooldown is eligible`() {
         val s = signal(SignalKind.LOW_ADHERENCE, SignalTier.P1, severity = 50, dedupKey = "cool")
         // Surfaced exactly 7 days ago; 7 >= cooldownDays -> eligible again.
-        val seen = mapOf("cool" to today.minusDays(7))
+        val seen = mapOf("cool" to today.minus(7, DateTimeUnit.DAY))
 
         val result = selector.select(listOf(s), seen, today, cooldownDays = 7)
 
@@ -143,7 +145,7 @@ class SignalSelectorTest {
     fun `all-suppressed yields no winner`() {
         val a = signal(SignalKind.LOW_ADHERENCE, SignalTier.P0, severity = 90, dedupKey = "a")
         val b = signal(SignalKind.RECOVERY_DECLINE, SignalTier.P1, severity = 40, dedupKey = "b")
-        val seen = mapOf("a" to today.minusDays(1), "b" to today.minusDays(2))
+        val seen = mapOf("a" to today.minus(1, DateTimeUnit.DAY), "b" to today.minus(2, DateTimeUnit.DAY))
 
         val result = selector.select(listOf(a, b), seen, today, cooldownDays = 7)
 

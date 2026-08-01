@@ -524,7 +524,7 @@ class AppContainer(context: Context) {
         val ctx = runCatching { coachContextCache.get() }.getOrNull() ?: return null
         val signals = coachSignalEngine.evaluate(ctx)
         val winner = signalSelector.selectForSurface(
-            CoachSurface.WEEKLY, signals, emptyMap(), dateProvider.today(),
+            CoachSurface.WEEKLY, signals, emptyMap(), dateProvider.today().toKotlinLocalDate(),
         ).winner ?: return null
         return WeeklyCoachNote(statement = winner.verdict, rationale = winner.fallbackText)
     }

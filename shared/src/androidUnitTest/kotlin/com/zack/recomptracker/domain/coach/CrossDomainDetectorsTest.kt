@@ -6,7 +6,9 @@ import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -116,9 +118,9 @@ class CrossDomainDetectorsTest {
         // Six days ago the user had RIR 3 to spare; the two most recent sessions ground down to RIR 1
         // — real overreaching. TrainingDerivations returns this newest-session-first.
         val sessions = listOf(
-            sessionOn(CoachContextFixtures.TODAY.minusDays(6), rir = 3),
-            sessionOn(CoachContextFixtures.TODAY.minusDays(3), rir = 1),
-            sessionOn(CoachContextFixtures.TODAY.minusDays(1), rir = 1),
+            sessionOn(CoachContextFixtures.TODAY.minus(6, DateTimeUnit.DAY), rir = 3),
+            sessionOn(CoachContextFixtures.TODAY.minus(3, DateTimeUnit.DAY), rir = 1),
+            sessionOn(CoachContextFixtures.TODAY.minus(1, DateTimeUnit.DAY), rir = 1),
         )
         val ctx = CoachContextFixtures.context(
             body = poorRecoveryBody(),
@@ -133,9 +135,9 @@ class CrossDomainDetectorsTest {
     fun `deload due stays silent for a recovered RIR history built through TrainingDerivations`() {
         // Was grinding at RIR 1; the two most recent sessions backed off to RIR 3 — already recovered.
         val sessions = listOf(
-            sessionOn(CoachContextFixtures.TODAY.minusDays(6), rir = 1),
-            sessionOn(CoachContextFixtures.TODAY.minusDays(3), rir = 3),
-            sessionOn(CoachContextFixtures.TODAY.minusDays(1), rir = 3),
+            sessionOn(CoachContextFixtures.TODAY.minus(6, DateTimeUnit.DAY), rir = 1),
+            sessionOn(CoachContextFixtures.TODAY.minus(3, DateTimeUnit.DAY), rir = 3),
+            sessionOn(CoachContextFixtures.TODAY.minus(1, DateTimeUnit.DAY), rir = 3),
         )
         val ctx = CoachContextFixtures.context(
             body = poorRecoveryBody(),

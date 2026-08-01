@@ -4,7 +4,9 @@ import com.zack.recomptracker.domain.coach.CoachDetectorSupport.fmt
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.isoWeek
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.severityFromDistance
 import com.zack.recomptracker.domain.streak.StreakCalculator
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 /** Minimum recent e1RM points on a lift before a plateau can be called. */
 private const val PLATEAU_MIN_POINTS = 3
@@ -77,7 +79,7 @@ class TrainingPlateauDetector : CoachDetector {
  */
 class NewPrDetector : CoachDetector {
     /** A fresh PR on one lift: the latest e1RM point, its date, and the prior all-time max. */
-    private data class PrCandidate(val name: String, val date: java.time.LocalDate, val latest: Double, val priorMax: Double)
+    private data class PrCandidate(val name: String, val date: LocalDate, val latest: Double, val priorMax: Double)
 
     override fun detect(ctx: CoachContext): CoachSignal? {
         val today = ctx.asOf
@@ -88,7 +90,7 @@ class NewPrDetector : CoachDetector {
                 val latestPoint = ordered.last()
                 // Only celebrate a PR that was actually set recently — a stale all-time max that
                 // just happens to be the newest point in the window isn't news today.
-                if (latestPoint.date.isBefore(today.minusDays(PR_RECENCY_DAYS))) return@mapNotNull null
+                if (latestPoint.date < today.minus(PR_RECENCY_DAYS, DateTimeUnit.DAY)) return@mapNotNull null
                 val priorMax = ordered.dropLast(1).maxOf { it.estimatedOneRepMax }
                 if (latestPoint.estimatedOneRepMax - priorMax < PR_MARGIN_KG) return@mapNotNull null
                 PrCandidate(name, latestPoint.date, latestPoint.estimatedOneRepMax, priorMax)
@@ -149,16 +151,12 @@ class StepStreakAtRiskDetector(
 
         // Days that hit the step goal (excluding today, which is "not yet qualified").
         val qualifying = ctx.body.stepsByDate
-            .filter { (date, steps) -> date.isBefore(today) && steps >= goal }
+            .filter { (date, steps) -> date < today && steps >= goal }
             .keys
             .toSet()
         if (qualifying.isEmpty()) return null
 
-        val result = calculator.compute(
-            qualifying.mapTo(mutableSetOf()) { it.toKotlinLocalDate() },
-            today.toKotlinLocalDate(),
-            STEPS_REST_DAYS,
-        )
+        val result = calculator.compute(qualifying, today, STEPS_REST_DAYS)
         // At risk only when the streak is live (current > 0) AND today isn't already qualified.
         val todayQualified = (ctx.body.stepsByDate[today] ?: 0) >= goal
         if (result.current <= 0 || todayQualified) return null

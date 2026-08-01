@@ -81,6 +81,11 @@ android {
         }
     }
 
+    // Test-only fixtures that both :shared's own domain tests and :app's data-layer tests build
+    // contexts from (CoachContextFixtures). Compiled into each module's test source set rather
+    // than published, so no fixture code can leak into a production artifact.
+    sourceSets.getByName("test").kotlin.srcDir(rootProject.file("shared/src/testFixtures/kotlin"))
+
     testOptions {
         unitTests {
             isReturnDefaultValues = true

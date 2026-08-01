@@ -1,7 +1,7 @@
 package com.zack.recomptracker.domain.coach
 
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 /**
  * The deterministic "rank -> one winner" stage of the proactive engine
@@ -90,7 +90,7 @@ class SignalSelector {
     ): Boolean {
         if (cooldownDays < 1) return false
         val lastSurfaced = seen[dedupKey] ?: return false
-        val elapsed = ChronoUnit.DAYS.between(lastSurfaced, today)
+        val elapsed = lastSurfaced.daysUntil(today)
         return elapsed < cooldownDays
     }
 

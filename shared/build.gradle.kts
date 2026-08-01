@@ -26,6 +26,10 @@ kotlin {
         // Existing JUnit4 domain tests live here: JVM-only, and `internal` in commonMain is
         // visible because test compilations are associated with main compilations of the module.
         val androidUnitTest by getting {
+            // Test-only fixtures shared with :app's test source set (see app/build.gradle.kts).
+            // Kept out of androidUnitTest/kotlin so :app can add just this directory without
+            // pulling in — and re-running — the whole shared test suite.
+            kotlin.srcDir("src/testFixtures/kotlin")
             dependencies {
                 implementation(libs.junit)
             }

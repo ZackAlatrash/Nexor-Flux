@@ -82,7 +82,10 @@ class CoachNotificationPreferences(
         val prefs = dataStore.data.first()
         val start = prefs[Keys.QuietHoursStart] ?: DEFAULT_QUIET_START_HOUR
         val end = prefs[Keys.QuietHoursEnd] ?: DEFAULT_QUIET_END_HOUR
-        return QuietHours(LocalTime.of(start.coerceIn(0, 23), 0), LocalTime.of(end.coerceIn(0, 23), 0))
+        return QuietHours(
+            kotlinx.datetime.LocalTime(start.coerceIn(0, 23), 0),
+            kotlinx.datetime.LocalTime(end.coerceIn(0, 23), 0),
+        )
     }
 
     override suspend fun setWeeklyCheckInPushEnabled(enabled: Boolean) {

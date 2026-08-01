@@ -3,6 +3,8 @@ package com.zack.recomptracker.domain.coach
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.TODAY
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.e1rmPoints
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.stepsByDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -63,7 +65,7 @@ class TrainingDetectorsTest {
                 e1rmByExercise = mapOf(
                     "Bench" to CoachContextFixtures.e1rmPoints(
                         96.0, 99.0, 98.0, 102.0,
-                        end = CoachContextFixtures.TODAY.minusDays(10),
+                        end = CoachContextFixtures.TODAY.minus(10, DateTimeUnit.DAY),
                     ),
                 ),
             ),
@@ -88,7 +90,7 @@ class TrainingDetectorsTest {
         // Goal 8000. Previous 10 days all hit; today (TODAY) is under goal.
         val goal = 8000
         val steps = buildMap {
-            (1..10).forEach { put(TODAY.minusDays(it.toLong()), 9000) }
+            (1..10).forEach { put(TODAY.minus(it.toLong(), DateTimeUnit.DAY), 9000) }
             put(TODAY, 1200) // today under goal
         }
         val ctx = CoachContextFixtures.context(
@@ -107,7 +109,7 @@ class TrainingDetectorsTest {
     fun `step streak at risk does NOT fire once today already qualifies`() {
         val goal = 8000
         val steps = buildMap {
-            (1..10).forEach { put(TODAY.minusDays(it.toLong()), 9000) }
+            (1..10).forEach { put(TODAY.minus(it.toLong(), DateTimeUnit.DAY), 9000) }
             put(TODAY, 9500) // today already hit
         }
         val ctx = CoachContextFixtures.context(
@@ -122,8 +124,8 @@ class TrainingDetectorsTest {
         val goal = 8000
         // Only sporadic days hit, streak already broken.
         val steps = mapOf(
-            TODAY.minusDays(6L) to 9000,
-            TODAY.minusDays(2L) to 1000,
+            TODAY.minus(6L, DateTimeUnit.DAY) to 9000,
+            TODAY.minus(2L, DateTimeUnit.DAY) to 1000,
             TODAY to 1000,
         )
         val ctx = CoachContextFixtures.context(

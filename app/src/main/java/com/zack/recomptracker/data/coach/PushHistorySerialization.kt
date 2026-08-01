@@ -2,6 +2,7 @@ package com.zack.recomptracker.data.coach
 
 import com.zack.recomptracker.domain.coach.PushEvent
 import java.time.LocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
@@ -53,8 +54,8 @@ internal object PushHistorySerialization {
      * the retention boundary is kept; strictly-older ones are dropped. Future-dated events are kept.
      */
     fun prune(events: List<PushEvent>, now: LocalDateTime): List<PushEvent> {
-        val cutoff = now.minusDays(RETENTION_DAYS)
-        return events.filter { !it.timestamp.isBefore(cutoff) }
+        val cutoff = now.minusDays(RETENTION_DAYS).toKotlinLocalDateTime()
+        return events.filter { it.timestamp >= cutoff }
     }
 
     private val SERIALIZER = ListSerializer(PushEvent.serializer())

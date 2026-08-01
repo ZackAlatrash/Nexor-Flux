@@ -4,7 +4,9 @@ import com.zack.recomptracker.domain.workout.SessionExercise
 import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -12,7 +14,7 @@ import org.junit.Test
 
 class TrainingDerivationsTest {
 
-    private val today = LocalDate.of(2026, 7, 1)
+    private val today = LocalDate(2026, 7, 1)
 
     // ── Fixture builders (plain WorkoutSession, no Room/Android) ─────────────────────
 
@@ -48,12 +50,12 @@ class TrainingDerivationsTest {
     @Test
     fun `e1rm series keeps best set per day per exercise, oldest first`() {
         val sessions = dated(
-            session(today.minusDays(7), "Bench", listOf(set(5, 100.0), set(8, 80.0))), // best 116.67
+            session(today.minus(7, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0), set(8, 80.0))), // best 116.67
             session(today, "Bench", listOf(set(8, 100.0))), // 126.67
         )
         val series = TrainingDerivations.e1rmSeriesByExercise(sessions)["Bench"]!!
         assertEquals(2, series.size)
-        assertEquals(today.minusDays(7), series.first().date)
+        assertEquals(today.minus(7, DateTimeUnit.DAY), series.first().date)
         assertEquals(116.667, series.first().estimatedOneRepMax, 0.01)
         assertEquals(today, series.last().date)
         assertEquals(126.667, series.last().estimatedOneRepMax, 0.01)
@@ -98,7 +100,7 @@ class TrainingDerivationsTest {
     @Test
     fun `latest e1rm returns the newest point value per lift`() {
         val sessions = dated(
-            session(today.minusDays(7), "Bench", listOf(set(5, 100.0))), // 116.67
+            session(today.minus(7, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0))), // 116.67
             session(today, "Bench", listOf(set(8, 100.0))), // 126.67 (newest)
         )
         val latest = TrainingDerivations.latestE1rmByExercise(sessions)
@@ -116,7 +118,7 @@ class TrainingDerivationsTest {
     fun `recent rir gathers completed-set rir from the most recent sessions, newest first`() {
         val sessions = dated(
             session(today, "Bench", listOf(set(5, 100.0, rir = 1), set(5, 100.0, rir = 2))),
-            session(today.minusDays(2), "Squat", listOf(set(5, 140.0, rir = 3))),
+            session(today.minus(2, DateTimeUnit.DAY), "Squat", listOf(set(5, 140.0, rir = 3))),
         )
         val rir = TrainingDerivations.recentRir(sessions, sessionCount = 3)
         assertEquals(listOf(1, 2, 3), rir)
@@ -126,8 +128,8 @@ class TrainingDerivationsTest {
     fun `recent rir caps to the requested number of most-recent sessions`() {
         val sessions = dated(
             session(today, "Bench", listOf(set(5, 100.0, rir = 0))),
-            session(today.minusDays(1), "Bench", listOf(set(5, 100.0, rir = 1))),
-            session(today.minusDays(2), "Bench", listOf(set(5, 100.0, rir = 2))),
+            session(today.minus(1, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0, rir = 1))),
+            session(today.minus(2, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0, rir = 2))),
         )
         val rir = TrainingDerivations.recentRir(sessions, sessionCount = 2)
         assertEquals(listOf(0, 1), rir)
@@ -181,8 +183,8 @@ class TrainingDerivationsTest {
     @Test
     fun `trend direction is UP when recent e1rm rises across the window`() {
         val sessions = dated(
-            session(today.minusDays(14), "Bench", listOf(set(5, 90.0))),  // 105.0
-            session(today.minusDays(7), "Bench", listOf(set(5, 100.0))),  // 116.67
+            session(today.minus(14, DateTimeUnit.DAY), "Bench", listOf(set(5, 90.0))),  // 105.0
+            session(today.minus(7, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0))),  // 116.67
             session(today, "Bench", listOf(set(5, 110.0))),               // 128.33
         )
         assertEquals(TrendDirection.UP, TrainingDerivations.trendDirection(sessions, "Bench"))
@@ -191,8 +193,8 @@ class TrainingDerivationsTest {
     @Test
     fun `trend direction is DOWN when recent e1rm falls`() {
         val sessions = dated(
-            session(today.minusDays(14), "Bench", listOf(set(5, 110.0))), // 128.33
-            session(today.minusDays(7), "Bench", listOf(set(5, 100.0))),  // 116.67
+            session(today.minus(14, DateTimeUnit.DAY), "Bench", listOf(set(5, 110.0))), // 128.33
+            session(today.minus(7, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0))),  // 116.67
             session(today, "Bench", listOf(set(5, 90.0))),                // 105.0
         )
         assertEquals(TrendDirection.DOWN, TrainingDerivations.trendDirection(sessions, "Bench"))
@@ -201,8 +203,8 @@ class TrainingDerivationsTest {
     @Test
     fun `trend direction is FLAT when e1rm barely moves`() {
         val sessions = dated(
-            session(today.minusDays(14), "Bench", listOf(set(5, 100.0))),
-            session(today.minusDays(7), "Bench", listOf(set(5, 100.0))),
+            session(today.minus(14, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0))),
+            session(today.minus(7, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0))),
             session(today, "Bench", listOf(set(5, 100.0))),
         )
         assertEquals(TrendDirection.FLAT, TrainingDerivations.trendDirection(sessions, "Bench"))
@@ -212,10 +214,10 @@ class TrainingDerivationsTest {
     fun `trend direction only considers the last N points`() {
         // A big early drop then a clean 3-point rise; with lastN=3 the early drop is ignored -> UP.
         val sessions = dated(
-            session(today.minusDays(28), "Bench", listOf(set(5, 150.0))), // ignored
-            session(today.minusDays(21), "Bench", listOf(set(5, 80.0))),  // ignored
-            session(today.minusDays(14), "Bench", listOf(set(5, 90.0))),  // 105.0
-            session(today.minusDays(7), "Bench", listOf(set(5, 100.0))),  // 116.67
+            session(today.minus(28, DateTimeUnit.DAY), "Bench", listOf(set(5, 150.0))), // ignored
+            session(today.minus(21, DateTimeUnit.DAY), "Bench", listOf(set(5, 80.0))),  // ignored
+            session(today.minus(14, DateTimeUnit.DAY), "Bench", listOf(set(5, 90.0))),  // 105.0
+            session(today.minus(7, DateTimeUnit.DAY), "Bench", listOf(set(5, 100.0))),  // 116.67
             session(today, "Bench", listOf(set(5, 110.0))),               // 128.33
         )
         assertEquals(TrendDirection.UP, TrainingDerivations.trendDirection(sessions, "Bench", lastN = 3))

@@ -1,8 +1,10 @@
 package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.core.model.MacroTotals
-import java.time.DayOfWeek
-import java.time.LocalDate
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -25,7 +27,7 @@ class CrossSignalDiscoveryDetectorTest {
         calories: Int = 2400,
     ): Map<LocalDate, MacroTotals> =
         (0 until loggedDays).associate { i ->
-            today.minusDays(i.toLong()) to MacroTotals(calories, protein, carbs, 70.0)
+            today.minus(i.toLong(), DateTimeUnit.DAY) to MacroTotals(calories, protein, carbs, 70.0)
         }
 
     // ── Fires on the strongest candidate ─────────────────────────────────────────
@@ -36,14 +38,14 @@ class CrossSignalDiscoveryDetectorTest {
         // after misses → a large, clearing effect. Keep other candidates flat so this one wins.
         val proteinMap = (0 until 16).associate { i ->
             val protein = if (i % 2 == 0) 180.0 else 100.0
-            today.minusDays(i.toLong()) to MacroTotals(2400, protein, 250.0, 70.0)
+            today.minus(i.toLong(), DateTimeUnit.DAY) to MacroTotals(2400, protein, 250.0, 70.0)
         }
         // Hunger the day AFTER a protein-hit day (even i) is low; after a miss (odd i) is high.
         // date d's hunger reflects the PREVIOUS day's protein: previous day = d.plusDays? No — the
         // detector reads hunger at date+1 for the eaten day. So eaten day i (date today-i) pairs with
         // hunger at today-i+1. Build hunger so hit days → low next-day hunger.
         val hunger = (0 until 17).map { i ->
-            val date = today.minusDays(i.toLong())
+            val date = today.minus(i.toLong(), DateTimeUnit.DAY)
             // The eaten day one day earlier is (today-(i+1)); its parity decides hunger here.
             val eatenDayIndex = i + 1
             val value = if (eatenDayIndex % 2 == 0) 3.0 else 8.0 // hit day → low next-day hunger
@@ -83,11 +85,11 @@ class CrossSignalDiscoveryDetectorTest {
         val sleep = ArrayList<MetricPoint>()
         val energy = ArrayList<MetricPoint>()
         for (i in 0 until 16) {
-            val date = today.minusDays(i.toLong())
+            val date = today.minus(i.toLong(), DateTimeUnit.DAY)
             sleep += MetricPoint(date, if (i % 2 == 0) 8.0 else 5.0)
         }
         for (i in 0 until 17) {
-            val date = today.minusDays(i.toLong())
+            val date = today.minus(i.toLong(), DateTimeUnit.DAY)
             // next-day energy: high after good sleep (prev day even), low after poor sleep.
             val prevIndex = i + 1
             energy += MetricPoint(date, if (prevIndex % 2 == 0) 9.0 else 4.0)
@@ -114,7 +116,7 @@ class CrossSignalDiscoveryDetectorTest {
     /** 28 days of eaten macros where weekend calories differ from weekday by a fixed amount. */
     private fun weekendVsWeekday(weekendCals: Int, weekdayCals: Int): Map<LocalDate, MacroTotals> =
         (0 until 28).associate { i ->
-            val date = today.minusDays(i.toLong())
+            val date = today.minus(i.toLong(), DateTimeUnit.DAY)
             val weekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
             // Protein pinned at target on every day so the protein candidate can't split (all hits),
             // carbs constant so the carb candidate stays flat — leaving weekend as the only candidate.
@@ -155,9 +157,9 @@ class CrossSignalDiscoveryDetectorTest {
         // no other signal moves → silence.
         val proteinMap = (0 until 16).associate { i ->
             val protein = if (i < 2) 100.0 else 180.0
-            today.minusDays(i.toLong()) to MacroTotals(2400, protein, 250.0, 70.0)
+            today.minus(i.toLong(), DateTimeUnit.DAY) to MacroTotals(2400, protein, 250.0, 70.0)
         }
-        val hunger = (0 until 17).map { i -> MetricPoint(today.minusDays(i.toLong()), 4.0) }
+        val hunger = (0 until 17).map { i -> MetricPoint(today.minus(i.toLong(), DateTimeUnit.DAY), 4.0) }
         val ctx = CoachContextFixtures.context(
             nutrition = CoachContextFixtures.nutrition(eatenByDate = proteinMap.toMap()),
             body = CoachContextFixtures.body(hungerSeries = hunger),

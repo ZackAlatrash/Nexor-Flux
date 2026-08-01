@@ -1,7 +1,9 @@
 package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.core.model.MacroTotals
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 /**
  * Shared, plain-object fixtures for the detector + engine tests. Every value is a real object (no
@@ -10,7 +12,7 @@ import java.time.LocalDate
  */
 internal object CoachContextFixtures {
 
-    val TODAY: LocalDate = LocalDate.of(2026, 7, 1) // a Wednesday, ISO week 27
+    val TODAY: LocalDate = LocalDate(2026, 7, 1) // a Wednesday, ISO week 27
 
     /** A dense daily weight/measurement series ending [days] days before today. */
     fun linearSeries(
@@ -19,12 +21,12 @@ internal object CoachContextFixtures {
         days: Int = 21,
         end: LocalDate = TODAY,
     ): List<MetricPoint> = (0 until days).map { i ->
-        val date = end.minusDays((days - 1 - i).toLong())
+        val date = end.minus((days - 1 - i).toLong(), DateTimeUnit.DAY)
         MetricPoint(date = date, value = endValue - perDayDelta * (days - 1 - i))
     }
 
     fun flatSeries(value: Double, days: Int = 21, end: LocalDate = TODAY): List<MetricPoint> =
-        (0 until days).map { i -> MetricPoint(end.minusDays((days - 1 - i).toLong()), value) }
+        (0 until days).map { i -> MetricPoint(end.minus((days - 1 - i).toLong(), DateTimeUnit.DAY), value) }
 
     fun recoverySeries(
         value: Double,
@@ -37,13 +39,13 @@ internal object CoachContextFixtures {
         perDay: MacroTotals,
         end: LocalDate = TODAY,
     ): Map<LocalDate, MacroTotals> =
-        (0 until loggedDays).associate { i -> end.minusDays(i.toLong()) to perDay }
+        (0 until loggedDays).associate { i -> end.minus(i.toLong(), DateTimeUnit.DAY) to perDay }
 
     fun stepsByDate(
         value: Int,
         days: Int,
         end: LocalDate = TODAY,
-    ): Map<LocalDate, Int> = (0 until days).associate { i -> end.minusDays(i.toLong()) to value }
+    ): Map<LocalDate, Int> = (0 until days).associate { i -> end.minus(i.toLong(), DateTimeUnit.DAY) to value }
 
     fun context(
         asOf: LocalDate = TODAY,
@@ -132,7 +134,7 @@ internal object CoachContextFixtures {
     )
 
     fun training(
-        completedSessionDates: List<LocalDate> = (0 until 8).map { TODAY.minusDays(it * 3L) },
+        completedSessionDates: List<LocalDate> = (0 until 8).map { TODAY.minus(it * 3L, DateTimeUnit.DAY) },
         weeklyTrainingFrequency: Double = 4.0,
         weeklyGymSessionsTarget: Int? = 4,
         e1rmByExercise: Map<String, List<LiftE1rmPoint>> = emptyMap(),
@@ -157,13 +159,13 @@ internal object CoachContextFixtures {
      */
     fun datedSeries(vararg values: Double, end: LocalDate = TODAY): List<MetricPoint> {
         val n = values.size
-        return values.mapIndexed { i, v -> MetricPoint(date = end.minusDays((n - 1 - i).toLong()), value = v) }
+        return values.mapIndexed { i, v -> MetricPoint(date = end.minus((n - 1 - i).toLong(), DateTimeUnit.DAY), value = v) }
     }
 
     fun e1rmPoints(vararg values: Double, end: LocalDate = TODAY, stepDays: Long = 3): List<LiftE1rmPoint> {
         val n = values.size
         return values.mapIndexed { i, v ->
-            LiftE1rmPoint(date = end.minusDays((n - 1 - i) * stepDays), estimatedOneRepMax = v)
+            LiftE1rmPoint(date = end.minus((n - 1 - i) * stepDays, DateTimeUnit.DAY), estimatedOneRepMax = v)
         }
     }
 }

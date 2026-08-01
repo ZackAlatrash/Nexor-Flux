@@ -2,7 +2,7 @@ package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.domain.workout.WorkoutProgressAnalyzer
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /** Direction of a per-lift e1RM trend over its most recent points. */
 enum class TrendDirection { UP, FLAT, DOWN }

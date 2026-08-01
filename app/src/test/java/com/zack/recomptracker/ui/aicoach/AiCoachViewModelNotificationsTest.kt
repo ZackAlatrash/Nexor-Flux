@@ -9,7 +9,7 @@ import com.zack.recomptracker.data.preferences.SecureKeyStore
 import com.zack.recomptracker.data.preferences.UiPreferences
 import com.zack.recomptracker.data.remote.OpenAiCompatClient
 import com.zack.recomptracker.domain.coach.QuietHours
-import java.time.LocalTime
+import kotlinx.datetime.LocalTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -76,7 +76,7 @@ class AiCoachViewModelNotificationsTest {
         }
 
         override suspend fun setQuietHours(startHour: Int, endHour: Int) {
-            quiet = QuietHours(LocalTime.of(startHour, 0), LocalTime.of(endHour, 0))
+            quiet = QuietHours(LocalTime(startHour, 0), LocalTime(endHour, 0))
         }
 
         override suspend fun lastPushedWeeklySignature(): String = ""
@@ -159,7 +159,7 @@ class AiCoachViewModelNotificationsTest {
     @Test
     fun `quiet hours window is exposed as a formatted display string`() = runTest(dispatcher) {
         val prefs = FakeNotifierPreferences(
-            quiet = QuietHours(LocalTime.of(22, 0), LocalTime.of(7, 0)),
+            quiet = QuietHours(LocalTime(22, 0), LocalTime(7, 0)),
         )
         val vm = buildViewModel(prefs)
         advanceUntilIdle()

@@ -2,6 +2,8 @@ package com.zack.recomptracker.domain.coach
 
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.domain.coach.CoachContextFixtures.TODAY
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -42,12 +44,12 @@ class NutritionDetectorsTest {
             // Ensure >= 14 logged days for the engine gate isn't relevant here (unit test),
             // but detectDerailmentDay only looks at the last 7 logged days.
             put(TODAY, onTarget)
-            put(TODAY.minusDays(1), onTarget)
-            put(TODAY.minusDays(2), onTarget) // Saturday-ish; value drives surplus
-            put(TODAY.minusDays(3), bigDay)
-            put(TODAY.minusDays(4), onTarget)
-            put(TODAY.minusDays(5), onTarget)
-            put(TODAY.minusDays(6), onTarget)
+            put(TODAY.minus(1, DateTimeUnit.DAY), onTarget)
+            put(TODAY.minus(2, DateTimeUnit.DAY), onTarget) // Saturday-ish; value drives surplus
+            put(TODAY.minus(3, DateTimeUnit.DAY), bigDay)
+            put(TODAY.minus(4, DateTimeUnit.DAY), onTarget)
+            put(TODAY.minus(5, DateTimeUnit.DAY), onTarget)
+            put(TODAY.minus(6, DateTimeUnit.DAY), onTarget)
         }
         val ctx = CoachContextFixtures.context(
             nutrition = CoachContextFixtures.nutrition(eatenByDate = map),
@@ -62,7 +64,7 @@ class NutritionDetectorsTest {
     @Test
     fun `derailment day does NOT fire on a clean week`() {
         val onTarget = MacroTotals(2400, 180.0, 250.0, 70.0)
-        val map = (0 until 7).associate { TODAY.minusDays(it.toLong()) to onTarget }
+        val map = (0 until 7).associate { TODAY.minus(it.toLong(), DateTimeUnit.DAY) to onTarget }
         val ctx = CoachContextFixtures.context(
             nutrition = CoachContextFixtures.nutrition(eatenByDate = map),
         )
@@ -76,8 +78,8 @@ class NutritionDetectorsTest {
         val target = 180
         val restDay = MacroTotals(2400, 180.0, 250.0, 70.0)       // 100% protein
         val trainedDay = MacroTotals(2400, 120.0, 300.0, 80.0)    // ~67% protein
-        val trainedDates = setOf(TODAY, TODAY.minusDays(2), TODAY.minusDays(4))
-        val restDates = setOf(TODAY.minusDays(1), TODAY.minusDays(3), TODAY.minusDays(5))
+        val trainedDates = setOf(TODAY, TODAY.minus(2, DateTimeUnit.DAY), TODAY.minus(4, DateTimeUnit.DAY))
+        val restDates = setOf(TODAY.minus(1, DateTimeUnit.DAY), TODAY.minus(3, DateTimeUnit.DAY), TODAY.minus(5, DateTimeUnit.DAY))
         val map = buildMap {
             trainedDates.forEach { put(it, trainedDay) }
             restDates.forEach { put(it, restDay) }
@@ -97,8 +99,8 @@ class NutritionDetectorsTest {
     @Test
     fun `protein-miss does NOT fire when trained and rest days match`() {
         val even = MacroTotals(2400, 180.0, 250.0, 70.0)
-        val trainedDates = setOf(TODAY, TODAY.minusDays(2), TODAY.minusDays(4))
-        val restDates = setOf(TODAY.minusDays(1), TODAY.minusDays(3), TODAY.minusDays(5))
+        val trainedDates = setOf(TODAY, TODAY.minus(2, DateTimeUnit.DAY), TODAY.minus(4, DateTimeUnit.DAY))
+        val restDates = setOf(TODAY.minus(1, DateTimeUnit.DAY), TODAY.minus(3, DateTimeUnit.DAY), TODAY.minus(5, DateTimeUnit.DAY))
         val map = (trainedDates + restDates).associateWith { even }
         val ctx = CoachContextFixtures.context(
             nutrition = CoachContextFixtures.nutrition(eatenByDate = map),
@@ -135,12 +137,12 @@ class NutritionDetectorsTest {
 
     /** Logged on the given day-offsets before TODAY (0 == today). */
     private fun loggedOn(vararg offsets: Int) =
-        offsets.associate { TODAY.minusDays(it.toLong()) to meal }
+        offsets.associate { TODAY.minus(it.toLong(), DateTimeUnit.DAY) to meal }
 
     @Test
     fun `consistency check-in fires when a good stretch drops to a thin recent week`() {
         // Prior week (offsets 7..13): 7 logged = good stretch. Recent week (0..6): only 3 logged.
-        val prior = (7..13).associate { TODAY.minusDays(it.toLong()) to meal }
+        val prior = (7..13).associate { TODAY.minus(it.toLong(), DateTimeUnit.DAY) to meal }
         val recent = loggedOn(0, 2, 4) // 3 of the last 7
         val ctx = CoachContextFixtures.context(
             nutrition = CoachContextFixtures.nutrition(eatenByDate = prior + recent),
@@ -159,7 +161,7 @@ class NutritionDetectorsTest {
     @Test
     fun `consistency check-in stays silent when the recent week is still well logged`() {
         // Recent week has 5 logged (>= floor of 4) -> no slip.
-        val prior = (7..13).associate { TODAY.minusDays(it.toLong()) to meal }
+        val prior = (7..13).associate { TODAY.minus(it.toLong(), DateTimeUnit.DAY) to meal }
         val recent = loggedOn(0, 1, 2, 3, 4)
         val ctx = CoachContextFixtures.context(
             nutrition = CoachContextFixtures.nutrition(eatenByDate = prior + recent),

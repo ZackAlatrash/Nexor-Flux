@@ -200,6 +200,14 @@ dedup. Signed formatting with per-signal deadbands (`STEPS_DEADBAND = 500`, `:13
 
 ## 3. KMP blockers — the Phase 0 work list
 
+> ✅ **All eleven were resolved on 2026-08-01** (branch `feat/ios-shared-core`). The table below is
+> kept as the historical estimate; see [STATUS.md](../STATUS.md) for what actually happened. Three
+> errata worth carrying: B2's mapping was incomplete (`toEpochDays` returns `Long`; `monthNumber`/
+> `dayOfMonth` are deprecated in 0.8.0; `.month.number` needs `import kotlinx.datetime.number`), and
+> three JVM-only API classes are **invisible to a `java.*` grep** — `toSortedSet()`/`toSortedMap()`,
+> `"%,d".format()`, and `LocalDate.MIN` (which is `internal` in kotlinx-datetime). All three only
+> surfaced at Kotlin/Native compile time. B3 and B4 landed bit-exactly on the first attempt.
+
 📋 Ordered. Effort figures are the analysis's, not measured.
 
 | # | Blocker | Sites | Fix | Effort |

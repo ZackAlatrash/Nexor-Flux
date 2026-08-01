@@ -114,6 +114,40 @@ paths throughout and only resolve there.
 upgrade is required. 0.8.0 is the newest that compiles against Kotlin 2.2.21.
 **Reversing:** a Kotlin upgrade is independent and can happen later.
 
+## D10 · 2026-08-01 · Phase 0 gate: **KEEP the shared core**. Proceed to Phase 1.
+
+All eight criteria cleared.
+
+| # | Criterion | Result |
+|---|---|---|
+| 1 | Android tests still green | ✅ `:app` 1017 + `:shared` 400 = 1417; conservation checked at every wave. Sole failure is `InsightHarnessTest` (live OpenRouter, HTTP 429 — documented non-deterministic) |
+| 2 | Shared tests green on JVM **and** Kotlin/Native | ✅ 400 JVM, 11 iOS simulator |
+| 3 | **Golden corpus bit-exact on Kotlin/Native** | ✅ **372 assertions**, green on both, and confirmed in a running app. `Double.toString()` matches the JVM's shortest repr — no hand-rolled Ryū needed |
+| 4 | Boundary conversion sites | ⚠️ **112 across 26 files** — the ≤10 target was miscalibrated (see 4a). All compiler-forced and mechanical, using the shipped `toKotlinLocalDate()`/`toJavaLocalDate()` bridges. Accepted |
+| 5 | Kotlin/Native compile time | ✅ cold **13.2 s**, warm **0.8 s**, XCFramework **22.5 s** (target < 3 min) |
+| 6 | Swift call sites readable without a wrapper | ⚠️ Mixed. Functions read fine (`DecimalFormatKt.signed1(value:)`). **Kotlin enums export as classes, not Swift enums** → no exhaustive `switch`. Accepted; **evaluate SKIE in Phase 1** |
+| 7 | No Kotlin/AGP/Gradle upgrade | ✅ none — but see 7a: kotlinx-serialization pinned **1.11.0 → 1.9.0** project-wide by the Kotlin/Native klib ABI ceiling |
+| 8 | Two-repo resync tolerable | ✅ **13 s** total (10.7 s sync + 2.6 s incremental build), one command, **no manual clean** (target < 2 min) |
+
+**Why keep it.** Criterion 3 was the one that could have invalidated the approach, and it passed
+outright. The algorithms where reimplementation is most dangerous — `RebalanceEngine.size()`, the
+18 detectors, `dedupKey` generation — are now provably identical across platforms rather than
+hopefully similar. `size()` needed **no edits at all**. Compile and resync costs came in an order
+of magnitude under their thresholds.
+
+**What it costs, honestly.** Two standing taxes: every future `commonMain` dependency must be
+checked against the Kotlin 2.2.21 klib ABI ceiling (7a), and ~112 boundary date conversions live in
+`:app`, with more arriving as features touch shared types (4a). Neither is fatal. Both are worth
+revisiting if the ABI ceiling blocks a dependency we actually need — at which point moving to
+Kotlin 2.3.x+ becomes the better trade.
+
+**A caveat about the process, not the decision.** The final behavioural-drift review found a real
+bug the golden corpus had missed: `formatFixed` threw on scientific-notation doubles (`|v| < 1e-3`),
+reachable from the flat-trend detector branches via OLS floating-point residue, which would have
+silently suppressed a day's coach signal. Fixed in `4f6d96d`; corpus extended from 269 to 372
+assertions. **A golden corpus is only as good as its input set** — the captured values were right,
+the coverage was not. Carry that adversarial-input discipline into Phase 1's persistence work.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a

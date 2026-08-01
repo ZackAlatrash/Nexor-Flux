@@ -3,12 +3,16 @@
 **Read this first, every session. Keep it under ~100 lines.**
 If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
 
-**Last updated:** 2026-08-01 · **Current phase:** Phase 0 — 13 of 16 tasks done ·
-**Branch:** `feat/ios-shared-core` (17 commits, unmerged)
+**Last updated:** 2026-08-01 · **Current phase:** ✅ **Phase 0 COMPLETE — gate passed (D10)** ·
+**Branch:** `feat/ios-shared-core` (21 commits, unmerged)
 
 ---
 
 ## Where we are
+
+✅ **Phase 0 is complete and the gate passed — see D10 in [decisions.md](decisions.md).**
+The shared core is kept. **Next: Phase 1** (GRDB + 19 tables + 14 migrations, prefs, Keychain,
+file codecs) — needs a planning session first, per D7.
 
 **The domain extraction is complete and green on both platforms.** `:shared` holds 66 files /
 5,905 LOC of `commonMain`, compiling for Android, `iosArm64` and `iosSimulatorArm64`. Exactly the
@@ -43,7 +47,7 @@ Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
 
 | Phase | What | Status |
 |---|---|---|
-| **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | 🔨 13/16 — [plan](phases/phase-0-shared-core.md) |
+| **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | ✅ **done — gate passed** |
 | 1 | GRDB + 19 tables + 14 migrations, prefs, Keychain, file codecs | ⬜ |
 | 2 | App shell, design system, **Food Log end-to-end** | ⬜ |
 | 3 | Dashboard, Body, Food Library, Plan, Profile, Onboarding, Streaks, charts | ⬜ |

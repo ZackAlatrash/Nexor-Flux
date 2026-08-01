@@ -501,11 +501,11 @@ class AppContainer(context: Context) {
         val profile = userProfilePreferencesStore.preferences.first()
         val state = rebalanceStore.current()
         return RebalanceEvaluationInput(
-            today = today,
-            baseTargetsByDate = baseTargetsByDate,
-            eatenByDate = eatenByDate,
-            mealCountByDate = mealCountByDate,
-            stepsByDate = stepsByDate,
+            today = today.toKotlinLocalDate(),
+            baseTargetsByDate = baseTargetsByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            eatenByDate = eatenByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            mealCountByDate = mealCountByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            stepsByDate = stepsByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
             baseStepGoal = profile.dailyStepGoal,
             goal = profile.goal,
             mode = state.mode,

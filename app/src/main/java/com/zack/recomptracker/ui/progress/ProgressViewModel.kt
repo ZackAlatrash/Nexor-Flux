@@ -146,10 +146,9 @@ class ProgressViewModel(
                 // Adherence chart's target line resolves to EFFECTIVE (reduced) targets on rebalance
                 // days, base otherwise — behaviour-neutral with an empty state.
                 val targetsByDate = EffectiveTargets.resolveAll(
-                    PlanHistory.resolve(versions, dates.map { it.toKotlinLocalDate() })
-                        .mapKeys { (date, _) -> date.toJavaLocalDate() },
+                    PlanHistory.resolve(versions, dates.map { it.toKotlinLocalDate() }),
                     rebalanceState,
-                )
+                ).mapKeys { (date, _) -> date.toJavaLocalDate() }
                 // Exclude planned (not-yet-eaten) entries from progress charts.
                 val mealsByDate = meals.filterNot { it.planned }.groupBy { LocalDate.parse(it.date) }
                 // Sum each day's macros once, then index — avoids recomputing macroTotals per metric.

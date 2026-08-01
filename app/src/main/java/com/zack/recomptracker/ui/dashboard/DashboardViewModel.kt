@@ -219,14 +219,16 @@ class DashboardViewModel(
         val mealsLast14 = meals.filter { it.localDate() in last14Start..today }
         val mealsByDate = mealsLast14.groupBy { it.localDate() }
         // BASE per-day targets (what the permanent plan says) — feeds the AdjustmentEngine input.
-        val dayTargets = PlanHistory.resolve(
+        val dayTargetsKx = PlanHistory.resolve(
             versions,
             ((0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) })
                 .map { it.toKotlinLocalDate() },
-        ).mapKeys { (date, _) -> date.toJavaLocalDate() }
+        )
+        val dayTargets = dayTargetsKx.mapKeys { (date, _) -> date.toJavaLocalDate() }
         // EFFECTIVE per-day targets (reduced on rebalance days) — feeds the display surfaces: the
         // adherence tile, in-zone-7, and today's ring. Behaviour-neutral with an empty state.
-        val effectiveTargets = EffectiveTargets.resolveAll(dayTargets, rebalanceState)
+        val effectiveTargets = EffectiveTargets.resolveAll(dayTargetsKx, rebalanceState)
+            .mapKeys { (date, _) -> date.toJavaLocalDate() }
 
         // Adherence for the AdjustmentEngine stays on BASE targets: a 2–5 day rebalance blip must
         // never perturb the long-horizon recomp verdict (spec §6, AdjustmentEngine inputs = base).
@@ -317,8 +319,9 @@ class DashboardViewModel(
         // Today's ring shows the EFFECTIVE target: overlay today's reduced calories/macros/zone onto
         // the exposed preferences (the ring + macro rows read state.preferences). Base today target is
         // the resolved plan for today, falling back to current prefs when the ledger isn't seeded yet.
+        val kToday = today.toKotlinLocalDate()
         val baseToday = dayTargets[today] ?: preferences.toPlanTargets()
-        val effectiveToday = EffectiveTargets.resolve(baseToday, today, rebalanceState)
+        val effectiveToday = EffectiveTargets.resolve(baseToday, kToday, rebalanceState)
         val effectivePreferences = preferences.copy(
             targetCalories = effectiveToday.calories,
             targetProteinG = effectiveToday.proteinG,
@@ -348,7 +351,7 @@ class DashboardViewModel(
             motivationalMessage = todayMessage,
             result = result,
             adjustmentInput = adjustmentInput,
-            rebalanceToday = EffectiveTargets.planDayInfo(today, rebalanceState),
+            rebalanceToday = EffectiveTargets.planDayInfo(kToday, rebalanceState),
         )
     }
 

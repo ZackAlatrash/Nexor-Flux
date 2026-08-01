@@ -72,10 +72,11 @@ class RebalanceViewModelTest {
         mode: RebalanceMode = RebalanceMode.BALANCED,
         existing: RebalanceState = RebalanceState(mode = mode),
     ): RebalanceEvaluationInput {
-        val window = (1..7).map { refToday.minusDays(it.toLong()) }
-        val yesterday = refToday.minusDays(1)
+        // The engine's dates are kotlinx-datetime (it lives in :shared); convert at the boundary.
+        val window = (1..7).map { refToday.minusDays(it.toLong()).toKotlinLocalDate() }
+        val yesterday = refToday.minusDays(1).toKotlinLocalDate()
         return RebalanceEvaluationInput(
-            today = refToday,
+            today = refToday.toKotlinLocalDate(),
             baseTargetsByDate = window.associateWith { targets(base) },
             eatenByDate = window.associateWith { if (it == yesterday) yesterdayEaten else base },
             mealCountByDate = window.associateWith { 3 },

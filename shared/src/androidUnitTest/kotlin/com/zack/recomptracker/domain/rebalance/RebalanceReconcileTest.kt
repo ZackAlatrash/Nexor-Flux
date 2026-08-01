@@ -1,12 +1,14 @@
 package com.zack.recomptracker.domain.rebalance
 
 import com.zack.recomptracker.domain.plan.PlanTargets
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 /** Daily reconcile ([RebalanceEngine.reconcile]) — pure, runs before evaluation at app open. */
 class RebalanceReconcileTest {
@@ -30,13 +32,13 @@ class RebalanceReconcileTest {
     /** Window of on-target eaten days so reconcile sees no fresh surplus unless overridden. */
     private fun window(today: LocalDate, base: Int = 2500, overrides: Map<LocalDate, Int> = emptyMap()):
         Pair<Map<LocalDate, PlanTargets>, Map<LocalDate, Int>> {
-        val days = (1..7).map { today.minusDays(it.toLong()) }
+        val days = (1..7).map { today.minus(it, DateTimeUnit.DAY) }
         return days.associateWith { targets(base) } to days.associateWith { (overrides[it] ?: base) }
     }
 
     @Test
     fun `active plan past its end becomes COMPLETED in history`() {
-        val today = LocalDate.of(2026, 7, 8)
+        val today = LocalDate(2026, 7, 8)
         val plan = activePlan(start = "2026-07-04", end = "2026-07-06") // today > end
         val (bt, eaten) = window(today)
         val result = RebalanceEngine.reconcile(RebalanceState(active = plan), today, bt, eaten)
@@ -52,12 +54,12 @@ class RebalanceReconcileTest {
 
     @Test
     fun `active plan that is clearly unrecoverable ends early`() {
-        val today = LocalDate.of(2026, 7, 8)
+        val today = LocalDate(2026, 7, 8)
         // Plan still running (end in the future). A large fresh surplus vs base makes it unrecoverable.
         val plan = activePlan(start = "2026-07-06", end = "2026-07-10", r = 100, e = 0)
         // S_now large: yesterday +3000. remainingDays = today..end inclusive = 07-08..07-10 = 3.
         // (3000 - 3*100)/7 = 385.7 > 75 -> unrecoverable.
-        val (bt, eaten) = window(today, overrides = mapOf(today.minusDays(1) to 5500))
+        val (bt, eaten) = window(today, overrides = mapOf(today.minus(1, DateTimeUnit.DAY) to 5500))
         val result = RebalanceEngine.reconcile(RebalanceState(active = plan), today, bt, eaten)
 
         assertNull(result.state.active)
@@ -65,13 +67,13 @@ class RebalanceReconcileTest {
         assertEquals(RebalanceStatus.ENDED_EARLY, ended.status)
         assertEquals("unrecoverable", ended.endedReason)
         // endDate rewritten to yesterday (the last day it was actually in effect).
-        assertEquals(today.minusDays(1).toString(), ended.endDateIso)
+        assertEquals(today.minus(1, DateTimeUnit.DAY).toString(), ended.endDateIso)
         assertNotNull(result.ended)
     }
 
     @Test
     fun `reconcile never increases R or E`() {
-        val today = LocalDate.of(2026, 7, 8)
+        val today = LocalDate(2026, 7, 8)
         val plan = activePlan(start = "2026-07-06", end = "2026-07-10", r = 150, e = 500)
         // On-track window: no early end. Plan stays ACTIVE, untouched.
         val (bt, eaten) = window(today)
@@ -86,7 +88,7 @@ class RebalanceReconcileTest {
 
     @Test
     fun `stale offer expires to DECLINED expired`() {
-        val today = LocalDate.of(2026, 7, 8)
+        val today = LocalDate(2026, 7, 8)
         val offer = RebalancePlan(
             id = "o", triggerDateIso = "2026-07-06", startDateIso = "2026-07-08",
             endDateIso = "2026-07-10", lengthDays = 3, mode = RebalanceMode.BALANCED,
@@ -107,7 +109,7 @@ class RebalanceReconcileTest {
 
     @Test
     fun `NO_ADJUSTMENT note expires to history without a note`() {
-        val today = LocalDate.of(2026, 7, 8)
+        val today = LocalDate(2026, 7, 8)
         val note = RebalancePlan(
             id = "n", triggerDateIso = "2026-07-06", startDateIso = "2026-07-06",
             endDateIso = "2026-07-06", lengthDays = 0, mode = RebalanceMode.BALANCED,

@@ -3,11 +3,14 @@ package com.zack.recomptracker.domain.rebalance
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.plan.PlanTargets
-import java.time.DayOfWeek
-import java.time.LocalDate
 import kotlin.math.ceil
 import kotlin.math.roundToInt
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 /**
  * Pure weekly-rebalance engine. All time-varying data arrives in [RebalanceEvaluationInput]; ids and
@@ -35,7 +38,7 @@ object RebalanceEngine {
         // Gate 1: never offer while one is offered/active.
         if (input.existing.active != null) return RebalanceDecision.Silent
 
-        val yesterday = input.today.minusDays(1)
+        val yesterday = input.today.minus(1, DateTimeUnit.DAY)
         val window: List<LocalDate> = trailingWindow(input.today)
 
         // Gate 2: data trust — ≥ MIN_LOGGED_DAYS_WINDOW of the 7 window days logged.
@@ -55,9 +58,9 @@ object RebalanceEngine {
         // Gate 4: cooldown + new-event against the most recent terminal record.
         val mostRecent = input.existing.history.maxByOrNull { referenceDate(it) }
         if (mostRecent != null) {
-            val daysSince = java.time.temporal.ChronoUnit.DAYS.between(referenceDate(mostRecent), input.today)
+            val daysSince: Int = referenceDate(mostRecent).daysUntil(input.today)
             if (daysSince < RebalanceDefaults.COOLDOWN_DAYS) return RebalanceDecision.Silent
-            if (!triggerDate.isAfter(isoDate(mostRecent.triggerDateIso))) return RebalanceDecision.Silent
+            if (triggerDate <= isoDate(mostRecent.triggerDateIso)) return RebalanceDecision.Silent
         }
 
         // Surplus over the whole window (positive part, logged days only).
@@ -70,11 +73,7 @@ object RebalanceEngine {
         if (input.goal.isBulk()) return RebalanceDecision.Silent
 
         val baseCalories = baseCaloriesFor(input, yesterday, window)
-        val recentAvgSteps = ActivitySummary.averageDailySteps(
-            input.stepsByDate.mapKeys { it.key.toKotlinLocalDate() },
-            yesterday.toKotlinLocalDate(),
-            7,
-        )
+        val recentAvgSteps = ActivitySummary.averageDailySteps(input.stepsByDate, yesterday, 7)
         val now = nowIso()
 
         // A supportive NO_ADJUSTMENT note (start = end = triggerDate), carrying the REAL surplus so the
@@ -116,8 +115,8 @@ object RebalanceEngine {
         ) ?: return noAdjustment()
 
         // Provisional window at offer time; accept (Task 5) re-stamps start/end.
-        val start = input.today.plusDays(1)
-        val end = start.plusDays((sizing.days - 1).toLong())
+        val start = input.today.plus(1, DateTimeUnit.DAY)
+        val end = start.plus(sizing.days - 1, DateTimeUnit.DAY)
         return RebalanceDecision.Offer(
             RebalancePlan(
                 id = newId(),
@@ -153,7 +152,7 @@ object RebalanceEngine {
             RebalanceStatus.ACTIVE -> {
                 val endDate = isoDate(active.endDateIso)
                 // (1) Past its end → COMPLETED.
-                if (today.isAfter(endDate)) {
+                if (today > endDate) {
                     val done = active.copy(status = RebalanceStatus.COMPLETED, endedReason = "completed")
                     return ReconcileResult(archive(state, done), ended = done)
                 }
@@ -161,7 +160,7 @@ object RebalanceEngine {
                 if (isUnrecoverable(active, today, baseTargetsByDate, eatenByDate)) {
                     val start = isoDate(active.startDateIso)
                     // Last day it was actually in effect: the day before `today`, clamped ≥ startDate.
-                    val lastEffective = maxOf(today.minusDays(1), start)
+                    val lastEffective = maxOf(today.minus(1, DateTimeUnit.DAY), start)
                     val ended = active.copy(
                         status = RebalanceStatus.ENDED_EARLY,
                         endDateIso = lastEffective.toString(),
@@ -176,7 +175,7 @@ object RebalanceEngine {
             RebalanceStatus.OFFERED, RebalanceStatus.NO_ADJUSTMENT -> {
                 // (3) Lived its one day → history. OFFERED becomes DECLINED("expired"); a note stays a note.
                 val createdDate = isoDate(active.createdAtIso)
-                if (today.isAfter(createdDate)) {
+                if (today > createdDate) {
                     val moved = if (active.status == RebalanceStatus.OFFERED) {
                         active.copy(status = RebalanceStatus.DECLINED, endedReason = "expired")
                     } else {
@@ -209,7 +208,7 @@ object RebalanceEngine {
         ) ?: return offer.copy(mode = newMode, intensity = intensity) // no usable lever: keep facts, switch dials
 
         val start = isoDate(offer.startDateIso)
-        val end = start.plusDays((sizing.days - 1).toLong())
+        val end = start.plus(sizing.days - 1, DateTimeUnit.DAY)
         return offer.copy(
             mode = newMode,
             intensity = intensity,
@@ -226,7 +225,7 @@ object RebalanceEngine {
     // ── Trigger helpers ─────────────────────────────────────────────────────────────
 
     /** Trailing 7 days ending yesterday relative to [reference]. */
-    private fun trailingWindow(reference: LocalDate): List<LocalDate> = (1..7).map { reference.minusDays(it.toLong()) }
+    private fun trailingWindow(reference: LocalDate): List<LocalDate> = (1..7).map { reference.minus(it, DateTimeUnit.DAY) }
 
     private fun isLogged(input: RebalanceEvaluationInput, d: LocalDate): Boolean =
         (input.mealCountByDate[d] ?: 0) >= 1
@@ -260,7 +259,7 @@ object RebalanceEngine {
         window: List<LocalDate>,
     ): LocalDate? {
         val sunday = window.filter { it.dayOfWeek == DayOfWeek.SUNDAY }.maxOrNull() ?: return null
-        val saturday = sunday.minusDays(1)
+        val saturday = sunday.minus(1, DateTimeUnit.DAY)
         if (saturday !in window) return null
         if (!isLogged(input, saturday) || !isLogged(input, sunday)) return null
         val sum = over(input, saturday) + over(input, sunday)
@@ -427,8 +426,7 @@ object RebalanceEngine {
         val end = isoDate(plan.endDateIso)
         // Remaining days from max(today, start) through end inclusive.
         val from = maxOf(today, start)
-        val remainingDays = if (from.isAfter(end)) 0 else
-            (java.time.temporal.ChronoUnit.DAYS.between(from, end) + 1).toInt()
+        val remainingDays: Int = if (from > end) 0 else from.daysUntil(end) + 1
         val perDayRecover = plan.dailyCalorieReduction + stepKcal(plan.extraDailySteps)
         val slack = (sNow - remainingDays * perDayRecover) / 7.0
         return slack > RebalanceDefaults.UNRECOVERABLE_SLACK_KCAL
@@ -444,8 +442,16 @@ object RebalanceEngine {
 
     // ── ISO helpers ──────────────────────────────────────────────────────────────────
 
+    /**
+     * Sentinel for an unparseable persisted date: sorts before, and is never after, any real date —
+     * so a corrupt record can neither win `maxByOrNull` nor block a re-trigger. kotlinx-datetime's own
+     * `LocalDate.MIN` is `internal`, and its year (-999_999_999) would blow past [daysUntil]'s `Int`
+     * range anyway; year 1 is far enough in the past to be equivalent for every comparison here.
+     */
+    private val UNPARSEABLE_DATE = LocalDate(1, 1, 1)
+
     private fun isoDate(s: String): LocalDate =
-        runCatching { LocalDate.parse(s.substring(0, 10)) }.getOrDefault(LocalDate.MIN)
+        runCatching { LocalDate.parse(s.substring(0, 10)) }.getOrDefault(UNPARSEABLE_DATE)
 
     /** Sort key for capping history newest-first by creation instant (lexicographic ISO-8601 works). */
     private fun isoDateTimeKey(s: String): String = s

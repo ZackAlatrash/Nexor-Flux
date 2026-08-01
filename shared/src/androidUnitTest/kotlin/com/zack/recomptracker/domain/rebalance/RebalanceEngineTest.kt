@@ -2,11 +2,14 @@ package com.zack.recomptracker.domain.rebalance
 
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.domain.plan.PlanTargets
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * Pure engine behaviour ([RebalanceEngine.evaluate]). All dates are plain [LocalDate]; `newId`/`nowIso`
@@ -16,8 +19,8 @@ import java.time.LocalDate
  */
 class RebalanceEngineTest {
 
-    private val today = LocalDate.of(2026, 7, 8)      // Wednesday
-    private val yesterday = today.minusDays(1)         // Tuesday 07-07
+    private val today = LocalDate(2026, 7, 8)      // Wednesday
+    private val yesterday = today.minus(1, DateTimeUnit.DAY)         // Tuesday 07-07
 
     private fun targets(cal: Int) =
         PlanTargets(cal, 160, 300, 70, cal - 100, cal + 100)
@@ -34,7 +37,7 @@ class RebalanceEngineTest {
         mode: RebalanceMode = RebalanceMode.BALANCED,
         existing: RebalanceState = RebalanceState(mode = mode),
     ): RebalanceEvaluationInput {
-        val window = (1..7).map { refToday.minusDays(it.toLong()) }
+        val window = (1..7).map { refToday.minus(it, DateTimeUnit.DAY) }
         val baseTargets = window.associateWith { targets(base) }
         val eaten = window.associateWith { (eatenOverrides[it] ?: base) }
         val counts = mealCounts ?: window.associateWith { 3 }
@@ -79,16 +82,16 @@ class RebalanceEngineTest {
         assertFalse(plan.partial)
         assertEquals(yesterday.toString(), plan.triggerDateIso)
         // Provisional window: start = today+1, end = start + D - 1.
-        assertEquals(today.plusDays(1).toString(), plan.startDateIso)
-        assertEquals(today.plusDays(2).toString(), plan.endDateIso)
+        assertEquals(today.plus(1, DateTimeUnit.DAY).toString(), plan.startDateIso)
+        assertEquals(today.plus(2, DateTimeUnit.DAY).toString(), plan.endDateIso)
     }
 
     @Test
     fun `weekend Sat and Sun over 600 triggers`() {
         // refToday = Monday 2026-07-06; window ends Sun 07-05, Sat 07-04.
-        val monday = LocalDate.of(2026, 7, 6)
-        val sat = LocalDate.of(2026, 7, 4)
-        val sun = LocalDate.of(2026, 7, 5)
+        val monday = LocalDate(2026, 7, 6)
+        val sat = LocalDate(2026, 7, 4)
+        val sun = LocalDate(2026, 7, 5)
         val decision = evaluate(
             input(
                 refToday = monday,
@@ -214,7 +217,7 @@ class RebalanceEngineTest {
         // MOVE_MORE with a large step average -> stepsCap clamped to 3000 (raw 0.25*20000 = 5000).
         // Without the clamp, perDayCap would be stepKcal(5000)=200 and E would round to 3800 (> 3000);
         // the clamp to 3000 keeps perDayCap at stepKcal(3000)=120 so E can never exceed 3000.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 20000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 20000 }
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S=600, recoverable at 120 kcal/day
@@ -230,7 +233,7 @@ class RebalanceEngineTest {
     @Test
     fun `null step goal produces a calorie only plan`() {
         // Steps data present but no step goal -> calorie-only.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 9000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 9000 }
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100),
@@ -261,7 +264,7 @@ class RebalanceEngineTest {
 
     @Test
     fun `EAT_LESS split is calorie only`() {
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 9000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 9000 }
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100),
@@ -277,7 +280,7 @@ class RebalanceEngineTest {
 
     @Test
     fun `MOVE_MORE split leads with steps`() {
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 12000 }
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S=600, targetRecover=450
@@ -298,7 +301,7 @@ class RebalanceEngineTest {
         // stepsCap > 0 branch fails and falls back to the calorie-only lever, same as the
         // no-steps-available worked example: S=600, targetRecover=450, calorie lever cap 300 -> D=2,
         // perDay=225, R=round10(225)=230; E stays 0.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 100 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 100 }
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S=600
@@ -320,7 +323,7 @@ class RebalanceEngineTest {
         // 420 kcal, short of targetRecover 450 (S = 600). Steps alone can't cover it, so MOVE_MORE maxes
         // steps AND cuts calories for the remainder — a distinct, feasible plan, not a null that would
         // make `customize` fall back to the previous mode's numbers.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 6000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 6000 }
         val plan = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -338,7 +341,7 @@ class RebalanceEngineTest {
         // Regression guard for the on-device report "Balanced and Move more give the same adjustments":
         // in the band where steps alone can't cover the surplus (avg 6000 → 60 kcal/day × 7 = 420 < 450),
         // the two modes must still differ, and Move more must lean harder on steps than the balanced split.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 6000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 6000 }
         fun planFor(mode: RebalanceMode) = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -363,7 +366,7 @@ class RebalanceEngineTest {
         // The exact on-device path: a BALANCED offer, then tapping "Move more". customize must recompute
         // to a genuinely different plan rather than returning the offer with only its mode label flipped.
         // avg 6000 keeps steps short of the target over 7 days so the two-tier remainder branch is live.
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 6000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 6000 }
         val offer = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -384,7 +387,7 @@ class RebalanceEngineTest {
 
     @Test
     fun `BALANCED split uses both levers`() {
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 12000 }
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100),
@@ -474,7 +477,7 @@ class RebalanceEngineTest {
             baseCalories = 2500, dailyCalorieReduction = 200, extraDailySteps = 0,
             baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 600,
             status = RebalanceStatus.DECLINED, createdAtIso = "2026-06-24T09:00:00Z",
-            decidedAtIso = today.minusDays(10).toString() + "T09:00:00Z", endedReason = "expired",
+            decidedAtIso = today.minus(10, DateTimeUnit.DAY).toString() + "T09:00:00Z", endedReason = "expired",
         )
         val decision = evaluate(
             input(
@@ -488,7 +491,7 @@ class RebalanceEngineTest {
     @Test
     fun `fewer than four logged days is silent`() {
         // Only 3 of the 7 window days have a meal entry.
-        val window = (1..7).map { today.minusDays(it.toLong()) }
+        val window = (1..7).map { today.minus(it, DateTimeUnit.DAY) }
         val counts = window.mapIndexed { i, d -> d to if (i < 3) 2 else 0 }.toMap()
         val decision = evaluate(
             input(eatenOverrides = mapOf(yesterday to 3100), mealCounts = counts),
@@ -517,7 +520,7 @@ class RebalanceEngineTest {
     // ── customize ───────────────────────────────────────────────────────────────────
     @Test
     fun `customize recomputes an offer for a new mode from stored facts`() {
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 12000 }
         val offer = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100),
@@ -567,7 +570,7 @@ class RebalanceEngineTest {
     fun `customize with mode and intensity recomputes the plan`() {
         // A BALANCED/STANDARD offer, then customize to MOVE_MORE + FULL: both dials compose and the
         // plan changes (more recovered at FULL, steps-led under MOVE_MORE with a generous step history).
-        val stepsMap = (1..7).associate { today.minusDays(it.toLong()) to 12000 }
+        val stepsMap = (1..7).associate { today.minus(it, DateTimeUnit.DAY) to 12000 }
         val offer = (evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100), // S = 600
@@ -617,9 +620,9 @@ class RebalanceEngineTest {
     @Test
     fun `weekend surplus of exactly 600 triggers`() {
         // +300 each: neither day is individually HIGH (< 400 abs, < 625 pct) — only the weekend rule fires.
-        val monday = LocalDate.of(2026, 7, 6)
-        val sat = LocalDate.of(2026, 7, 4)
-        val sun = LocalDate.of(2026, 7, 5)
+        val monday = LocalDate(2026, 7, 6)
+        val sat = LocalDate(2026, 7, 4)
+        val sun = LocalDate(2026, 7, 5)
         val decision = evaluate(
             input(refToday = monday, eatenOverrides = mapOf(sat to 2800, sun to 2800)), // 300 + 300 == 600
         )
@@ -640,7 +643,7 @@ class RebalanceEngineTest {
 
     @Test
     fun `cooldown of exactly three days does not block`() {
-        val declined = declinedRecord(decidedOn = today.minusDays(3), trigger = LocalDate.of(2026, 6, 30))
+        val declined = declinedRecord(decidedOn = today.minus(3, DateTimeUnit.DAY), trigger = LocalDate(2026, 6, 30))
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100),
@@ -652,7 +655,7 @@ class RebalanceEngineTest {
 
     @Test
     fun `cooldown of two days blocks`() {
-        val declined = declinedRecord(decidedOn = today.minusDays(2), trigger = LocalDate.of(2026, 6, 30))
+        val declined = declinedRecord(decidedOn = today.minus(2, DateTimeUnit.DAY), trigger = LocalDate(2026, 6, 30))
         val decision = evaluate(
             input(
                 eatenOverrides = mapOf(yesterday to 3100),
@@ -695,8 +698,8 @@ class RebalanceEngineTest {
     }
 
     private fun declinedRecord(decidedOn: LocalDate, trigger: LocalDate) = RebalancePlan(
-        id = "d", triggerDateIso = trigger.toString(), startDateIso = trigger.plusDays(1).toString(),
-        endDateIso = trigger.plusDays(3).toString(), lengthDays = 3, mode = RebalanceMode.BALANCED,
+        id = "d", triggerDateIso = trigger.toString(), startDateIso = trigger.plus(1, DateTimeUnit.DAY).toString(),
+        endDateIso = trigger.plus(3, DateTimeUnit.DAY).toString(), lengthDays = 3, mode = RebalanceMode.BALANCED,
         baseCalories = 2500, dailyCalorieReduction = 200, extraDailySteps = 0,
         baseStepGoal = null, recentAvgSteps = null, surplusKcal = 600, recoveredKcal = 600,
         status = RebalanceStatus.DECLINED, createdAtIso = decidedOn.toString() + "T09:00:00Z",

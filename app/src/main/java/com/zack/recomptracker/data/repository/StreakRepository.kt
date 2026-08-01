@@ -135,10 +135,11 @@ internal fun buildStreaks(
     } else {
         eatenCaloriesByDate
             .filter { (date, cals) ->
-                val base = PlanHistory.planOn(versions, date.toKotlinLocalDate())
+                val kDate = date.toKotlinLocalDate()
+                val base = PlanHistory.planOn(versions, kDate)
                 // Union of base + effective zones: on a rebalance day this widens the band; on any
                 // other day it is exactly the base zone (behaviour-neutral with an empty state).
-                val zone = EffectiveTargets.unionZone(base, date, rebalanceState)
+                val zone = EffectiveTargets.unionZone(base, kDate, rebalanceState)
                 cals > 0 && base.zoneLowerBound > 0 && cals in zone
             }
             .keys

@@ -36,6 +36,7 @@ import com.zack.recomptracker.domain.workout.WorkoutSession
 import java.time.LocalDate
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.serialization.json.Json
 
@@ -155,9 +156,9 @@ class CoachToolExecutor(
         // Grade against EFFECTIVE targets: on a rebalance day the reduced target applies, base
         // otherwise (behaviour-neutral with an empty state).
         val targetsByDate = EffectiveTargets.resolveAll(
-            planRepository.targetsByDate(weekDates),
+            planRepository.targetsByDate(weekDates).mapKeys { (d, _) -> d.toKotlinLocalDate() },
             rebalanceState(),
-        )
+        ).mapKeys { (d, _) -> d.toJavaLocalDate() }
         val nutritionDays = weekDates.map { date ->
             NutritionDay(
                 date = date.toKotlinLocalDate(),
@@ -847,7 +848,7 @@ class CoachToolExecutor(
         // Use the rebalance-EFFECTIVE target for the date, matching the coach system prompt and
         // get_weekly_trends. Using the untouched base plan here contradicted the reduced target the
         // coach quotes during an active rebalance (review P2-5).
-        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), date, rebalanceState())
+        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), date.toKotlinLocalDate(), rebalanceState())
         val target = MealSuggester.MacroTargets(
             calories = effective.calories, proteinG = effective.proteinG,
             carbsG = effective.carbsG, fatG = effective.fatG,

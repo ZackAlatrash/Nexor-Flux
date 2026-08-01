@@ -29,6 +29,12 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate as KxLocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * The weekly-rebalance *spine* (spec §5.8, §7). Deliberately **not reactive**: it runs a once-daily
@@ -134,7 +140,7 @@ class RebalanceCoordinator(
         //     changed; surface COMPLETED / ENDED_EARLY as the one-time ended notice.
         val rec = RebalanceEngine.reconcile(
             input.existing,
-            today,
+            today.toKotlinLocalDate(),
             input.baseTargetsByDate,
             input.eatenByDate,
         )
@@ -320,7 +326,8 @@ class RebalanceCoordinator(
      */
     suspend fun debugApply(scenario: RebalanceDebugScenario) {
         val today = dateProvider.today()
-        val base = runCatching { buildInput().baseTargetsByDate[today]?.calories }.getOrNull() ?: 2500
+        val base = runCatching { buildInput().baseTargetsByDate[today.toKotlinLocalDate()]?.calories }
+            .getOrNull() ?: 2500
         val app = RebalanceDebugScenarios.build(scenario, today, base, newId, nowIso)
         store.save(app.state)
         _endedNotice.value = app.endedNotice
@@ -344,7 +351,7 @@ class RebalanceCoordinator(
         fun buildOfferWindow(input: RebalanceEvaluationInput, plan: RebalancePlan): List<RebalanceDayBar> {
             val today = input.today
             val history = (7 downTo 1).map { offset ->
-                val d = today.minusDays(offset.toLong())
+                val d = today.minus(offset, DateTimeUnit.DAY)
                 val value = input.eatenByDate[d] ?: 0
                 val target = input.baseTargetsByDate[d]?.calories ?: plan.baseCalories
                 RebalanceDayBar(
@@ -357,7 +364,7 @@ class RebalanceCoordinator(
             }
             val reducedTarget = RebalancePlanMath.effectiveCalories(plan)
             val planDays = (0 until plan.lengthDays).map { i ->
-                val d = today.plusDays(1L + i)
+                val d = today.plus(1 + i, DateTimeUnit.DAY)
                 RebalanceDayBar(
                     label = dayLabel(d),
                     valueKcal = reducedTarget,
@@ -369,7 +376,8 @@ class RebalanceCoordinator(
             return history + planDays
         }
 
-        private fun dayLabel(date: LocalDate): String =
-            date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+        /** [date] is a shared-module (kotlinx) date; the JVM bridge supplies the localized short name. */
+        private fun dayLabel(date: KxLocalDate): String =
+            date.toJavaLocalDate().dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
     }
 }

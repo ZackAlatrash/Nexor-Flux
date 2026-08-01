@@ -1,9 +1,9 @@
 package com.zack.recomptracker.domain.rebalance
 
 import com.zack.recomptracker.domain.plan.PlanTargets
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 /** A plan day's position for the "Rebalance · Day X of Y" chip. */
 data class PlanDayInfo(val dayX: Int, val ofY: Int, val plan: RebalancePlan)
@@ -15,6 +15,8 @@ data class PlanDayInfo(val dayX: Int, val ofY: Int, val plan: RebalancePlan)
  * A date is "in a plan window" when a plan overrides it (see [overridingPlan]): an ACTIVE/COMPLETED
  * plan covers `[startDate, endDate]`; an ENDED_EARLY plan covers only up to its recorded (rewritten)
  * end date. OFFERED/DECLINED/NO_ADJUSTMENT plans never override — their R/E are provisional or zero.
+ * A plan whose persisted dates fail to parse also never overrides, so corrupt state degrades to the
+ * base plan instead of throwing on every read (P2-10).
  *
  * Effective calories = `max(baseCalories - dailyCalorieReduction, MIN_EFFECTIVE_CAL)`; macros re-derive
  * per spec §5.7 (protein held from base, fat 25% of effective kcal, carbs the remainder ≥ 0); zone
@@ -58,9 +60,8 @@ object EffectiveTargets {
     /** Day-X-of-Y info when [date] falls in a plan window, else null. */
     fun planDayInfo(date: LocalDate, state: RebalanceState): PlanDayInfo? {
         val plan = overridingPlan(date, state) ?: return null
-        val start = LocalDate.parse(plan.startDateIso)
-        val dayX = (ChronoUnit.DAYS.between(start, date) + 1).toInt()
-        return PlanDayInfo(dayX = dayX, ofY = plan.lengthDays, plan = plan)
+        val start = parseDateOrNull(plan.startDateIso) ?: return null
+        return PlanDayInfo(dayX = start.daysUntil(date) + 1, ofY = plan.lengthDays, plan = plan)
     }
 
     /**
@@ -84,10 +85,21 @@ object EffectiveTargets {
             -> false
         }
         if (!applies) return false
-        val start = LocalDate.parse(plan.startDateIso)
-        val end = LocalDate.parse(plan.endDateIso)
-        return !date.isBefore(start) && !date.isAfter(end)
+        // A corrupt persisted date must degrade to "this plan does not override" — the same outcome as
+        // an absent plan. Throwing here would crash-loop the dashboard, coach and streak paths (P2-10).
+        val start = parseDateOrNull(plan.startDateIso) ?: return false
+        val end = parseDateOrNull(plan.endDateIso) ?: return false
+        return date >= start && date <= end
     }
+
+    /** ISO-8601 date parse that yields null instead of throwing on a corrupt persisted value. */
+    private fun parseDateOrNull(raw: String): LocalDate? =
+        try {
+            LocalDate.parse(raw)
+        } catch (_: IllegalArgumentException) {
+            // kotlinx-datetime signals a bad date with IllegalArgumentException, not DateTimeParseException.
+            null
+        }
 
     /** Applies a calorie reduction and re-derives macros + zone (spec §5.7). */
     private fun reduce(base: PlanTargets, reduction: Int): PlanTargets {

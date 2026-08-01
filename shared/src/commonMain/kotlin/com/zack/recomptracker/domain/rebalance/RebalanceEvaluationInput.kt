@@ -2,7 +2,7 @@ package com.zack.recomptracker.domain.rebalance
 
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.domain.plan.PlanTargets
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * Flattened snapshot the pure [RebalanceEngine] consumes (mirrors `AdjustmentInput`). All time-varying

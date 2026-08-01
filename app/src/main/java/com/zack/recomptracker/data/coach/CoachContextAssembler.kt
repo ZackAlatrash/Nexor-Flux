@@ -34,6 +34,7 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 
 /**
@@ -102,7 +103,10 @@ object CoachContextAssembler {
 
         // Per-day adherence context is graded against the EFFECTIVE (rebalance-reduced) targets, so it
         // reflects the agreed plan. Behaviour-neutral with an empty state (resolve returns base).
-        val effectiveTargets = EffectiveTargets.resolveAll(inputs.targetsByDate, inputs.rebalanceState)
+        val effectiveTargets = EffectiveTargets.resolveAll(
+            inputs.targetsByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            inputs.rebalanceState,
+        ).mapKeys { (d, _) -> d.toJavaLocalDate() }
 
         return CoachContext(
             asOf = today,
@@ -320,11 +324,12 @@ object CoachContextAssembler {
         effectiveTargets: Map<LocalDate, PlanTargets>,
     ): RebalanceContext? {
         val state = inputs.rebalanceState
-        val info = EffectiveTargets.planDayInfo(today, state) ?: return null
+        val kToday = today.toKotlinLocalDate()
+        val info = EffectiveTargets.planDayInfo(kToday, state) ?: return null
         val plan = info.plan
         val baseToday = inputs.targetsByDate[today]
         val effectiveCalories = effectiveTargets[today]?.calories
-            ?: baseToday?.let { EffectiveTargets.resolve(it, today, state).calories }
+            ?: baseToday?.let { EffectiveTargets.resolve(it, kToday, state).calories }
             ?: RebalancePlanMath.effectiveCalories(plan)
         return RebalanceContext(
             dayX = info.dayX,

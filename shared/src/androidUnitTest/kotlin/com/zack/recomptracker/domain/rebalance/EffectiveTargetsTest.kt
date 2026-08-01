@@ -1,11 +1,11 @@
 package com.zack.recomptracker.domain.rebalance
 
 import com.zack.recomptracker.domain.plan.PlanTargets
+import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 /** Pure resolver ([EffectiveTargets]) — base [PlanTargets] + rebalance windows -> effective values. */
 class EffectiveTargetsTest {
@@ -35,7 +35,7 @@ class EffectiveTargetsTest {
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 250),
         )
         val base = targets(2500)
-        val eff = EffectiveTargets.resolve(base, LocalDate.of(2026, 7, 9), state)
+        val eff = EffectiveTargets.resolve(base, LocalDate(2026, 7, 9), state)
         assertEquals(2250, eff.calories)               // 2500 - 250
         assertEquals(2150, eff.zoneLowerBound)          // 2250 - 100
         assertEquals(2350, eff.zoneUpperBound)          // 2250 + 100
@@ -47,7 +47,7 @@ class EffectiveTargetsTest {
             history = listOf(plan("2026-06-20", "2026-06-22", RebalanceStatus.COMPLETED, r = 250)),
         )
         val base = targets(2500)
-        val eff = EffectiveTargets.resolve(base, LocalDate.of(2026, 6, 21), state)
+        val eff = EffectiveTargets.resolve(base, LocalDate(2026, 6, 21), state)
         assertEquals(2250, eff.calories)
     }
 
@@ -57,7 +57,7 @@ class EffectiveTargetsTest {
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 250),
         )
         val base = targets(2500)
-        val eff = EffectiveTargets.resolve(base, LocalDate.of(2026, 7, 15), state)
+        val eff = EffectiveTargets.resolve(base, LocalDate(2026, 7, 15), state)
         assertEquals(base, eff)
     }
 
@@ -69,9 +69,9 @@ class EffectiveTargetsTest {
         )
         val base = targets(2500)
         // 07-09 is within [start, end] -> reduced.
-        assertEquals(2250, EffectiveTargets.resolve(base, LocalDate.of(2026, 7, 9), state).calories)
+        assertEquals(2250, EffectiveTargets.resolve(base, LocalDate(2026, 7, 9), state).calories)
         // 07-10 is past the ended date -> base.
-        assertEquals(2500, EffectiveTargets.resolve(base, LocalDate.of(2026, 7, 10), state).calories)
+        assertEquals(2500, EffectiveTargets.resolve(base, LocalDate(2026, 7, 10), state).calories)
     }
 
     @Test
@@ -82,7 +82,7 @@ class EffectiveTargetsTest {
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 250),
         )
         val base = targets(2500)
-        val eff = EffectiveTargets.resolve(base, LocalDate.of(2026, 7, 9), state)
+        val eff = EffectiveTargets.resolve(base, LocalDate(2026, 7, 9), state)
         assertEquals(160, eff.proteinG)  // held from base
         assertEquals(63, eff.fatG)
         assertEquals(261, eff.carbsG)
@@ -95,9 +95,9 @@ class EffectiveTargetsTest {
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 0, e = 1500, baseStepGoal = 8000),
         )
         // On a plan day: base goal + extra.
-        assertEquals(9500, EffectiveTargets.effectiveStepGoal(8000, LocalDate.of(2026, 7, 9), state))
+        assertEquals(9500, EffectiveTargets.effectiveStepGoal(8000, LocalDate(2026, 7, 9), state))
         // Off a plan day: base goal untouched.
-        assertEquals(8000, EffectiveTargets.effectiveStepGoal(8000, LocalDate.of(2026, 7, 20), state))
+        assertEquals(8000, EffectiveTargets.effectiveStepGoal(8000, LocalDate(2026, 7, 20), state))
     }
 
     @Test
@@ -106,12 +106,12 @@ class EffectiveTargetsTest {
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 250),
         )
         val base = targets(2500) // zone [2400, 2600]; effective zone [2150, 2350]
-        val union = EffectiveTargets.unionZone(base, LocalDate.of(2026, 7, 9), state)
+        val union = EffectiveTargets.unionZone(base, LocalDate(2026, 7, 9), state)
         assertEquals(2150, union.first)   // min(2400, 2150)
         assertEquals(2600, union.last)    // max(2600, 2350)
 
         // Off a plan day the union is just the base zone.
-        val offDay = EffectiveTargets.unionZone(base, LocalDate.of(2026, 7, 20), state)
+        val offDay = EffectiveTargets.unionZone(base, LocalDate(2026, 7, 20), state)
         assertEquals(2400, offDay.first)
         assertEquals(2600, offDay.last)
     }
@@ -121,10 +121,34 @@ class EffectiveTargetsTest {
         val state = RebalanceState(
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 250),
         )
-        val info = EffectiveTargets.planDayInfo(LocalDate.of(2026, 7, 9), state)!!
+        val info = EffectiveTargets.planDayInfo(LocalDate(2026, 7, 9), state)!!
         assertEquals(2, info.dayX)  // 07-09 is day 2 of 3
         assertEquals(3, info.ofY)
-        assertNull(EffectiveTargets.planDayInfo(LocalDate.of(2026, 7, 20), state))
+        assertNull(EffectiveTargets.planDayInfo(LocalDate(2026, 7, 20), state))
+    }
+
+    /**
+     * P2-10: a corrupt persisted plan date must degrade to "this plan does not override" rather than
+     * throwing — a strict parse here crash-looped the dashboard, coach and streak paths. Note
+     * kotlinx-datetime raises `IllegalArgumentException`, not `DateTimeParseException`.
+     */
+    @Test
+    fun `unparseable plan dates are tolerated and simply never override`() {
+        val date = LocalDate(2026, 7, 9)
+        val base = targets(2500)
+        val corruptStart = RebalanceState(
+            active = plan("not-a-date", "2026-07-10", RebalanceStatus.ACTIVE, r = 250, baseStepGoal = 8000),
+        )
+        val corruptEnd = RebalanceState(
+            active = plan("2026-07-08", "2026-07-32", RebalanceStatus.ACTIVE, r = 250, baseStepGoal = 8000),
+        )
+        for (state in listOf(corruptStart, corruptEnd)) {
+            assertEquals(base, EffectiveTargets.resolve(base, date, state))
+            assertNull(EffectiveTargets.planDayInfo(date, state))
+            assertEquals(8000, EffectiveTargets.effectiveStepGoal(8000, date, state))
+            assertEquals(base.zoneLowerBound..base.zoneUpperBound, EffectiveTargets.unionZone(base, date, state))
+            assertEquals(base, EffectiveTargets.resolveAll(mapOf(date to base), state).getValue(date))
+        }
     }
 
     @Test
@@ -133,7 +157,7 @@ class EffectiveTargetsTest {
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.OFFERED, r = 250),
         )
         val base = targets(2500)
-        assertEquals(base, EffectiveTargets.resolve(base, LocalDate.of(2026, 7, 9), state))
+        assertEquals(base, EffectiveTargets.resolve(base, LocalDate(2026, 7, 9), state))
     }
 
     @Test
@@ -141,8 +165,8 @@ class EffectiveTargetsTest {
         val state = RebalanceState(
             active = plan("2026-07-08", "2026-07-10", RebalanceStatus.ACTIVE, r = 250),
         )
-        val d1 = LocalDate.of(2026, 7, 9)   // plan day
-        val d2 = LocalDate.of(2026, 7, 20)  // off day
+        val d1 = LocalDate(2026, 7, 9)   // plan day
+        val d2 = LocalDate(2026, 7, 20)  // off day
         val map = EffectiveTargets.resolveAll(mapOf(d1 to targets(2500), d2 to targets(2500)), state)
         assertEquals(2250, map.getValue(d1).calories)
         assertEquals(2500, map.getValue(d2).calories)

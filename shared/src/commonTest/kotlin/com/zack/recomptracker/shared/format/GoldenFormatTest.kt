@@ -1,5 +1,6 @@
 package com.zack.recomptracker.shared.format
 
+import com.zack.recomptracker.domain.coach.CoachDetectorSupport
 import com.zack.recomptracker.shared.time.isoWeek
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
@@ -168,6 +169,117 @@ class GoldenFormatTest {
         assertEquals("-0.00", formatFixed(-0.001, 2))
     }
 
+    /**
+     * Corpus ADDENDUM, sections `=== FMT0 ===` / `=== FMT1 ===` / `=== FMT2 ===` (51 rows).
+     *
+     * Every input here has a `Double.toString()` in scientific notation (except `0.001`, the
+     * boundary control). The first `:shared` port threw on those instead of formatting them, which
+     * silently killed a whole coach digest whenever an OLS trend slope came back as a
+     * floating-point residue like `1.66E-15`.
+     */
+    @Test
+    fun scientificNotationMatchesJvmGolden() {
+        // FMT0
+        assertEquals("0", formatFixed(1.66E-15, 0))
+        assertEquals("-0", formatFixed(-1.66E-15, 0))
+        assertEquals("0", formatFixed(3.55E-15, 0))
+        assertEquals("0", formatFixed(4.0E-4, 0))
+        assertEquals("-0", formatFixed(-4.0E-4, 0))
+        assertEquals("0", formatFixed(9.9E-4, 0))
+        assertEquals("-0", formatFixed(-9.9E-4, 0))
+        assertEquals("0", formatFixed(1.0E-3, 0))
+        assertEquals("0", formatFixed(5.0E-4, 0))
+        assertEquals("-0", formatFixed(-5.0E-4, 0))
+        assertEquals("0", formatFixed(1.0E-7, 0))
+        assertEquals("-0", formatFixed(-1.0E-7, 0))
+        assertEquals("0", formatFixed(Double.MIN_VALUE, 0))
+        assertEquals("10000000", formatFixed(1.0E7, 0))
+        assertEquals("-10000000", formatFixed(-1.0E7, 0))
+        assertEquals("123000000", formatFixed(1.23E8, 0))
+        assertEquals("100000000000000000000", formatFixed(1.0E20, 0))
+        // FMT1
+        assertEquals("0.0", formatFixed(1.66E-15, 1))
+        assertEquals("-0.0", formatFixed(-1.66E-15, 1))
+        assertEquals("0.0", formatFixed(3.55E-15, 1))
+        assertEquals("0.0", formatFixed(4.0E-4, 1))
+        assertEquals("-0.0", formatFixed(-4.0E-4, 1))
+        assertEquals("0.0", formatFixed(9.9E-4, 1))
+        assertEquals("-0.0", formatFixed(-9.9E-4, 1))
+        assertEquals("0.0", formatFixed(1.0E-3, 1))
+        assertEquals("0.0", formatFixed(5.0E-4, 1))
+        assertEquals("-0.0", formatFixed(-5.0E-4, 1))
+        assertEquals("0.0", formatFixed(1.0E-7, 1))
+        assertEquals("-0.0", formatFixed(-1.0E-7, 1))
+        assertEquals("0.0", formatFixed(Double.MIN_VALUE, 1))
+        assertEquals("10000000.0", formatFixed(1.0E7, 1))
+        assertEquals("-10000000.0", formatFixed(-1.0E7, 1))
+        assertEquals("123000000.0", formatFixed(1.23E8, 1))
+        assertEquals("100000000000000000000.0", formatFixed(1.0E20, 1))
+        // FMT2
+        assertEquals("0.00", formatFixed(1.66E-15, 2))
+        assertEquals("-0.00", formatFixed(-1.66E-15, 2))
+        assertEquals("0.00", formatFixed(3.55E-15, 2))
+        assertEquals("0.00", formatFixed(4.0E-4, 2))
+        assertEquals("-0.00", formatFixed(-4.0E-4, 2))
+        assertEquals("0.00", formatFixed(9.9E-4, 2))
+        assertEquals("-0.00", formatFixed(-9.9E-4, 2))
+        assertEquals("0.00", formatFixed(1.0E-3, 2))
+        assertEquals("0.00", formatFixed(5.0E-4, 2))
+        assertEquals("-0.00", formatFixed(-5.0E-4, 2))
+        assertEquals("0.00", formatFixed(1.0E-7, 2))
+        assertEquals("-0.00", formatFixed(-1.0E-7, 2))
+        assertEquals("0.00", formatFixed(Double.MIN_VALUE, 2))
+        assertEquals("10000000.00", formatFixed(1.0E7, 2))
+        assertEquals("-10000000.00", formatFixed(-1.0E7, 2))
+        assertEquals("123000000.00", formatFixed(1.23E8, 2))
+        assertEquals("100000000000000000000.00", formatFixed(1.0E20, 2))
+    }
+
+    /**
+     * Corpus ADDENDUM, sections `=== SIGNED1 ===` and `=== BUCKET step=0.1 dec=2 ===` (34 rows).
+     * Both route through [formatFixed], so both were broken by the same bail-out.
+     */
+    @Test
+    fun scientificNotationSigned1AndBucketMatchJvmGolden() {
+        // SIGNED1
+        assertEquals("0.0", signed1(1.66E-15))
+        assertEquals("0.0", signed1(-1.66E-15))
+        assertEquals("0.0", signed1(3.55E-15))
+        assertEquals("0.0", signed1(4.0E-4))
+        assertEquals("0.0", signed1(-4.0E-4))
+        assertEquals("0.0", signed1(9.9E-4))
+        assertEquals("0.0", signed1(-9.9E-4))
+        assertEquals("0.0", signed1(1.0E-3))
+        assertEquals("0.0", signed1(5.0E-4))
+        assertEquals("0.0", signed1(-5.0E-4))
+        assertEquals("0.0", signed1(1.0E-7))
+        assertEquals("0.0", signed1(-1.0E-7))
+        assertEquals("0.0", signed1(Double.MIN_VALUE))
+        assertEquals("+10000000.0", signed1(1.0E7))
+        assertEquals("-10000000.0", signed1(-1.0E7))
+        assertEquals("+123000000.0", signed1(1.23E8))
+        assertEquals("+100000000000000000000.0", signed1(1.0E20))
+        // BUCKET step=0.1 dec=2
+        assertEquals("0.00", bucket(1.66E-15, 0.1, 2))
+        assertEquals("0.00", bucket(-1.66E-15, 0.1, 2))
+        assertEquals("0.00", bucket(3.55E-15, 0.1, 2))
+        assertEquals("0.00", bucket(4.0E-4, 0.1, 2))
+        assertEquals("0.00", bucket(-4.0E-4, 0.1, 2))
+        assertEquals("0.00", bucket(9.9E-4, 0.1, 2))
+        assertEquals("0.00", bucket(-9.9E-4, 0.1, 2))
+        assertEquals("0.00", bucket(1.0E-3, 0.1, 2))
+        assertEquals("0.00", bucket(5.0E-4, 0.1, 2))
+        assertEquals("0.00", bucket(-5.0E-4, 0.1, 2))
+        assertEquals("0.00", bucket(1.0E-7, 0.1, 2))
+        assertEquals("0.00", bucket(-1.0E-7, 0.1, 2))
+        assertEquals("0.00", bucket(Double.MIN_VALUE, 0.1, 2))
+        assertEquals("10000000.00", bucket(1.0E7, 0.1, 2))
+        assertEquals("-10000000.00", bucket(-1.0E7, 0.1, 2))
+        assertEquals("123000000.00", bucket(1.23E8, 0.1, 2))
+        // (1e20 / 0.1).roundToInt() saturates at Int.MAX_VALUE, so this formats 2147483647 * 0.1.
+        assertEquals("214748364.70", bucket(1.0E20, 0.1, 2))
+    }
+
     /** Corpus sections `=== BUCKET step=0.1 dec=2 ===` and `=== BUCKET step=50.0 dec=0 ===` (70 rows). */
     @Test
     fun bucketMatchesJvmGolden() {
@@ -317,6 +429,23 @@ class GoldenFormatTest {
         assertEquals("100%", pct(100.0))
         assertEquals("0%", pct(0.001))
         assertEquals("0%", pct(-0.001))
+    }
+
+    /**
+     * The exact production path from the final-review finding. `TrendCalculator.trendPerWeek` is an
+     * OLS slope, so a flat weight series cancels down to a residue like `1.66E-15`, and
+     * `BodyDetectors` / `TrainingDetectors` format that residue inside their "flat band" branches
+     * (`BodyDetectors.kt:41`, `:154`, `TrainingDetectors.kt:55`). `formatFixed` used to throw there;
+     * `CoachDigestCoordinator`'s `runCatching` swallowed it and the coach staged no signal that day.
+     */
+    @Test
+    fun coachDetectorSupportFormatsOlsResidueInsteadOfThrowing() {
+        assertEquals("0.00", CoachDetectorSupport.fmt(1.66E-15, 2))
+        assertEquals("-0.00", CoachDetectorSupport.fmt(-1.66E-15, 2))
+        assertEquals("0.0", CoachDetectorSupport.fmt(3.55E-15, 1))
+        assertEquals("0.0", CoachDetectorSupport.signed1(1.66E-15))
+        assertEquals("0.0", CoachDetectorSupport.signed1(-1.66E-15))
+        assertEquals("0.00", CoachDetectorSupport.bucket(1.66E-15, 0.1, 2))
     }
 
     /** Corpus section `=== ISOWEEK ===` (14 rows). */

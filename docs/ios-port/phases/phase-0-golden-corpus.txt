@@ -18,6 +18,10 @@
 # BUCKETINT step=5, ISOWEEK, PCT. 35 double rows each except BUCKETINT (9 ints) and
 # ISOWEEK (14 dates).
 #
+# See also the ADDENDUM at the end of this file (captured 2026-08-02): a second, separately
+# captured corpus of values whose Double.toString() is in scientific notation. Its section
+# headers repeat the names above with a different 17-value input list.
+#
 # --- Sanity rows, confirmed as captured -------------------------------------------------
 #   FMT1     -0.25      -> -0.3      (HALF_UP away from zero, not -0.2)
 #   SIGNED1  -0.0       -> 0.0       (explicit -0.0 normalisation, CoachDetectorSupport.kt:32)
@@ -329,3 +333,146 @@
 100.0 -> 100%
 0.001 -> 0%
 -0.001 -> 0%
+
+# ========================================================================================
+# ADDENDUM - scientific-notation corpus
+#
+# Captured:            2026-08-02, AFTER the final review of the Phase 0 :shared extraction.
+# Captured by:         app/src/test/java/com/zack/recomptracker/domain/coach/EnotationGoldenCorpusTest.kt
+#                      (temporary generator, deleted in the same commit - same discipline as the
+#                      original FormatGoldenCorpusTest above)
+# Source under test:   the verbatim pre-KMP JVM helpers from CoachDetectorSupport.kt @ 4c1b212^
+#                      (fmt / signed1 / bucket), reproduced in the generator because the production
+#                      object is now `internal` inside :shared.
+# JDK / Gradle / Locale: same toolchain as the original capture above.
+#
+# WHY: the first :shared implementation of formatFixed() bailed out with `check(...)` when
+# Double.toString() returned scientific notation. Kotlin emits E-notation for |v| < 1e-3 and
+# |v| >= 1e7, and TrendCalculator.trendPerWeek (an OLS slope) produces residues like 1.66E-15 on a
+# flat series - exactly the values BodyDetectors/TrainingDetectors format inside their
+# "flat band" branches. On the JVM those format cleanly as "0.00"; the :shared version threw, the
+# throw was swallowed by CoachDigestCoordinator's runCatching, and the whole digest staged no
+# signal that day. These rows are the ground truth that formatFixed() must reproduce instead.
+#
+# The `=== TOSTRING ===` section records which inputs actually take the E-notation path (0.001 does
+# not - it is kept as the boundary control).
+#
+# Large values were the suspected risk (Java's %f printing the exact binary value where the
+# shortest representation is shorter) and turned out NOT to be one. java.util.Formatter pads the
+# same shortest-representation digits for %f. Cross-checked on the same JDK 21 against a Java port
+# of the shared expansion, over {1.0E20, 1.0E23, 1.23E22, 1.0E16, Double.MAX_VALUE, Double.MIN_VALUE,
+# 1.0E-7, 1.66E-15, 3.14159E30, 9.87654321E45, 1.0E7, 1.23E8, 6.02214076E23, 2.5E-11, 7.77E-5} x
+# {0,1,2} decimals: 0 divergences. Note %.0f of 1.0E23 is 100000000000000000000000, NOT the exact
+# binary 99999999999999991611392 - so matching Java means NOT using the exact value.
+#
+# The last BUCKET row is not a formatter quirk: (1e20 / 0.1).roundToInt() saturates at
+# Int.MAX_VALUE, so bucket() formats 2147483647 * 0.1. Captured as-is, quirk and all.
+# ========================================================================================
+=== TOSTRING ===
+1.66E-15 -> 1.66E-15
+-1.66E-15 -> -1.66E-15
+3.55E-15 -> 3.55E-15
+4.0E-4 -> 4.0E-4
+-4.0E-4 -> -4.0E-4
+9.9E-4 -> 9.9E-4
+-9.9E-4 -> -9.9E-4
+0.001 -> 0.001
+5.0E-4 -> 5.0E-4
+-5.0E-4 -> -5.0E-4
+1.0E-7 -> 1.0E-7
+-1.0E-7 -> -1.0E-7
+4.9E-324 -> 4.9E-324
+1.0E7 -> 1.0E7
+-1.0E7 -> -1.0E7
+1.23E8 -> 1.23E8
+1.0E20 -> 1.0E20
+=== FMT0 ===
+1.66E-15 -> 0
+-1.66E-15 -> -0
+3.55E-15 -> 0
+4.0E-4 -> 0
+-4.0E-4 -> -0
+9.9E-4 -> 0
+-9.9E-4 -> -0
+0.001 -> 0
+5.0E-4 -> 0
+-5.0E-4 -> -0
+1.0E-7 -> 0
+-1.0E-7 -> -0
+4.9E-324 -> 0
+1.0E7 -> 10000000
+-1.0E7 -> -10000000
+1.23E8 -> 123000000
+1.0E20 -> 100000000000000000000
+=== FMT1 ===
+1.66E-15 -> 0.0
+-1.66E-15 -> -0.0
+3.55E-15 -> 0.0
+4.0E-4 -> 0.0
+-4.0E-4 -> -0.0
+9.9E-4 -> 0.0
+-9.9E-4 -> -0.0
+0.001 -> 0.0
+5.0E-4 -> 0.0
+-5.0E-4 -> -0.0
+1.0E-7 -> 0.0
+-1.0E-7 -> -0.0
+4.9E-324 -> 0.0
+1.0E7 -> 10000000.0
+-1.0E7 -> -10000000.0
+1.23E8 -> 123000000.0
+1.0E20 -> 100000000000000000000.0
+=== FMT2 ===
+1.66E-15 -> 0.00
+-1.66E-15 -> -0.00
+3.55E-15 -> 0.00
+4.0E-4 -> 0.00
+-4.0E-4 -> -0.00
+9.9E-4 -> 0.00
+-9.9E-4 -> -0.00
+0.001 -> 0.00
+5.0E-4 -> 0.00
+-5.0E-4 -> -0.00
+1.0E-7 -> 0.00
+-1.0E-7 -> -0.00
+4.9E-324 -> 0.00
+1.0E7 -> 10000000.00
+-1.0E7 -> -10000000.00
+1.23E8 -> 123000000.00
+1.0E20 -> 100000000000000000000.00
+=== SIGNED1 ===
+1.66E-15 -> 0.0
+-1.66E-15 -> 0.0
+3.55E-15 -> 0.0
+4.0E-4 -> 0.0
+-4.0E-4 -> 0.0
+9.9E-4 -> 0.0
+-9.9E-4 -> 0.0
+0.001 -> 0.0
+5.0E-4 -> 0.0
+-5.0E-4 -> 0.0
+1.0E-7 -> 0.0
+-1.0E-7 -> 0.0
+4.9E-324 -> 0.0
+1.0E7 -> +10000000.0
+-1.0E7 -> -10000000.0
+1.23E8 -> +123000000.0
+1.0E20 -> +100000000000000000000.0
+=== BUCKET step=0.1 dec=2 ===
+1.66E-15 -> 0.00
+-1.66E-15 -> 0.00
+3.55E-15 -> 0.00
+4.0E-4 -> 0.00
+-4.0E-4 -> 0.00
+9.9E-4 -> 0.00
+-9.9E-4 -> 0.00
+0.001 -> 0.00
+5.0E-4 -> 0.00
+-5.0E-4 -> 0.00
+1.0E-7 -> 0.00
+-1.0E-7 -> 0.00
+4.9E-324 -> 0.00
+1.0E7 -> 10000000.00
+-1.0E7 -> -10000000.00
+1.23E8 -> 123000000.00
+1.0E20 -> 214748364.70

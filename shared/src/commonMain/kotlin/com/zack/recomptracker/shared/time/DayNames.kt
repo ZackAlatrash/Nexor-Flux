@@ -14,5 +14,4 @@ fun DayOfWeek.fullNameEnglish(): String = when (this) {
     DayOfWeek.FRIDAY -> "Friday"
     DayOfWeek.SATURDAY -> "Saturday"
     DayOfWeek.SUNDAY -> "Sunday"
-    else -> name.lowercase().replaceFirstChar { it.uppercase() }
 }

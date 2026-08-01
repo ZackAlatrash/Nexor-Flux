@@ -781,6 +781,37 @@ remaining task.
   grep -rn "java\.time\|java\.util\|java\.io\|String\.format" shared/src/commonMain/ \
     | grep -v "^\s*\*" | grep -vE ":\s*(//|\*|/\*)"
   ```
+**Corrections learned in Task 7:**
+
+- ⚠️ **`.month.number` needs `import kotlinx.datetime.number`.** In 0.8.0 `number` is an *extension
+  property* on `Month`, not a member — unlike `.day`, `.year` and `.dayOfWeek`, which are plain
+  members needing no import. Symptom: `Unresolved reference 'number'` on **both** targets.
+- 🔴 **New failure class — cross-module smart casts.** Once a data class lives in `:shared`, Kotlin
+  refuses to smart-cast its nullable properties from `:app`:
+  *"Smart cast to … is impossible, because 'x' is a public API property declared in different
+  module."* Fix by binding to a local `val` before use:
+  ```kotlin
+  val start = prefs.maintenancePhaseStartDate ?: return null   // instead of null-checking in place
+  ```
+  Hit twice in `AppPreferences.kt` on `PlanPreferences` fields. **Expect this wherever a moved type's
+  nullable field is null-checked then used in `:app`.** `food` and `coach` carry many nullable
+  fields, so budget for it in Tasks 10 and 11.
+
+**Corrections learned in Task 8:**
+
+- 🔴 **`internal` breaks `:app` PRODUCTION code, not just tests.** `PatternDetectors.kt`'s four
+  `internal fun detect*` are called from `domain/coach/NutritionDetectors.kt` — a different package
+  that had not moved yet. **Before every move, grep `:app` for cross-package callers of the package's
+  `internal` symbols:**
+  ```bash
+  grep -rn "^internal " app/src/main/java/com/zack/recomptracker/domain/<pkg>/
+  # then grep :app for each symbol found
+  ```
+  Widen to `public` only where a caller outside the module genuinely needs it, with a comment saying why.
+- **A map-returning shared function costs two conversions per call site**, not one — `.map { it.toKotlinLocalDate() }` going in and `.mapKeys { it.toJavaLocalDate() }` coming out.
+- **`!a.isAfter(b)` → `a <= b`** (the table lists only the un-negated forms).
+- **Removing a `LocalDate.now()` default can force a DI change** — `PlanViewModel` had no `DateProvider` and needed one wired through `AppContainer`.
+
 - ⚠️ **Not every domain test lives in a per-package directory.** `streak`, `trend` and `adherence`
   had loose test files directly under `app/src/test/java/com/zack/recomptracker/domain/`, which a
   `for pkg in …` loop silently misses. Before each move, list the test root and check for stragglers:

@@ -108,6 +108,12 @@ paths throughout and only resolve there.
 
 ---
 
+## D9 · 2026-08-01 · kotlinx-datetime pinned at 0.8.0, Kotlin stays at 2.2.21
+
+**Why:** Phase 0 shares only `domain/`, which needs no Room-KMP or DataStore-KMP, so no Kotlin
+upgrade is required. 0.8.0 is the newest that compiles against Kotlin 2.2.21.
+**Reversing:** a Kotlin upgrade is independent and can happen later.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a

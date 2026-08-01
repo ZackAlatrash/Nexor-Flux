@@ -31,6 +31,7 @@ okhttp = "4.12.0"
 securityCrypto = "1.1.0-alpha06"
 coil = "2.7.0"
 robolectric = "4.16"
+kotlinxDatetime = "0.8.0"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -80,6 +81,7 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

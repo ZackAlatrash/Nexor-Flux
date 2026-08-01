@@ -1,6 +1,6 @@
 package com.zack.recomptracker.domain.plan
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * Pure resolver for "what plan was in effect on date X". The single source of truth for
@@ -20,7 +20,7 @@ object PlanHistory {
     fun planOn(versions: List<PlanVersion>, date: LocalDate): PlanTargets {
         require(versions.isNotEmpty()) { "planOn requires at least one version" }
         val sorted = versions.sortedBy { it.effectiveFrom }
-        val match = sorted.lastOrNull { !it.effectiveFrom.isAfter(date) } ?: sorted.first()
+        val match = sorted.lastOrNull { it.effectiveFrom <= date } ?: sorted.first()
         return match.targets
     }
 
@@ -37,7 +37,7 @@ object PlanHistory {
         if (versions.isEmpty()) return emptyMap()
         val sorted = versions.sortedBy { it.effectiveFrom }
         return dates.associateWith { date ->
-            (sorted.lastOrNull { !it.effectiveFrom.isAfter(date) } ?: sorted.first()).targets
+            (sorted.lastOrNull { it.effectiveFrom <= date } ?: sorted.first()).targets
         }
     }
 

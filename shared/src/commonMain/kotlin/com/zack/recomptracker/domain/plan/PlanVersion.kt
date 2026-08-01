@@ -1,6 +1,6 @@
 package com.zack.recomptracker.domain.plan
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /** A plan version that takes effect on [effectiveFrom] (inclusive) for all later days. */
 data class PlanVersion(

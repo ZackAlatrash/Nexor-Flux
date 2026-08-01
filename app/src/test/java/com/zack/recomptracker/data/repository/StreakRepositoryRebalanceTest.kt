@@ -9,6 +9,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import java.time.LocalDate
+import kotlinx.datetime.LocalDate as KxLocalDate
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,7 +25,7 @@ class StreakRepositoryRebalanceTest {
 
     // One baseline plan version covering all test dates: target 2500, zone 2400..2600.
     private val versions = listOf(
-        PlanVersion(LocalDate.parse("1970-01-01"), PlanTargets(2500, 160, 300, 70, 2400, 2600)),
+        PlanVersion(KxLocalDate.parse("1970-01-01"), PlanTargets(2500, 160, 300, 70, 2400, 2600)),
     )
 
     private fun log(date: LocalDate, steps: Int? = null) =

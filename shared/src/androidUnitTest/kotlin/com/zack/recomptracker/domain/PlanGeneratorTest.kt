@@ -6,16 +6,16 @@ import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.domain.plan.PlanGenerationOutcome
 import com.zack.recomptracker.domain.plan.PlanGenerator
+import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 class PlanGeneratorTest {
     private val generator = PlanGenerator()
 
     // 1996-01-01 birthDate yields age 30 as of the fixed today below.
-    private val today = LocalDate.of(2026, 6, 13)
+    private val today = LocalDate(2026, 6, 13)
 
     private val completeProfile = UserProfilePreferences(
         heightCm = 180,

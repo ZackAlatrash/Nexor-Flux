@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.plan
 
+import com.zack.recomptracker.core.time.SystemDateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.preferences.ActivityLevel
 import com.zack.recomptracker.data.preferences.BiologicalSex
@@ -9,6 +10,7 @@ import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,7 +27,6 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import java.time.LocalDate
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlanViewModelGenerateTest {
@@ -55,7 +56,7 @@ class PlanViewModelGenerateTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = PlanViewModel(planRepo, profileStore, logRepo)
+    private fun viewModel() = PlanViewModel(planRepo, profileStore, logRepo, SystemDateProvider())
 
     @Test
     fun generateWithCompleteProfileAndLoggedWeightOpensPreview() = runTest(dispatcher) {

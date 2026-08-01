@@ -4,13 +4,13 @@ import com.zack.recomptracker.data.preferences.ActivityLevel
 import com.zack.recomptracker.data.preferences.BiologicalSex
 import com.zack.recomptracker.data.preferences.FitnessGoal
 import com.zack.recomptracker.data.preferences.UserProfilePreferences
+import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 class PlanGeneratorBirthDateTest {
     private val gen = PlanGenerator()
-    private val today = LocalDate.of(2026, 6, 13)
+    private val today = LocalDate(2026, 6, 13)
 
     private fun fullProfile() = UserProfilePreferences(
         heightCm = 180,

@@ -23,6 +23,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate as KxLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -403,7 +405,7 @@ class RebalanceCoordinatorTest {
         assertNotNull("initial version emission does not cancel", store.current().active)
 
         // A real change (a new version row) while ACTIVE → ENDED_EARLY("plan_edited").
-        versions.emit(listOf(PlanVersion(today, targets(2400))))
+        versions.emit(listOf(PlanVersion(today.toKotlinLocalDate(), targets(2400))))
         runCurrent()
 
         val after = store.current()
@@ -444,7 +446,7 @@ class RebalanceCoordinatorTest {
         coordinator.start()
         runCurrent()
 
-        versions.emit(listOf(PlanVersion(LocalDate.parse("2026-06-01"), targets(2500))))
+        versions.emit(listOf(PlanVersion(KxLocalDate.parse("2026-06-01"), targets(2500))))
         runCurrent()
 
         assertNotNull("only the first (initial) emission is skipped", store.current().active)
@@ -657,7 +659,7 @@ class RebalanceCoordinatorTest {
         versions.emit(emptyList()) // initial emission, dropped
         runCurrent()
 
-        versions.emit(listOf(PlanVersion(today, targets(2400))))
+        versions.emit(listOf(PlanVersion(today.toKotlinLocalDate(), targets(2400))))
         runCurrent()
 
         assertEquals(RebalanceStatus.ENDED_EARLY, store.current().history.first().status)

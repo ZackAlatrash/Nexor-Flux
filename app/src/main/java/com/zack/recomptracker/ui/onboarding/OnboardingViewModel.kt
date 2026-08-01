@@ -15,14 +15,15 @@ import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.domain.plan.GeneratedPlan
 import com.zack.recomptracker.domain.plan.PlanGenerationOutcome
 import com.zack.recomptracker.domain.plan.PlanGenerator
+import java.time.LocalDate
+import java.time.Period
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.Period
+import kotlinx.datetime.toKotlinLocalDate
 
 private const val CM_PER_INCH = 2.54
 private const val KG_PER_POUND = 0.45359237
@@ -193,7 +194,7 @@ class OnboardingViewModel(
         val s = _uiState.value
         val weightKg = parseWeightKg(s.weightInput, s.useMetricUnits) ?: return
         viewModelScope.launch {
-            when (val outcome = planGenerator.generate(buildDraftProfile(s), weightKg, dateProvider.today())) {
+            when (val outcome = planGenerator.generate(buildDraftProfile(s), weightKg, dateProvider.today().toKotlinLocalDate())) {
                 is PlanGenerationOutcome.Ready -> set {
                     copy(
                         step = 3,

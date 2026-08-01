@@ -403,10 +403,10 @@ class AppContainer(context: Context) {
         val logs28 = logs.filter { LocalDate.parse(it.date) in last28Start..today }
         val meals14 = meals.filter { LocalDate.parse(it.date) in last14Start..today }
         val mealsByDate = meals14.groupBy { LocalDate.parse(it.date) }
-        val weekTargets = PlanHistory.resolve(versions, (0..13).map { last14Start.plusDays(it.toLong()) })
+        val weekTargets = PlanHistory.resolve(versions, (0..13).map { last14Start.plusDays(it.toLong()).toKotlinLocalDate() })
         val nutritionDays = (0..13).map { off ->
             val d = last14Start.plusDays(off.toLong())
-            NutritionDay(d.toKotlinLocalDate(), mealsByDate[d].orEmpty().macroTotals().calories, weekTargets[d]?.calories ?: prefs.targetCalories)
+            NutritionDay(d.toKotlinLocalDate(), mealsByDate[d].orEmpty().macroTotals().calories, weekTargets[d.toKotlinLocalDate()]?.calories ?: prefs.targetCalories)
         }
         val loggedDates = logs28.map { it.date }.toSet() + meals14.map { it.date }.toSet()
         val daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today }
@@ -438,7 +438,8 @@ class AppContainer(context: Context) {
         )
         val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
-        val weekEndTarget = PlanHistory.planOnOrFallback(versions, today, prefs.toPlanTargets()).calories
+        val weekEndTarget =
+            PlanHistory.planOnOrFallback(versions, today.toKotlinLocalDate(), prefs.toPlanTargets()).calories
         // Activity domain (steps) — the fourth domain fed into the weekly check-in. Derived from the
         // step logs via the shared ActivitySummary (no duplicated math), this week vs last week.
         val stepsByDate = logs28.mapNotNull { l -> l.steps?.let { KxLocalDate.parse(l.date) to it } }.toMap()
@@ -458,7 +459,7 @@ class AppContainer(context: Context) {
         val patternDays = (0..13).map { off ->
             val d = last14Start.plusDays(off.toLong())
             val t = mealsByDate[d].orEmpty().macroTotals()
-            DayNutrition(d, t.calories, t.proteinG, t.carbsG, t.fatG, logged = t.calories > 0)
+            DayNutrition(d.toKotlinLocalDate(), t.calories, t.proteinG, t.carbsG, t.fatG, logged = t.calories > 0)
         }
         val patternTargets = NutritionTargets(
             calories = prefs.targetCalories,
@@ -729,6 +730,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+                dateProvider = container.dateProvider,
             )
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,

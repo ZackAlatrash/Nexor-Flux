@@ -59,6 +59,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 
 @Immutable
@@ -220,8 +221,9 @@ class DashboardViewModel(
         // BASE per-day targets (what the permanent plan says) — feeds the AdjustmentEngine input.
         val dayTargets = PlanHistory.resolve(
             versions,
-            (0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) },
-        )
+            ((0..13).map { last14Start.plusDays(it.toLong()) } + (0..6).map { last7Start.plusDays(it.toLong()) })
+                .map { it.toKotlinLocalDate() },
+        ).mapKeys { (date, _) -> date.toJavaLocalDate() }
         // EFFECTIVE per-day targets (reduced on rebalance days) — feeds the display surfaces: the
         // adherence tile, in-zone-7, and today's ring. Behaviour-neutral with an empty state.
         val effectiveTargets = EffectiveTargets.resolveAll(dayTargets, rebalanceState)

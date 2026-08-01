@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
@@ -223,7 +224,7 @@ class FoodLogViewModel(
                 ) { weekMap, versions, prefs, rebalanceState ->
                     val fallback = prefs.toPlanTargets()
                     weekDates.map { d ->
-                        val base = PlanHistory.planOnOrFallback(versions, d, fallback)
+                        val base = PlanHistory.planOnOrFallback(versions, d.toKotlinLocalDate(), fallback)
                         // Effective (reduced) target on a rebalance day; base on every other day.
                         val z = EffectiveTargets.resolve(base, d, rebalanceState)
                         DayCalorieSummary(

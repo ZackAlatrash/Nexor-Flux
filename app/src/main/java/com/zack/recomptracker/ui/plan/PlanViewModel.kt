@@ -2,6 +2,7 @@ package com.zack.recomptracker.ui.plan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.util.toNullableDouble
 import com.zack.recomptracker.core.util.toNullableInt
 import com.zack.recomptracker.data.preferences.PlanPreferences
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 /** Drives the generate-plan dialog: either a computed preview or an inline weight prompt. */
 sealed interface PlanGenerationDialog {
@@ -48,6 +50,7 @@ class PlanViewModel(
     private val planRepository: PlanRepository,
     private val userProfileStore: UserProfilePreferencesStore,
     private val logRepository: LogRepository,
+    private val dateProvider: DateProvider,
     private val planGenerator: PlanGenerator = PlanGenerator(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlanUiState())
@@ -184,7 +187,7 @@ class PlanViewModel(
 
     private suspend fun runGeneration(weightKg: Double?) {
         val profile = userProfileStore.preferences.first()
-        handleOutcome(planGenerator.generate(profile, weightKg))
+        handleOutcome(planGenerator.generate(profile, weightKg, dateProvider.today().toKotlinLocalDate()))
     }
 
     private suspend fun latestLoggedWeightKg(): Double? =

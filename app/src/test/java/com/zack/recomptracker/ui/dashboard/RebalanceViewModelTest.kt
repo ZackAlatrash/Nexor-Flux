@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -308,7 +309,7 @@ class RebalanceViewModelTest {
         // Initial (drop(1)) emission never cancels; a real version change does → "plan_edited".
         versions.emit(emptyList())
         advanceUntilIdle()
-        versions.emit(listOf(PlanVersion(today, targets(2400))))
+        versions.emit(listOf(PlanVersion(today.toKotlinLocalDate(), targets(2400))))
         advanceUntilIdle()
 
         assertEquals(

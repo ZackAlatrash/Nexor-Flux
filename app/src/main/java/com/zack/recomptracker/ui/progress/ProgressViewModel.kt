@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 
 data class ChartSeries(
@@ -145,7 +146,8 @@ class ProgressViewModel(
                 // Adherence chart's target line resolves to EFFECTIVE (reduced) targets on rebalance
                 // days, base otherwise — behaviour-neutral with an empty state.
                 val targetsByDate = EffectiveTargets.resolveAll(
-                    PlanHistory.resolve(versions, dates),
+                    PlanHistory.resolve(versions, dates.map { it.toKotlinLocalDate() })
+                        .mapKeys { (date, _) -> date.toJavaLocalDate() },
                     rebalanceState,
                 )
                 // Exclude planned (not-yet-eaten) entries from progress charts.

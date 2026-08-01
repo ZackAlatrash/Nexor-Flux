@@ -1,12 +1,14 @@
 package com.zack.recomptracker.domain.insight
 
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.DayOfWeek
-import java.time.LocalDate
 
 class PatternDetectorsTest {
 
@@ -17,12 +19,12 @@ class PatternDetectorsTest {
 
     /** 14 consecutive days ending [end]; [calsFor] maps each date to its calories. proteins/etc default to target. */
     private fun days(
-        end: LocalDate = LocalDate.of(2026, 6, 14),
+        end: LocalDate = LocalDate(2026, 6, 14),
         logged: (LocalDate) -> Boolean = { true },
         calsFor: (LocalDate) -> Int,
         proteinFor: (LocalDate) -> Double = { targets.proteinG.toDouble() },
     ): List<DayNutrition> = (0..13).map { offset ->
-        val d = end.minusDays((13 - offset).toLong())
+        val d = end.minus(13 - offset, DateTimeUnit.DAY)
         DayNutrition(d, calsFor(d), proteinFor(d), targets.carbsG.toDouble(), targets.fatG.toDouble(), logged(d))
     }
 
@@ -74,10 +76,10 @@ class PatternDetectorsTest {
     @Test
     fun `derailment fires when one day drives most of the surplus`() {
         // 7 logged days: six at target (no surplus), one at +1500.
-        val end = LocalDate.of(2026, 6, 14)
+        val end = LocalDate(2026, 6, 14)
         val spike = end // most recent day
         val list = (0..13).map { offset ->
-            val d = end.minusDays((13 - offset).toLong())
+            val d = end.minus(13 - offset, DateTimeUnit.DAY)
             val cals = if (d == spike) 3700 else 2200
             DayNutrition(d, cals, 165.0, 320.0, 68.0, logged = offset >= 7) // only last 7 logged
         }
@@ -139,10 +141,10 @@ class PatternDetectorsTest {
 
     @Test
     fun `streak fires for consecutive protein-target days`() {
-        val end = LocalDate.of(2026, 6, 14)
+        val end = LocalDate(2026, 6, 14)
         // Last 5 days at/above target, earlier day below.
         val list = (0..13).map { offset ->
-            val d = end.minusDays((13 - offset).toLong())
+            val d = end.minus(13 - offset, DateTimeUnit.DAY)
             val protein = if (offset >= 9) 180.0 else 120.0
             DayNutrition(d, 2200, protein, 320.0, 68.0, logged = true)
         }
@@ -153,10 +155,10 @@ class PatternDetectorsTest {
 
     @Test
     fun `streak ignores a not-yet-logged most-recent day`() {
-        val end = LocalDate.of(2026, 6, 14)
+        val end = LocalDate(2026, 6, 14)
         // Today (most recent) unlogged; previous 4 at target.
         val list = (0..13).map { offset ->
-            val d = end.minusDays((13 - offset).toLong())
+            val d = end.minus(13 - offset, DateTimeUnit.DAY)
             val logged = offset != 13
             val protein = if (offset in 9..12) 180.0 else 120.0
             DayNutrition(d, if (logged) 2200 else 0, if (logged) protein else 0.0, 320.0, 68.0, logged)
@@ -168,9 +170,9 @@ class PatternDetectorsTest {
 
     @Test
     fun `streak does not fire below minimum`() {
-        val end = LocalDate.of(2026, 6, 14)
+        val end = LocalDate(2026, 6, 14)
         val list = (0..13).map { offset ->
-            val d = end.minusDays((13 - offset).toLong())
+            val d = end.minus(13 - offset, DateTimeUnit.DAY)
             val protein = if (offset >= 12) 180.0 else 120.0 // only last 2 hit
             DayNutrition(d, 2200, protein, 320.0, 68.0, logged = true)
         }

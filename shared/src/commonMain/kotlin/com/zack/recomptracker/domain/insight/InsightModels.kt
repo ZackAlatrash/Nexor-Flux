@@ -1,6 +1,6 @@
 package com.zack.recomptracker.domain.insight
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /** One calendar day's eaten nutrition. [logged] is false for days with no eaten intake. */
 data class DayNutrition(

@@ -5,6 +5,7 @@ import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.Instant
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.toJavaLocalDate
 
 /**
  * Seeds the plan-history ledger exactly once. Room migrations can't read DataStore, so the
@@ -23,7 +24,7 @@ class PlanHistoryInitializer(
         val prefs = currentPreferences()
         planVersionDao.upsert(
             prefs.toPlanVersionEntity(
-                effectiveFrom = PlanHistory.BASELINE_DATE,
+                effectiveFrom = PlanHistory.BASELINE_DATE.toJavaLocalDate(),
                 createdAt = Instant.now().toString(),
             ),
         )

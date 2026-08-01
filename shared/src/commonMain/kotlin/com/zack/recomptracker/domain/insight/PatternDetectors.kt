@@ -1,10 +1,9 @@
 package com.zack.recomptracker.domain.insight
 
-import java.time.DayOfWeek
-import java.time.format.TextStyle
-import java.util.Locale
+import com.zack.recomptracker.shared.time.fullNameEnglish
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.datetime.DayOfWeek
 
 private const val WEEKDAY_WEEKEND_MIN_GAP = 200.0
 
@@ -28,7 +27,12 @@ internal fun detectWeekdayWeekend(days: List<DayNutrition>, targets: NutritionTa
 private const val DERAILMENT_MIN_WEEKLY_SURPLUS = 700
 private const val DERAILMENT_MIN_SHARE_PCT = 60
 
-internal fun detectDerailmentDay(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
+/**
+ * Public (unlike its three siblings) because `DerailmentDayDetector` in the app module's
+ * proactive-coach spine reuses this exact fact. `internal` is module-scoped, and this file now
+ * lives in `:shared`.
+ */
+fun detectDerailmentDay(days: List<DayNutrition>, targets: NutritionTargets): InsightFact? {
     val recent = days.filter { it.logged }.sortedBy { it.date }.takeLast(7)
     if (recent.size < 4) return null
     val surpluses = recent.map { it to (it.calories - targets.calories).coerceAtLeast(0) }
@@ -41,7 +45,7 @@ internal fun detectDerailmentDay(days: List<DayNutrition>, targets: NutritionTar
         val sharePct = (top.sumOf { it.second }.toDouble() / weeklySurplus * 100).roundToInt()
         if (sharePct >= DERAILMENT_MIN_SHARE_PCT) {
             val label = top.joinToString(" and ") {
-                it.first.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.US)
+                it.first.date.dayOfWeek.fullNameEnglish()
             }
             val statement = "$label drove $sharePct% of this week's calorie surplus."
             val priority = 30 + ((sharePct - DERAILMENT_MIN_SHARE_PCT) / 5).coerceIn(0, 15)

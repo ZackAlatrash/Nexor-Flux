@@ -9,6 +9,7 @@ import com.zack.recomptracker.domain.insight.InsightFactType
 import com.zack.recomptracker.domain.insight.NutritionTargets
 import com.zack.recomptracker.domain.insight.detectDerailmentDay
 import kotlin.math.roundToInt
+import kotlinx.datetime.toKotlinLocalDate
 
 /** The plan's adherence floor (%). Mirrors `AdjustmentThresholds.adherenceMinimumPercent`. */
 private const val ADHERENCE_MINIMUM = 80.0
@@ -243,7 +244,7 @@ private fun CoachContext.toNutritionTargets() = NutritionTargets(
 private fun CoachContext.toDayNutrition(): List<DayNutrition> =
     nutrition.eatenByDate.entries.sortedBy { it.key }.map { (date, m: MacroTotals) ->
         DayNutrition(
-            date = date,
+            date = date.toKotlinLocalDate(),
             calories = m.calories,
             proteinG = m.proteinG,
             carbsG = m.carbsG,

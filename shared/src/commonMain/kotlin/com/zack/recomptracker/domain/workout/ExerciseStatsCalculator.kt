@@ -1,8 +1,8 @@
 package com.zack.recomptracker.domain.workout
 
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import kotlin.math.max
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 /**
  * Derives all detail-screen stats for a single exercise from its flat [ExerciseHistoryPoint] list
@@ -55,12 +55,14 @@ object ExerciseStatsCalculator {
             tp.bestEstimatedOneRepMax?.let { DayValue(tp.date, it) }
         }
         val volumeSeries = trend.map { DayValue(it.date, it.totalVolume) }
-        val topSetSeries = history.groupBy { it.date }.toSortedMap().mapNotNull { (date, pts) ->
+        // `.entries.sortedBy { it.key }` replaces JVM-only `toSortedMap()`.
+        val topSetSeries = history.groupBy { it.date }.entries.sortedBy { it.key }.mapNotNull { (date, pts) ->
             pts.mapNotNull { it.weightKg }.maxOrNull()?.let { DayValue(date, it) }
         }
 
         val heaviest = history.filter { it.weightKg != null }.maxByOrNull { it.weightKg!! }
-        val dates = history.map { it.date }.toSortedSet()
+        // `.distinct().sorted()` replaces JVM-only `toSortedSet()`.
+        val dates = history.map { it.date }.distinct().sorted()
 
         val recentSessions = history.groupBy { it.date }.map { (date, pts) ->
             DaySession(
@@ -87,11 +89,11 @@ object ExerciseStatsCalculator {
     }
 
     /** Distinct training days divided by the span in weeks (min 1 week). Null if no parseable dates. */
-    private fun sessionsPerWeek(dates: Set<String>): Double? {
+    private fun sessionsPerWeek(dates: Collection<String>): Double? {
         if (dates.isEmpty()) return null
         val parsed = dates.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
         if (parsed.isEmpty()) return null
-        val spanDays = ChronoUnit.DAYS.between(parsed.first(), parsed.last()).toDouble()
+        val spanDays = parsed.first().daysUntil(parsed.last()).toDouble()
         val weeks = max(1.0, spanDays / 7.0)
         return parsed.size / weeks
     }

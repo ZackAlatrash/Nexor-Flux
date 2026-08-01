@@ -201,7 +201,7 @@ class ProgressViewModel(
                 // LocalDate.parse / volume summing never touches the main thread. Keep only trained
                 // groups (non-zero volume in either week) and rank the biggest movers first.
                 val muscleVolumeReads = muscleVolumeReadsFrom(
-                    MuscleTrainingAggregator.aggregate(sessions, library, today),
+                    MuscleTrainingAggregator.aggregate(sessions, library, today.toKotlinLocalDate()),
                 )
 
                 ProgressUiState(

@@ -1,5 +1,6 @@
 package com.zack.recomptracker.domain.workout
 
+import com.zack.recomptracker.data.local.entity.toEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

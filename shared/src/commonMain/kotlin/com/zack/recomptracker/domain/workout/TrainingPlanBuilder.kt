@@ -1,7 +1,10 @@
 package com.zack.recomptracker.domain.workout
 
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
 
 /**
  * The pure "brain" behind the training-planning surfaces (Train-home "Today" card + the Stats-tab
@@ -54,26 +57,26 @@ object TrainingPlanBuilder {
         recoveryLow: Boolean = false,
         deloadSuggested: Boolean = false,
     ): TrainingPlan {
-        val weekStart = today.minusDays((today.dayOfWeek.value - 1).toLong()) // Monday of this week
+        val weekStart = today.minus(today.dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY) // Monday of this week
         val musclesById: Map<Long, List<String>> = library.associate { it.id to it.primaryMuscles }
 
         // Per-category weekly sets + last-hit date (over all history).
         val weeklySets = mutableMapOf<MuscleCategory, Int>()
         val lastHit = mutableMapOf<MuscleCategory, LocalDate>()
-        val sessionDates = sortedSetOf<LocalDate>()
+        val sessionDates = mutableSetOf<LocalDate>()
 
         for (session in history) {
             val date = runCatching { LocalDate.parse(session.date) }.getOrNull() ?: continue
-            if (date.isAfter(today)) continue
+            if (date > today) continue
             sessionDates += date
-            val inThisWeek = !date.isBefore(weekStart)
+            val inThisWeek = date >= weekStart
             for (ex in session.exercises) {
                 val completed = ex.sets.count { it.completed }
                 if (completed == 0) continue
                 val category = muscleCategoryFor(musclesById[ex.exerciseId] ?: emptyList()) ?: continue
                 if (inThisWeek) weeklySets[category] = (weeklySets[category] ?: 0) + completed
                 val prev = lastHit[category]
-                if (prev == null || date.isAfter(prev)) lastHit[category] = date
+                if (prev == null || date > prev) lastHit[category] = date
             }
         }
 
@@ -81,15 +84,15 @@ object TrainingPlanBuilder {
             CategoryWeek(
                 category = cat,
                 setsThisWeek = weeklySets[cat] ?: 0,
-                daysSinceLastHit = lastHit[cat]?.let { ChronoUnit.DAYS.between(it, today).toInt() },
+                daysSinceLastHit = lastHit[cat]?.let { it.daysUntil(today) },
             )
         }
 
         // Cadence.
         val lastSession = sessionDates.maxOrNull()
         val trainedToday = lastSession == today
-        val daysSinceLastSession = lastSession?.let { ChronoUnit.DAYS.between(it, today).toInt() }
-        val sessionsThisWeek = sessionDates.count { !it.isBefore(weekStart) }
+        val daysSinceLastSession = lastSession?.let { it.daysUntil(today) }
+        val sessionsThisWeek = sessionDates.count { it >= weekStart }
         val consecutive = consecutiveDays(sessionDates, lastSession, today)
 
         // Focus: least-trained-this-week categories (ties → longest since hit → enum order).
@@ -136,12 +139,12 @@ object TrainingPlanBuilder {
 
     /** Consecutive calendar days with a session, ending at the current streak (today or yesterday). */
     private fun consecutiveDays(dates: Set<LocalDate>, last: LocalDate?, today: LocalDate): Int {
-        if (last == null || last.isBefore(today.minusDays(1))) return 0 // already resting
+        if (last == null || last < today.minus(1, DateTimeUnit.DAY)) return 0 // already resting
         var day: LocalDate = last
         var count = 0
         while (dates.contains(day)) {
             count++
-            day = day.minusDays(1)
+            day = day.minus(1, DateTimeUnit.DAY)
         }
         return count
     }

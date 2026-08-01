@@ -1,6 +1,5 @@
 package com.zack.recomptracker.domain.workout
 
-import com.zack.recomptracker.data.local.entity.ExerciseEntity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -33,22 +32,3 @@ object ExerciseLibraryJson {
     fun decodeList(raw: String): List<String> =
         if (raw.isBlank()) emptyList() else json.decodeFromString(stringList, raw)
 }
-
-/** Top-level so it is usable as a plain extension across packages (and same-package tests). */
-fun FreeExerciseDbExerciseDto.toEntity(source: String, sourceVersion: String): ExerciseEntity =
-    ExerciseEntity(
-        source = source,
-        sourceVersion = sourceVersion,
-        externalId = id,
-        name = name,
-        category = category,
-        force = force,
-        level = level,
-        mechanic = mechanic,
-        equipment = equipment,
-        primaryMuscles = ExerciseLibraryJson.encodeList(primaryMuscles),
-        secondaryMuscles = ExerciseLibraryJson.encodeList(secondaryMuscles),
-        instructions = ExerciseLibraryJson.encodeList(instructions),
-        images = ExerciseLibraryJson.encodeList(images),
-        userCreated = false,
-    )

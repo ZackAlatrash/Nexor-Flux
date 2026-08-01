@@ -3,11 +3,13 @@ package com.zack.recomptracker.domain.workout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 class MuscleTrainingAggregatorTest {
 
-    private val today: LocalDate = LocalDate.of(2026, 7, 4)
+    private val today: LocalDate = LocalDate(2026, 7, 4)
 
     // --- Fixture helpers -----------------------------------------------------
 
@@ -24,7 +26,7 @@ class MuscleTrainingAggregatorTest {
 
     /** A session on [daysAgo] before [today] with one exercise and the given sets. */
     private fun session(daysAgo: Int, exerciseId: Long, sets: List<SessionSet>): WorkoutSession {
-        val date = today.minusDays(daysAgo.toLong()).toString()
+        val date = today.minus(daysAgo, DateTimeUnit.DAY).toString()
         return WorkoutSession(
             id = daysAgo.toLong() * 100 + exerciseId,
             workoutId = null, workoutName = "W", date = date,

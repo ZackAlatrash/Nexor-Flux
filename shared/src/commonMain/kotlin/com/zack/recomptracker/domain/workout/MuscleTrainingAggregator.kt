@@ -1,7 +1,8 @@
 package com.zack.recomptracker.domain.workout
 
-import java.time.LocalDate
 import kotlin.math.exp
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 /**
  * Aggregates recent completed training into a per-[MuscleCategory] summary: weekly training
@@ -119,7 +120,7 @@ object MuscleTrainingAggregator {
 
         for (session in sessions) {
             val date = runCatching { LocalDate.parse(session.date) }.getOrNull() ?: continue
-            val daysAgo = today.toEpochDay().minus(date.toEpochDay()).toInt()
+            val daysAgo = date.daysUntil(today)
             // Ignore future-dated sessions and anything older than the prior-week window.
             if (daysAgo < 0 || daysAgo >= 2 * WEEK_DAYS) continue
 

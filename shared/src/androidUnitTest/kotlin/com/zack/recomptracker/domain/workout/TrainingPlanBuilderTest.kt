@@ -6,11 +6,13 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 class TrainingPlanBuilderTest {
 
-    private val today = LocalDate.of(2026, 7, 2) // Thursday; week Monday = 2026-06-29
+    private val today = LocalDate(2026, 7, 2) // Thursday; week Monday = 2026-06-29
 
     // ── test data helpers ────────────────────────────────────────────────────
     private fun ex(id: Long, muscle: String) = Exercise(
@@ -59,8 +61,8 @@ class TrainingPlanBuilderTest {
     @Test fun `rests when the weekly session target is met`() {
         val lib = libraryFor(1L to "chest", 2L to "quadriceps")
         val history = listOf(
-            session(today.minusDays(3), sx(1, 4)), // Mon
-            session(today.minusDays(1), sx(2, 4)), // Wed (yesterday) — 2 sessions, not consecutive-3
+            session(today.minus(3, DateTimeUnit.DAY), sx(1, 4)), // Mon
+            session(today.minus(1, DateTimeUnit.DAY), sx(2, 4)), // Wed (yesterday) — 2 sessions, not consecutive-3
         )
         val plan = build(history, lib, weeklyTarget = 2)
         assertEquals(Verdict.REST, plan.verdict)
@@ -70,9 +72,9 @@ class TrainingPlanBuilderTest {
     @Test fun `rests after three consecutive training days`() {
         val lib = libraryFor(1L to "chest")
         val history = listOf(
-            session(today.minusDays(1), sx(1, 3)),
-            session(today.minusDays(2), sx(1, 3)),
-            session(today.minusDays(3), sx(1, 3)),
+            session(today.minus(1, DateTimeUnit.DAY), sx(1, 3)),
+            session(today.minus(2, DateTimeUnit.DAY), sx(1, 3)),
+            session(today.minus(3, DateTimeUnit.DAY), sx(1, 3)),
         )
         val plan = build(history, lib)
         assertEquals(Verdict.REST, plan.verdict)
@@ -81,7 +83,7 @@ class TrainingPlanBuilderTest {
 
     @Test fun `rests when a deload is suggested`() {
         val lib = libraryFor(1L to "chest")
-        val plan = build(listOf(session(today.minusDays(2), sx(1, 3))), lib, deloadSuggested = true)
+        val plan = build(listOf(session(today.minus(2, DateTimeUnit.DAY), sx(1, 3))), lib, deloadSuggested = true)
         assertEquals(Verdict.REST, plan.verdict)
     }
 
@@ -98,7 +100,7 @@ class TrainingPlanBuilderTest {
     @Test fun `trains and focuses on muscles untrained this week`() {
         val lib = libraryFor(1L to "chest", 2L to "quadriceps")
         // This week: chest + legs trained; back/shoulders/arms/core = 0 sets.
-        val history = listOf(session(today.minusDays(2), sx(1, 5), sx(2, 5)))
+        val history = listOf(session(today.minus(2, DateTimeUnit.DAY), sx(1, 5), sx(2, 5)))
         val plan = build(history, lib, weeklyTarget = 5) // 1 session, under target → TRAIN
         assertEquals(Verdict.TRAIN, plan.verdict)
         assertTrue(plan.focus.contains(MuscleCategory.BACK))
@@ -110,8 +112,8 @@ class TrainingPlanBuilderTest {
         val lib = libraryFor(1L to "chest", 2L to "shoulders", 3L to "biceps", 4L to "quadriceps")
         // Trained chest, shoulders, arms, legs this week → BACK is the clear gap.
         val history = listOf(
-            session(today.minusDays(2), sx(1, 4), sx(2, 4)),
-            session(today.minusDays(1), sx(3, 4), sx(4, 4)),
+            session(today.minus(2, DateTimeUnit.DAY), sx(1, 4), sx(2, 4)),
+            session(today.minus(1, DateTimeUnit.DAY), sx(3, 4), sx(4, 4)),
         )
         val pull = routine(1, "Pull", "lats", "biceps")   // covers BACK (+arms)
         val legs = routine(2, "Legs", "quadriceps")        // covers nothing in the focus
@@ -125,8 +127,8 @@ class TrainingPlanBuilderTest {
     @Test fun `no routine recommended when none covers the focus`() {
         val lib = libraryFor(1L to "chest", 2L to "shoulders", 3L to "biceps", 4L to "quadriceps")
         val history = listOf(
-            session(today.minusDays(2), sx(1, 4), sx(2, 4)),
-            session(today.minusDays(1), sx(3, 4), sx(4, 4)),
+            session(today.minus(2, DateTimeUnit.DAY), sx(1, 4), sx(2, 4)),
+            session(today.minus(1, DateTimeUnit.DAY), sx(3, 4), sx(4, 4)),
         )
         val legs = routine(2, "Legs", "quadriceps") // BACK is the focus; Legs doesn't cover it
         val plan = build(history, lib, routines = listOf(legs), weeklyTarget = 5)
@@ -140,8 +142,8 @@ class TrainingPlanBuilderTest {
     @Test fun `weekly breakdown reports sets and days-since-last-hit per category`() {
         val lib = libraryFor(1L to "chest", 2L to "lats")
         val history = listOf(
-            session(today.minusDays(1), sx(1, 5)),  // chest, 5 sets, this week
-            session(today.minusDays(10), sx(2, 3)), // back, 3 sets, 10 days ago (outside week)
+            session(today.minus(1, DateTimeUnit.DAY), sx(1, 5)),  // chest, 5 sets, this week
+            session(today.minus(10, DateTimeUnit.DAY), sx(2, 3)), // back, 3 sets, 10 days ago (outside week)
         )
         val plan = build(history, lib)
         val byCat = plan.weekly.associateBy { it.category }
@@ -157,7 +159,7 @@ class TrainingPlanBuilderTest {
 
     @Test fun `low recovery tempers a train verdict but does not force rest`() {
         val lib = libraryFor(1L to "chest")
-        val plan = build(listOf(session(today.minusDays(3), sx(1, 4))), lib, weeklyTarget = 5, recoveryLow = true)
+        val plan = build(listOf(session(today.minus(3, DateTimeUnit.DAY), sx(1, 4))), lib, weeklyTarget = 5, recoveryLow = true)
         assertEquals(Verdict.TRAIN, plan.verdict)
         assertTrue(plan.recoveryTempered)
     }
@@ -170,7 +172,7 @@ class TrainingPlanBuilderTest {
             id = 0, exerciseId = 1, exerciseName = "Ex1", sortOrder = 0, note = null,
             sets = listOf(set(), SessionSet(0, 2, 8, 50.0, 2, completed = false)),
         )
-        val plan = build(listOf(session(today.minusDays(1), partial)), lib)
+        val plan = build(listOf(session(today.minus(1, DateTimeUnit.DAY), partial)), lib)
         val chest = plan.weekly.first { it.category == MuscleCategory.CHEST }
         assertEquals(1, chest.setsThisWeek) // only the completed set
     }

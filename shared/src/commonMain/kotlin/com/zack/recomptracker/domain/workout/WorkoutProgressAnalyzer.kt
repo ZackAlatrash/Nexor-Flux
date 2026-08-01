@@ -23,7 +23,8 @@ object WorkoutProgressAnalyzer {
     /** One [ExerciseTrendPoint] per date, ascending. */
     fun trendPoints(history: List<ExerciseHistoryPoint>): List<ExerciseTrendPoint> =
         history.groupBy { it.date }
-            .toSortedMap()
+            // `.entries.sortedBy { it.key }` replaces JVM-only `toSortedMap()`.
+            .entries.sortedBy { it.key }
             .map { (date, points) ->
                 ExerciseTrendPoint(
                     date = date,

@@ -2,9 +2,9 @@ package com.zack.recomptracker.data.repository
 
 import com.zack.recomptracker.data.local.dao.ExerciseDao
 import com.zack.recomptracker.data.local.entity.ExerciseEntity
+import com.zack.recomptracker.data.local.entity.toEntity
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.domain.workout.ExerciseLibraryJson
-import com.zack.recomptracker.domain.workout.toEntity
 import java.io.InputStream
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first

@@ -1,7 +1,7 @@
 package com.zack.recomptracker.domain.adherence
 
-import java.time.LocalDate
 import kotlin.math.abs
+import kotlinx.datetime.LocalDate
 
 data class NutritionDay(
     val date: LocalDate,

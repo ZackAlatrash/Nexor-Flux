@@ -1,7 +1,9 @@
 package com.zack.recomptracker.domain
 
 import com.zack.recomptracker.domain.streak.StreakCalculator
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -9,11 +11,11 @@ class StreakCalculatorTest {
     private val calc = StreakCalculator()
 
     // 2026-06-22 is a Monday.
-    private val mon = LocalDate.of(2026, 6, 22)
-    private val tue = mon.plusDays(1)
-    private val wed = mon.plusDays(2)
-    private val thu = mon.plusDays(3)
-    private val fri = mon.plusDays(4)
+    private val mon = LocalDate(2026, 6, 22)
+    private val tue = mon.plus(1, DateTimeUnit.DAY)
+    private val wed = mon.plus(2, DateTimeUnit.DAY)
+    private val thu = mon.plus(3, DateTimeUnit.DAY)
+    private val fri = mon.plus(4, DateTimeUnit.DAY)
 
     @Test fun emptyHistoryIsZero() {
         val r = calc.compute(emptySet(), today = thu, restDays = 2)

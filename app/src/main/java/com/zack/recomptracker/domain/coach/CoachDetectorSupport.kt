@@ -6,6 +6,7 @@ import java.time.temporal.IsoFields
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Shared, deterministic helpers for the detector catalog: number formatting for [SignalFacts] and
@@ -52,7 +53,7 @@ internal object CoachDetectorSupport {
 
     /** Map a [MetricPoint] series (coach context) into the calculators' [MeasurementPoint] type. */
     fun toMeasurementPoints(series: List<MetricPoint>): List<MeasurementPoint> =
-        series.map { MeasurementPoint(date = it.date, value = it.value) }
+        series.map { MeasurementPoint(date = it.date.toKotlinLocalDate(), value = it.value) }
 
     /**
      * Severity 0..100 from how far a value sits past a threshold. [distance] is the magnitude past

@@ -1,7 +1,9 @@
 package com.zack.recomptracker.ui.dashboard
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zack.recomptracker.ai.AiInsightCoordinator
 import com.zack.recomptracker.core.model.MacroTotals
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
@@ -15,20 +17,18 @@ import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.macroTotals
 import com.zack.recomptracker.data.repository.toPlanTargets
-import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.domain.adherence.AdherenceCalculator
+import com.zack.recomptracker.domain.adherence.NutritionDay
+import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
+import com.zack.recomptracker.domain.adjustment.AdjustmentInput
+import com.zack.recomptracker.domain.adjustment.AdjustmentResult
+import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
+import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
 import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
 import com.zack.recomptracker.domain.rebalance.PlanDayInfo
 import com.zack.recomptracker.domain.rebalance.RebalanceState
-import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
-import com.zack.recomptracker.domain.adjustment.AdjustmentInput
-import com.zack.recomptracker.domain.adjustment.AdjustmentResult
-import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
-import androidx.compose.runtime.Immutable
-import com.zack.recomptracker.domain.adjustment.AdjustmentVerdict
-import com.zack.recomptracker.domain.adherence.AdherenceCalculator
-import com.zack.recomptracker.domain.adherence.NutritionDay
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.PerformancePoint
 import com.zack.recomptracker.domain.trend.RecoveryPoint
@@ -44,21 +44,22 @@ import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 @Immutable
 data class DayCalories(
@@ -230,7 +231,7 @@ class DashboardViewModel(
         val nutritionDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())
             NutritionDay(
-                date = date,
+                date = date.toKotlinLocalDate(),
                 calories = mealsByDate[date].orEmpty().macroTotals().calories,
                 targetCalories = dayTargets[date]?.calories ?: preferences.targetCalories,
             )
@@ -239,20 +240,24 @@ class DashboardViewModel(
         val effectiveNutritionDays = (0..13).map { offset ->
             val date = last14Start.plusDays(offset.toLong())
             NutritionDay(
-                date = date,
+                date = date.toKotlinLocalDate(),
                 calories = mealsByDate[date].orEmpty().macroTotals().calories,
                 targetCalories = effectiveTargets[date]?.calories ?: preferences.targetCalories,
             )
         }
         val loggedDates = logsLast28.map { it.date }.toSet() + mealsLast14.map { it.date }.toSet()
-        val weightPoints = logsLast28.map { MeasurementPoint(it.localDate(), it.bodyWeightKg) }
-        val waistPoints  = logsLast28.map { MeasurementPoint(it.localDate(), it.waistCm) }
+        val weightPoints = logsLast28.map { MeasurementPoint(it.localDate().toKotlinLocalDate(), it.bodyWeightKg) }
+        val waistPoints  = logsLast28.map { MeasurementPoint(it.localDate().toKotlinLocalDate(), it.waistCm) }
         val performancePoints = performances
             .filter { it.localDate() in last28Start..today }
-            .map { PerformancePoint(it.localDate(), it.weight, it.reps, it.sets) }
+            .map { PerformancePoint(it.localDate().toKotlinLocalDate(), it.weight, it.reps, it.sets) }
         val recoveryPoints = logs
             .filter { it.localDate() in last14Start..today }
-            .map { RecoveryPoint(it.localDate(), it.sleepHours, it.energyScore, it.sorenessScore) }
+            .map {
+                RecoveryPoint(
+                    it.localDate().toKotlinLocalDate(), it.sleepHours, it.energyScore, it.sorenessScore,
+                )
+            }
 
         val weightTrend  = trendCalculator.trendPerWeek(weightPoints)
         val waistTrend   = trendCalculator.trendPerWeek(waistPoints)

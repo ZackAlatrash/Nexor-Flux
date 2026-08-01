@@ -34,6 +34,7 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Pure, already-fetched inputs for [CoachContextAssembler.assemble]. The thin
@@ -171,7 +172,7 @@ object CoachContextAssembler {
 
         val nutritionDays = eatenByDate.mapNotNull { (date, totals) ->
             val target = effectiveTargets[date]?.calories ?: return@mapNotNull null
-            NutritionDay(date = date, calories = totals.calories, targetCalories = target)
+            NutritionDay(date = date.toKotlinLocalDate(), calories = totals.calories, targetCalories = target)
         }
         val adherence = if (nutritionDays.isEmpty()) null else adherenceCalculator.calculate(nutritionDays)
         val consistency = adherenceCalculator.loggingConsistency(nutritionDays, WINDOW_DAYS)
@@ -215,9 +216,11 @@ object CoachContextAssembler {
             .map { it.first }
             .toSet()
 
-        val avgSteps7 = ActivitySummary.averageDailySteps(stepsByDate, today, days = 7)
+        val kStepsByDate = stepsByDate.mapKeys { it.key.toKotlinLocalDate() }
+        val avgSteps7 = ActivitySummary.averageDailySteps(kStepsByDate, today.toKotlinLocalDate(), days = 7)
         val prevWindowToday = today.minusDays(7L)
-        val avgStepsPrev7 = ActivitySummary.averageDailySteps(stepsByDate, prevWindowToday, days = 7)
+        val avgStepsPrev7 =
+            ActivitySummary.averageDailySteps(kStepsByDate, prevWindowToday.toKotlinLocalDate(), days = 7)
 
         val lastWeighIn = weightSeries.maxByOrNull { it.date }?.date
         val daysSinceLastWeighIn = lastWeighIn?.let {
@@ -262,10 +265,12 @@ object CoachContextAssembler {
             .filter { it.trained }
             .mapNotNull { parseDate(it.date) }
         val workoutDays = ActivitySummary.workoutDays(
-            completedSessionDates = inputs.completedSessions.mapNotNull { parseDate(it.date) },
-            trainedLogDates = trainedLogDates,
+            completedSessionDates = inputs.completedSessions
+                .mapNotNull { parseDate(it.date)?.toKotlinLocalDate() },
+            trainedLogDates = trainedLogDates.map { it.toKotlinLocalDate() },
         )
-        val weeklyFrequency = ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
+        val weeklyFrequency =
+            ActivitySummary.weeklyTrainingFrequency(workoutDays, today.toKotlinLocalDate())
 
         // e1RM series + recent RIR come from the shared pure derivation so the coach tool and this
         // assembler never duplicate the math (docs/ai-redesign/08-technical-architecture.md §6).
@@ -344,7 +349,7 @@ object CoachContextAssembler {
     /** Linear trend per week via [TrendCalculator]; null when fewer than 2 points. */
     private fun trendOrNull(series: List<MetricPoint>): Double? {
         if (series.size < 2) return null
-        return trendCalculator.trendPerWeek(series.map { MeasurementPoint(it.date, it.value) })
+        return trendCalculator.trendPerWeek(series.map { MeasurementPoint(it.date.toKotlinLocalDate(), it.value) })
     }
 
     private fun inWindow(date: LocalDate, start: LocalDate, end: LocalDate): Boolean =

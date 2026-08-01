@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 data class ChartSeries(
     val title: String,
@@ -177,21 +178,22 @@ class ProgressViewModel(
                     if (points.count { it.value != null } < 2) null
                     else trendCalculator.trendPerWeek(points)
 
-                val weightTrend = weeklyTrend(dates.map { MeasurementPoint(it, logsByDate[it]?.bodyWeightKg) })
-                val waistTrend = weeklyTrend(dates.map { MeasurementPoint(it, logsByDate[it]?.waistCm) })
-                val liftTrend = weeklyTrend(dates.map { d -> MeasurementPoint(d, liftByDate[d]?.toDouble()) })
+                val weightTrend = weeklyTrend(dates.map { MeasurementPoint(it.toKotlinLocalDate(), logsByDate[it]?.bodyWeightKg) })
+                val waistTrend = weeklyTrend(dates.map { MeasurementPoint(it.toKotlinLocalDate(), logsByDate[it]?.waistCm) })
+                val liftTrend = weeklyTrend(dates.map { d -> MeasurementPoint(d.toKotlinLocalDate(), liftByDate[d]?.toDouble()) })
                 val adherenceLast = adherenceValues.lastOrNull { it > 0 }
 
                 // Training frequency reuses the shared ActivitySummary derivation (same source the
                 // dashboard + get_training_summary use): distinct training days = logged lift dates
                 // ∪ days flagged `trained`, over its default trailing-4-week window ending today.
                 val workoutDays = ActivitySummary.workoutDays(
-                    completedSessionDates = liftByDate.keys,
-                    trainedLogDates = logs.filter { it.trained }.map { LocalDate.parse(it.date) },
+                    completedSessionDates = liftByDate.keys.map { it.toKotlinLocalDate() },
+                    trainedLogDates = logs.filter { it.trained }
+                        .map { kotlinx.datetime.LocalDate.parse(it.date) },
                 )
                 val trainingSessionsPerWeek =
                     if (workoutDays.isEmpty()) null
-                    else ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
+                    else ActivitySummary.weeklyTrainingFrequency(workoutDays, today.toKotlinLocalDate())
 
                 // Per-muscle weekly volume + trend. Runs here inside the combine transform, which is
                 // already moved off-main by flowOn(computeDispatcher) below — so the aggregate's

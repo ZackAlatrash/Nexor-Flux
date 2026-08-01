@@ -1,7 +1,7 @@
 package com.zack.recomptracker.domain.streak
 
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 /**
  * Pure streak math. Each streak type contributes a set of "qualifying days" (days the goal was
@@ -20,18 +20,18 @@ import java.time.temporal.ChronoUnit
 class StreakCalculator {
     fun compute(qualifyingDays: Set<LocalDate>, today: LocalDate, restDays: Int): StreakResult {
         if (qualifyingDays.isEmpty()) return StreakResult.ZERO
-        val maxGap = restDays + 1L
-        val sorted = qualifyingDays.toSortedSet().toList()
+        val maxGap = restDays + 1
+        // `sorted()` rather than the JVM-only `toSortedSet()`; the input is already a Set.
+        val sorted = qualifyingDays.sorted()
 
-        fun span(first: LocalDate, last: LocalDate): Int =
-            (ChronoUnit.DAYS.between(first, last) + 1).toInt()
+        fun span(first: LocalDate, last: LocalDate): Int = first.daysUntil(last) + 1
 
         var longest = 0
         var chainStart = sorted.first()
         var prev = sorted.first()
         for (i in 1 until sorted.size) {
             val day = sorted[i]
-            if (ChronoUnit.DAYS.between(prev, day) > maxGap) {
+            if (prev.daysUntil(day) > maxGap) {
                 longest = maxOf(longest, span(chainStart, prev))
                 chainStart = day
             }
@@ -40,7 +40,7 @@ class StreakCalculator {
         longest = maxOf(longest, span(chainStart, prev))
 
         // prev is now the most recent qualifying day; chainStart is the start of its chain.
-        val daysSinceLast = ChronoUnit.DAYS.between(prev, today)
+        val daysSinceLast = prev.daysUntil(today)
         val current = if (daysSinceLast in 0..maxGap) span(chainStart, prev) else 0
 
         return StreakResult(current = current, longest = longest)

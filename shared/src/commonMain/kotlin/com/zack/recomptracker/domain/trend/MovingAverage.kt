@@ -1,6 +1,8 @@
 package com.zack.recomptracker.domain.trend
 
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 data class MeasurementPoint(
     val date: LocalDate,
@@ -19,12 +21,12 @@ object MovingAverage {
         val sorted = points.sortedBy { it.date }
         return sorted.mapNotNull { point ->
             val value = point.value ?: return@mapNotNull null
-            val windowStart = point.date.minusDays((windowSize - 1).toLong())
+            val windowStart = point.date.minus(windowSize - 1, DateTimeUnit.DAY)
             val values = sorted
                 .filter { candidate ->
                     candidate.value != null &&
-                        !candidate.date.isBefore(windowStart) &&
-                        !candidate.date.isAfter(point.date)
+                        candidate.date >= windowStart &&
+                        candidate.date <= point.date
                 }
                 .mapNotNull { it.value }
 

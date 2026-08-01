@@ -2,9 +2,8 @@ package com.zack.recomptracker.domain.trend
 
 import com.zack.recomptracker.domain.adjustment.PerformanceTrend
 import com.zack.recomptracker.domain.adjustment.RecoveryTrend
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
-import kotlin.math.abs
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 
 data class PerformancePoint(
     val date: LocalDate,
@@ -29,7 +28,7 @@ class TrendCalculator {
         if (usable.size < 2) return 0.0
 
         val start = usable.first().date
-        val xs = usable.map { ChronoUnit.DAYS.between(start, it.date).toDouble() }
+        val xs = usable.map { start.daysUntil(it.date).toDouble() }
         val ys = usable.map { requireNotNull(it.value) }
         val xMean = xs.average()
         val yMean = ys.average()

@@ -8,6 +8,7 @@ import com.zack.recomptracker.domain.trend.TrendCalculator
 import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * #14 Recovery decline (P0): the shared [TrendCalculator.recoveryTrend] over sleep/energy/soreness
@@ -270,7 +271,7 @@ private fun CoachContext.toRecoveryPoints(): List<RecoveryPoint> {
     val sorenessByDate = body.sorenessSeries.associate { it.date to it.value }
     return dates.sorted().map { d ->
         RecoveryPoint(
-            date = d,
+            date = d.toKotlinLocalDate(),
             sleepHours = sleepByDate[d],
             energyScore = energyByDate[d]?.roundToInt(),
             sorenessScore = sorenessByDate[d]?.roundToInt(),

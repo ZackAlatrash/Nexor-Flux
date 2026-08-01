@@ -7,6 +7,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Pure weekly-rebalance engine. All time-varying data arrives in [RebalanceEvaluationInput]; ids and
@@ -69,7 +70,11 @@ object RebalanceEngine {
         if (input.goal.isBulk()) return RebalanceDecision.Silent
 
         val baseCalories = baseCaloriesFor(input, yesterday, window)
-        val recentAvgSteps = ActivitySummary.averageDailySteps(input.stepsByDate, yesterday, 7)
+        val recentAvgSteps = ActivitySummary.averageDailySteps(
+            input.stepsByDate.mapKeys { it.key.toKotlinLocalDate() },
+            yesterday.toKotlinLocalDate(),
+            7,
+        )
         val now = nowIso()
 
         // A supportive NO_ADJUSTMENT note (start = end = triggerDate), carrying the REAL surplus so the

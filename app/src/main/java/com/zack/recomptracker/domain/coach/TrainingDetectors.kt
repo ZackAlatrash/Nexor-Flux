@@ -4,6 +4,7 @@ import com.zack.recomptracker.domain.coach.CoachDetectorSupport.fmt
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.isoWeek
 import com.zack.recomptracker.domain.coach.CoachDetectorSupport.severityFromDistance
 import com.zack.recomptracker.domain.streak.StreakCalculator
+import kotlinx.datetime.toKotlinLocalDate
 
 /** Minimum recent e1RM points on a lift before a plateau can be called. */
 private const val PLATEAU_MIN_POINTS = 3
@@ -153,7 +154,11 @@ class StepStreakAtRiskDetector(
             .toSet()
         if (qualifying.isEmpty()) return null
 
-        val result = calculator.compute(qualifying, today, STEPS_REST_DAYS)
+        val result = calculator.compute(
+            qualifying.mapTo(mutableSetOf()) { it.toKotlinLocalDate() },
+            today.toKotlinLocalDate(),
+            STEPS_REST_DAYS,
+        )
         // At risk only when the streak is live (current > 0) AND today isn't already qualified.
         val todayQualified = (ctx.body.stepsByDate[today] ?: 0) >= goal
         if (result.current <= 0 || todayQualified) return null

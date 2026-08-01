@@ -1,7 +1,9 @@
 package com.zack.recomptracker.domain.activity
 
-import java.time.LocalDate
 import kotlin.math.roundToInt
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 /**
  * Pure activity derivations shared by the Dashboard, Profile, Train, and the AI snapshot so the
@@ -29,8 +31,8 @@ object ActivitySummary {
         weeks: Int = 4,
     ): Double {
         require(weeks > 0) { "weeks must be positive" }
-        val start = today.minusDays(weeks * 7L - 1)
-        val count = workoutDays.count { !it.isBefore(start) && !it.isAfter(today) }
+        val start = today.minus(weeks * 7 - 1, DateTimeUnit.DAY)
+        val count = workoutDays.count { it >= start && it <= today }
         return count.toDouble() / weeks
     }
 
@@ -44,8 +46,8 @@ object ActivitySummary {
         days: Int = 7,
     ): Int? {
         require(days > 0) { "days must be positive" }
-        val start = today.minusDays(days - 1L)
-        val values = stepsByDate.filterKeys { !it.isBefore(start) && !it.isAfter(today) }.values
+        val start = today.minus(days - 1, DateTimeUnit.DAY)
+        val values = stepsByDate.filterKeys { it >= start && it <= today }.values
         return if (values.isEmpty()) null else values.average().roundToInt()
     }
 }

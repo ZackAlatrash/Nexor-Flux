@@ -9,6 +9,7 @@ import com.zack.recomptracker.domain.trend.RecoveryPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import java.time.LocalDate
 import kotlin.math.roundToInt
+import kotlinx.datetime.toKotlinLocalDate
 
 /** How many of the most recent RIR readings frame the deload judgement. */
 private const val DELOAD_RIR_WINDOW = 6
@@ -184,7 +185,7 @@ private fun CoachContext.toRecoveryPoints(): List<RecoveryPoint> {
     val sorenessByDate = body.sorenessSeries.associate { it.date to it.value }
     return dates.sorted().map { d ->
         RecoveryPoint(
-            date = d,
+            date = d.toKotlinLocalDate(),
             sleepHours = sleepByDate[d],
             energyScore = energyByDate[d]?.roundToInt(),
             sorenessScore = sorenessByDate[d]?.roundToInt(),

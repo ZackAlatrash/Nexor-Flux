@@ -16,7 +16,9 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.datetime)
+            // `api`, not `implementation`: kotlinx-datetime types (LocalDate, …) appear in the
+            // public signatures of the moved domain packages, so consumers must see them.
+            api(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

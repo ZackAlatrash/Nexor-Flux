@@ -19,20 +19,17 @@ file codecs) — needs a planning session first, per D7.
 10 intended files remain in `:app`'s `domain/` (the backup DTO, `foodimport`, and the two
 Room-typed food files).
 
-**Next action is yours** — Task 14 needs ~15 minutes of Xcode GUI work that cannot be scripted.
-See *Blocked / needs you* below. After that: Task 15 (docs) and Task 16 (the gate).
-
 ### Numbers
 
 | | |
 |---|---|
 | `:shared` commonMain | 66 files, **5,905 LOC** (predicted ~5,550) |
-| `:shared` commonTest | 2 files, 351 LOC — **runs on JVM *and* iOS** |
+| `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
 | `:shared` androidUnitTest | 44 files, 5,430 LOC (moved JUnit4, JVM-only) |
 | Remaining in `:app` `domain/` | 10 files, 741 LOC — all deliberate |
-| Tests | `:app` 1017 · `:shared` JVM 397 · `:shared` iOS 8 |
+| Tests | `:app` 1017 · `:shared` JVM 400 · `:shared` iOS 11 |
 | Kotlin/Native cold compile | **13.2 s** · warm incremental **0.8 s** |
-| XCFramework assembly | 22.5 s, 73 MB debug (both slices) |
+| XCFramework assembly | 22.5 s · **release iOS app 9.5 MB** |
 | Boundary date conversions in `:app` | **112 expressions across 26 files** |
 
 ## The decision in one paragraph
@@ -59,11 +56,8 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. Press ⌘R.** Task 14 is otherwise done — the app **builds clean** in Debug and Release and links
-10,618 Kotlin symbols. All that remains is running it once on an iOS 26 simulator and confirming
-every row shows a green check. (Low risk: the same values already pass as 269 assertions on
-`iosSimulatorArm64Test`, i.e. real Kotlin/Native. This confirms it also works in an app process.)
-A red X would be gate-blocking — record the exact row here.
+**1. Decide how to land the branch** — `feat/ios-shared-core` is 21 commits and unmerged. Per D8
+Phase 0 is exclusive, so nothing else should touch Android until it lands.
 
 **2. Two small cleanups in Xcode when convenient** (both need the GUI, as they touch the pbxproj):
 - Delete `RecompTracker/Item.swift` — leftover SwiftData template scaffolding, now unreferenced.
@@ -92,11 +86,26 @@ Android, the signing key does not matter but the bundle ID is permanent.
 
 ## Needs visual check
 
-*(nothing yet)*
+*(none outstanding — the Phase 0 smoke test was run and all rows were green)*
 
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
+
+### 2026-08-01 — Gate passed (D10); final review caught a real bug
+- 🔴 **The behavioural-drift review earned its keep.** `formatFixed` threw on scientific-notation
+  doubles (`|v| < 1e-3`) where `String.format` returned `"0.00"`. **Reachable in production:** the
+  callers are the flat-trend detector branches, and OLS slopes on flat series produce residues like
+  `1.66E-15` (~0.4% of plausible weight series). `runCatching` in `CoachDigestCoordinator` swallowed
+  it, so no crash — but the whole digest aborted and **no coach signal was staged that day**.
+  Fixed in `4f6d96d` by expanding E-notation instead of bailing out.
+- **Lesson: a golden corpus is only as good as its input set.** The captured values were right; the
+  coverage was not. Corpus grew 269 → **372 assertions**. Carry adversarial-input discipline into
+  Phase 1's persistence work.
+- Everything else in the review came back clean: 34 of 62 moved files byte-identical, and
+  `RebalanceEngine.size()`, the 18 detectors, `StreakCalculator`, `TrendCalculator`,
+  `MuscleTrainingAggregator` and `RateLimiter` all verified semantically unchanged.
+- ✅ App run on an iOS 26 simulator — **all rows green**, confirming criterion 3 in an app process.
 
 ### 2026-08-01 — Task 14: iOS repo + XCFramework workflow proven
 - `~/Desktop/RecompTracker-IOS/` is a working, independent repo. App builds clean in Debug **and**

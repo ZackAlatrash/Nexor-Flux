@@ -55,25 +55,19 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. Finish Task 14 — ~15 min in Xcode.** Everything scriptable is done: the XCFramework builds,
-`~/Desktop/RecompTracker-IOS/` exists as a git repo with a working `scripts/sync-shared.sh`,
-`.gitignore` and `README.md`, and `Frameworks/Shared.xcframework` is already installed. Remaining:
+**1. Press ⌘R.** Task 14 is otherwise done — the app **builds clean** in Debug and Release and links
+10,618 Kotlin symbols. All that remains is running it once on an iOS 26 simulator and confirming
+every row shows a green check. (Low risk: the same values already pass as 269 assertions on
+`iosSimulatorArm64Test`, i.e. real Kotlin/Native. This confirms it also works in an app process.)
+A red X would be gate-blocking — record the exact row here.
 
-1. Xcode → File → New → Project → iOS App. Name **`RecompTracker`**, interface **SwiftUI**,
-   language **Swift**, save into `~/Desktop/RecompTracker-IOS/`. Deployment target **iOS 26.0** (D5).
-2. Target → General → Frameworks, Libraries, and Embedded Content → **+** → Add Other → Add Files →
-   `Frameworks/Shared.xcframework`. Set it to **Do Not Embed** (it is static).
-3. Build Settings → Framework Search Paths → add `$(SRCROOT)/Frameworks`.
-4. Replace the generated `ContentView.swift` with `ContentView.swift.pending` (drop the extension).
-   Its Swift symbol names were read from the generated framework header, not guessed — but the
-   three enum spellings and `plan.targets` are flagged in comments as worth confirming against
-   autocomplete.
-5. Run on an iOS 26 simulator. **Every row should show a green check.** A red X means a
-   Kotlin/Native vs JVM divergence — gate-blocking; record the exact row here.
-6. Time a resync: touch a `domain/` file, run `./scripts/sync-shared.sh`, rebuild in Xcode. Note
-   whether Xcode needed a manual clean. That is **gate criterion 8**.
+**2. Two small cleanups in Xcode when convenient** (both need the GUI, as they touch the pbxproj):
+- Delete `RecompTracker/Item.swift` — leftover SwiftData template scaffolding, now unreferenced.
+  Persistence is GRDB per D3.
+- Deployment target is **26.5**; consider lowering to **26.0** to widen device coverage. D5 only
+  requires 26+.
 
-**2. Apple Developer Program enrolment ($99/yr)** — not needed for the simulator work above, but
+**3. Apple Developer Program enrolment ($99/yr)** — not needed for the simulator work above, but
 needed *from day one* of Phase 4: HealthKit and background-delivery entitlements require a paid
 account, and enrolment has a lead time. **Reserve the bundle identifier** once enrolled — unlike
 Android, the signing key does not matter but the bundle ID is permanent.
@@ -99,6 +93,24 @@ Android, the signing key does not matter but the bundle ID is permanent.
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
+
+### 2026-08-01 — Task 14: iOS repo + XCFramework workflow proven
+- `~/Desktop/RecompTracker-IOS/` is a working, independent repo. App builds clean in Debug **and**
+  Release against the synced XCFramework. **10,618 `kfun:` symbols** linked; every domain package present.
+- 🟢 **Criterion 8 — resync loop is 13 s** (10.7 s `sync-shared.sh` + 2.6 s incremental Xcode build),
+  **no manual clean needed.** Target was under 2 min.
+- **Release app size: 9.5 MB** (simulator, arm64) for SwiftUI + the whole domain layer + the
+  Kotlin/Native runtime. Debug is ~10 MB, split into a 58 KB stub plus `RecompTracker.debug.dylib` —
+  that is Xcode 26's debug-dylib scheme, not bloat.
+- 🟡 **Criterion 6 — Swift ergonomics, mixed.** Top-level functions land on `<File>Kt` classes
+  (`DecimalFormatKt.signed1(value:)`) which reads fine. **Kotlin enums export as classes with static
+  properties, not Swift enums** — `switch` over them is not exhaustive. That is the SKIE gap, and the
+  first concrete argument for adopting it. Of the four symbol names I predicted from the header,
+  three enum spellings were right and `GeneratedPlan.targets` was wrong (the type is flat).
+- ✅ "Do Not Embed" verified correct — no `Frameworks/` directory in the built bundle.
+- Xcode nested the project one level (`RecompTracker-IOS/RecompTracker/`), which is idiomatic;
+  Framework Search Paths turned out to be **unnecessary** — adding the xcframework recorded a
+  working path automatically.
 
 ### 2026-08-01 — Phase 0 execution, Tasks 1–13 (subagent-driven)
 - **Extraction complete.** 11 domain packages + 3 value-type files moved to `commonMain` in

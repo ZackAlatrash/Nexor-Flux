@@ -12,18 +12,37 @@ cycle in Phase 0 — read, don't infer.**
 
 ---
 
-## The four rules that surprise you
+> **All of this is pinned as executable code** in the iOS repo's
+> `RecompTrackerTests/SharedInteropTests.swift`. If you are about to trust this document, run that
+> suite instead — it fails when the boundary moves.
+
+## The five rules that surprise you
+
+**0. Swift drops the `Shared` prefix the header shows.**
+
+The generated header spells everything `SharedRebalanceSerialization`, because that is the
+Objective-C class prefix. With `import Shared` the module already supplies the namespace, so
+**Swift sees the plain Kotlin name**:
+
+```swift
+import Shared
+RebalanceSerialization.shared.decode(raw: json)         // ✅
+SharedRebalanceSerialization.shared.decode(raw: json)   // ❌ "renamed to 'RebalanceSerialization'"
+```
+
+So when reading the header, mentally strip `Shared` from every type name — including the awkward
+dependency ones: `SharedKotlinx_datetimeLocalDate` is `Kotlinx_datetimeLocalDate` in Swift.
 
 **1. A Kotlin `object` is not a Swift enum of statics — it is a singleton you go through.**
 
 ```swift
-SharedRebalanceSerialization.shared.decode(raw: json)   // ✅
-SharedRebalanceSerialization.decode(raw: json)          // ❌ does not compile
+RebalanceSerialization.shared.decode(raw: json)   // ✅
+RebalanceSerialization.decode(raw: json)          // ❌ does not compile
 ```
 
-Every codec below is a Kotlin `object`, so every call is `Shared<Name>.shared.<method>`. The
-generated `init()` returns the same singleton, so `SharedRebalanceSerialization()` also works —
-prefer `.shared`, it reads as what it is.
+Every codec below is a Kotlin `object`, so every call is `<Name>.shared.<method>`. The generated
+`init()` returns the same singleton, so `RebalanceSerialization()` also works — prefer `.shared`,
+it reads as what it is.
 
 **2. Parameter labels are the Kotlin parameter names, including on single-argument calls.**
 `decode(raw:)`, `encode(state:)`, `encode(events:)`, `encode(experiment:)`,
@@ -32,13 +51,14 @@ prefer `.shared`, it reads as what it is.
 **3. Dates cross as Kotlin date objects — not `Date`, not `String`.**
 
 ```swift
-let d = SharedKotlinx_datetimeLocalDate(year: 2026, month: 8, day: 2)
-let t = SharedKotlinx_datetimeLocalDateTime(
+let d = Kotlinx_datetimeLocalDate(year: 2026, month: 8, day: 2)
+let t = Kotlinx_datetimeLocalDateTime(
     year: 2026, month: 8, day: 2, hour: 22, minute: 0, second: 0, nanosecond: 0)
+d.description()   // "2026-08-02" — the persisted form, verified
 ```
 
 `LocalDateTime` also has `init(date:time:)`. Read back with `.year` / `.monthNumber` / `.day`
-(`.month` returns a `SharedKotlinx_datetimeMonth` object, not an `Int`).
+(`.month` returns a `Kotlinx_datetimeMonth` object, not an `Int`).
 
 This is why D6 holds on both sides: the wire format is the ISO string the codec writes, and the
 Kotlin date object is only the in-memory carrier.
@@ -46,9 +66,10 @@ Kotlin date object is only the in-memory carrier.
 **4. Kotlin enum entries are lowerCamelCase properties; `.name` gives you the Kotlin name.**
 
 ```swift
-SharedRebalanceIntensity.standard          // the entry
-SharedRebalanceIntensity.standard.name     // "STANDARD" — the persisted spelling
-SharedRebalanceStatus.endedEarly.name      // "ENDED_EARLY"
+RebalanceIntensity.standard          // the entry
+RebalanceIntensity.standard.name     // "STANDARD" — the persisted spelling
+RebalanceStatus.endedEarly.name      // "ENDED_EARLY"
+RebalanceMode.eatLess.name           // "EAT_LESS"
 ```
 
 `isEqual:` is implemented, so Swift `==` works and compares by identity — entries are singletons.

@@ -66,7 +66,8 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 **1. 🔴 Export a real Android backup** — gates Phase 1b's acceptance test (Task B10), and no
 fixture exists anywhere (verified twice). Settings → Data Backup → Export, from a populated install,
-saved to `~/Desktop/RecompTracker-IOS/RecompTrackerTests/Fixtures/android-backup-v2.json`.
+saved to `~/Desktop/RecompTracker-IOS/RecompTracker/RecompTrackerTests/Fixtures/android-backup-v2.json`
+(note the nested `RecompTracker/` — the test target lives inside the project folder).
 Ideally containing: meals across **several slots** (P0-2 was exactly this), a `slotId = null`
 coach-logged meal, a planned meal, a routine with sessions and sets, and a recipe. A synthetic
 fixture would only prove my Swift matches my Swift. Everything in 1b except B10 can proceed without it.
@@ -141,6 +142,7 @@ Kotlin/Native**; the final drift review caught a reachable `formatFixed` bug the
 | [reference/screen-inventory.md](reference/screen-inventory.md) | Phases 2–3, per screen |
 | [reference/platform-api-map.md](reference/platform-api-map.md) | Phase 4, or any "what's the iOS equivalent" |
 | [reference/domain-port-notes.md](reference/domain-port-notes.md) | Phase 0 and 5 |
+| [reference/shared-codec-api.md](reference/shared-codec-api.md) | any time Swift calls into `:shared` |
 | [reference/healthkit-notes.md](reference/healthkit-notes.md) | Phase 4 |
 | [reference/architecture-evidence.md](reference/architecture-evidence.md) | only if revisiting the architecture |
 | `phases/phase-N-*.md` | the phase you are executing |

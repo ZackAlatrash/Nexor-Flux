@@ -4,6 +4,8 @@ import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import java.time.LocalDate
+import kotlinx.datetime.LocalDate as KxLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -12,8 +14,8 @@ class StreakRepositoryZoneTest {
         val today = LocalDate.parse("2026-06-30")
         val pastDay = today.minusDays(1)
         val versions = listOf(
-            PlanVersion(LocalDate.parse("2026-01-01"), PlanTargets(2500, 1, 1, 1, 2400, 2600)),
-            PlanVersion(today, PlanTargets(2000, 1, 1, 1, 1900, 2100)),
+            PlanVersion(KxLocalDate.parse("2026-01-01"), PlanTargets(2500, 1, 1, 1, 2400, 2600)),
+            PlanVersion(today.toKotlinLocalDate(), PlanTargets(2000, 1, 1, 1, 1900, 2100)),
         )
         val streaks = buildStreaks(
             dailyLogs = emptyList(),

@@ -18,6 +18,9 @@ import com.zack.recomptracker.domain.streak.Streaks
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.datetime.LocalDate as KxLocalDate
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Derives Workout / Calorie / Steps streaks from existing history on every emission.
@@ -77,16 +80,18 @@ class StreakRepository(
     ) { dailyLogs, sessions, profile ->
         val today = dateProvider.today()
         val workoutDays = ActivitySummary.workoutDays(
-            completedSessionDates = sessions.map { LocalDate.parse(it.date) },
-            trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
+            completedSessionDates = sessions.map { KxLocalDate.parse(it.date) },
+            trainedLogDates = dailyLogs.filter { it.trained }.map { KxLocalDate.parse(it.date) },
         )
         val stepsByDate = dailyLogs.mapNotNull { log ->
-            log.steps?.let { LocalDate.parse(log.date) to it }
+            log.steps?.let { KxLocalDate.parse(log.date) to it }
         }.toMap()
         ActivityMetrics(
-            weeklyTrainingFrequency = ActivitySummary.weeklyTrainingFrequency(workoutDays, today),
+            weeklyTrainingFrequency =
+                ActivitySummary.weeklyTrainingFrequency(workoutDays, today.toKotlinLocalDate()),
             weeklyGymSessionsTarget = profile.weeklyGymSessions,
-            averageDailySteps7 = ActivitySummary.averageDailySteps(stepsByDate, today),
+            averageDailySteps7 =
+                ActivitySummary.averageDailySteps(stepsByDate, today.toKotlinLocalDate()),
         )
     }
 
@@ -121,19 +126,20 @@ internal fun buildStreaks(
     rebalanceState: RebalanceState = RebalanceState(),
 ): Streaks {
     val workoutDays: Set<LocalDate> = ActivitySummary.workoutDays(
-        completedSessionDates = completedSessionDates,
-        trainedLogDates = dailyLogs.filter { it.trained }.map { LocalDate.parse(it.date) },
-    )
+        completedSessionDates = completedSessionDates.map { it.toKotlinLocalDate() },
+        trainedLogDates = dailyLogs.filter { it.trained }.map { KxLocalDate.parse(it.date) },
+    ).mapTo(mutableSetOf()) { it.toJavaLocalDate() }
 
     val calorieDays: Set<LocalDate> = if (versions.isEmpty()) {
         emptySet()
     } else {
         eatenCaloriesByDate
             .filter { (date, cals) ->
-                val base = PlanHistory.planOn(versions, date)
+                val kDate = date.toKotlinLocalDate()
+                val base = PlanHistory.planOn(versions, kDate)
                 // Union of base + effective zones: on a rebalance day this widens the band; on any
                 // other day it is exactly the base zone (behaviour-neutral with an empty state).
-                val zone = EffectiveTargets.unionZone(base, date, rebalanceState)
+                val zone = EffectiveTargets.unionZone(base, kDate, rebalanceState)
                 cals > 0 && base.zoneLowerBound > 0 && cals in zone
             }
             .keys
@@ -151,7 +157,7 @@ internal fun buildStreaks(
     }
 
     fun result(days: Set<LocalDate>, restDays: Int): StreakResult =
-        calculator.compute(days, today, restDays)
+        calculator.compute(days.mapTo(mutableSetOf()) { it.toKotlinLocalDate() }, today.toKotlinLocalDate(), restDays)
             .copy(
                 last7 = recentFlags(days, today),
                 last7Marks = recentMarks(days, today, restDays),

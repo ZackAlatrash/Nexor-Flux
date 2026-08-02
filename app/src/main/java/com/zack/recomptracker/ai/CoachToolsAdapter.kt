@@ -15,6 +15,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Static coach guidelines appended to every system prompt. Extracted as a constant so the
@@ -89,10 +90,11 @@ class CoachToolsAdapter(
         memoryBlock: String,
     ): String = buildString {
         val yesterday = today.minusDays(1)
+        val kToday = today.toKotlinLocalDate()
         val dayName = today.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercaseChar() }
         // EFFECTIVE targets for today (reduced on a rebalance day; base otherwise — values only).
-        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), today, rebalanceState)
-        val planDay = EffectiveTargets.planDayInfo(today, rebalanceState)
+        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), kToday, rebalanceState)
+        val planDay = EffectiveTargets.planDayInfo(kToday, rebalanceState)
         val rebalanceSuffix = planDay?.let { " | Rebalance: day ${it.dayX} of ${it.ofY}" }.orEmpty()
         appendLine("You are a knowledgeable, supportive nutrition and body-recomposition coach inside a tracking app.")
         appendLine("Today: $today ($dayName) | Yesterday: $yesterday")
@@ -101,7 +103,7 @@ class CoachToolsAdapter(
         val profileParts = buildList {
             profile.goal?.let { add("Goal: ${it.displayName()}") }
             profile.biologicalSex?.let { add("Sex: ${it.displayName()}") }
-            profile.ageYears()?.let { add("Age: $it") }
+            profile.ageYears(kToday)?.let { add("Age: $it") }
             profile.heightCm?.let { add("Height: $it cm") }
             profile.activityLevel?.let { add("Activity: ${it.displayName()}") }
             profile.weeklyGymSessions?.let { add("Gym sessions/week: $it") }

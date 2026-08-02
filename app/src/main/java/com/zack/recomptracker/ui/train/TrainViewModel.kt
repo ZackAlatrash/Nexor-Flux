@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 enum class TrainTab { ROUTINES, HISTORY, STATS }
 
@@ -89,7 +90,7 @@ class TrainViewModel(
     ) { routines, active, history, library, today ->
         // Per-muscle recovery is derived from the same history+library already loaded here (no new
         // repo/dependency). Ordered so still-recovering groups come first for the compact UI strip.
-        val recovery = MuscleTrainingAggregator.aggregate(history, library, today)
+        val recovery = MuscleTrainingAggregator.aggregate(history, library, today.toKotlinLocalDate())
             .map { MuscleRecovery(it.category, it.recoveryScore, it.recoveryBand) }
             .sortedBy { it.recoveryScore }
         CoreState(routines, active, history, TrainStatsBuilder.build(history, library), recovery)
@@ -149,7 +150,7 @@ class TrainViewModel(
                 history = history,
                 library = library,
                 routines = routines,
-                today = today,
+                today = today.toKotlinLocalDate(),
                 weeklyTarget = weeklyTarget,
                 recoveryLow = recovery?.level == TrainingReadinessMapper.Level.LOW,
                 deloadSuggested = recovery?.mode == TrainingReadinessMapper.Mode.DELOAD,

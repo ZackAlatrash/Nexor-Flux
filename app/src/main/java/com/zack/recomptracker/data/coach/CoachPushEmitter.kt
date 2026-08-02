@@ -7,6 +7,7 @@ import com.zack.recomptracker.domain.coach.PushEvent
 import com.zack.recomptracker.domain.coach.RateLimiter
 import com.zack.recomptracker.domain.coach.isCelebration
 import java.time.LocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.coroutines.flow.first
 
 /**
@@ -62,7 +63,7 @@ class CoachPushEmitter(
         if (!prefAllows) return false
 
         // 3. Restraint gate.
-        val at = now()
+        val at = now().toKotlinLocalDateTime()
         val decision = rateLimiter.decide(
             candidate = candidate,
             now = at,

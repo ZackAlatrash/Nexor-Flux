@@ -14,6 +14,7 @@ import com.zack.recomptracker.domain.coach.TrainingContext
 import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -24,7 +25,7 @@ class CoachContextCacheTest {
     }
 
     private fun context(day: LocalDate) = CoachContext(
-        asOf = day,
+        asOf = day.toKotlinLocalDate(),
         plan = PlanContext(0, 0, 0, 0, 0, 0),
         profile = ProfileContext(),
         nutrition = NutritionContext(
@@ -68,7 +69,7 @@ class CoachContextCacheTest {
         val second = cache.get()
 
         assertEquals(2, builds.get())
-        assertEquals(LocalDate.of(2026, 7, 2), second.asOf)
+        assertEquals(LocalDate.of(2026, 7, 2).toKotlinLocalDate(), second.asOf)
     }
 
     @Test

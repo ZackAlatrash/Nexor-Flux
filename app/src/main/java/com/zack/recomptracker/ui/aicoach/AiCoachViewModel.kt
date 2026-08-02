@@ -173,7 +173,7 @@ class AiCoachViewModel(
      * fixed 12-hour clock with an en-dash separator; hours only (the window is whole-hour by design).
      */
     private fun formatQuietHours(quiet: com.zack.recomptracker.domain.coach.QuietHours): String {
-        fun label(time: java.time.LocalTime): String {
+        fun label(time: kotlinx.datetime.LocalTime): String {
             val hour = time.hour
             val period = if (hour < 12) "AM" else "PM"
             val display = when (hour % 12) { 0 -> 12; else -> hour % 12 }

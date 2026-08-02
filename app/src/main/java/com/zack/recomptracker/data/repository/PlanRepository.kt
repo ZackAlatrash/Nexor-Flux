@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.LocalDate as KxLocalDate
 
 /** The day-judging targets from the current preferences. */
 fun PlanPreferences.toPlanTargets(): PlanTargets = PlanTargets(
@@ -39,7 +42,7 @@ fun PlanPreferences.toPlanVersionEntity(effectiveFrom: LocalDate, createdAt: Str
     )
 
 private fun PlanVersionEntity.toPlanVersion(): PlanVersion = PlanVersion(
-    effectiveFrom = LocalDate.parse(effectiveFrom),
+    effectiveFrom = KxLocalDate.parse(effectiveFrom),
     targets = PlanTargets(
         calories = targetCalories,
         proteinG = targetProteinG,
@@ -64,13 +67,17 @@ class PlanRepository(
     /** The plan in effect on [date] as a Flow. Falls back to current prefs when no history yet. */
     fun observePlanOn(date: LocalDate): Flow<PlanTargets> =
         combine(observeVersions(), preferences) { versions, prefs ->
-            PlanHistory.planOnOrFallback(versions, date, prefs.toPlanTargets())
+            PlanHistory.planOnOrFallback(versions, date.toKotlinLocalDate(), prefs.toPlanTargets())
         }
 
     /** The plan in effect on [date] (one-shot). Falls back to current prefs when no history yet. */
     suspend fun planOn(date: LocalDate): PlanTargets {
         val versions = planVersionDao.getAll().map { it.toPlanVersion() }
-        return PlanHistory.planOnOrFallback(versions, date, appPreferences.preferences.first().toPlanTargets())
+        return PlanHistory.planOnOrFallback(
+            versions,
+            date.toKotlinLocalDate(),
+            appPreferences.preferences.first().toPlanTargets(),
+        )
     }
 
     /** Resolve many dates at once. Falls back to current prefs for every date when no history yet. */
@@ -80,7 +87,8 @@ class PlanRepository(
             val fallback = appPreferences.preferences.first().toPlanTargets()
             return dates.associateWith { fallback }
         }
-        return PlanHistory.resolve(versions, dates)
+        return PlanHistory.resolve(versions, dates.map { it.toKotlinLocalDate() })
+            .mapKeys { (date, _) -> date.toJavaLocalDate() }
     }
 
     /**

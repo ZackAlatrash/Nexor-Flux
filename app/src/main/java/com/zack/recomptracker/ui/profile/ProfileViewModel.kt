@@ -7,7 +7,6 @@ import com.zack.recomptracker.data.preferences.UserProfilePreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.domain.activity.ActivitySummary
-import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * Backs the Profile screen: exposes the persisted user profile and the latest logged body
@@ -77,9 +77,13 @@ class ProfileViewModel(
         logRepository.observeDailyLogs()
             .map { logs ->
                 val stepsByDate = logs.mapNotNull { log ->
-                    log.steps?.let { LocalDate.parse(log.date) to it }
+                    log.steps?.let { kotlinx.datetime.LocalDate.parse(log.date) to it }
                 }.toMap()
-                ActivitySummary.averageDailySteps(stepsByDate, dateProvider.today(), days = 7)
+                ActivitySummary.averageDailySteps(
+                    stepsByDate,
+                    dateProvider.today().toKotlinLocalDate(),
+                    days = 7,
+                )
             }
             .stateIn(
                 scope = viewModelScope,

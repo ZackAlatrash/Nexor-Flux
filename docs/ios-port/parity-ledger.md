@@ -1,0 +1,176 @@
+# iOS Port — Parity Ledger
+
+One row per Android surface. **This is the "what's left" list.** Update it in the same commit as the
+work; a session should be able to answer "what's next" from this file alone.
+
+**Status:** ⬜ not started · 🔨 in progress · ✅ done · 👀 needs visual check · ⏭️ v1.1 · ❌ won't port
+
+Counts and file references come from
+[reference/screen-inventory.md](reference/screen-inventory.md) — go there for LOC, effort, and
+per-screen notes.
+
+---
+
+## Summary
+
+| Bucket | Total | ✅ | 🔨 | ⬜ | ⏭️ v1.1 | ❌ |
+|---|---:|---:|---:|---:|---:|---:|
+| Foundations | 8 | 3 | 0 | 5 | 0 | 0 |
+| Design system | 7 | 0 | 0 | 7 | 0 | 0 |
+| Screens (v1) | 20 | 0 | 0 | 20 | 0 | 0 |
+| Overlays & sheets | 11 | 0 | 0 | 10 | 1 | 0 |
+| Charts | 8 | 0 | 0 | 5 | 3 | 0 |
+| Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
+| AI | 8 | 0 | 0 | 8 | 0 | 0 |
+| Deferred / dropped | 14 | — | — | — | 12 | 2 |
+| **Total** | **85** | **3** | **0** | **64** | **16** | **2** |
+
+---
+
+## Foundations (Phase 0–1)
+
+| Item | Android reference | Status |
+|---|---|---|
+| `:shared` KMP module extracted | `settings.gradle.kts` | ✅ |
+| `java.time` → kotlinx-datetime (27 files, +3 inline FQNs) | blocker B2 | ✅ |
+| ISO-week + signed-decimal formatters, golden-value tested | blocker B3/B4 🔴 | ✅ |
+| Xcode project + SPM + GRDB | — | ⬜ |
+| 19 tables + 14 migrations (dates as strings) | `RecompDatabase.kt` | ⬜ |
+| 10 preference stores (actor-backed JSON) | see data-model §3 | ⬜ |
+| Keychain wrapper (2 keys, key-provider lambda) | `SecureKeyStore.kt` | ⬜ |
+| Bundled assets + version-gated exercise seed | 4 JSON files | ⬜ |
+
+## File formats (Phase 1) — the round-trip guard
+
+| Item | Android reference | Status |
+|---|---|---|
+| Backup `.json` codec + **import a real Android backup** | `BackupModels.kt`, `BackupRepository.kt` | ⬜ |
+| Personal-foods `.json` codec (⚠️ strict `==` version check) | `PersonalFoodsJsonCodec.kt` | ⬜ |
+| `.rtroutine` codec + UTI declaration | `RoutineShareModels.kt` | ⬜ |
+
+## Design system (Phase 2)
+
+| Item | Android reference | Status |
+|---|---|---|
+| `AppType` → Font extensions (prefer Dynamic Type) | `ui/theme/Typography.kt` | ⬜ |
+| `AppColors` + `AppAccent` → asset catalog + `@Environment` | `ui/theme/AppColors.kt`, `DesignTokens.kt` | ⬜ |
+| Card family (`FrostedCard`/`NeutralCard`/`TintedCard`/`DangerCard`) | `GlassComponents.kt` | ⬜ |
+| Button family → `.buttonStyle(.glass)` / `.glassProminent` | `LiquidComponents.kt` | ⬜ |
+| `GlassBottomSheet` → `.sheet` + `.presentationDetents` | `GlassBottomSheet.kt` | ⬜ |
+| `GlassAlertDialog` + `ConfirmDialog` | `GlassAlertDialog.kt` | ⬜ |
+| `MarkdownText` → `AttributedString(markdown:)` + custom tables | `MarkdownText.kt` (408 LOC) | ⬜ |
+
+## Screens — v1
+
+| # | Screen | Android file | Phase | Status |
+|---|---|---|---|---|
+| 1 | Food Log | `ui/today/FoodScreen.kt` (1428) | 2 | ⬜ |
+| 2 | Home Dashboard | `ui/dashboard/DashboardScreen.kt` (1249) | 3 | ⬜ |
+| 3 | Body / Recovery | `ui/today/BodyRecoveryScreen.kt` (548) | 3 | ⬜ |
+| 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3 | ⬜ |
+| 5 | Plan | `ui/plan/PlanScreen.kt` (341) | 3 | ⬜ |
+| 6 | Profile | `ui/profile/ProfileScreen.kt` (592) | 3 | ⬜ |
+| 7 | Onboarding | `ui/onboarding/OnboardingScreen.kt` (434) | 3 | ⬜ |
+| 8 | Progress / Trends | `ui/progress/ProgressScreen.kt` (403) | 3 | ⬜ |
+| 9 | Body History | `ui/body/BodyHistoryScreen.kt` (140) | 3 | ⬜ |
+| 10 | Body Edit | `ui/body/BodyEditScreen.kt` (96) | 3 | ⬜ |
+| 11 | Streak Stats | `ui/streak/StreakStatsScreen.kt` (90) | 3 | ⬜ |
+| 12 | Calorie decision | `DashboardScreen.kt:1058` | 3 | ⬜ |
+| 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | 3 | ⬜ |
+| 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3 | ⬜ |
+| 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4 | ⬜ |
+| 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4 | ⬜ |
+| 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4 | ⬜ |
+| 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | 3 | ⬜ |
+| 19 | Coach chat | `ui/coach/CoachScreen.kt` (625) | 5 | ⬜ |
+| 20 | AI Coach settings | `ui/aicoach/AiCoachScreen.kt` (344) | 5 | ⬜ |
+| 21 | Coach Memory | `ui/aicoach/CoachMemoryScreen.kt` (120) | 5 | ⬜ |
+| 22 | Usage Stats | `ui/usage/UsageStatsScreen.kt` (159) | 3 | ⬜ |
+| 23 | Developer | `ui/developer/DeveloperScreen.kt` (151) | 3 | ⬜ |
+
+## Overlays & sheets
+
+| Surface | Android file | Phase | Status |
+|---|---|---|---|
+| Weekly Briefing overlay | `ui/review/WeeklyBriefingOverlay.kt` (420) | 5 | ⬜ |
+| Rebalance Offer overlay | `ui/dashboard/RebalanceOfferOverlay.kt` (294) | 3 | ⬜ |
+| Rebalance Progress Detail | `ui/dashboard/RebalanceProgressDetailOverlay.kt` (253) | 3 | ⬜ |
+| Body Check-in sheet | `ui/body/BodyCheckInSheet.kt` (152) | 3 | ⬜ |
+| Amount / RecipeAmount / CreateFood / QuickAdd sheets | `FoodLibraryScreen.kt:870/943/988/1050` | 3 | ⬜ |
+| Product Found sheet | `BarcodeScannerScreen.kt:286` | 4 | ⬜ |
+| Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3 | ⬜ |
+| Option sheet (Profile) | `ProfileScreen.kt:491` | 3 | ⬜ |
+| Onboarding picker sheet | `OnboardingScreen.kt:400` | 3 | ⬜ |
+| Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ⬜ |
+| Exercise Detail sheet | `ui/train/ExerciseDetailSheet.kt` (237) | — | ⏭️ |
+
+## Charts
+
+| Chart | Android file | Phase | Status |
+|---|---|---|---|
+| `SparklineChart` (bezier + clip reveal + glow dot + scrub) | `charts/SparklineChart.kt` (266) | 3 | ⬜ |
+| `CalorieProgressBar` (candy stripes + ghost extension) | `charts/CalorieProgressBar.kt` (121) | 2 | ⬜ |
+| `WeekCalorieStrip` | `ui/component/WeekCalorieStrip.kt` (265) | 2 | ⬜ |
+| `StreakGoalRing` | `StreakComponents.kt:304` | 3 | ⬜ |
+| Rebalance viz (bars / day dots / lever tiles) | `ui/dashboard/RebalanceViz.kt` (655) | 3 | ⬜ |
+| `ProgressLineChart` | `charts/ProgressLineChart.kt` (84) | — | ⏭️ |
+| est-1RM sparkline | `SessionDetailScreen.kt:232` | — | ⏭️ |
+| `BodyMap` (SVG paths + heat + hit-test) | `train/component/BodyMap.kt` (159) | — | ⏭️ |
+
+## Platform integrations (Phase 4)
+
+| Item | Android reference | Status |
+|---|---|---|
+| HealthKit — steps (⚠️ Watch double-count) | `HealthConnectRepository.kt:146` | ⬜ |
+| HealthKit — weight | `:156-161` | ⬜ |
+| HealthKit — sleep (⚠️ night-grouping, own aggregation) | `:163-169` | ⬜ |
+| HealthKit — nutrition + 365-day import (⚠️ `HKCorrelation`) | `:92-112` | ⬜ |
+| Permission UX redesign (⚠️ no read-denial introspection) | `HealthSyncCoordinator.kt:80,97,129` | ⬜ |
+| Notifications + `RateLimiter`/`QuietHours` port | `RateLimiter.kt`, `AndroidCoachNotifier.kt` | ⬜ |
+| Background: `HKObserverQuery` + `BGTaskScheduler` | `HealthSyncWorker.kt`, `CoachDigestWorker.kt` | ⬜ |
+| Share / import `.rtroutine` via UTI | `RoutineShareLauncher.kt`, `RoutineShareInbox.kt` | ⬜ |
+| Profile photo (⚠️ copy into container, no persistable URI) | `ProfileScreen.kt:105-113` | ⬜ |
+
+## AI (Phase 5)
+
+| Item | Android reference | Status |
+|---|---|---|
+| `URLSession` SSE client + lenient tool-arg decoding | `OpenAiCompatClient.kt` (105) | ⬜ |
+| Turn loop: actor + `CheckedContinuation` + write confirmation | `CloudCoachCoordinator.kt` (467) | ⬜ |
+| Tool executor (14 of 19 tools; 5 routine tools unavailable) | `CoachToolExecutor.kt` (904) 🔴 | ⬜ |
+| Insight cards + per-kind dedup keys | `CloudInsightCoordinator.kt` (177) | ⬜ |
+| Weekly briefing + `merge()` deterministic overlay | `WeeklyBriefingGenerator.kt` | ⬜ |
+| Phrasing / rebalance copy / recipe namer (fallback-verbatim) | 6 files (459) | ⬜ |
+| Knowledge base: corpus + retriever + injector | `ai/knowledge/*` (206) | ⬜ |
+| Proactive spine: assembler → selector → emitter | `data/coach/*` | ⬜ |
+
+## Store readiness (Phase 6)
+
+| Item | Status |
+|---|---|
+| Demo mode for AI (Guideline 2.1) | ⬜ |
+| Third-party-AI consent modal (5.1.2(i)) | ⬜ |
+| `PrivacyInfo.xcprivacy` + nutrition labels | ⬜ |
+| "Not medical advice" disclaimer (1.4.1) | ⬜ |
+| Age rating incl. medical/wellness + social questions | ⬜ |
+| Screenshots, metadata, phased release | ⬜ |
+
+---
+
+## Deferred to v1.1
+
+Train hub · ActiveSession · SessionSummary · SessionDetail · ExerciseStats · ExercisePicker ·
+RoutineBuilder · SharedRoutineImport · Exercise Detail sheet · `BodyMap` + muscle art ·
+5 routine coach tools · NEVO + Samsung CSV import (`domain/foodimport`, 633 LOC)
+
+## Won't port
+
+| Item | Why |
+|---|---|
+| `FoodsScreen` (242 LOC) | Dead route — registered at `AppNavGraph.kt:568`, never navigated to |
+| `MacroRingChart`, `StackedBarChart`, `ui/component/ProgressBar.kt` | No production call sites |
+
+Also evaporating rather than porting (not tracked as rows): Vico, `SwipeToRevealRow`,
+`DurationWheelMath` + wheel picker, `DragHaptics`, the two-backdrop workaround, `selectedFont`
+wiring, `bg_glass_orbs*.png`, `LiquidSlider`, `LiquidToggle`, the `:macrobenchmark` module, all R8
+keep rules, the shared-keystore scheme, FileProvider, and the dual `.rtroutine` intent-filter hack.

@@ -7,6 +7,7 @@ import com.zack.recomptracker.domain.rebalance.RebalanceMode
 import com.zack.recomptracker.domain.rebalance.RebalancePlanMath
 import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import java.time.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -23,6 +24,7 @@ import org.junit.Test
 class RebalanceDebugScenariosTest {
 
     private val today: LocalDate = LocalDate.of(2026, 7, 6)
+    private val kToday = today.toKotlinLocalDate()
     private var idSeq = 0
     private val newId: () -> String = { "id-${idSeq++}" }
     private val nowIso: () -> String = { "2026-07-06T09:00:00Z" }
@@ -33,7 +35,7 @@ class RebalanceDebugScenariosTest {
     @Test
     fun `PROGRESS_MID is day 2 of 4 via planDayInfo`() {
         val app = build(RebalanceDebugScenario.PROGRESS_MID)
-        val info = EffectiveTargets.planDayInfo(today, app.state)
+        val info = EffectiveTargets.planDayInfo(kToday, app.state)
         assertNotNull(info)
         assertEquals(2, info!!.dayX)
         assertEquals(4, info.ofY)
@@ -42,7 +44,7 @@ class RebalanceDebugScenariosTest {
     @Test
     fun `PROGRESS_FINAL is day 4 of 4 via planDayInfo`() {
         val app = build(RebalanceDebugScenario.PROGRESS_FINAL)
-        val info = EffectiveTargets.planDayInfo(today, app.state)
+        val info = EffectiveTargets.planDayInfo(kToday, app.state)
         assertNotNull(info)
         assertEquals(4, info!!.dayX)
         assertEquals(4, info.ofY)
@@ -52,7 +54,7 @@ class RebalanceDebugScenariosTest {
     fun `PROGRESS_DAY0 has no plan-day info yet (starts tomorrow)`() {
         val app = build(RebalanceDebugScenario.PROGRESS_DAY0)
         // today < startDate, so no plan overrides today → the day-0 "starts tomorrow" branch.
-        assertNull(EffectiveTargets.planDayInfo(today, app.state))
+        assertNull(EffectiveTargets.planDayInfo(kToday, app.state))
         assertEquals(RebalanceStatus.ACTIVE, app.state.active?.status)
     }
 

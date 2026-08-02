@@ -9,9 +9,9 @@ import com.zack.recomptracker.data.repository.DayLog
 import com.zack.recomptracker.data.repository.LogRepository
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.domain.plan.PlanHistory
 import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
-import com.zack.recomptracker.domain.plan.PlanHistory
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -230,7 +231,7 @@ class FoodLogViewModelTest {
         // Newer plan takes effect today; earlier week days fall under the older plan.
         val versions = listOf(
             PlanVersion(effectiveFrom = PlanHistory.BASELINE_DATE, targets = olderPlan),
-            PlanVersion(effectiveFrom = today, targets = newerPlan),
+            PlanVersion(effectiveFrom = today.toKotlinLocalDate(), targets = newerPlan),
         )
         whenever(planRepo.observeVersions()).thenReturn(flowOf(versions))
         whenever(logRepo.observeWeekCalories(any(), any())).thenReturn(flowOf(emptyMap()))

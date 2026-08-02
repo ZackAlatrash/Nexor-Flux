@@ -9,6 +9,7 @@ import java.io.File
 import java.nio.file.Files
 import java.time.LocalDate
 import java.time.LocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -56,15 +57,15 @@ class PushHistoryStoreTest {
 
     @Test
     fun `record persists and round-trips`() = runTest {
-        val event = PushEvent(timestamp = LocalDateTime.of(2026, 7, 1, 13, 0), isCelebration = true)
+        val event = PushEvent(timestamp = LocalDateTime.of(2026, 7, 1, 13, 0).toKotlinLocalDateTime(), isCelebration = true)
         store.record(event)
         assertEquals(listOf(event), store.recentPushes())
     }
 
     @Test
     fun `two records both persist`() = runTest {
-        val a = PushEvent(timestamp = LocalDateTime.of(2026, 6, 28, 9, 0), isCelebration = false)
-        val b = PushEvent(timestamp = LocalDateTime.of(2026, 7, 1, 13, 0), isCelebration = false)
+        val a = PushEvent(timestamp = LocalDateTime.of(2026, 6, 28, 9, 0).toKotlinLocalDateTime(), isCelebration = false)
+        val b = PushEvent(timestamp = LocalDateTime.of(2026, 7, 1, 13, 0).toKotlinLocalDateTime(), isCelebration = false)
         store.record(a)
         store.record(b)
         assertEquals(listOf(a, b), store.recentPushes())
@@ -74,10 +75,10 @@ class PushHistoryStoreTest {
     fun `reads prune events older than the retention window`() = runTest {
         // "today" is 2026-07-01; an event from well before the retention horizon must be dropped.
         val stale = PushEvent(
-            timestamp = today.minusDays(PushHistorySerialization.RETENTION_DAYS + 5).atTime(13, 0),
+            timestamp = today.minusDays(PushHistorySerialization.RETENTION_DAYS + 5).atTime(13, 0).toKotlinLocalDateTime(),
             isCelebration = false,
         )
-        val fresh = PushEvent(timestamp = today.atTime(13, 0), isCelebration = false)
+        val fresh = PushEvent(timestamp = today.atTime(13, 0).toKotlinLocalDateTime(), isCelebration = false)
         store.record(stale)
         store.record(fresh)
 

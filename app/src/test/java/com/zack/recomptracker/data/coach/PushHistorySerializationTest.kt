@@ -2,6 +2,7 @@ package com.zack.recomptracker.data.coach
 
 import com.zack.recomptracker.domain.coach.PushEvent
 import java.time.LocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,7 +16,7 @@ class PushHistorySerializationTest {
     private val now = LocalDateTime.of(2026, 7, 1, 13, 0)
 
     private fun event(daysAgo: Long, isCelebration: Boolean = false) =
-        PushEvent(timestamp = now.minusDays(daysAgo), isCelebration = isCelebration)
+        PushEvent(timestamp = now.minusDays(daysAgo).toKotlinLocalDateTime(), isCelebration = isCelebration)
 
     @Test
     fun `decode of a blank or null string is an empty list`() {
@@ -64,7 +65,7 @@ class PushHistorySerializationTest {
     fun `append pruned caps the list length so the payload can't grow unbounded`() {
         // Many recent (in-window) events, then one more → list is trimmed to MAX_EVENTS.
         val many = (1..PushHistorySerialization.MAX_EVENTS + 5).map {
-            PushEvent(timestamp = now.minusHours(it.toLong()), isCelebration = false)
+            PushEvent(timestamp = now.minusHours(it.toLong()).toKotlinLocalDateTime(), isCelebration = false)
         }
         val updated = PushHistorySerialization.appendPruned(many, event(daysAgo = 0), now)
         assertEquals(PushHistorySerialization.MAX_EVENTS, updated.size)

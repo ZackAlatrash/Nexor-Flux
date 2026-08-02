@@ -14,7 +14,8 @@ import com.zack.recomptracker.domain.coach.SignalKind
 import com.zack.recomptracker.domain.coach.SignalRationale
 import com.zack.recomptracker.domain.coach.SignalTier
 import java.time.LocalDateTime
-import java.time.LocalTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -52,7 +53,7 @@ class CoachPushEmitterTest {
     private class FakePrefs(
         private val weekly: Boolean,
         private val ambient: Boolean,
-        private val quiet: QuietHours = QuietHours(LocalTime.of(22, 0), LocalTime.of(7, 0)),
+        private val quiet: QuietHours = QuietHours(LocalTime(22, 0), LocalTime(7, 0)),
     ) : CoachNotifierPreferences {
         override val weeklyCheckInPushEnabled: Flow<Boolean> = flowOf(weekly)
         override val ambientNudgesEnabled: Flow<Boolean> = flowOf(ambient)
@@ -134,7 +135,7 @@ class CoachPushEmitterTest {
         assertEquals(1, notifier.shown.size)
         assertEquals(CoachPushChannel.COACHING, notifier.shown.first().channel)
         assertEquals(1, history.recorded.size)
-        assertEquals(now, history.recorded.first().timestamp)
+        assertEquals(now.toKotlinLocalDateTime(), history.recorded.first().timestamp)
     }
 
     @Test
@@ -164,8 +165,8 @@ class CoachPushEmitterTest {
         // Two pushes already this rolling week -> weekly cap reached.
         val history = FakeHistory(
             listOf(
-                PushEvent(now.minusDays(3), isCelebration = false),
-                PushEvent(now.minusDays(5), isCelebration = false),
+                PushEvent(now.minusDays(3).toKotlinLocalDateTime(), isCelebration = false),
+                PushEvent(now.minusDays(5).toKotlinLocalDateTime(), isCelebration = false),
             ),
         )
         val emitter = emitter(notifier, history, FakePrefs(weekly = false, ambient = true))

@@ -74,6 +74,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import kotlinx.datetime.toKotlinLocalDate
 
 private val DOB_FMT = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
@@ -265,7 +266,7 @@ fun ProfileScreen(
                     PickerRow(
                         label = "Date of birth",
                         value = if (dob != null) {
-                            val age = profile.ageYears()
+                            val age = profile.ageYears(LocalDate.now().toKotlinLocalDate())
                             dob.format(DOB_FMT) + (age?.let { " · $it yrs" } ?: "")
                         } else {
                             "Set"

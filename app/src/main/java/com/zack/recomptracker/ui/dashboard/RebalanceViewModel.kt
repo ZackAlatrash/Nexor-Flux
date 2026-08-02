@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 /**
  * UI state for the Weekly Rebalance dashboard card. [face] == [Face.NONE] means the card renders
@@ -322,7 +323,7 @@ internal class RebalanceViewModel(
         }
 
         private fun progressFace(plan: RebalancePlan, state: RebalanceState, today: LocalDate): DerivedFace {
-            val dayInfo = EffectiveTargets.planDayInfo(today, state)
+            val dayInfo = EffectiveTargets.planDayInfo(today.toKotlinLocalDate(), state)
             val effCalories = effectiveCalories(plan)
             if (dayInfo == null) {
                 // Accepted late in the day: today < startDate. Day 1 = tomorrow; today keeps the base

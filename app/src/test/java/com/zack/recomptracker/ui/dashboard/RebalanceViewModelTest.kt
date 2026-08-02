@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -71,10 +72,11 @@ class RebalanceViewModelTest {
         mode: RebalanceMode = RebalanceMode.BALANCED,
         existing: RebalanceState = RebalanceState(mode = mode),
     ): RebalanceEvaluationInput {
-        val window = (1..7).map { refToday.minusDays(it.toLong()) }
-        val yesterday = refToday.minusDays(1)
+        // The engine's dates are kotlinx-datetime (it lives in :shared); convert at the boundary.
+        val window = (1..7).map { refToday.minusDays(it.toLong()).toKotlinLocalDate() }
+        val yesterday = refToday.minusDays(1).toKotlinLocalDate()
         return RebalanceEvaluationInput(
-            today = refToday,
+            today = refToday.toKotlinLocalDate(),
             baseTargetsByDate = window.associateWith { targets(base) },
             eatenByDate = window.associateWith { if (it == yesterday) yesterdayEaten else base },
             mealCountByDate = window.associateWith { 3 },
@@ -308,7 +310,7 @@ class RebalanceViewModelTest {
         // Initial (drop(1)) emission never cancels; a real version change does → "plan_edited".
         versions.emit(emptyList())
         advanceUntilIdle()
-        versions.emit(listOf(PlanVersion(today, targets(2400))))
+        versions.emit(listOf(PlanVersion(today.toKotlinLocalDate(), targets(2400))))
         advanceUntilIdle()
 
         assertEquals(

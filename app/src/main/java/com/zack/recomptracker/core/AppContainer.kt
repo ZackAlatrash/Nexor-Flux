@@ -4,14 +4,60 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.zack.recomptracker.ai.AiInsightCoordinator
+import com.zack.recomptracker.ai.CLOUD_COACH_TOOL_SCHEMAS
+import com.zack.recomptracker.ai.CloudCoachCoordinator
+import com.zack.recomptracker.ai.CloudInsightCoordinator
+import com.zack.recomptracker.ai.CloudRecipeNamer
+import com.zack.recomptracker.ai.CoachCoordinator
+import com.zack.recomptracker.ai.CoachHandoffStore
+import com.zack.recomptracker.ai.CoachPhrasingService
+import com.zack.recomptracker.ai.CoachToolExecutor
+import com.zack.recomptracker.ai.CoachToolsAdapter
+import com.zack.recomptracker.ai.RebalanceCopyService
+import com.zack.recomptracker.ai.RecipeNamer
+import com.zack.recomptracker.ai.WeeklyBriefingGenerator
+import com.zack.recomptracker.ai.WeeklyCoachNote
+import com.zack.recomptracker.ai.knowledge.KeywordKnowledgeRetriever
+import com.zack.recomptracker.ai.knowledge.KnowledgeCorpus
+import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
+import com.zack.recomptracker.ai.knowledge.RetrievalKnowledgeInjector
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.time.SystemDateProvider
-import com.zack.recomptracker.data.local.RecompDatabase
-import com.zack.recomptracker.data.preferences.AppPreferences
+import com.zack.recomptracker.data.coach.AndroidCoachNotifier
+import com.zack.recomptracker.data.coach.CoachContextBuilder
+import com.zack.recomptracker.data.coach.CoachContextCache
+import com.zack.recomptracker.data.coach.CoachDigestCoordinator
+import com.zack.recomptracker.data.coach.CoachExperimentStore
+import com.zack.recomptracker.data.coach.CoachInboxRepository
+import com.zack.recomptracker.data.coach.CoachJourneyStore
+import com.zack.recomptracker.data.coach.CoachMemoryStore
+import com.zack.recomptracker.data.coach.CoachNotificationPreferences
+import com.zack.recomptracker.data.coach.CoachPushEmitter
+import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
 import com.zack.recomptracker.data.health.HealthConnectRepository
 import com.zack.recomptracker.data.health.HealthSyncCoordinator
 import com.zack.recomptracker.data.health.WorkManagerBackgroundSyncScheduler
+import com.zack.recomptracker.data.local.RecompDatabase
+import com.zack.recomptracker.data.local.entity.DailyLogEntity
+import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
+import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.preferences.AppPreferences
+import com.zack.recomptracker.data.preferences.PlanPreferences
+import com.zack.recomptracker.data.preferences.SecureKeyStore
+import com.zack.recomptracker.data.preferences.UiPreferences
+import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
+import com.zack.recomptracker.data.rebalance.DataStoreRebalanceStore
+import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
+import com.zack.recomptracker.data.remote.CloudConfig
+import com.zack.recomptracker.data.remote.OpenAiCompatClient
+import com.zack.recomptracker.data.remote.OpenFoodFactsApi
+import com.zack.recomptracker.data.remote.TavilyWebSearchProvider
 import com.zack.recomptracker.data.repository.BackupRepository
+import com.zack.recomptracker.data.repository.BarcodeRepository
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
 import com.zack.recomptracker.data.repository.FoodCatalogRepository
 import com.zack.recomptracker.data.repository.LogRepository
@@ -19,55 +65,46 @@ import com.zack.recomptracker.data.repository.MealSlotInitializer
 import com.zack.recomptracker.data.repository.PersonalFoodRepository
 import com.zack.recomptracker.data.repository.PlanHistoryInitializer
 import com.zack.recomptracker.data.repository.PlanRepository
-import com.zack.recomptracker.data.repository.toPlanTargets
+import com.zack.recomptracker.data.repository.RecipeRepository
+import com.zack.recomptracker.data.repository.StreakRepository
+import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
 import com.zack.recomptracker.data.repository.WorkoutRepository
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.data.repository.macroTotals
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.data.usage.RoomUsageTracker
 import com.zack.recomptracker.data.usage.UsageTracker
-import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
-import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
+import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
+import com.zack.recomptracker.domain.adherence.NutritionDay
+import com.zack.recomptracker.domain.adjustment.AdjustmentEngine
+import com.zack.recomptracker.domain.adjustment.AdjustmentInput
+import com.zack.recomptracker.domain.adjustment.AdjustmentThresholds
+import com.zack.recomptracker.domain.coach.CoachSignalEngine
+import com.zack.recomptracker.domain.coach.CoachSurface
+import com.zack.recomptracker.domain.coach.RateLimiter
+import com.zack.recomptracker.domain.coach.SignalSelector
+import com.zack.recomptracker.domain.insight.DayNutrition
+import com.zack.recomptracker.domain.insight.InsightEngine
+import com.zack.recomptracker.domain.insight.NutritionTargets
+import com.zack.recomptracker.domain.plan.PlanHistory
+import com.zack.recomptracker.domain.plan.PlanVersion
+import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
+import com.zack.recomptracker.domain.review.WeeklyActivity
+import com.zack.recomptracker.domain.review.WeeklyReviewComputer
+import com.zack.recomptracker.domain.review.WeeklyReviewData
+import com.zack.recomptracker.domain.review.WeeklyTrainingBuilder
+import com.zack.recomptracker.domain.streak.StreakCalculator
+import com.zack.recomptracker.domain.trend.MeasurementPoint
+import com.zack.recomptracker.domain.trend.PerformancePoint
+import com.zack.recomptracker.domain.trend.RecoveryPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.CreationExtras
-import com.zack.recomptracker.ai.AiInsightCoordinator
-import com.zack.recomptracker.ai.CloudCoachCoordinator
-import com.zack.recomptracker.ai.CloudInsightCoordinator
-import com.zack.recomptracker.ai.CoachCoordinator
-import com.zack.recomptracker.ai.CoachToolExecutor
-import com.zack.recomptracker.ai.CoachHandoffStore
-import com.zack.recomptracker.ai.CoachToolsAdapter
-import com.zack.recomptracker.ai.CloudRecipeNamer
-import com.zack.recomptracker.ai.RecipeNamer
-import com.zack.recomptracker.ai.CLOUD_COACH_TOOL_SCHEMAS
-import com.zack.recomptracker.ai.knowledge.KeywordKnowledgeRetriever
-import com.zack.recomptracker.ai.knowledge.KnowledgeCorpus
-import com.zack.recomptracker.ai.knowledge.KnowledgeInjector
-import com.zack.recomptracker.ai.knowledge.NoOpKnowledgeInjector
-import com.zack.recomptracker.ai.knowledge.RetrievalKnowledgeInjector
-import com.zack.recomptracker.data.preferences.SecureKeyStore
-import com.zack.recomptracker.data.preferences.UiPreferences
-import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
-import com.zack.recomptracker.data.remote.CloudConfig
-import com.zack.recomptracker.data.remote.OpenAiCompatClient
-import com.zack.recomptracker.data.remote.TavilyWebSearchProvider
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.stateIn
-import com.zack.recomptracker.ui.coach.CoachViewModel
-import com.zack.recomptracker.ui.body.BodyEditViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import com.zack.recomptracker.ui.aicoach.AiCoachViewModel
 import com.zack.recomptracker.ui.aicoach.CoachMemoryViewModel
 import com.zack.recomptracker.ui.appearance.AppearanceViewModel
+import com.zack.recomptracker.ui.body.BodyEditViewModel
 import com.zack.recomptracker.ui.body.BodyHistoryViewModel
+import com.zack.recomptracker.ui.coach.CoachViewModel
 import com.zack.recomptracker.ui.dashboard.CoachTodayViewModel
 import com.zack.recomptracker.ui.dashboard.DashboardViewModel
 import com.zack.recomptracker.ui.dashboard.RebalanceViewModel
@@ -77,79 +114,44 @@ import com.zack.recomptracker.ui.foods.FoodsViewModel
 import com.zack.recomptracker.ui.onboarding.OnboardingViewModel
 import com.zack.recomptracker.ui.plan.PlanViewModel
 import com.zack.recomptracker.ui.profile.ProfileViewModel
-import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.progress.ProgressViewModel
+import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
+import com.zack.recomptracker.ui.review.WeeklyReviewConfig
+import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
+import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
 import com.zack.recomptracker.ui.settings.SettingsViewModel
+import com.zack.recomptracker.ui.streak.StreakViewModel
 import com.zack.recomptracker.ui.today.FoodLogViewModel
 import com.zack.recomptracker.ui.today.TodayViewModel
 import com.zack.recomptracker.ui.train.ActiveSessionViewModel
 import com.zack.recomptracker.ui.train.ExercisePickerViewModel
-import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
 import com.zack.recomptracker.ui.train.ExerciseStatsViewModel
+import com.zack.recomptracker.ui.train.RoutineBuilderViewModel
 import com.zack.recomptracker.ui.train.SessionDetailViewModel
 import com.zack.recomptracker.ui.train.SessionSummaryViewModel
 import com.zack.recomptracker.ui.train.TrainViewModel
-import com.zack.recomptracker.ui.usage.UsageStatsViewModel
 import com.zack.recomptracker.ui.train.component.MuscleArt
-import com.zack.recomptracker.data.remote.OpenFoodFactsApi
-import com.zack.recomptracker.data.repository.BarcodeRepository
-import com.zack.recomptracker.data.repository.RecipeRepository
-import com.zack.recomptracker.data.repository.StreakRepository
-import com.zack.recomptracker.ui.recipes.RecipeBuilderViewModel
-import com.zack.recomptracker.ui.scanner.BarcodeScannerViewModel
-import com.zack.recomptracker.ai.CoachPhrasingService
-import com.zack.recomptracker.ai.RebalanceCopyService
-import com.zack.recomptracker.ai.WeeklyBriefingGenerator
-import com.zack.recomptracker.ai.WeeklyCoachNote
-import com.zack.recomptracker.data.coach.CoachContextBuilder
-import com.zack.recomptracker.data.coach.CoachContextCache
-import com.zack.recomptracker.data.coach.CoachDigestCoordinator
-import com.zack.recomptracker.data.coach.CoachExperimentStore
-import com.zack.recomptracker.data.coach.CoachInboxRepository
-import com.zack.recomptracker.data.coach.CoachJourneyStore
-import com.zack.recomptracker.data.coach.CoachMemoryStore
-import com.zack.recomptracker.data.coach.AndroidCoachNotifier
-import com.zack.recomptracker.data.coach.CoachNotificationPreferences
-import com.zack.recomptracker.data.coach.CoachPushEmitter
-import com.zack.recomptracker.data.coach.WorkManagerCoachDigestScheduler
-import com.zack.recomptracker.domain.coach.RateLimiter
-import com.zack.recomptracker.domain.coach.CoachSignalEngine
-import com.zack.recomptracker.domain.coach.CoachSurface
-import com.zack.recomptracker.domain.coach.SignalSelector
-import com.zack.recomptracker.data.repository.WeeklyBriefingRepository
-import com.zack.recomptracker.domain.activity.ActivitySummary
-import com.zack.recomptracker.domain.review.WeeklyActivity
-import com.zack.recomptracker.domain.review.WeeklyReviewComputer
-import com.zack.recomptracker.domain.review.WeeklyTrainingBuilder
-import com.zack.recomptracker.domain.streak.StreakCalculator
-import com.zack.recomptracker.domain.review.WeeklyReviewData
-import com.zack.recomptracker.ui.review.WeeklyReviewConfig
-import com.zack.recomptracker.ui.review.WeeklyReviewViewModel
-import com.zack.recomptracker.data.local.entity.MealEntryEntity
-import com.zack.recomptracker.data.local.entity.DailyLogEntity
-import com.zack.recomptracker.data.local.entity.LiftPerformanceEntity
-import com.zack.recomptracker.data.preferences.PlanPreferences
-import com.zack.recomptracker.domain.adherence.NutritionDay
-import com.zack.recomptracker.domain.insight.DayNutrition
-import com.zack.recomptracker.domain.insight.InsightEngine
-import com.zack.recomptracker.domain.insight.NutritionTargets
-import com.zack.recomptracker.domain.adjustment.AdjustmentInput
-import com.zack.recomptracker.domain.plan.PlanHistory
-import com.zack.recomptracker.domain.plan.PlanVersion
-import com.zack.recomptracker.data.rebalance.DataStoreRebalanceStore
-import com.zack.recomptracker.data.rebalance.RebalanceCoordinator
-import com.zack.recomptracker.domain.rebalance.RebalanceEvaluationInput
-import com.zack.recomptracker.domain.trend.MeasurementPoint
-import com.zack.recomptracker.domain.trend.PerformancePoint
-import com.zack.recomptracker.domain.trend.RecoveryPoint
-import com.zack.recomptracker.data.repository.macroTotals
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import com.zack.recomptracker.ui.usage.UsageStatsViewModel
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate as KxLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 class AppContainer(context: Context) {
     val dateProvider: DateProvider = SystemDateProvider()
@@ -401,22 +403,22 @@ class AppContainer(context: Context) {
         val logs28 = logs.filter { LocalDate.parse(it.date) in last28Start..today }
         val meals14 = meals.filter { LocalDate.parse(it.date) in last14Start..today }
         val mealsByDate = meals14.groupBy { LocalDate.parse(it.date) }
-        val weekTargets = PlanHistory.resolve(versions, (0..13).map { last14Start.plusDays(it.toLong()) })
+        val weekTargets = PlanHistory.resolve(versions, (0..13).map { last14Start.plusDays(it.toLong()).toKotlinLocalDate() })
         val nutritionDays = (0..13).map { off ->
             val d = last14Start.plusDays(off.toLong())
-            NutritionDay(d, mealsByDate[d].orEmpty().macroTotals().calories, weekTargets[d]?.calories ?: prefs.targetCalories)
+            NutritionDay(d.toKotlinLocalDate(), mealsByDate[d].orEmpty().macroTotals().calories, weekTargets[d.toKotlinLocalDate()]?.calories ?: prefs.targetCalories)
         }
         val loggedDates = logs28.map { it.date }.toSet() + meals14.map { it.date }.toSet()
         val daysLogged = loggedDates.count { LocalDate.parse(it) in last14Start..today }
         if (daysLogged == 0) return null
-        val weightPoints = logs28.map { MeasurementPoint(LocalDate.parse(it.date), it.bodyWeightKg) }
-        val waistPoints = logs28.map { MeasurementPoint(LocalDate.parse(it.date), it.waistCm) }
+        val weightPoints = logs28.map { MeasurementPoint(KxLocalDate.parse(it.date), it.bodyWeightKg) }
+        val waistPoints = logs28.map { MeasurementPoint(KxLocalDate.parse(it.date), it.waistCm) }
         val perfPoints = performances
             .filter { LocalDate.parse(it.date) in last28Start..today }
-            .map { PerformancePoint(LocalDate.parse(it.date), it.weight, it.reps, it.sets) }
+            .map { PerformancePoint(KxLocalDate.parse(it.date), it.weight, it.reps, it.sets) }
         val recPoints = logs
             .filter { LocalDate.parse(it.date) in last14Start..today }
-            .map { RecoveryPoint(LocalDate.parse(it.date), it.sleepHours, it.energyScore, it.sorenessScore) }
+            .map { RecoveryPoint(KxLocalDate.parse(it.date), it.sleepHours, it.energyScore, it.sorenessScore) }
         val weeksSincePhase = prefs.maintenancePhaseStartDate
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?.let { ChronoUnit.DAYS.between(it, today).coerceAtLeast(0) / 7 }?.toInt() ?: 4
@@ -436,13 +438,14 @@ class AppContainer(context: Context) {
         )
         val result = AdjustmentEngine(thresholds).evaluate(input)
         val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
-        val weekEndTarget = PlanHistory.planOnOrFallback(versions, today, prefs.toPlanTargets()).calories
+        val weekEndTarget =
+            PlanHistory.planOnOrFallback(versions, today.toKotlinLocalDate(), prefs.toPlanTargets()).calories
         // Activity domain (steps) — the fourth domain fed into the weekly check-in. Derived from the
         // step logs via the shared ActivitySummary (no duplicated math), this week vs last week.
-        val stepsByDate = logs28.mapNotNull { l -> l.steps?.let { LocalDate.parse(l.date) to it } }.toMap()
+        val stepsByDate = logs28.mapNotNull { l -> l.steps?.let { KxLocalDate.parse(l.date) to it } }.toMap()
         val activity = WeeklyActivity(
-            avgSteps7 = ActivitySummary.averageDailySteps(stepsByDate, today, 7),
-            avgStepsPrev7 = ActivitySummary.averageDailySteps(stepsByDate, today.minusDays(7), 7),
+            avgSteps7 = ActivitySummary.averageDailySteps(stepsByDate, today.toKotlinLocalDate(), 7),
+            avgStepsPrev7 = ActivitySummary.averageDailySteps(stepsByDate, today.minusDays(7).toKotlinLocalDate(), 7),
             stepGoal = null,
         )
         // Training domain (SUPPORTING) — reuse the shared TrainingDerivations e1RM/trend math over the
@@ -450,13 +453,17 @@ class AppContainer(context: Context) {
         val datedSessions = completedSessions
             .mapNotNull { s -> runCatching { LocalDate.parse(s.date) }.getOrNull()?.let { it to s } }
             .filter { (d, _) -> d in last28Start..today }
-        val training = WeeklyTrainingBuilder.build(datedSessions, today)
+        // `WeeklyTrainingBuilder` lives in `:shared` and speaks kotlinx-datetime; convert here.
+        val training = WeeklyTrainingBuilder.build(
+            datedSessions.map { it.first.toKotlinLocalDate() to it.second },
+            today.toKotlinLocalDate(),
+        )
         // Weekly Pattern Spotlight (Phase 2D) — the top two deterministic pattern facts over the same
         // 14-day window, computed by InsightEngine (relocated from the dashboard card into the briefing).
         val patternDays = (0..13).map { off ->
             val d = last14Start.plusDays(off.toLong())
             val t = mealsByDate[d].orEmpty().macroTotals()
-            DayNutrition(d, t.calories, t.proteinG, t.carbsG, t.fatG, logged = t.calories > 0)
+            DayNutrition(d.toKotlinLocalDate(), t.calories, t.proteinG, t.carbsG, t.fatG, logged = t.calories > 0)
         }
         val patternTargets = NutritionTargets(
             calories = prefs.targetCalories,
@@ -498,11 +505,11 @@ class AppContainer(context: Context) {
         val profile = userProfilePreferencesStore.preferences.first()
         val state = rebalanceStore.current()
         return RebalanceEvaluationInput(
-            today = today,
-            baseTargetsByDate = baseTargetsByDate,
-            eatenByDate = eatenByDate,
-            mealCountByDate = mealCountByDate,
-            stepsByDate = stepsByDate,
+            today = today.toKotlinLocalDate(),
+            baseTargetsByDate = baseTargetsByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            eatenByDate = eatenByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            mealCountByDate = mealCountByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
+            stepsByDate = stepsByDate.mapKeys { (d, _) -> d.toKotlinLocalDate() },
             baseStepGoal = profile.dailyStepGoal,
             goal = profile.goal,
             mode = state.mode,
@@ -521,7 +528,7 @@ class AppContainer(context: Context) {
         val ctx = runCatching { coachContextCache.get() }.getOrNull() ?: return null
         val signals = coachSignalEngine.evaluate(ctx)
         val winner = signalSelector.selectForSurface(
-            CoachSurface.WEEKLY, signals, emptyMap(), dateProvider.today(),
+            CoachSurface.WEEKLY, signals, emptyMap(), dateProvider.today().toKotlinLocalDate(),
         ).winner ?: return null
         return WeeklyCoachNote(statement = winner.verdict, rationale = winner.fallbackText)
     }
@@ -727,6 +734,7 @@ private class AppViewModelFactory(
                 planRepository = container.planRepository,
                 userProfileStore = container.userProfilePreferencesStore,
                 logRepository = container.logRepository,
+                dateProvider = container.dateProvider,
             )
             ProfileViewModel::class.java -> ProfileViewModel(
                 userProfileStore = container.userProfilePreferencesStore,

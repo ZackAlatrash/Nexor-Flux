@@ -11,6 +11,7 @@ import com.zack.recomptracker.domain.coach.ExperimentEvaluation
 import com.zack.recomptracker.domain.coach.SignalKind
 import com.zack.recomptracker.domain.coach.SignalSelector
 import java.time.temporal.ChronoUnit
+import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -103,7 +104,12 @@ class CoachDigestCoordinator(
         // The digest feeds the "Today's Coaching" slot, so only TODAY-surface signals are eligible.
         // WEEKLY-surface signals (e.g. the recomp verdict) belong to the weekly check-in surface and
         // must not leak into the daily slot.
-        val winner = selector.selectForSurface(CoachSurface.TODAY, signals, inbox.seenLedger(), today, cooldownDays).winner
+        // The selector lives in `:shared` and speaks kotlinx-datetime; the inbox ledger and
+        // DateProvider are still java.time, so convert at the call site.
+        val winner = selector.selectForSurface(
+            CoachSurface.TODAY, signals, inbox.seenLedger().mapValues { it.value.toKotlinLocalDate() },
+            today.toKotlinLocalDate(), cooldownDays,
+        ).winner
         inbox.stage(winner)
         if (winner != null) {
             inbox.markSeen(winner.dedupKey, today)
@@ -179,7 +185,8 @@ class CoachDigestCoordinator(
         val signature = ctx.history.weeklyReviews.lastOrNull()?.signature ?: return
         if (signature == prefs.lastPushedWeeklySignature()) return
         val weeklyWinner = selector.selectForSurface(
-            CoachSurface.WEEKLY, signals, inbox.seenLedger(), today, cooldownDays,
+            CoachSurface.WEEKLY, signals, inbox.seenLedger().mapValues { it.value.toKotlinLocalDate() },
+            today.toKotlinLocalDate(), cooldownDays,
         ).winner ?: return
         if (emitter.emit(weeklyWinner, isWeeklyCheckIn = true)) {
             prefs.setLastPushedWeeklySignature(signature)

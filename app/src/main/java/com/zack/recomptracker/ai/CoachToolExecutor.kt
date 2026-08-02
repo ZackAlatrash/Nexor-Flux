@@ -3,9 +3,9 @@ package com.zack.recomptracker.ai
 import android.util.Log
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.data.coach.CoachMemory
-import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.local.entity.DailyLogEntity
 import com.zack.recomptracker.data.local.entity.MealEntryEntity
+import com.zack.recomptracker.data.local.entity.SavedFoodEntity
 import com.zack.recomptracker.data.remote.WebSearchProvider
 import com.zack.recomptracker.data.remote.toToolJson
 import com.zack.recomptracker.data.repository.ExerciseLibraryRepository
@@ -15,8 +15,8 @@ import com.zack.recomptracker.data.repository.NewWorkoutLine
 import com.zack.recomptracker.data.repository.PlanRepository
 import com.zack.recomptracker.data.repository.PlannedSetDraft
 import com.zack.recomptracker.data.repository.WorkoutRepository
-import kotlin.math.roundToInt
 import com.zack.recomptracker.data.repository.WorkoutSessionRepository
+import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.data.repository.toSuggestionFood
 import com.zack.recomptracker.domain.activity.ActivitySummary
 import com.zack.recomptracker.domain.adherence.AdherenceCalculator
@@ -27,16 +27,18 @@ import com.zack.recomptracker.domain.food.MealEntryTypes
 import com.zack.recomptracker.domain.food.MealSuggester
 import com.zack.recomptracker.domain.food.SuggestionFocus
 import com.zack.recomptracker.domain.food.SuggestionResult
-import com.zack.recomptracker.data.repository.toPlanTargets
 import com.zack.recomptracker.domain.rebalance.EffectiveTargets
 import com.zack.recomptracker.domain.rebalance.RebalanceState
 import com.zack.recomptracker.domain.trend.MeasurementPoint
 import com.zack.recomptracker.domain.trend.TrendCalculator
 import com.zack.recomptracker.domain.workout.Exercise
 import com.zack.recomptracker.domain.workout.WorkoutSession
-import kotlinx.coroutines.flow.first
-import kotlinx.serialization.json.Json
 import java.time.LocalDate
+import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.first
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.serialization.json.Json
 
 /**
  * Minimum food-library match score for a log_meal to silently override the model's name + macros.
@@ -154,12 +156,12 @@ class CoachToolExecutor(
         // Grade against EFFECTIVE targets: on a rebalance day the reduced target applies, base
         // otherwise (behaviour-neutral with an empty state).
         val targetsByDate = EffectiveTargets.resolveAll(
-            planRepository.targetsByDate(weekDates),
+            planRepository.targetsByDate(weekDates).mapKeys { (d, _) -> d.toKotlinLocalDate() },
             rebalanceState(),
-        )
+        ).mapKeys { (d, _) -> d.toJavaLocalDate() }
         val nutritionDays = weekDates.map { date ->
             NutritionDay(
-                date = date,
+                date = date.toKotlinLocalDate(),
                 calories = macroMap[date]?.calories ?: 0,
                 targetCalories = targetsByDate[date]?.calories ?: 0,
             )
@@ -200,24 +202,27 @@ class CoachToolExecutor(
             .filter { it.trained }
             .mapNotNull { parseDate(it.date) }
         val workoutDays = ActivitySummary.workoutDays(
-            completedSessionDates = datedSessions.map { it.first },
-            trainedLogDates = trainedLogDates,
+            completedSessionDates = datedSessions.map { it.first.toKotlinLocalDate() },
+            trainedLogDates = trainedLogDates.map { it.toKotlinLocalDate() },
         )
-        val sessionsPerWeek = ActivitySummary.weeklyTrainingFrequency(workoutDays, today)
+        val sessionsPerWeek =
+            ActivitySummary.weeklyTrainingFrequency(workoutDays, today.toKotlinLocalDate())
 
         if (datedSessions.isEmpty()) {
             return """{"window_days":$TRAINING_WINDOW_DAYS,"sessions_per_week":${sessionsPerWeek.round1()},"lifts":[],"note":"no completed training sessions logged in this window"}"""
         }
 
-        val latestE1rm = TrainingDerivations.latestE1rmByExercise(datedSessions)
+        // TrainingDerivations lives in `:shared` (kotlinx-datetime); convert once at the call site.
+        val kDatedSessions = datedSessions.map { it.first.toKotlinLocalDate() to it.second }
+        val latestE1rm = TrainingDerivations.latestE1rmByExercise(kDatedSessions)
         val liftsJson = latestE1rm.entries
             .sortedByDescending { it.value }
             .joinToString(",") { (name, e1rm) ->
-                val trend = TrainingDerivations.trendDirection(datedSessions, name)
+                val trend = TrainingDerivations.trendDirection(kDatedSessions, name)
                 """{"name":"${name.esc()}","latest_e1rm_kg":${e1rm.round1()},"trend":"${trend.toJson()}"}"""
             }
-        val totalVolume = TrainingDerivations.totalTrainingVolume(datedSessions)
-        val recentRir = TrainingDerivations.recentRir(datedSessions)
+        val totalVolume = TrainingDerivations.totalTrainingVolume(kDatedSessions)
+        val recentRir = TrainingDerivations.recentRir(kDatedSessions)
 
         // Recent soreness: the last few non-null soreness scores from daily logs in the window,
         // newest first — a recovery-load signal alongside RIR.
@@ -258,9 +263,10 @@ class CoachToolExecutor(
         val latestWaist = waistSeries.maxByOrNull { it.date }?.value
 
         // 7-day average weight ending today, over logged weigh-ins only.
-        val weekStart = today.minusDays(6)
+        val weekStart = today.minusDays(6).toKotlinLocalDate()
+        val kToday = today.toKotlinLocalDate()
         val last7Weights = weightSeries
-            .filter { !it.date.isBefore(weekStart) && !it.date.isAfter(today) }
+            .filter { it.date >= weekStart && it.date <= kToday }
             .mapNotNull { it.value }
         val avgWeight7 = if (last7Weights.isEmpty()) null else last7Weights.average()
 
@@ -700,7 +706,7 @@ class CoachToolExecutor(
         logsInWindow: List<Pair<LocalDate, DailyLogEntity>>,
         selector: (DailyLogEntity) -> Double?,
     ): List<MeasurementPoint> = logsInWindow
-        .mapNotNull { (date, log) -> selector(log)?.let { MeasurementPoint(date, it) } }
+        .mapNotNull { (date, log) -> selector(log)?.let { MeasurementPoint(date.toKotlinLocalDate(), it) } }
         .sortedBy { it.date }
 
     /** Linear per-week trend via [TrendCalculator]; null when fewer than 2 logged points. */
@@ -844,7 +850,7 @@ class CoachToolExecutor(
         // Use the rebalance-EFFECTIVE target for the date, matching the coach system prompt and
         // get_weekly_trends. Using the untouched base plan here contradicted the reduced target the
         // coach quotes during an active rebalance (review P2-5).
-        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), date, rebalanceState())
+        val effective = EffectiveTargets.resolve(prefs.toPlanTargets(), date.toKotlinLocalDate(), rebalanceState())
         val target = MealSuggester.MacroTargets(
             calories = effective.calories, proteinG = effective.proteinG,
             carbsG = effective.carbsG, fatG = effective.fatG,

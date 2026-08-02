@@ -99,8 +99,10 @@ class ActiveSessionViewModel(
     init {
         viewModelScope.launch {
             session.collect { s ->
-                if (s != null && s.workoutId != null && _prevMap.value.isEmpty()) {
-                    loadPrevMap(s.workoutId)
+                // `workoutId` lives in :shared, so it cannot be smart-cast here — bind it first.
+                val workoutId = s?.workoutId
+                if (workoutId != null && _prevMap.value.isEmpty()) {
+                    loadPrevMap(workoutId)
                 }
                 if (s != null) {
                     resolveVisuals(s)

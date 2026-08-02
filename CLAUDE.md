@@ -80,3 +80,18 @@ credentials are absent. Signing uses the committed shared keystore — never reg
 
 Full-project code review (July 2026): `docs/reviews/2026-07-full-project-code-review.md` —
 P0/P1 findings with file:line. Prioritized roadmap: `docs/improvement-plans/00-roadmap-2026-07.md`.
+Note: the three P0s in that review are **already fixed** on `develop` — the doc is stale, the code
+is not.
+
+## iOS Port
+
+A native Swift/SwiftUI iOS app is planned. **If you are doing iOS work, read
+`docs/ios-port/STATUS.md` first** — it is the session spine and names the current phase.
+
+Architecture: native SwiftUI on iOS 26+, sharing **only `domain/`** via a KMP `:shared` module
+(GRDB, not SwiftData; `URLSession`, not Ktor; dates persist as `YYYY-MM-DD` strings). Full
+assessment and 7-phase roadmap: `docs/ios-port/00-feasibility-and-roadmap.md`. Binding conventions:
+`docs/ios-port/decisions.md`. Progress: `docs/ios-port/parity-ledger.md`.
+
+**Phase 0 restructures Gradle** (`:app` → `:app` + `:shared`) — it is exclusive, so no parallel
+Android branch work while it lands. Every later phase only adds files under `ios/`.

@@ -6,6 +6,7 @@ import com.zack.recomptracker.domain.plan.PlanTargets
 import com.zack.recomptracker.domain.plan.PlanVersion
 import com.zack.recomptracker.domain.streak.StreakCalculator
 import java.time.LocalDate
+import kotlinx.datetime.LocalDate as KxLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -13,7 +14,7 @@ class StreakBuilderTest {
     private val calc = StreakCalculator()
     // One baseline version covering all test dates, zone 2400..2600 (the old single-zone default).
     private val versions = listOf(
-        PlanVersion(LocalDate.parse("1970-01-01"), PlanTargets(2500, 1, 1, 1, 2400, 2600)),
+        PlanVersion(KxLocalDate.parse("1970-01-01"), PlanTargets(2500, 1, 1, 1, 2400, 2600)),
     )
     private val mon = LocalDate.of(2026, 6, 22)
     private val tue = mon.plusDays(1)

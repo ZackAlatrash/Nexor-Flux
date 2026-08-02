@@ -1,5 +1,6 @@
 package com.zack.recomptracker.ui.plan
 
+import com.zack.recomptracker.core.time.SystemDateProvider
 import com.zack.recomptracker.data.preferences.PlanPreferences
 import com.zack.recomptracker.data.preferences.UserProfilePreferencesStore
 import com.zack.recomptracker.data.repository.LogRepository
@@ -44,7 +45,7 @@ class PlanViewModelZoneTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = PlanViewModel(planRepo, profileStore, logRepo)
+    private fun viewModel() = PlanViewModel(planRepo, profileStore, logRepo, SystemDateProvider())
 
     @Test
     fun editingCaloriesRecentresZone() = runTest(dispatcher) {

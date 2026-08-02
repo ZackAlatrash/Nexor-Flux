@@ -15,6 +15,7 @@ import com.zack.recomptracker.domain.workout.SessionSet
 import com.zack.recomptracker.domain.workout.SessionStatus
 import com.zack.recomptracker.domain.workout.WorkoutSession
 import java.time.LocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -130,7 +131,7 @@ class CoachContextAssemblerTest {
 
     @Test
     fun `asOf mirrors today`() {
-        assertEquals(today, CoachContextAssembler.assemble(inputs()).asOf)
+        assertEquals(today.toKotlinLocalDate(), CoachContextAssembler.assemble(inputs()).asOf)
     }
 
     @Test
@@ -152,7 +153,7 @@ class CoachContextAssemblerTest {
     fun `weeksSincePhaseStart is whole weeks between phase start and today`() {
         val plan = PlanPreferences(maintenancePhaseStartDate = today.minusDays(20).toString())
         val ctx = CoachContextAssembler.assemble(inputs(plan = plan)).plan
-        assertEquals(today.minusDays(20), ctx.maintenancePhaseStartDate)
+        assertEquals(today.minusDays(20).toKotlinLocalDate(), ctx.maintenancePhaseStartDate)
         assertEquals(2, ctx.weeksSincePhaseStart) // 20 days -> 2 whole weeks
     }
 
@@ -212,8 +213,8 @@ class CoachContextAssemblerTest {
         )
         val ctx = CoachContextAssembler.assemble(inputs(eatenMeals = eaten)).nutrition
         assertEquals(3, ctx.loggedDaysInWindow)
-        assertEquals(1000, ctx.eatenByDate[today]!!.calories)
-        assertEquals(1700, ctx.eatenByDate[today.minusDays(1)]!!.calories)
+        assertEquals(1000, ctx.eatenByDate[today.toKotlinLocalDate()]!!.calories)
+        assertEquals(1700, ctx.eatenByDate[today.minusDays(1).toKotlinLocalDate()]!!.calories)
     }
 
     @Test
@@ -224,7 +225,7 @@ class CoachContextAssemblerTest {
         )
         val ctx = CoachContextAssembler.assemble(inputs(eatenMeals = eaten)).nutrition
         assertEquals(1, ctx.loggedDaysInWindow)
-        assertNull(ctx.eatenByDate[today.minusDays(40)])
+        assertNull(ctx.eatenByDate[today.minusDays(40).toKotlinLocalDate()])
     }
 
     @Test
@@ -266,8 +267,8 @@ class CoachContextAssemblerTest {
         )
         val ctx = CoachContextAssembler.assemble(inputs(dailyLogs = logs)).body
         assertEquals(2, ctx.weightSeries.size)
-        assertEquals(today.minusDays(2), ctx.weightSeries.first().date)
-        assertEquals(today, ctx.weightSeries.last().date)
+        assertEquals(today.minusDays(2).toKotlinLocalDate(), ctx.weightSeries.first().date)
+        assertEquals(today.toKotlinLocalDate(), ctx.weightSeries.last().date)
     }
 
     @Test
@@ -308,7 +309,7 @@ class CoachContextAssemblerTest {
         val ctx = CoachContextAssembler.assemble(inputs(dailyLogs = logs)).body
         assertEquals(10000, ctx.avgSteps7)
         assertEquals(5000, ctx.avgStepsPrev7)
-        assertEquals(10000, ctx.stepsByDate[today])
+        assertEquals(10000, ctx.stepsByDate[today.toKotlinLocalDate()])
     }
 
     @Test
@@ -319,7 +320,7 @@ class CoachContextAssemblerTest {
             log(today.minusDays(2), trained = true),
         )
         val ctx = CoachContextAssembler.assemble(inputs(dailyLogs = logs)).body
-        assertEquals(setOf(today, today.minusDays(2)), ctx.trainedDates)
+        assertEquals(setOf(today.toKotlinLocalDate(), today.minusDays(2).toKotlinLocalDate()), ctx.trainedDates)
     }
 
     @Test
@@ -351,9 +352,9 @@ class CoachContextAssemblerTest {
         val ctx = CoachContextAssembler.assemble(inputs(sessions = sessions)).training
         val bench = ctx.e1rmByExercise["Bench"]!!
         assertEquals(2, bench.size)
-        assertEquals(today.minusDays(7), bench.first().date)
+        assertEquals(today.minusDays(7).toKotlinLocalDate(), bench.first().date)
         assertEquals(116.667, bench.first().estimatedOneRepMax, 0.01)
-        assertEquals(today, bench.last().date)
+        assertEquals(today.toKotlinLocalDate(), bench.last().date)
         assertEquals(126.667, bench.last().estimatedOneRepMax, 0.01)
     }
 
@@ -375,7 +376,7 @@ class CoachContextAssemblerTest {
             session(today.minusDays(40), "Old", listOf(set(5, 60.0))), // out of window
         )
         val ctx = CoachContextAssembler.assemble(inputs(sessions = sessions)).training
-        assertEquals(listOf(today.minusDays(3), today), ctx.completedSessionDates)
+        assertEquals(listOf(today.minusDays(3).toKotlinLocalDate(), today.toKotlinLocalDate()), ctx.completedSessionDates)
     }
 
     @Test
@@ -423,7 +424,7 @@ class CoachContextAssemblerTest {
         )
         val ctx = CoachContextAssembler.assemble(inputs(reviews = reviews)).history
         assertEquals(2, ctx.weeklyReviews.size)
-        assertEquals(today.minusDays(14), ctx.weeklyReviews.first().weekStart)
+        assertEquals(today.minusDays(14).toKotlinLocalDate(), ctx.weeklyReviews.first().weekStart)
         assertEquals("Holding", ctx.weeklyReviews.first().verdict)
         assertEquals("sigB", ctx.weeklyReviews.last().signature)
     }

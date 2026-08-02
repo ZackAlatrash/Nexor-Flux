@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 
 private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
@@ -135,7 +136,8 @@ class FoodLogViewModel(
                     // runs on computeDispatcher (below); the collector only publishes the result.
                     // Overlay the rebalance-effective target for the viewed day (base when no plan
                     // covers it), so the day header reflects the agreed reduced target during a plan.
-                    val effective = EffectiveTargets.resolve(dayPlan, date, rebalanceState)
+                    val kDate = date.toKotlinLocalDate()
+                    val effective = EffectiveTargets.resolve(dayPlan, kDate, rebalanceState)
                     val dayTarget = prefs.copy(
                         targetCalories = effective.calories,
                         targetProteinG = effective.proteinG,
@@ -163,7 +165,7 @@ class FoodLogViewModel(
                         hasPlannedEntries = day.meals.any { meal -> meal.planned },
                         slots = slottedEntries,
                         unslottedEntries = unslotted,
-                        rebalanceDay = EffectiveTargets.planDayInfo(date, rebalanceState),
+                        rebalanceDay = EffectiveTargets.planDayInfo(kDate, rebalanceState),
                     )
                 }
             }.flowOn(computeDispatcher).collect { s ->
@@ -223,9 +225,10 @@ class FoodLogViewModel(
                 ) { weekMap, versions, prefs, rebalanceState ->
                     val fallback = prefs.toPlanTargets()
                     weekDates.map { d ->
-                        val base = PlanHistory.planOnOrFallback(versions, d, fallback)
+                        val kd = d.toKotlinLocalDate()
+                        val base = PlanHistory.planOnOrFallback(versions, kd, fallback)
                         // Effective (reduced) target on a rebalance day; base on every other day.
-                        val z = EffectiveTargets.resolve(base, d, rebalanceState)
+                        val z = EffectiveTargets.resolve(base, kd, rebalanceState)
                         DayCalorieSummary(
                             date = d,
                             calories = weekMap[d] ?: 0,

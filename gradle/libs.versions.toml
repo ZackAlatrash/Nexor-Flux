@@ -11,7 +11,10 @@ lifecycle = "2.10.0"
 navigation = "2.9.8"
 room = "2.8.4"
 coroutines = "1.11.0"
-serialization = "1.11.0"
+# 1.10.0+ ship Kotlin/Native klibs with ABI version 2.3.0, which the Kotlin 2.2.21 Native
+# compiler refuses ("can consume libraries having ABI version <= '2.2.0'"). 1.9.0 is the
+# newest release consumable by :shared's iOS targets. Revisit when Kotlin moves to 2.3.x.
+serialization = "1.9.0"
 kotlinxImmutable = "0.3.8"
 vico = "3.1.0"
 backdrop = "2.0.0"
@@ -31,6 +34,7 @@ okhttp = "4.12.0"
 securityCrypto = "1.1.0-alpha06"
 coil = "2.7.0"
 robolectric = "4.16"
+kotlinxDatetime = "0.8.0"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -80,10 +84,13 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

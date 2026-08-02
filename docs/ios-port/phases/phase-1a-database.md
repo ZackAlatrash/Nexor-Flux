@@ -26,6 +26,49 @@ plus round-trip coverage of every table and all seven transactions. It does **no
 
 ---
 
+## ⚠️ Amendment — applied 2026-08-02 after Tasks 1–4 were built
+
+**Primary keys are `Int64?`, not `Int64`.** The plan originally mirrored Android's `id = 0`
+sentinel literally. In Swift that fights GRDB: a record with `id = 0` inserts *rowid 0* rather than
+auto-assigning, and nulling it out needs an `encode(to:)` override that cannot cleanly call through
+to the Codable default.
+
+`Int64?` expresses the same idea natively — **`nil` means "assign me one", a value means "use
+exactly this"** — and GRDB encodes `nil` to SQL NULL, which is precisely what `nullif(?, 0)`
+produced. Behaviour matches Android with no encoder override.
+
+Consequences when you write code from this plan:
+- Every record's `id` is `Int64?`. **Foreign-key fields stay non-optional** (`recipeId: Int64`,
+  `sessionId: Int64`, …) — only the primary key changes.
+- Android's `.copy(id = 0)` idiom becomes `copy.id = nil`.
+- Reading an id back after insert gives `Int64?`; unwrap with `!` where a subsequent insert needs
+  it as a parent key. The compiler will point at every site.
+
+Tasks 1–4 are **already implemented and green** (13 tests). `IDPreservation.swift` as shipped is
+below; it supersedes the version in Task 4.
+
+```swift
+protocol IDPreservingRecord: MutablePersistableRecord {
+    var id: Int64? { get set }
+}
+
+extension IDPreservingRecord {
+    mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
+    mutating func insertPreservingID(_ db: Database) throws { try insert(db) }
+}
+```
+
+Also settled while building Tasks 1–4, so do not re-derive:
+- The test target was created for **macOS**; it is now retargeted to iOS with `TEST_HOST` and a
+  dependency on the app target.
+- A **shared** scheme (`xcshareddata/xcschemes/RecompTracker.xcscheme`) provides the test action.
+  Xcode's auto-generated scheme lives in gitignored `xcuserdata` and would break every fresh clone.
+- Deployment target is **iOS 26.0** across all four configs (was 26.5).
+- `PRAGMA table_info` reports `notnull = 1` for `id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL`,
+  so schema assertions must expect `"INTEGER NOT NULL"` for id columns.
+
+---
+
 ## Context you need before starting
 
 Read, in order:
@@ -592,14 +635,14 @@ import GRDB
     /// would make the two tasks circular.
     private struct Probe: Codable, FetchableRecord, IDPreservingRecord {
         static let databaseTableName = "recipes"
-        var id: Int64
+        var id: Int64?
         var name: String
     }
 
     @Test func insertWithZeroIdAssignsANewRowid() throws {
         let db = try AppDatabase.inMemoryForTesting()
         let saved = try db.writer.write { d -> Probe in
-            var p = Probe(id: 0, name: "auto")
+            var p = Probe(id: nil, name: "auto")
             try p.insertPreservingID(d)
             return p
         }
@@ -624,7 +667,7 @@ import GRDB
                 var p = Probe(id: Int64(id), name: "row\(id)")
                 try p.insertPreservingID(d)
             }
-            var fresh = Probe(id: 0, name: "fresh")
+            var fresh = Probe(id: nil, name: "fresh")
             try fresh.insertPreservingID(d)
             #expect(fresh.id == 201)   // AUTOINCREMENT continues above the high-water mark
         }
@@ -725,7 +768,7 @@ import GRDB
         // historical entries can reference a deleted slot. Modelling it as a relationship would
         // reject data this schema legitimately contains.
         let db = try AppDatabase.inMemoryForTesting()
-        var entry = MealEntry(id: 0, date: "2026-08-02", mealType: "LUNCH", name: "Rice",
+        var entry = MealEntry(id: nil, date: "2026-08-02", mealType: "LUNCH", name: "Rice",
                               calories: 300, proteinG: 6, carbsG: 65, fatG: 1,
                               slotId: 99999, amountGrams: 200, basePer100Calories: 150,
                               basePer100ProteinG: 3, basePer100CarbsG: 32.5, basePer100FatG: 0.5,
@@ -737,7 +780,7 @@ import GRDB
 
     @Test func booleansStoreAsIntegerZeroOne() throws {
         let db = try AppDatabase.inMemoryForTesting()
-        var entry = MealEntry(id: 0, date: "2026-08-02", mealType: "LUNCH", name: "x",
+        var entry = MealEntry(id: nil, date: "2026-08-02", mealType: "LUNCH", name: "x",
                               calories: 1, proteinG: 0, carbsG: 0, fatG: 0, slotId: nil,
                               amountGrams: nil, basePer100Calories: nil, basePer100ProteinG: nil,
                               basePer100CarbsG: nil, basePer100FatG: nil, entryServingName: nil,
@@ -752,7 +795,7 @@ import GRDB
 
     @Test func mealSlotMapsSnakeCaseSortOrder() throws {
         let db = try AppDatabase.inMemoryForTesting()
-        var slot = MealSlot(id: 0, name: "Dinner", sortOrder: 2)
+        var slot = MealSlot(id: nil, name: "Dinner", sortOrder: 2)
         try db.writer.write { try slot.insertPreservingID($0) }
         let raw = try db.reader.read { try Row.fetchOne($0, sql: "SELECT sort_order FROM meal_slots") }
         #expect(raw?["sort_order"] == 2)
@@ -790,7 +833,7 @@ struct DailyLog: Codable, Equatable, FetchableRecord, PersistableRecord {
 
 struct MealEntry: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "meal_entries"
-    var id: Int64
+    var id: Int64?
     var date: String
     /// Free text; "FOOD_LIBRARY" is used as a discriminator on this shared table.
     var mealType: String
@@ -815,7 +858,7 @@ struct MealEntry: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct MealSlot: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "meal_slots"
-    var id: Int64
+    var id: Int64?
     var name: String
     var sortOrder: Int
 
@@ -829,7 +872,7 @@ struct MealSlot: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct SavedFood: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "saved_foods"
-    var id: Int64
+    var id: Int64?
     var name: String
     var servingName: String
     var calories: Int
@@ -842,7 +885,7 @@ struct SavedFood: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct SavedMeal: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "saved_meals"
-    var id: Int64
+    var id: Int64?
     var name: String
     var mealType: String
     var calories: Int
@@ -854,7 +897,7 @@ struct SavedMeal: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 /// The NEVO catalog. Unique on (source, externalId).
 struct CatalogFood: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "catalog_foods"
-    var id: Int64
+    var id: Int64?
     var source: String
     var sourceVersion: String
     var externalId: String
@@ -932,7 +975,7 @@ import GRDB
 
     @Test func usageEventAllowsANilLabel() throws {
         let db = try AppDatabase.inMemoryForTesting()
-        var e = UsageEvent(id: 0, timestampEpochMs: 1_754_100_000_000, type: "tab_view", label: nil)
+        var e = UsageEvent(id: nil, timestampEpochMs: 1_754_100_000_000, type: "tab_view", label: nil)
         try db.writer.write { try e.insertPreservingID($0) }
         #expect(try db.reader.read { try UsageEvent.fetchOne($0, key: e.id) }?.label == nil)
     }
@@ -980,7 +1023,7 @@ struct WeeklyReview: Codable, Equatable, FetchableRecord, PersistableRecord {
 
 struct LiftPerformance: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "lift_performance"
-    var id: Int64
+    var id: Int64?
     var date: String
     var liftName: String
     var weight: Double
@@ -993,7 +1036,7 @@ struct LiftPerformance: Codable, Equatable, FetchableRecord, IDPreservingRecord 
 /// restore deliberately leaves it empty.
 struct UsageEvent: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "usage_events"
-    var id: Int64
+    var id: Int64?
     /// Epoch millis — one of only two INTEGER timestamps in the schema.
     var timestampEpochMs: Int64
     var type: String
@@ -1030,9 +1073,9 @@ import GRDB
     @Test func deletingARecipeCascadesToItsIngredients() throws {
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
-            var recipe = Recipe(id: 0, name: "Chili")
+            var recipe = Recipe(id: nil, name: "Chili")
             try recipe.insertPreservingID(d)
-            var ing = RecipeIngredient(id: 0, recipeId: recipe.id, name: "Beans", sortOrder: 0,
+            var ing = RecipeIngredient(id: nil, recipeId: recipe.id, name: "Beans", sortOrder: 0,
                                        calories: 120, proteinG: 8, carbsG: 20, fatG: 1,
                                        amountGrams: 100, basePer100Calories: 120,
                                        basePer100ProteinG: 8, basePer100CarbsG: 20,
@@ -1047,10 +1090,10 @@ import GRDB
     @Test func fetchesARecipeWithItsIngredientsOrderedById() throws {
         let db = try AppDatabase.inMemoryForTesting()
         let recipeId = try db.writer.write { d -> Int64 in
-            var recipe = Recipe(id: 0, name: "Bowl")
+            var recipe = Recipe(id: nil, name: "Bowl")
             try recipe.insertPreservingID(d)
             for (i, name) in ["Rice", "Chicken", "Broccoli"].enumerated() {
-                var ing = RecipeIngredient(id: 0, recipeId: recipe.id, name: name,
+                var ing = RecipeIngredient(id: nil, recipeId: recipe.id, name: name,
                                            sortOrder: i, calories: 100, proteinG: 1, carbsG: 1,
                                            fatG: 1, amountGrams: nil, basePer100Calories: nil,
                                            basePer100ProteinG: nil, basePer100CarbsG: nil,
@@ -1079,13 +1122,13 @@ import GRDB
 struct Recipe: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "recipes"
     static let ingredients = hasMany(RecipeIngredient.self)
-    var id: Int64
+    var id: Int64?
     var name: String
 }
 
 struct RecipeIngredient: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "recipe_ingredients"
-    var id: Int64
+    var id: Int64?
     var recipeId: Int64
     var name: String
     var sortOrder: Int
@@ -1159,7 +1202,7 @@ import GRDB
 @Suite struct TrainingRecordsTests {
 
     private func seedExercise(_ d: Database, externalId: String = "e1") throws -> Int64 {
-        var e = Exercise(id: 0, source: "free-exercise-db", sourceVersion: "2026-06-17",
+        var e = Exercise(id: nil, source: "free-exercise-db", sourceVersion: "2026-06-17",
                          externalId: externalId, name: "Squat", category: "strength",
                          force: "push", level: "intermediate", mechanic: "compound",
                          equipment: "barbell", primaryMuscles: #"["quadriceps"]"#,
@@ -1186,10 +1229,10 @@ import GRDB
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
             let exId = try seedExercise(d)
-            var w = Workout(id: 0, name: "Leg day", note: nil,
+            var w = Workout(id: nil, name: "Leg day", note: nil,
                             createdAt: "2026-08-02T10:00:00Z", updatedAt: "2026-08-02T10:00:00Z")
             try w.insertPreservingID(d)
-            var line = WorkoutExercise(id: 0, workoutId: w.id, exerciseId: exId,
+            var line = WorkoutExercise(id: nil, workoutId: w.id, exerciseId: exId,
                                        sortOrder: 0, note: nil)
             try line.insertPreservingID(d)
         }
@@ -1202,11 +1245,11 @@ import GRDB
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
             let exId = try seedExercise(d)
-            var w = Workout(id: 0, name: "Push", note: nil, createdAt: "t", updatedAt: "t")
+            var w = Workout(id: nil, name: "Push", note: nil, createdAt: "t", updatedAt: "t")
             try w.insertPreservingID(d)
-            var line = WorkoutExercise(id: 0, workoutId: w.id, exerciseId: exId, sortOrder: 0, note: nil)
+            var line = WorkoutExercise(id: nil, workoutId: w.id, exerciseId: exId, sortOrder: 0, note: nil)
             try line.insertPreservingID(d)
-            var ps = PlannedSet(id: 0, workoutExerciseId: line.id, setNumber: 1,
+            var ps = PlannedSet(id: nil, workoutExerciseId: line.id, setNumber: 1,
                                 targetReps: 8, targetWeightKg: 100)
             try ps.insertPreservingID(d)
             try w.delete(d)
@@ -1221,9 +1264,9 @@ import GRDB
         // workout_sessions.workoutId is ON DELETE SET NULL — history survives routine deletion.
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
-            var w = Workout(id: 0, name: "Pull", note: nil, createdAt: "t", updatedAt: "t")
+            var w = Workout(id: nil, name: "Pull", note: nil, createdAt: "t", updatedAt: "t")
             try w.insertPreservingID(d)
-            var s = WorkoutSession(id: 0, workoutId: w.id, workoutName: "Pull", date: "2026-08-02",
+            var s = WorkoutSession(id: nil, workoutId: w.id, workoutName: "Pull", date: "2026-08-02",
                                    startedAt: "2026-08-02T10:00:00Z", completedAt: nil,
                                    status: "COMPLETED", note: nil, durationSeconds: nil)
             try s.insertPreservingID(d)
@@ -1237,11 +1280,11 @@ import GRDB
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
             let exId = try seedExercise(d)
-            var s = WorkoutSession(id: 0, workoutId: nil, workoutName: "Ad hoc", date: "2026-08-02",
+            var s = WorkoutSession(id: nil, workoutId: nil, workoutName: "Ad hoc", date: "2026-08-02",
                                    startedAt: "t", completedAt: nil, status: "ACTIVE",
                                    note: nil, durationSeconds: nil)
             try s.insertPreservingID(d)
-            var se = SessionExercise(id: 0, sessionId: s.id, exerciseId: exId,
+            var se = SessionExercise(id: nil, sessionId: s.id, exerciseId: exId,
                                      exerciseName: "Squat", sortOrder: 0, note: nil)
             try se.insertPreservingID(d)
             try d.execute(sql: """
@@ -1267,7 +1310,7 @@ import GRDB
 /// TEXT — NOT Swift arrays. Keep them as `String` so a restored Android backup is byte-compatible.
 struct Exercise: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "exercises"
-    var id: Int64
+    var id: Int64?
     var source: String
     var sourceVersion: String
     var externalId: String
@@ -1286,7 +1329,7 @@ struct Exercise: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct Workout: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "workouts"
-    var id: Int64
+    var id: Int64?
     var name: String
     var note: String?
     /// ISO-8601 instants.
@@ -1296,7 +1339,7 @@ struct Workout: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct WorkoutExercise: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "workout_exercises"
-    var id: Int64
+    var id: Int64?
     var workoutId: Int64
     var exerciseId: Int64
     var sortOrder: Int
@@ -1305,7 +1348,7 @@ struct WorkoutExercise: Codable, Equatable, FetchableRecord, IDPreservingRecord 
 
 struct PlannedSet: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "planned_sets"
-    var id: Int64
+    var id: Int64?
     var workoutExerciseId: Int64
     /// 1-based and re-densified on every replace.
     var setNumber: Int
@@ -1315,7 +1358,7 @@ struct PlannedSet: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct WorkoutSession: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "workout_sessions"
-    var id: Int64
+    var id: Int64?
     /// Nullable — ON DELETE SET NULL keeps history when a routine is deleted.
     var workoutId: Int64?
     /// Denormalised so history survives the routine.
@@ -1331,7 +1374,7 @@ struct WorkoutSession: Codable, Equatable, FetchableRecord, IDPreservingRecord {
 
 struct SessionExercise: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "session_exercises"
-    var id: Int64
+    var id: Int64?
     var sessionId: Int64
     var exerciseId: Int64
     /// Denormalised.
@@ -1342,7 +1385,7 @@ struct SessionExercise: Codable, Equatable, FetchableRecord, IDPreservingRecord 
 
 struct SessionSet: Codable, Equatable, FetchableRecord, IDPreservingRecord {
     static let databaseTableName = "session_sets"
-    var id: Int64
+    var id: Int64?
     var sessionExerciseId: Int64
     var setNumber: Int
     var reps: Int
@@ -1386,7 +1429,7 @@ import GRDB
                              steps: nil, stepsSource: nil, sleepHours: nil, energyScore: nil,
                              hungerScore: nil, sorenessScore: nil, trained: false, notes: "")
                     .insert(d)
-                var m = MealEntry(id: 0, date: date, mealType: "LUNCH", name: "x", calories: 1,
+                var m = MealEntry(id: nil, date: date, mealType: "LUNCH", name: "x", calories: 1,
                                   proteinG: 0, carbsG: 0, fatG: 0, slotId: nil, amountGrams: nil,
                                   basePer100Calories: nil, basePer100ProteinG: nil,
                                   basePer100CarbsG: nil, basePer100FatG: nil,
@@ -1419,7 +1462,7 @@ import GRDB
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
             for (date, planned) in [("2026-07-28", true), ("2026-07-31", true), ("2026-08-02", true)] {
-                var m = MealEntry(id: 0, date: date, mealType: "LUNCH", name: "x", calories: 1,
+                var m = MealEntry(id: nil, date: date, mealType: "LUNCH", name: "x", calories: 1,
                                   proteinG: 0, carbsG: 0, fatG: 0, slotId: nil, amountGrams: nil,
                                   basePer100Calories: nil, basePer100ProteinG: nil,
                                   basePer100CarbsG: nil, basePer100FatG: nil,
@@ -1574,21 +1617,21 @@ import GRDB
     /// Builds one COMPLETED session with two sets, plus an ABANDONED session that must be excluded.
     private func seedHistory(_ db: AppDatabase) throws -> Int64 {
         try db.writer.write { d -> Int64 in
-            var e = Exercise(id: 0, source: "s", sourceVersion: "v", externalId: "x", name: "Squat",
+            var e = Exercise(id: nil, source: "s", sourceVersion: "v", externalId: "x", name: "Squat",
                              category: nil, force: nil, level: nil, mechanic: nil, equipment: nil,
                              primaryMuscles: "[]", secondaryMuscles: "[]", instructions: "[]",
                              images: "[]", userCreated: false)
             try e.insertPreservingID(d)
 
             for (status, reps) in [("COMPLETED", 5), ("ABANDONED", 99)] {
-                var s = WorkoutSession(id: 0, workoutId: nil, workoutName: "W", date: "2026-08-01",
+                var s = WorkoutSession(id: nil, workoutId: nil, workoutName: "W", date: "2026-08-01",
                                        startedAt: "2026-08-01T10:00:00Z", completedAt: nil,
                                        status: status, note: nil, durationSeconds: nil)
                 try s.insertPreservingID(d)
-                var se = SessionExercise(id: 0, sessionId: s.id, exerciseId: e.id,
+                var se = SessionExercise(id: nil, sessionId: s.id, exerciseId: e.id,
                                          exerciseName: "Squat", sortOrder: 0, note: nil)
                 try se.insertPreservingID(d)
-                var set = SessionSet(id: 0, sessionExerciseId: se.id, setNumber: 1, reps: reps,
+                var set = SessionSet(id: nil, sessionExerciseId: se.id, setNumber: 1, reps: reps,
                                      weightKg: 100, rir: 2, completed: true)
                 try set.insertPreservingID(d)
             }
@@ -1613,18 +1656,18 @@ import GRDB
     @Test func nextSortOrderStartsAtZeroThenIncrements() throws {
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
-            var s = WorkoutSession(id: 0, workoutId: nil, workoutName: "W", date: "2026-08-01",
+            var s = WorkoutSession(id: nil, workoutId: nil, workoutName: "W", date: "2026-08-01",
                                    startedAt: "t", completedAt: nil, status: "ACTIVE",
                                    note: nil, durationSeconds: nil)
             try s.insertPreservingID(d)
             #expect(try TrainingQueries.nextSortOrder(d: d, sessionId: s.id) == 0)
 
-            var e = Exercise(id: 0, source: "s", sourceVersion: "v", externalId: "x", name: "N",
+            var e = Exercise(id: nil, source: "s", sourceVersion: "v", externalId: "x", name: "N",
                              category: nil, force: nil, level: nil, mechanic: nil, equipment: nil,
                              primaryMuscles: "[]", secondaryMuscles: "[]", instructions: "[]",
                              images: "[]", userCreated: false)
             try e.insertPreservingID(d)
-            var se = SessionExercise(id: 0, sessionId: s.id, exerciseId: e.id, exerciseName: "N",
+            var se = SessionExercise(id: nil, sessionId: s.id, exerciseId: e.id, exerciseName: "N",
                                      sortOrder: 0, note: nil)
             try se.insertPreservingID(d)
             #expect(try TrainingQueries.nextSortOrder(d: d, sessionId: s.id) == 1)
@@ -1635,7 +1678,7 @@ import GRDB
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
             for date in ["2026-07-05", "2026-07-28", "2026-08-01"] {
-                var s = WorkoutSession(id: 0, workoutId: nil, workoutName: "W", date: date,
+                var s = WorkoutSession(id: nil, workoutId: nil, workoutName: "W", date: date,
                                        startedAt: "t", completedAt: "t", status: "COMPLETED",
                                        note: nil, durationSeconds: nil)
                 try s.insertPreservingID(d)
@@ -1791,7 +1834,7 @@ import GRDB
                 ("insight_seen", nil), ("insight_seen", nil),
             ]
             for (type, label) in rows {
-                var e = UsageEvent(id: 0, timestampEpochMs: 1_000, type: type, label: label)
+                var e = UsageEvent(id: nil, timestampEpochMs: 1_000, type: type, label: label)
                 try e.insertPreservingID(d)
             }
         }
@@ -1805,7 +1848,7 @@ import GRDB
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
             for ts in [100, 200, 300] {
-                var e = UsageEvent(id: 0, timestampEpochMs: Int64(ts), type: "t", label: nil)
+                var e = UsageEvent(id: nil, timestampEpochMs: Int64(ts), type: "t", label: nil)
                 try e.insertPreservingID(d)
             }
         }
@@ -1878,7 +1921,7 @@ import GRDB
 @Suite struct TransactionTests {
 
     private func seedExercise(_ d: Database, externalId: String, name: String) throws -> Exercise {
-        var e = Exercise(id: 0, source: "lib", sourceVersion: "v1", externalId: externalId,
+        var e = Exercise(id: nil, source: "lib", sourceVersion: "v1", externalId: externalId,
                          name: name, category: nil, force: nil, level: nil, mechanic: nil,
                          equipment: nil, primaryMuscles: "[]", secondaryMuscles: "[]",
                          instructions: "[]", images: "[]", userCreated: false)
@@ -1940,12 +1983,12 @@ import GRDB
             let e = try seedExercise(d, externalId: "e1", name: "Squat")
             var s = session(status: "ACTIVE")
             try s.insertPreservingID(d)
-            var se = SessionExercise(id: 0, sessionId: s.id, exerciseId: e.id,
+            var se = SessionExercise(id: nil, sessionId: s.id, exerciseId: e.id,
                                      exerciseName: "Squat", sortOrder: 0, note: nil)
             try se.insertPreservingID(d)
             for _ in 0..<3 {
                 _ = try Transactions.insertNextSet(d: d, set: SessionSet(
-                    id: 0, sessionExerciseId: se.id, setNumber: 999, reps: 5,
+                    id: nil, sessionExerciseId: se.id, setNumber: 999, reps: 5,
                     weightKg: 100, rir: 2, completed: true))
             }
             let numbers = try SessionSet.order(Column("id")).fetchAll(d).map(\.setNumber)
@@ -1957,7 +2000,7 @@ import GRDB
     @Test func replaceIngredientsRedensifiesSortOrder() throws {
         let db = try AppDatabase.inMemoryForTesting()
         try db.writer.write { d in
-            var r = Recipe(id: 0, name: "Bowl")
+            var r = Recipe(id: nil, name: "Bowl")
             try r.insertPreservingID(d)
             try Transactions.replaceIngredients(d: d, recipeId: r.id, ingredients: [
                 ingredient(name: "A", sortOrder: 7),
@@ -1971,18 +2014,18 @@ import GRDB
 
     // Helpers
     private func seedTemplate(externalId: String) -> Exercise {
-        Exercise(id: 0, source: "lib", sourceVersion: "v1", externalId: externalId, name: "X",
+        Exercise(id: nil, source: "lib", sourceVersion: "v1", externalId: externalId, name: "X",
                  category: nil, force: nil, level: nil, mechanic: nil, equipment: nil,
                  primaryMuscles: "[]", secondaryMuscles: "[]", instructions: "[]", images: "[]",
                  userCreated: false)
     }
     private func session(status: String) -> WorkoutSession {
-        WorkoutSession(id: 0, workoutId: nil, workoutName: "W", date: "2026-08-02",
+        WorkoutSession(id: nil, workoutId: nil, workoutName: "W", date: "2026-08-02",
                        startedAt: "2026-08-02T10:00:00Z", completedAt: nil, status: status,
                        note: nil, durationSeconds: nil)
     }
     private func ingredient(name: String, sortOrder: Int) -> RecipeIngredient {
-        RecipeIngredient(id: 0, recipeId: 0, name: name, sortOrder: sortOrder, calories: 1,
+        RecipeIngredient(id: nil, recipeId: 0, name: name, sortOrder: sortOrder, calories: 1,
                          proteinG: 0, carbsG: 0, fatG: 0, amountGrams: nil,
                          basePer100Calories: nil, basePer100ProteinG: nil, basePer100CarbsG: nil,
                          basePer100FatG: nil, entryServingName: nil, entryServingGrams: nil,
@@ -2075,7 +2118,7 @@ enum Transactions {
         try d.execute(sql: "DELETE FROM recipe_ingredients WHERE recipeId = ?", arguments: [recipeId])
         for (index, ing) in ingredients.enumerated() {
             var copy = ing
-            copy.id = 0
+            copy.id = nil
             copy.recipeId = recipeId
             copy.sortOrder = index
             try copy.insertPreservingID(d)
@@ -2091,13 +2134,13 @@ enum Transactions {
         try d.execute(sql: "DELETE FROM workout_exercises WHERE workoutId = ?", arguments: [workoutId])
         for (index, line) in lines.enumerated() {
             var ex = line.exercise
-            ex.id = 0
+            ex.id = nil
             ex.workoutId = workoutId
             ex.sortOrder = index
             try ex.insertPreservingID(d)
             for (n, ps) in line.plannedSets.enumerated() {
                 var copy = ps
-                copy.id = 0
+                copy.id = nil
                 copy.workoutExerciseId = ex.id
                 copy.setNumber = n + 1
                 try copy.insertPreservingID(d)
@@ -2116,7 +2159,7 @@ enum Transactions {
     /// T7: read-then-write allocator. The caller's `setNumber` is ignored.
     static func insertNextSet(d: Database, set: SessionSet) throws -> Int64 {
         var copy = set
-        copy.id = 0
+        copy.id = nil
         copy.setNumber = try TrainingQueries.setCount(d: d, sessionExerciseId: set.sessionExerciseId) + 1
         try copy.insertPreservingID(d)
         return copy.id
@@ -2166,7 +2209,7 @@ import GRDB
         }
         try await Task.sleep(for: .milliseconds(100))
         try await db.writer.write { d in
-            var m = MealEntry(id: 0, date: "2026-08-02", mealType: "LUNCH", name: "x", calories: 1,
+            var m = MealEntry(id: nil, date: "2026-08-02", mealType: "LUNCH", name: "x", calories: 1,
                               proteinG: 0, carbsG: 0, fatG: 0, slotId: nil, amountGrams: nil,
                               basePer100Calories: nil, basePer100ProteinG: nil,
                               basePer100CarbsG: nil, basePer100FatG: nil, entryServingName: nil,

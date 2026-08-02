@@ -74,13 +74,7 @@ fixture would only prove my Swift matches my Swift. Everything in 1b except B10 
 **1b. Give the iOS repo a git remote** — it is still local-only, 22 commits, and Phase 1b adds
 substantially more. A private GitHub repo would do.
 
-**2. Two small cleanups in Xcode when convenient** (both need the GUI, as they touch the pbxproj):
-- Delete `RecompTracker/Item.swift` — leftover SwiftData template scaffolding, now unreferenced.
-  Persistence is GRDB per D3.
-- Deployment target is **26.5**; consider lowering to **26.0** to widen device coverage. D5 only
-  requires 26+.
-
-**3. Apple Developer Program enrolment ($99/yr)** — not needed for the simulator work above, but
+**2. Apple Developer Program enrolment ($99/yr)** — not needed for the simulator work above, but
 needed *from day one* of Phase 4: HealthKit and background-delivery entitlements require a paid
 account, and enrolment has a lead time. **Reserve the bundle identifier** once enrolled — unlike
 Android, the signing key does not matter but the bundle ID is permanent.
@@ -107,6 +101,24 @@ Android, the signing key does not matter but the bundle ID is permanent.
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
+### 2026-08-02 — Phase 1a executed (hybrid: 4 tasks inline + 5 parallel worktree agents)
+- **71 tests, 0 isolation warnings**, Debug and Release both build. 1,182 LOC persistence +
+  1,444 LOC tests. Release app 14 MB. iOS repo at 23 commits.
+- 🟢 **Schema pinned against Room v15** — ground truth was Room's **KSP-generated
+  `RecompDatabase_Impl.kt`**, not the entity annotations (they disagree about DEFAULT clauses).
+- 🔴 **`nullif(?, 0)` was the crux.** Swift spells it `Int64?` — nil assigns, a value is used
+  verbatim. Always binding the id inserts rowid 0; always omitting it destroys every FK in a restore.
+- 🔴 **`error: circular reference` on every record.** MainActor default isolation + a same-module
+  protocol refining `MutablePersistableRecord`. Two agents hit it independently and invented
+  *different* workarounds; fixed at the root with one `nonisolated`, then normalised the layer.
+- **Parallelism worked**: buildable folders (objectVersion 77) mean new files need no pbxproj edit,
+  so worktree-isolated agents never collided — 5 agents, 4 merges, zero conflicts.
+- An agent **improved on my test design**: my date-sentinel test only reached 2099, which a `Date`
+  compare would also pass; they added an unpadded `2026-9-15` case only a TEXT compare orders right.
+- **Xcode friction, not Swift, cost the time** — SPM sections placed outside the `objects` dict
+  (parsed fine, resolved nothing); test target created for **macOS**; no shared scheme so no test
+  action; a conditional build-setting key needing quotes. All documented in the 1a plan.
+
 ### 2026-08-01 — Phase 0 executed and gated (subagent-driven, 21 commits)
 Full criteria table and reasoning: **D10** in [decisions.md](decisions.md). Highlights:
 - 11 domain packages + 3 value types moved in dependency order; Android green at every wave.
@@ -117,12 +129,9 @@ Full criteria table and reasoning: **D10** in [decisions.md](decisions.md). High
   on scientific-notation doubles, reachable from flat-trend detectors via OLS residue, silently
   suppressing a day's coach signal. Fixed in `4f6d96d`. *A golden corpus is only as good as its
   input set* — carry that into Phase 1.
-- 🟡 Two accepted costs: the **klib ABI ceiling** (serialization pinned 1.11.0 → 1.9.0 project-wide;
-  every future `commonMain` dep needs the same check) and **112 boundary date conversions**.
-- 🟡 Swift ergonomics: functions read well, but **Kotlin enums export as classes, not Swift enums**
-  — no exhaustive `switch`. Evaluate SKIE in Phase 1.
-- Bugs fixed in passing: **P2-10** (corrupt stored plan crash-looping the dashboard) and a latent
-  default-locale bug in `WeeklyReviewComputer`.
+- 🟡 Two accepted costs: the **klib ABI ceiling** (every future `commonMain` dep needs checking) and
+  **112 boundary date conversions**. Swift ergonomics mixed — Kotlin enums export as classes, so no
+  exhaustive `switch`; evaluate SKIE.
 
 ### 2026-08-01 — feasibility
 - 6 research agents → [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md) + 6 reference

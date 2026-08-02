@@ -4,7 +4,7 @@
 If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
 
 **Last updated:** 2026-08-01 · **Current phase:** ✅ **Phase 0 COMPLETE — gate passed (D10)** ·
-**Branch:** `feat/ios-shared-core` (21 commits, unmerged)
+**Branch:** ✅ merged to `develop` (`04ebf33`, 24 commits, **unpushed**)
 
 ---
 
@@ -56,8 +56,8 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. Decide how to land the branch** — `feat/ios-shared-core` is 21 commits and unmerged. Per D8
-Phase 0 is exclusive, so nothing else should touch Android until it lands.
+**1. Push `develop`** — the merge is local only; 24 commits are unpushed. Phase 0's exclusivity
+lock (D8) is now lifted, so parallel Android work can resume once this is pushed.
 
 **2. Two small cleanups in Xcode when convenient** (both need the GUI, as they touch the pbxproj):
 - Delete `RecompTracker/Item.swift` — leftover SwiftData template scaffolding, now unreferenced.
@@ -72,8 +72,8 @@ Android, the signing key does not matter but the bundle ID is permanent.
 
 ## Standing rules
 
-1. **Phase 0 is exclusive** — it restructures Gradle (`:app` → `:app` + `:shared`). No parallel
-   Android branch work while it lands. Every later phase is additive and parallel-safe.
+1. ~~Phase 0 is exclusive~~ — **lifted, Phase 0 has landed.** Every later phase only adds files
+   under the iOS repo and is parallel-safe with Android work.
 2. **One branch per phase**, merged to `develop` on completion. iOS code can't break the Android
    build, so don't hold it back.
 3. **Read [decisions.md](decisions.md) before making a convention call.** If you make a new one,

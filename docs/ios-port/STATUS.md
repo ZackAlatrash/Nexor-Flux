@@ -3,7 +3,7 @@
 **Read this first, every session. Keep it under ~100 lines.**
 If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
 
-**Last updated:** 2026-08-02 · **Current phase:** ✅ **Phase 1a COMPLETE** ·
+**Last updated:** 2026-08-02 · **Current phase:** Phase 1b — planned, not started ·
 **Branch:** Phase 0 merged + pushed. iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -16,8 +16,10 @@ If you need more than this to start, the thing you need belongs in a phase plan 
 ✅ **[Phase 1a](phases/phase-1a-database.md) is done** — GRDB 7.11.1, the 19 tables, all 18 record
 types, the query layer and the seven transaction bodies. **71 tests, 0 isolation warnings**, Debug
 and Release both build. The schema is pinned against Room v15 byte for byte.
-**Next: Phase 1b** (preference stores, Keychain, bundled assets, file codecs) — needs its own
-planning session per D7, and **a real Android backup export from you** before it can be verified.
+**[Phase 1b](phases/phase-1b-stores-and-formats.md) is planned** — 15 tasks, 56 steps, spanning
+**both repos**: Part A moves the five persistence codecs into `:shared` (D12), Part B builds the ten
+stores, Keychain, bundled assets and the file formats. It ends with a real Android backup importing
+on iOS. 🔴 **That fixture is still missing and gates the acceptance test** — see *Blocked / needs you*.
 
 **The domain extraction is complete and green on both platforms.** `:shared` holds 66 files /
 5,905 LOC of `commonMain`, compiling for Android, `iosArm64` and `iosSimulatorArm64`. Exactly the
@@ -51,7 +53,7 @@ Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
 |---|---|---|
 | **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | ✅ **done — gate passed** |
 | **1a** | GRDB + 19 tables + records + queries + transactions | ✅ **done — 71 tests** |
-| **1b** | Preference stores, Keychain, bundled assets, file codecs | ⬜ needs planning |
+| **1b** | Preference stores, Keychain, bundled assets, file codecs | 📋 [planned](phases/phase-1b-stores-and-formats.md) |
 | 2 | App shell, design system, **Food Log end-to-end** | ⬜ |
 | 3 | Dashboard, Body, Food Library, Plan, Profile, Onboarding, Streaks, charts | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
@@ -62,12 +64,15 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. 🔴 Export a real Android backup** — Phase 1b's acceptance test is *"import a real Android
-backup and assert every table and every slot link"*, and **no fixture exists anywhere in the repo**
-(verified). A synthetic one I write would only prove my Swift matches my Swift. Export from
-Settings → Data Backup on a populated install (meals across several slots, body entries, ideally a
-routine — the training tables are what backup v2 added) and drop it in the iOS repo. Not needed for
-1a; needed before 1b can be verified.
+**1. 🔴 Export a real Android backup** — gates Phase 1b's acceptance test (Task B10), and no
+fixture exists anywhere (verified twice). Settings → Data Backup → Export, from a populated install,
+saved to `~/Desktop/RecompTracker-IOS/RecompTrackerTests/Fixtures/android-backup-v2.json`.
+Ideally containing: meals across **several slots** (P0-2 was exactly this), a `slotId = null`
+coach-logged meal, a planned meal, a routine with sessions and sets, and a recipe. A synthetic
+fixture would only prove my Swift matches my Swift. Everything in 1b except B10 can proceed without it.
+
+**1b. Give the iOS repo a git remote** — it is still local-only, 22 commits, and Phase 1b adds
+substantially more. A private GitHub repo would do.
 
 **2. Two small cleanups in Xcode when convenient** (both need the GUI, as they touch the pbxproj):
 - Delete `RecompTracker/Item.swift` — leftover SwiftData template scaffolding, now unreferenced.

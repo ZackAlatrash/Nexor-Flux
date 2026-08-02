@@ -3,16 +3,20 @@
 **Read this first, every session. Keep it under ~100 lines.**
 If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
 
-**Last updated:** 2026-08-01 · **Current phase:** ✅ **Phase 0 COMPLETE — gate passed (D10)** ·
-**Branch:** ✅ merged to `develop` (`04ebf33`, 24 commits, **unpushed**)
+**Last updated:** 2026-08-02 · **Current phase:** Phase 1a — planned, not started ·
+**Branch:** Phase 0 merged + pushed. iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
 
 ## Where we are
 
-✅ **Phase 0 is complete and the gate passed — see D10 in [decisions.md](decisions.md).**
-The shared core is kept. **Next: Phase 1** (GRDB + 19 tables + 14 migrations, prefs, Keychain,
-file codecs) — needs a planning session first, per D7.
+✅ **Phase 0 complete, gate passed (D10).** The shared core is kept and merged to `develop`.
+
+**Phase 1 is now split into 1a and 1b (D13).**
+[Phase 1a](phases/phase-1a-database.md) is **planned and ready to execute** — 15 tasks, 71 steps:
+GRDB, the 19 tables, record types, the non-trivial queries and the seven transaction bodies. It
+ends with a test asserting the schema matches Room's v15 byte for byte.
+Phase 1b (preference stores, Keychain, bundled assets, file codecs) needs its own planning session.
 
 **The domain extraction is complete and green on both platforms.** `:shared` holds 66 files /
 5,905 LOC of `commonMain`, compiling for Android, `iosArm64` and `iosSimulatorArm64`. Exactly the
@@ -45,7 +49,8 @@ Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
 | Phase | What | Status |
 |---|---|---|
 | **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | ✅ **done — gate passed** |
-| 1 | GRDB + 19 tables + 14 migrations, prefs, Keychain, file codecs | ⬜ |
+| **1a** | GRDB + 19 tables + records + queries + transactions | 📋 [planned](phases/phase-1a-database.md) |
+| **1b** | Preference stores, Keychain, bundled assets, file codecs | ⬜ needs planning |
 | 2 | App shell, design system, **Food Log end-to-end** | ⬜ |
 | 3 | Dashboard, Body, Food Library, Plan, Profile, Onboarding, Streaks, charts | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
@@ -56,8 +61,12 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. Push `develop`** — the merge is local only; 24 commits are unpushed. Phase 0's exclusivity
-lock (D8) is now lifted, so parallel Android work can resume once this is pushed.
+**1. 🔴 Export a real Android backup** — Phase 1b's acceptance test is *"import a real Android
+backup and assert every table and every slot link"*, and **no fixture exists anywhere in the repo**
+(verified). A synthetic one I write would only prove my Swift matches my Swift. Export from
+Settings → Data Backup on a populated install (meals across several slots, body entries, ideally a
+routine — the training tables are what backup v2 added) and drop it in the iOS repo. Not needed for
+1a; needed before 1b can be verified.
 
 **2. Two small cleanups in Xcode when convenient** (both need the GUI, as they touch the pbxproj):
 - Delete `RecompTracker/Item.swift` — leftover SwiftData template scaffolding, now unreferenced.

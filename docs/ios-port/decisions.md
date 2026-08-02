@@ -148,6 +148,49 @@ silently suppressed a day's coach signal. Fixed in `4f6d96d`; corpus extended fr
 assertions. **A golden corpus is only as good as its input set** — the captured values were right,
 the coverage was not. Carry that adversarial-input discipline into Phase 1's persistence work.
 
+## D12 · 2026-08-02 · Share the persistence codecs too — `:shared` widens past `domain/`
+
+The five JSON codecs behind the coach and rebalance stores move into `:shared/commonMain`, and iOS
+calls them through the framework rather than re-declaring Swift `Codable` mirrors:
+`CoachJourneySerialization`, `CoachExperimentSerialization`, `RebalanceSerialization` (all three have
+**zero** platform imports and move unchanged), plus `CoachInboxSerialization` and
+`PushHistorySerialization` after a `java.time` → `kotlinx-datetime` port.
+
+**This deliberately extends D2**, which scoped sharing to `domain/`. D2's *reasoning* was the
+Kotlin↔Swift interop tax, measured as `suspend`/`Flow`/`StateFlow` crossings. These codecs are pure
+synchronous `String` ↔ value-type functions — the same profile as `domain/`, and the same near-zero
+tax. The letter of D2 changes; its logic does not.
+
+**Why, concretely.** A Swift mirror has to reproduce behaviour that is invisible unless you already
+know it is there:
+- `PushEvent.timestamp` serialises as `"2026-08-01T22:00"` — **seconds omitted when zero**. A Swift
+  `ISO8601DateFormatter` emits `T22:00:00`, breaking push-history round-trip and **silently resetting
+  rate limiting** for existing users.
+- `RebalanceSerialization` is the one **hand-rolled** codec: always emits all 19 plan keys, omits
+  `active` when null, and defaults a missing `intensity` to `STANDARD` so pre-feature records still
+  decode. Not kotlinx-equivalent — hand-reimplementing it is where drift would actually occur.
+- `encodeDefaults = true` is load-bearing for exactly one type (`CoachSignal`), and its
+  `init { require(...) }` invariants validate on decode. Swift `Codable` inherits neither.
+
+**Cost:** a two-file datetime port that ripples into `CoachInbox`/`PushHistory` interfaces and their
+stores. Net simplification, though — `CoachDigestCoordinator` currently converts at that boundary
+(`.mapValues { it.value.toKotlinLocalDate() }`) and that conversion disappears.
+
+**Not shared:** `BackupModels.kt` stays in `:app` — it is a DTO over 19 Room entities. The backup
+format therefore *is* reimplemented in Swift, which is why round-tripping a **real** Android backup
+is Phase 1b's acceptance test rather than a nice-to-have.
+
+## D13 · 2026-08-02 · Phase 1 splits into 1a (database) and 1b (stores, secrets, assets, codecs)
+
+**1a** — GRDB, the 19 tables, all 14 migrations, record types, the non-trivial queries, and the 19
+transaction bodies. Ends with a schema that round-trips.
+**1b** — the 10 preference stores, Keychain, bundled assets + the version-gated exercise seed, and
+the three file-format codecs. Ends with **a real Android backup importing on iOS**.
+
+**Why:** one plan covering all of it runs 20–25 tasks before anything is verifiable end-to-end. Two
+plans each end in a genuine acceptance test, and 1b's Swift patterns benefit from seeing how 1a's
+actually turned out.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a

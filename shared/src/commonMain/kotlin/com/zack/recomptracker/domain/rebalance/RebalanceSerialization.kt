@@ -1,10 +1,5 @@
-package com.zack.recomptracker.data.rebalance
+package com.zack.recomptracker.domain.rebalance
 
-import com.zack.recomptracker.domain.rebalance.RebalanceIntensity
-import com.zack.recomptracker.domain.rebalance.RebalanceMode
-import com.zack.recomptracker.domain.rebalance.RebalancePlan
-import com.zack.recomptracker.domain.rebalance.RebalanceState
-import com.zack.recomptracker.domain.rebalance.RebalanceStatus
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -20,7 +15,7 @@ import kotlinx.serialization.json.putJsonArray
 
 /**
  * Pure (Android-free) JSON (de)serialization for [RebalanceState], extracted so the value logic is
- * unit-testable without DataStore I/O. Mirrors [com.zack.recomptracker.data.coach.CoachExperimentSerialization]
+ * unit-testable without DataStore I/O. Mirrors [com.zack.recomptracker.domain.coach.CoachExperimentSerialization]
  * — same failure-tolerant contract (a malformed/stale-schema string never throws) — but built with
  * manual `JsonObject`/`buildJsonObject` construction (à la `parseTavilyResponse` in
  * `data/remote/WebSearchModels.kt` / `UserProfilePreferencesStore`) rather than `@Serializable` data
@@ -30,8 +25,11 @@ import kotlinx.serialization.json.putJsonArray
  * Deserialization is failure-tolerant: a blank string, invalid JSON, a JSON value that isn't an
  * object, or an unknown/malformed enum name all decode to [RebalanceState] (the all-defaults empty
  * state) rather than throwing, so a corrupt persisted value can never crash a surface reading it.
+ *
+ * Public, not `internal`: iOS calls this across the `Shared.framework` boundary, and Kotlin/Native
+ * only exports `public` declarations to Objective-C (decision D12).
  */
-internal object RebalanceSerialization {
+object RebalanceSerialization {
 
     private val json = Json { ignoreUnknownKeys = true }
 

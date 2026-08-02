@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.domain.coach.CoachAction
+import com.zack.recomptracker.domain.coach.FiredSignalRecord
 import com.zack.recomptracker.domain.coach.CoachActionType
 import com.zack.recomptracker.domain.coach.CoachSignal
 import com.zack.recomptracker.domain.coach.CoachSurface

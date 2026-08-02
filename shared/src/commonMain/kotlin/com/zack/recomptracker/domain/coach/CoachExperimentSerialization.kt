@@ -1,4 +1,4 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -30,8 +30,11 @@ data class CoachExperiment(
  * the value logic is unit-testable without DataStore I/O. Deserialization is failure-tolerant: a
  * malformed / stale-schema string decodes to `null` rather than throwing, so a corrupt persisted
  * value can never crash a surface reading it. Mirrors [CoachJourneySerialization].
+ *
+ * Public, not `internal`: iOS calls this across the `Shared.framework` boundary, and Kotlin/Native
+ * only exports `public` declarations to Objective-C (decision D12).
  */
-internal object CoachExperimentSerialization {
+object CoachExperimentSerialization {
 
     val json: Json = Json {
         ignoreUnknownKeys = true

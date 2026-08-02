@@ -1,4 +1,4 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

@@ -1,6 +1,5 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.SignalKind
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -40,8 +39,11 @@ data class WeeklyVerdictRecord(
  * rather than throwing, so a corrupt persisted value can never crash a surface reading it.
  *
  * Boundary rule (§5, guard-tested): imports nothing from the legacy `ai/local` stack.
+ *
+ * Public, not `internal`: iOS calls this across the `Shared.framework` boundary, and Kotlin/Native
+ * only exports `public` declarations to Objective-C (decision D12).
  */
-internal object CoachJourneySerialization {
+object CoachJourneySerialization {
 
     /**
      * Cap on the fired-signal history. ~24 entries ≈ 8 weeks of a few signals/week, enough for the

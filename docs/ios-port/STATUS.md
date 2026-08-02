@@ -1,10 +1,14 @@
 # iOS Port — STATUS
 
-**Read this first, every session. Keep it under ~100 lines.**
+**Read this first, every session. Keep it under ~160 lines, and the session log to 3 entries.**
 If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
+(The cap was ~100 for Phases 0–1a and was quietly missed twice; 160 is what the file honestly needs
+once *Blocked* and the phase board are worth reading. The discipline is the session log, which is
+the only part that grows without bound — archive older entries into the docs that carry their detail.)
 
-**Last updated:** 2026-08-02 · **Current phase:** Phase 1b — planned, not started ·
-**Branch:** Phase 0 merged + pushed. iOS work happens in `~/Desktop/RecompTracker-IOS/`.
+**Last updated:** 2026-08-02 · **Current phase:** Phase 1b — done bar the acceptance fixture ·
+**Branches:** Android `ios/phase-1b-shared-codecs` (unmerged) · iOS `phase-1b-stores` (unmerged).
+iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
 
@@ -12,32 +16,28 @@ If you need more than this to start, the thing you need belongs in a phase plan 
 
 ✅ **Phase 0 complete, gate passed (D10).** The shared core is kept and merged to `develop`.
 
-**Phase 1 is now split into 1a and 1b (D13).**
-✅ **[Phase 1a](phases/phase-1a-database.md) is done** — GRDB 7.11.1, the 19 tables, all 18 record
-types, the query layer and the seven transaction bodies. **71 tests, 0 isolation warnings**, Debug
-and Release both build. The schema is pinned against Room v15 byte for byte.
-**[Phase 1b](phases/phase-1b-stores-and-formats.md) is planned** — 15 tasks, 56 steps, spanning
-**both repos**: Part A moves the five persistence codecs into `:shared` (D12), Part B builds the ten
-stores, Keychain, bundled assets and the file formats. It ends with a real Android backup importing
-on iOS. 🔴 **That fixture is still missing and gates the acceptance test** — see *Blocked / needs you*.
+**Phase 1 was split into 1a and 1b (D13). Both are now built.**
+✅ **[Phase 1a](phases/phase-1a-database.md)** — GRDB 7.11.1, the 19 tables, all 18 record types,
+the query layer and the seven transaction bodies. Schema pinned against Room v15 byte for byte.
+✅ **[Phase 1b](phases/phase-1b-stores-and-formats.md)** — all five persistence codecs moved into
+`:shared` (D12), the ten preference stores, Keychain, bundled assets + the exercise seed, and all
+three file formats. 🔴 **One thing outstanding: the acceptance test needs a real Android backup.**
+Its 9 tests are written and **self-skip** until the fixture lands — see *Blocked / needs you*.
 
-**The domain extraction is complete and green on both platforms.** `:shared` holds 66 files /
-5,905 LOC of `commonMain`, compiling for Android, `iosArm64` and `iosSimulatorArm64`. Exactly the
-10 intended files remain in `:app`'s `domain/` (the backup DTO, `foodimport`, and the two
-Room-typed food files).
+**The persistence foundation is complete.** Nothing above the database layer exists yet: no UI, no
+`AppContainer` wiring beyond the database itself. Phase 2 starts there.
 
 ### Numbers
 
 | | |
 |---|---|
-| `:shared` commonMain | 66 files, **5,905 LOC** (predicted ~5,550) |
+| iOS tests | **265** (256 running + 9 armed) · 0 isolation warnings · Debug + Release green |
+| iOS persistence code | ~4,600 LOC across `Persistence/` |
+| `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
-| `:shared` androidUnitTest | 44 files, 5,430 LOC (moved JUnit4, JVM-only) |
-| Remaining in `:app` `domain/` | 10 files, 741 LOC — all deliberate |
-| Tests | `:app` 1017 · `:shared` JVM 400 · `:shared` iOS 11 |
-| Kotlin/Native cold compile | **13.2 s** · warm incremental **0.8 s** |
-| XCFramework assembly | 22.5 s · **release iOS app 9.5 MB** |
-| Boundary date conversions in `:app` | **112 expressions across 26 files** |
+| Kotlin tests | `:app` 967 · `:shared` JVM 450 · `:shared` iOS 11 — **1417 total, unchanged** |
+| Release iOS app | **16 MB** (was 14 MB after 1a; +1.2 MB of bundled JSON assets) |
+| Kotlin/Native cold compile | **13.2 s** · warm incremental **0.8 s** · XCFramework 22.5 s |
 
 ## The decision in one paragraph
 
@@ -53,7 +53,7 @@ Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
 |---|---|---|
 | **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | ✅ **done — gate passed** |
 | **1a** | GRDB + 19 tables + records + queries + transactions | ✅ **done — 71 tests** |
-| **1b** | Preference stores, Keychain, bundled assets, file codecs | 📋 [planned](phases/phase-1b-stores-and-formats.md) |
+| **1b** | Preference stores, Keychain, bundled assets, file codecs | ✅ **done — 265 tests** (fixture pending) |
 | 2 | App shell, design system, **Food Log end-to-end** | ⬜ |
 | 3 | Dashboard, Body, Food Library, Plan, Profile, Onboarding, Streaks, charts | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
@@ -64,16 +64,22 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. 🔴 Export a real Android backup** — gates Phase 1b's acceptance test (Task B10), and no
-fixture exists anywhere (verified twice). Settings → Data Backup → Export, from a populated install,
-saved to `~/Desktop/RecompTracker-IOS/RecompTracker/RecompTrackerTests/Fixtures/android-backup-v2.json`
-(note the nested `RecompTracker/` — the test target lives inside the project folder).
-Ideally containing: meals across **several slots** (P0-2 was exactly this), a `slotId = null`
-coach-logged meal, a planned meal, a routine with sessions and sets, and a recipe. A synthetic
-fixture would only prove my Swift matches my Swift. Everything in 1b except B10 can proceed without it.
+**1. 🔴 Export a real Android backup** — the last outstanding piece of Phase 1b. The 9 acceptance
+tests are written and **self-skip** until it appears, so the suite is green but the claim "iOS reads
+Android's backup" is *unproven*. Settings → Data Backup → Export, from a populated install, saved to
+`~/Desktop/RecompTracker-IOS/RecompTracker/RecompTrackerTests/Fixtures/android-backup-v2.json`
+(note the nested `RecompTracker/` — the test target lives inside the project folder). Buildable
+folders pick it up with no project change; just re-run the suite.
+It must contain: meals across **several slots** (P0-2 was exactly this), a `slotId = null`
+coach-logged meal, a routine with sessions and sets, and a recipe — `theFixtureIsAdversarialEnough…`
+fails loudly if it does not, rather than passing over a weak export.
 
-**1b. Give the iOS repo a git remote** — it is still local-only, 22 commits, and Phase 1b adds
-substantially more. A private GitHub repo would do.
+**1b. Give the iOS repo a git remote** — still local-only, now ~35 commits. A private GitHub repo
+would do.
+
+**1c. Decide the bundle identifier.** It is still the Xcode template default,
+`Epistles-of-Wisdom.RecompTracker`. Unlike Android's signing key a bundle ID is permanent once
+reserved, so this wants settling before Phase 4, not during it.
 
 **2. Apple Developer Program enrolment ($99/yr)** — not needed for the simulator work above, but
 needed *from day one* of Phase 4: HealthKit and background-delivery entitlements require a paid
@@ -102,31 +108,39 @@ Android, the signing key does not matter but the bundle ID is permanent.
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
-### 2026-08-02 — Phase 1a executed (hybrid: 4 tasks inline + 5 parallel worktree agents)
-- **71 tests, 0 isolation warnings**, Debug and Release both build. 1,182 LOC persistence +
-  1,444 LOC tests. Release app 14 MB. iOS repo at 23 commits.
-- 🟢 **Schema pinned against Room v15** — ground truth was Room's **KSP-generated
-  `RecompDatabase_Impl.kt`**, not the entity annotations (they disagree about DEFAULT clauses).
-- 🔴 **`nullif(?, 0)` was the crux.** Swift spells it `Int64?` — nil assigns, a value is used
-  verbatim. Always binding the id inserts rowid 0; always omitting it destroys every FK in a restore.
-- 🔴 **`error: circular reference` on every record.** MainActor default isolation + a same-module
-  protocol refining `MutablePersistableRecord`. Two agents hit it independently and invented
-  *different* workarounds; fixed at the root with one `nonisolated`, then normalised the layer.
-- **Parallelism worked**: buildable folders (objectVersion 77) mean new files need no pbxproj edit,
-  so worktree-isolated agents never collided — 5 agents, 4 merges, zero conflicts.
-- An agent **improved on my test design**: my date-sentinel test only reached 2099, which a `Date`
-  compare would also pass; they added an unpadded `2026-9-15` case only a TEXT compare orders right.
-- **Xcode friction, not Swift, cost the time** — SPM sections placed outside the `objects` dict
-  (parsed fine, resolved nothing); test target created for **macOS**; no shared scheme so no test
-  action; a conditional build-setting key needing quotes. All documented in the 1a plan.
+### 2026-08-02 — Phase 1b executed (Part A inline + 5 parallel worktree agents)
+- **iOS 71 → 265 tests**, 0 isolation warnings, Debug *and* Release green. Kotlin total unchanged at
+  1417 (`:app` 967 · `:shared` JVM 450 · iOS 11) — 78 tests moved to `:shared` with their code.
+- 🔴 **The generated header lies about type names.** It spells `SharedRebalanceSerialization`; with
+  `import Shared` Swift sees `RebalanceSerialization`. Now pinned as code in `SharedInteropTests`,
+  which is the executable form of [reference/shared-codec-api.md](reference/shared-codec-api.md).
+- 🔴 **Synthesised `Decodable` would silently wipe preferences.** It throws on the first missing key;
+  `JSONStore` turns that into "return the default", so *adding a field* resets every user. Two agents
+  found it independently → **D14**: every persisted mirror decodes per-key.
+- 🔴 **Kotlin `encodeDefaults = true` vs Swift's omit-nil.** Eight backup entities give nullables no
+  Kotlin default, so a Swift-written backup would fail to decode on Android with
+  `MissingFieldException`. Every payload type spells `encode(to:)` out by hand.
+- **A Debug run is not enough.** Two isolation warnings appeared only in Release: `nonisolated` on a
+  type does *not* propagate to its extensions.
+- Buildable folders handle **resources** too — all four JSON assets reached `Bundle.main` with no
+  pbxproj edit. The one project change needed was B7's `Info.plist`, which must sit *outside* the
+  synchronized folder or it is claimed twice and the build fails.
+- Agents corrected the plan four times: `coach_memory` has no `:shared` codec, `profilePhotoUri` is
+  not in the backup payload at all, `JSONStore<String>` per store was unworkable (several stores have
+  multiple keys), and P2-18's suggested fix was already what Android does.
+
+### 2026-08-02 — Phase 1a executed (71 tests) · full detail in the [1a plan](phases/phase-1a-database.md)
+Schema ground truth was Room's KSP-generated `RecompDatabase_Impl.kt`, not the entity annotations —
+they disagree about DEFAULT clauses. `nullif(?, 0)` is spelled `Int64?` in Swift. `error: circular
+reference` on every record came from MainActor default isolation meeting a same-module protocol
+refining `MutablePersistableRecord`; one `nonisolated` fixed it. Xcode friction, not Swift, cost the
+time. Parallel worktree agents worked: 5 agents, 4 merges, zero conflicts.
 
 ### 2026-08-01 — Phase 0 executed and gated · feasibility
-Full criteria table and reasoning: **D10** in [decisions.md](decisions.md). Architecture rationale
-and the evidence base: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md) and
-[reference/architecture-evidence.md](reference/architecture-evidence.md). In short: 11 domain
-packages moved with `RebalanceEngine.size()` untouched; **372 golden assertions bit-exact on
-Kotlin/Native**; the final drift review caught a reachable `formatFixed` bug the corpus had missed —
-*a golden corpus is only as good as its input set*. Fixed P2-10 and a latent locale bug in passing.
+Criteria and reasoning: **D10** in [decisions.md](decisions.md); rationale in
+[00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md). 11 domain packages moved,
+**372 golden assertions bit-exact on Kotlin/Native**, and a drift review caught a reachable
+`formatFixed` bug the corpus had missed — *a golden corpus is only as good as its input set*.
 
 ---
 

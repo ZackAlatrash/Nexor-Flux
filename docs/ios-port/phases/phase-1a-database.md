@@ -58,6 +58,19 @@ extension IDPreservingRecord {
 }
 ```
 
+**🔴 `error: circular reference` on a record declaration — read this before writing any Swift type
+that conforms to `IDPreservingRecord`.** The app target builds with
+`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. A MainActor-isolated struct conforming to a
+*same-module* protocol that refines `MutablePersistableRecord` sends the compiler into
+`error: circular reference` — with no notes, pointing at the struct itself. It does **not** happen
+in the test target (which gets the protocol cross-module via `@testable import`), which is why
+Tasks 1–4 never saw it.
+
+**Already fixed at the root:** `IDPreservingRecord` is declared `nonisolated`. You need no
+per-struct annotation and no extension-based conformance — declare it inline like any other
+protocol. If you see the error anyway, check that `nonisolated` is still on the protocol rather
+than working around it locally.
+
 Also settled while building Tasks 1–4, so do not re-derive:
 - The test target was created for **macOS**; it is now retargeted to iOS with `TEST_HOST` and a
   dependency on the app target.
@@ -66,6 +79,14 @@ Also settled while building Tasks 1–4, so do not re-derive:
 - Deployment target is **iOS 26.0** across all four configs (was 26.5).
 - `PRAGMA table_info` reports `notnull = 1` for `id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL`,
   so schema assertions must expect `"INTEGER NOT NULL"` for id columns.
+- **`#expect` cannot be used inside a throwing closure** — `try db.reader.read { #expect(…) }`
+  fails with "errors thrown from here are not handled", because the macro expands into a
+  non-throwing context. Write `#expect(try db.reader.read { … } == expected)` instead.
+- Tests live flat in `RecompTrackerTests/`, not the `RecompTrackerTests/Persistence/` subfolder the
+  File-structure table suggests. Follow the existing files.
+- **Tasks 5–8 are complete and merged** (29 tests green): all 18 record types plus
+  `RecipeWithIngredients`. `SessionExerciseWithSets` and `SessionWithDetails` are deliberately
+  *not* written yet — Task 10 defines them alongside `TrainingQueries`.
 
 ---
 

@@ -7,8 +7,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.zack.recomptracker.core.time.DateProvider
+import com.zack.recomptracker.domain.coach.CoachJourneySerialization
 import com.zack.recomptracker.domain.coach.CoachSignal
+import com.zack.recomptracker.domain.coach.FiredSignalRecord
 import com.zack.recomptracker.domain.coach.SignalKind
+import com.zack.recomptracker.domain.coach.WeeklyVerdictRecord
 import kotlinx.coroutines.flow.first
 
 private val Context.coachJourneyDataStore by preferencesDataStore(name = "coach_journey")

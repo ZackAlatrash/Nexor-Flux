@@ -2,6 +2,7 @@ package com.zack.recomptracker.data.coach
 
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.domain.coach.CoachContext
+import com.zack.recomptracker.domain.coach.CoachExperiment
 import com.zack.recomptracker.domain.coach.CoachContextFixtures
 import com.zack.recomptracker.domain.coach.CoachDetector
 import com.zack.recomptracker.domain.coach.CoachSignal

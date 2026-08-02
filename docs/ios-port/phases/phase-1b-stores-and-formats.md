@@ -34,7 +34,9 @@ committed backup JSON, golden file or `.rtroutine` anywhere in the Android repo,
 iOS repo.
 
 Export from **Settings → Data Backup → Export backup** on a populated install and place it at
-`~/Desktop/RecompTracker-IOS/RecompTrackerTests/Fixtures/android-backup-v2.json`.
+`~/Desktop/RecompTracker-IOS/RecompTracker/RecompTrackerTests/Fixtures/android-backup-v2.json`.
+(Note the nested `RecompTracker/`: the test target lives inside the project folder, not at the
+repo root.)
 
 For the test to be worth anything the export should contain:
 - meals spread across **several different slots** (this is what P0-2 broke — slot links)
@@ -71,8 +73,8 @@ transaction bodies. **71 tests pass.**
   no diagnostics. Keep new persistence types `nonisolated`.
 - **`#expect` cannot appear inside a throwing closure.** Write
   `#expect(try db.read { … } == expected)`, not `try db.read { #expect(…) }`.
-- Tests live **flat** in `RecompTrackerTests/`, not in subfolders. Fixtures go in
-  `RecompTrackerTests/Fixtures/`.
+- Tests live **flat** in `RecompTracker/RecompTrackerTests/`, not in subfolders. Fixtures go in
+  `RecompTracker/RecompTrackerTests/Fixtures/`.
 - Buildable folders mean new Swift files need **no `project.pbxproj` edit**. Never edit it.
 - Adding a resource *file* (the fixture, the bundled JSONs) to the app or test target **does** need
   care — see Task B6 Step 1.

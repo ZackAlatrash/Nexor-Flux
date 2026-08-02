@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.domain.coach.PushEvent
+import com.zack.recomptracker.domain.coach.PushHistorySerialization
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.toKotlinLocalDateTime
 
 private val Context.pushHistoryDataStore by preferencesDataStore(name = "coach_push_history")
 
@@ -64,7 +66,7 @@ class PushHistoryStore(
 
     /** Append [event], pruning stale entries and capping the list length in one edit. */
     override suspend fun record(event: PushEvent) {
-        val reference = dateProvider.today().atStartOfDay()
+        val reference = dateProvider.today().atStartOfDay().toKotlinLocalDateTime()
         dataStore.edit { prefs ->
             val existing = PushHistorySerialization.decode(prefs[Keys.Events])
             prefs[Keys.Events] = PushHistorySerialization.encode(
@@ -75,7 +77,7 @@ class PushHistoryStore(
 
     /** The retained push events, oldest first, with the stale tail pruned relative to today. */
     override suspend fun recentPushes(): List<PushEvent> {
-        val reference = dateProvider.today().atStartOfDay()
+        val reference = dateProvider.today().atStartOfDay().toKotlinLocalDateTime()
         val stored = PushHistorySerialization.decode(dataStore.data.first()[Keys.Events])
         return PushHistorySerialization.prune(stored, reference)
     }

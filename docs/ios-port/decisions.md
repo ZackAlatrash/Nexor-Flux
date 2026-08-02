@@ -191,6 +191,34 @@ the three file-format codecs. Ends with **a real Android backup importing on iOS
 plans each end in a genuine acceptance test, and 1b's Swift patterns benefit from seeing how 1a's
 actually turned out.
 
+## D14 · 2026-08-02 · Swift persistence mirrors decode per-key, and qualify Kotlin namesakes
+
+Two Phase 1b agents hit the same two traps independently, so both are settled here rather than
+re-litigated per store.
+
+**1. Every Swift mirror of a persisted type decodes per-key, never via synthesised `Decodable`.**
+
+Synthesised decoding throws `keyNotFound` on the first missing key. `JSONStore` decodes tolerantly,
+so that throw becomes "return the default" — meaning **adding one field to a store silently resets
+every existing user's preferences**. DataStore's semantics are per-key defaults, and a hand-written
+`init(from:)` using `decodeIfPresent(_:) ?? default` is what reproduces them. Applies to all ten
+stores and to the backup payload's optional sections.
+
+Corollary (from B3): decode leniently for *scalars* too, not only enums. A mistyped `"heightCm"`
+would otherwise throw and wipe a profile the user can still see on screen.
+
+**2. Where a Swift mirror shares a name with an exported Kotlin type, qualify the Kotlin one.**
+
+`:shared` exports `PlanPreferences`, `UserProfilePreferences`, `BiologicalSex`, `ActivityLevel`,
+`FitnessGoal`, `Exercise` and others under exactly those Swift names. Inside a file that
+`import Shared`s, a same-named Swift type wins with no diagnostic about the shadowing.
+
+The unqualified name belongs to **the Kotlin type**, because Phase 2+ calls the engines constantly
+and those call sites should stay clean. A Swift mirror may keep the same name; any file needing both
+writes `Shared.PlanPreferences` / `RecompTracker.PlanPreferences`. Verified to compile and pinned in
+`RecompTrackerTests/SharedInteropTests.swift` — that suite is the executable version of
+[reference/shared-codec-api.md](reference/shared-codec-api.md); trust it over the prose.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a

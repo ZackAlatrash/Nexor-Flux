@@ -1,22 +1,26 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.PushEvent
-import java.time.LocalDateTime
+import java.time.LocalDateTime as JavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Exhaustive pure coverage of the append/cap/prune/(de)serialization logic backing [PushHistoryStore].
- * No DataStore I/O — the thin store wiring is covered separately in [PushHistoryStoreTest].
+ * Exhaustive pure coverage of the append/cap/prune/(de)serialization logic backing `PushHistoryStore`.
+ * No DataStore I/O — the thin store wiring is covered separately in `:app`'s `PushHistoryStoreTest`.
+ *
+ * The codec speaks kotlinx-datetime; `java.time` survives here only as fixture arithmetic
+ * (`minusDays`/`minusHours` have no direct kotlinx `LocalDateTime` equivalent), which is fine in a
+ * JVM-only source set.
  */
 class PushHistorySerializationTest {
 
-    private val now = LocalDateTime.of(2026, 7, 1, 13, 0)
+    private val nowJava = JavaLocalDateTime.of(2026, 7, 1, 13, 0)
+    private val now = nowJava.toKotlinLocalDateTime()
 
     private fun event(daysAgo: Long, isCelebration: Boolean = false) =
-        PushEvent(timestamp = now.minusDays(daysAgo).toKotlinLocalDateTime(), isCelebration = isCelebration)
+        PushEvent(timestamp = nowJava.minusDays(daysAgo).toKotlinLocalDateTime(), isCelebration = isCelebration)
 
     @Test
     fun `decode of a blank or null string is an empty list`() {
@@ -65,7 +69,7 @@ class PushHistorySerializationTest {
     fun `append pruned caps the list length so the payload can't grow unbounded`() {
         // Many recent (in-window) events, then one more → list is trimmed to MAX_EVENTS.
         val many = (1..PushHistorySerialization.MAX_EVENTS + 5).map {
-            PushEvent(timestamp = now.minusHours(it.toLong()).toKotlinLocalDateTime(), isCelebration = false)
+            PushEvent(timestamp = nowJava.minusHours(it.toLong()).toKotlinLocalDateTime(), isCelebration = false)
         }
         val updated = PushHistorySerialization.appendPruned(many, event(daysAgo = 0), now)
         assertEquals(PushHistorySerialization.MAX_EVENTS, updated.size)

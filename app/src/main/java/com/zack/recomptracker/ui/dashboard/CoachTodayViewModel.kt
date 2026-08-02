@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.core.time.SystemDateProvider
-import com.zack.recomptracker.data.coach.CoachExperiment
 import com.zack.recomptracker.data.coach.CoachExperiments
 import com.zack.recomptracker.data.coach.CoachInbox
 import com.zack.recomptracker.data.coach.FakeCoachExperiments
+import com.zack.recomptracker.domain.coach.CoachExperiment
 import com.zack.recomptracker.domain.coach.CoachSignal
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

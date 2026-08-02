@@ -1,6 +1,5 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.SignalKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

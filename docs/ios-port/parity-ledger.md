@@ -15,7 +15,8 @@ per-screen notes.
 
 | Bucket | Total | ✅ | 🔨 | ⬜ | ⏭️ v1.1 | ❌ |
 |---|---:|---:|---:|---:|---:|---:|
-| Foundations | 8 | 5 | 0 | 3 | 0 | 0 |
+| Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
+| File formats | 4 | 3 | 1 | 0 | 0 | 0 |
 | Design system | 7 | 0 | 0 | 7 | 0 | 0 |
 | Screens (v1) | 20 | 0 | 0 | 20 | 0 | 0 |
 | Overlays & sheets | 11 | 0 | 0 | 10 | 1 | 0 |
@@ -23,7 +24,9 @@ per-screen notes.
 | Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **85** | **5** | **0** | **62** | **16** | **2** |
+| **Total** | **86** | **11** | **1** | **56** | **16** | **2** |
+
+(File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
 ---
 
@@ -36,17 +39,22 @@ per-screen notes.
 | ISO-week + signed-decimal formatters, golden-value tested | blocker B3/B4 🔴 | ✅ |
 | Xcode project + SPM + GRDB | — | ✅ |
 | 19 tables + 14 migrations (dates as strings) | `RecompDatabase.kt` | ✅ |
-| 10 preference stores (actor-backed JSON) | see data-model §3 | ⬜ |
-| Keychain wrapper (2 keys, key-provider lambda) | `SecureKeyStore.kt` | ⬜ |
-| Bundled assets + version-gated exercise seed | 4 JSON files | ⬜ |
+| 10 preference stores (actor-backed JSON) | see data-model §3 | ✅ |
+| Keychain wrapper (2 keys, key-provider lambda) | `SecureKeyStore.kt` | ✅ |
+| Bundled assets + version-gated exercise seed | 4 JSON files | ✅ |
 
 ## File formats (Phase 1) — the round-trip guard
 
 | Item | Android reference | Status |
 |---|---|---|
-| Backup `.json` codec + **import a real Android backup** | `BackupModels.kt`, `BackupRepository.kt` | ⬜ |
-| Personal-foods `.json` codec (⚠️ strict `==` version check) | `PersonalFoodsJsonCodec.kt` | ⬜ |
-| `.rtroutine` codec + UTI declaration | `RoutineShareModels.kt` | ⬜ |
+| Backup `.json` codec | `BackupModels.kt`, `BackupRepository.kt` | ✅ |
+| ↳ **import a real Android backup** | 🔴 blocked: no fixture | 🔨 |
+| Personal-foods `.json` codec (⚠️ strict `==` version check) | `PersonalFoodsJsonCodec.kt` | ✅ |
+| `.rtroutine` codec + UTI declaration | `RoutineShareModels.kt` | ✅ |
+
+The backup codec is written and covered by 26 synthetic tests; the acceptance test is **armed and
+self-skipping** (9 tests) until a real export lands in `RecompTracker/RecompTrackerTests/Fixtures/`.
+It is 🔨 rather than ⬜ because the only outstanding work is dropping the file in.
 
 ## Design system (Phase 2)
 

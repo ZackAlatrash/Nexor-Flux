@@ -1,8 +1,8 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.PushEvent
-import java.time.LocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.minus
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
@@ -17,8 +17,11 @@ import kotlinx.serialization.json.Json
  * to an empty list rather than throwing, so a corrupt persisted value can never crash a caller.
  *
  * Boundary rule (§5, guard-tested): imports nothing from the legacy `ai/local` stack.
+ *
+ * Public, not `internal`: iOS calls this across the `Shared.framework` boundary, and Kotlin/Native
+ * only exports `public` declarations to Objective-C (decision D12).
  */
-internal object PushHistorySerialization {
+object PushHistorySerialization {
 
     /**
      * How long a push event is retained. Comfortably larger than the 7-day cap window so the limiter
@@ -52,9 +55,14 @@ internal object PushHistorySerialization {
     /**
      * Drop events whose timestamp is older than [RETENTION_DAYS] before [now]. An event dated exactly on
      * the retention boundary is kept; strictly-older ones are dropped. Future-dated events are kept.
+     *
+     * Deliberately asymmetric with [CoachInboxSerialization.prune]: this one runs on BOTH read and
+     * write (the age window must be honest at read time, since [RateLimiter] measures against it),
+     * while the [MAX_EVENTS] count cap in [appendPruned] runs on write only. The read-time prune is
+     * not written back.
      */
     fun prune(events: List<PushEvent>, now: LocalDateTime): List<PushEvent> {
-        val cutoff = now.minusDays(RETENTION_DAYS).toKotlinLocalDateTime()
+        val cutoff = LocalDateTime(now.date.minus(RETENTION_DAYS, DateTimeUnit.DAY), now.time)
         return events.filter { it.timestamp >= cutoff }
     }
 

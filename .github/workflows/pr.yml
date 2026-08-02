@@ -32,11 +32,16 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # Compiles debug + test sources and runs the ~1300-test unit suite.
+      # Compiles debug + test sources and runs the unit suite across BOTH modules.
+      # :shared must be listed explicitly — the iOS port moved ~400 domain tests out of
+      # :app into shared/src/androidUnitTest, and :app:testDebugUnitTest does not reach
+      # them. Omitting it silently drops a third of the suite from CI.
+      # The iOS targets (iosArm64, iosSimulatorArm64) are configured but never built here;
+      # Kotlin/Native for Apple requires macOS, and these runners are ubuntu-latest.
       # InsightHarnessTest self-skips here: it needs .env.test / INSIGHT_* creds,
       # which CI does not provide, so it never makes live network calls.
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest
+        run: ./gradlew :app:testDebugUnitTest :shared:testDebugUnitTest
 
       # Run lint even when the tests fail, so one PR run surfaces both.
       # The app sets abortOnError = false, so lint reports but never blocks the

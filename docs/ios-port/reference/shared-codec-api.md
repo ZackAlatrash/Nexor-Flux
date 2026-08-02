@@ -57,8 +57,9 @@ let t = Kotlinx_datetimeLocalDateTime(
 d.description()   // "2026-08-02" — the persisted form, verified
 ```
 
-`LocalDateTime` also has `init(date:time:)`. Read back with `.year` / `.monthNumber` / `.day`
-(`.month` returns a `Kotlinx_datetimeMonth` object, not an `Int`).
+`LocalDateTime` also has `init(date:time:)`. Read back with `.year` / `.day`, and `.month.name`
+(`"AUGUST"`) for the month — `.month` is a Kotlin `Month` enum object rather than an `Int`, and the
+`.monthNumber` that would give you the `Int` is deprecated in kotlinx-datetime 0.8.0.
 
 This is why D6 holds on both sides: the wire format is the ISO string the codec writes, and the
 Kotlin date object is only the in-memory carrier.
@@ -152,6 +153,29 @@ SharedRebalancePlan(id:triggerDateIso:startDateIso:endDateIso:lengthDays:mode:�
 Enum entries: `SharedRebalanceIntensity` `.light` `.standard` `.full` ·
 `SharedRebalanceMode` `.eatLess` `.balanced` `.moveMore` ·
 `SharedRebalanceStatus` `.offered` `.active` `.completed` `.endedEarly` `.declined` `.noAdjustment`
+
+## Porting hazards that produce no diagnostic
+
+Found the hard way in Phase 1b. None of these fail to compile; they just behave differently.
+
+**Kotlin `maxByOrNull` returns the FIRST maximum. Swift `max(by:)` returns the LAST.** Any port of a
+"pick the best match" rule inverts its tie-break unless you correct for it. Bit us in coach memory's
+`removeMatching`.
+
+**Kotlin `sortedBy` is stable. Swift `sorted(by:)` is not.** Wherever a sort feeds a cap — the
+rebalance history's 12-entry limit sorted by `createdAtIso`, say — instability decides which
+same-key record falls off the end. Use an index tie-break to restore stability.
+
+**Kotlin/Native mangles some enum entry names oddly.** `SignalKind.NEW_PR` exports as
+`SignalKind.theNewPr`, not `newPr`. Check the header before writing detector bindings; guessing
+costs a build cycle every time.
+
+**`:shared` does not cover every persisted format.** Two of the ten stores have no shared codec:
+`coach_notification_prefs` (plain scalars, never had one) and — less obviously — **`coach_memory`,
+whose `Json` block and `CoachMemoryEntry` type are inlined in `:app`**, so its entry list, id
+allocation, 50-entry cap and best-match scoring are hand-ported and *can* drift from Android. If
+parity there ever matters, moving `CoachMemoryStore`'s value logic into `:shared` is the same D12
+argument verbatim.
 
 ## Also already exported — do not reimplement
 

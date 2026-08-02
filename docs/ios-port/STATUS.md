@@ -3,7 +3,7 @@
 **Read this first, every session. Keep it under ~100 lines.**
 If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
 
-**Last updated:** 2026-08-02 · **Current phase:** Phase 1a — planned, not started ·
+**Last updated:** 2026-08-02 · **Current phase:** ✅ **Phase 1a COMPLETE** ·
 **Branch:** Phase 0 merged + pushed. iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -13,10 +13,11 @@ If you need more than this to start, the thing you need belongs in a phase plan 
 ✅ **Phase 0 complete, gate passed (D10).** The shared core is kept and merged to `develop`.
 
 **Phase 1 is now split into 1a and 1b (D13).**
-[Phase 1a](phases/phase-1a-database.md) is **planned and ready to execute** — 15 tasks, 71 steps:
-GRDB, the 19 tables, record types, the non-trivial queries and the seven transaction bodies. It
-ends with a test asserting the schema matches Room's v15 byte for byte.
-Phase 1b (preference stores, Keychain, bundled assets, file codecs) needs its own planning session.
+✅ **[Phase 1a](phases/phase-1a-database.md) is done** — GRDB 7.11.1, the 19 tables, all 18 record
+types, the query layer and the seven transaction bodies. **71 tests, 0 isolation warnings**, Debug
+and Release both build. The schema is pinned against Room v15 byte for byte.
+**Next: Phase 1b** (preference stores, Keychain, bundled assets, file codecs) — needs its own
+planning session per D7, and **a real Android backup export from you** before it can be verified.
 
 **The domain extraction is complete and green on both platforms.** `:shared` holds 66 files /
 5,905 LOC of `commonMain`, compiling for Android, `iosArm64` and `iosSimulatorArm64`. Exactly the
@@ -49,7 +50,7 @@ Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
 | Phase | What | Status |
 |---|---|---|
 | **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | ✅ **done — gate passed** |
-| **1a** | GRDB + 19 tables + records + queries + transactions | 📋 [planned](phases/phase-1a-database.md) |
+| **1a** | GRDB + 19 tables + records + queries + transactions | ✅ **done — 71 tests** |
 | **1b** | Preference stores, Keychain, bundled assets, file codecs | ⬜ needs planning |
 | 2 | App shell, design system, **Food Log end-to-end** | ⬜ |
 | 3 | Dashboard, Body, Food Library, Plan, Profile, Onboarding, Streaks, charts | ⬜ |

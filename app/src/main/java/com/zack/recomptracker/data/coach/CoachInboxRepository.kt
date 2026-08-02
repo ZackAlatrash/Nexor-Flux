@@ -5,11 +5,14 @@ import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.zack.recomptracker.domain.coach.CoachInboxSerialization
 import com.zack.recomptracker.domain.coach.CoachSignal
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 
 private val Context.coachInboxDataStore by preferencesDataStore(name = "coach_inbox")
 
@@ -96,16 +99,22 @@ class CoachInboxRepository(
     override suspend fun markSeen(dedupKey: String, date: LocalDate) {
         context.coachInboxDataStore.edit { prefs ->
             val existing = CoachInboxSerialization.decodeLedger(prefs[Keys.SeenLedger])
-            val updated = CoachInboxSerialization.markSeen(existing, dedupKey, date)
+            val updated = CoachInboxSerialization.markSeen(existing, dedupKey, date.toKotlinLocalDate())
             prefs[Keys.SeenLedger] = CoachInboxSerialization.encodeLedger(updated)
         }
     }
 
-    /** The dedup/cooldown state the SignalSelector consumes: dedupKey → date last surfaced. */
+    /**
+     * The dedup/cooldown state the SignalSelector consumes: dedupKey → date last surfaced.
+     *
+     * The codec moved to `:shared` and now speaks kotlinx-datetime, so this converts back at the
+     * boundary to keep [CoachInbox] on `java.time` — the type [DateProvider] and every caller of
+     * [lastRunDate] already use.
+     */
     override suspend fun seenLedger(): Map<String, LocalDate> =
         CoachInboxSerialization.decodeLedger(
             context.coachInboxDataStore.data.first()[Keys.SeenLedger],
-        )
+        ).mapValues { it.value.toJavaLocalDate() }
 
     /** The once-a-day debounce stamp for the digest coordinator, or `null` if never run. */
     override suspend fun lastRunDate(): LocalDate? {

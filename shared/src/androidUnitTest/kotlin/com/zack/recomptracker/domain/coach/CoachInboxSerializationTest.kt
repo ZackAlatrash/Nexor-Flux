@@ -1,16 +1,9 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.CoachAction
-import com.zack.recomptracker.domain.coach.CoachActionType
-import com.zack.recomptracker.domain.coach.CoachSignal
-import com.zack.recomptracker.domain.coach.CoachSurface
-import com.zack.recomptracker.domain.coach.Confidence
-import com.zack.recomptracker.domain.coach.SignalCategory
-import com.zack.recomptracker.domain.coach.SignalFacts
-import com.zack.recomptracker.domain.coach.SignalKind
-import com.zack.recomptracker.domain.coach.SignalRationale
-import com.zack.recomptracker.domain.coach.SignalTier
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -81,8 +74,8 @@ class CoachInboxSerializationTest {
     @Test
     fun `ledger round-trips`() {
         val ledger = mapOf(
-            "RECOMP_WIN|2026-W27" to LocalDate.of(2026, 7, 1),
-            "NEW_PR|bench|2026-W27" to LocalDate.of(2026, 6, 28),
+            "RECOMP_WIN|2026-W27" to LocalDate(2026, 7, 1),
+            "NEW_PR|bench|2026-W27" to LocalDate(2026, 6, 28),
         )
         val decoded = CoachInboxSerialization.decodeLedger(CoachInboxSerialization.encodeLedger(ledger))
         assertEquals(ledger, decoded)
@@ -105,22 +98,22 @@ class CoachInboxSerializationTest {
     fun `ledger entries with unparseable dates are dropped, valid ones kept`() {
         val raw = "{\"good\":\"2026-07-01\",\"bad\":\"not-a-date\"}"
         val decoded = CoachInboxSerialization.decodeLedger(raw)
-        assertEquals(mapOf("good" to LocalDate.of(2026, 7, 1)), decoded)
+        assertEquals(mapOf("good" to LocalDate(2026, 7, 1)), decoded)
     }
 
     // ── markSeen ──
 
     @Test
     fun `markSeen adds a new dedupKey`() {
-        val date = LocalDate.of(2026, 7, 1)
+        val date = LocalDate(2026, 7, 1)
         val result = CoachInboxSerialization.markSeen(emptyMap(), "RECOMP_WIN|2026-W27", date)
         assertEquals(mapOf("RECOMP_WIN|2026-W27" to date), result)
     }
 
     @Test
     fun `markSeen updates an existing dedupKey with the newer date (last write wins)`() {
-        val start = mapOf("k" to LocalDate.of(2026, 6, 1))
-        val newer = LocalDate.of(2026, 7, 1)
+        val start = mapOf("k" to LocalDate(2026, 6, 1))
+        val newer = LocalDate(2026, 7, 1)
         val result = CoachInboxSerialization.markSeen(start, "k", newer)
         assertEquals(newer, result["k"])
         assertEquals(1, result.size)
@@ -128,8 +121,8 @@ class CoachInboxSerializationTest {
 
     @Test
     fun `markSeen prunes stale entries while adding`() {
-        val today = LocalDate.of(2026, 7, 1)
-        val start = mapOf("stale" to today.minusDays(40), "recent" to today.minusDays(5))
+        val today = LocalDate(2026, 7, 1)
+        val start = mapOf("stale" to today.minus(40, DateTimeUnit.DAY), "recent" to today.minus(5, DateTimeUnit.DAY))
         val result = CoachInboxSerialization.markSeen(start, "new", today)
         assertEquals(setOf("recent", "new"), result.keys)
     }
@@ -138,11 +131,11 @@ class CoachInboxSerializationTest {
 
     @Test
     fun `prune drops entries older than the retention window`() {
-        val ref = LocalDate.of(2026, 7, 1)
+        val ref = LocalDate(2026, 7, 1)
         val ledger = mapOf(
-            "tooOld" to ref.minusDays(31),
-            "boundary" to ref.minusDays(30),
-            "recent" to ref.minusDays(1),
+            "tooOld" to ref.minus(31, DateTimeUnit.DAY),
+            "boundary" to ref.minus(30, DateTimeUnit.DAY),
+            "recent" to ref.minus(1, DateTimeUnit.DAY),
         )
         val pruned = CoachInboxSerialization.prune(ledger, ref)
         assertEquals(setOf("boundary", "recent"), pruned.keys)
@@ -150,13 +143,13 @@ class CoachInboxSerializationTest {
 
     @Test
     fun `prune keeps future-dated entries`() {
-        val ref = LocalDate.of(2026, 7, 1)
-        val ledger = mapOf("future" to ref.plusDays(3))
+        val ref = LocalDate(2026, 7, 1)
+        val ledger = mapOf("future" to ref.plus(3, DateTimeUnit.DAY))
         assertEquals(ledger, CoachInboxSerialization.prune(ledger, ref))
     }
 
     @Test
     fun `prune on empty ledger is empty`() {
-        assertTrue(CoachInboxSerialization.prune(emptyMap(), LocalDate.of(2026, 7, 1)).isEmpty())
+        assertTrue(CoachInboxSerialization.prune(emptyMap(), LocalDate(2026, 7, 1)).isEmpty())
     }
 }

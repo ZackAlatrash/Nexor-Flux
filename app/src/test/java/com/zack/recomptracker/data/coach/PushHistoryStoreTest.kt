@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.zack.recomptracker.core.time.DateProvider
 import com.zack.recomptracker.domain.coach.PushEvent
+import com.zack.recomptracker.domain.coach.PushHistorySerialization
 import java.io.File
 import java.nio.file.Files
 import java.time.LocalDate

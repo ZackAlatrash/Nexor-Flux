@@ -1,7 +1,8 @@
-package com.zack.recomptracker.data.coach
+package com.zack.recomptracker.domain.coach
 
-import com.zack.recomptracker.domain.coach.CoachSignal
-import java.time.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -14,8 +15,11 @@ import kotlinx.serialization.json.Json
  *
  * Deserialization is failure-tolerant: malformed / stale-schema strings decode to `null`/empty
  * rather than throwing, so a corrupt persisted value can never crash the surface reading it.
+ *
+ * Public, not `internal`: iOS calls this across the `Shared.framework` boundary, and Kotlin/Native
+ * only exports `public` declarations to Objective-C (decision D12).
  */
-internal object CoachInboxSerialization {
+object CoachInboxSerialization {
 
     /** How long a seen-ledger entry is retained. Older entries are pruned so the map can't grow unbounded. */
     const val LEDGER_RETENTION_DAYS: Long = 30
@@ -76,10 +80,13 @@ internal object CoachInboxSerialization {
      * Drop entries older than [LEDGER_RETENTION_DAYS] before [reference] so the ledger stays bounded.
      * An entry dated exactly on the retention boundary is kept; strictly older ones are dropped.
      * Entries dated in the future relative to [reference] are always kept.
+     *
+     * Called on WRITE only, via [markSeen]. [decodeLedger] deliberately does not prune: a read must
+     * return the ledger as stored, or cooldown windows would shrink on every read.
      */
     fun prune(ledger: Map<String, LocalDate>, reference: LocalDate): Map<String, LocalDate> {
-        val cutoff = reference.minusDays(LEDGER_RETENTION_DAYS)
-        return ledger.filterValues { !it.isBefore(cutoff) }
+        val cutoff = reference.minus(LEDGER_RETENTION_DAYS, DateTimeUnit.DAY)
+        return ledger.filterValues { it >= cutoff }
     }
 
     private val LEDGER_SERIALIZER = MapSerializer(String.serializer(), String.serializer())

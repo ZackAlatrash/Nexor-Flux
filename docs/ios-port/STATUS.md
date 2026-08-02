@@ -119,25 +119,13 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
   (parsed fine, resolved nothing); test target created for **macOS**; no shared scheme so no test
   action; a conditional build-setting key needing quotes. All documented in the 1a plan.
 
-### 2026-08-01 — Phase 0 executed and gated (subagent-driven, 21 commits)
-Full criteria table and reasoning: **D10** in [decisions.md](decisions.md). Highlights:
-- 11 domain packages + 3 value types moved in dependency order; Android green at every wave.
-  `RebalanceEngine.size()` needed **no edits at all**.
-- 🟢 **Bit-exactness holds on Kotlin/Native** — 372 golden assertions green on both platforms and in
-  a running app. `PushEvent` JSON byte-identical, so no rate-limiter reset for existing users.
-- 🔴 **The final behavioural-drift review caught a real bug** the corpus missed: `formatFixed` threw
-  on scientific-notation doubles, reachable from flat-trend detectors via OLS residue, silently
-  suppressing a day's coach signal. Fixed in `4f6d96d`. *A golden corpus is only as good as its
-  input set* — carry that into Phase 1.
-- 🟡 Two accepted costs: the **klib ABI ceiling** (every future `commonMain` dep needs checking) and
-  **112 boundary date conversions**. Swift ergonomics mixed — Kotlin enums export as classes, so no
-  exhaustive `switch`; evaluate SKIE.
-
-### 2026-08-01 — feasibility
-- 6 research agents → [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md) + 6 reference
-  docs. Decisions D1–D8. Scope and iOS 26+ target settled.
-- **Surprises:** the July review's 3 P0s are already fixed in the tree (doc is stale); Vico is a
-  dead dependency (declared, zero source refs — all charts are hand-rolled Canvas).
+### 2026-08-01 — Phase 0 executed and gated · feasibility
+Full criteria table and reasoning: **D10** in [decisions.md](decisions.md). Architecture rationale
+and the evidence base: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md) and
+[reference/architecture-evidence.md](reference/architecture-evidence.md). In short: 11 domain
+packages moved with `RebalanceEngine.size()` untouched; **372 golden assertions bit-exact on
+Kotlin/Native**; the final drift review caught a reachable `formatFixed` bug the corpus had missed —
+*a golden corpus is only as good as its input set*. Fixed P2-10 and a latent locale bug in passing.
 
 ---
 

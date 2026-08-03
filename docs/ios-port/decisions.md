@@ -253,6 +253,27 @@ instrumenting the activation count and driving the simulator: 1 → 3 over two r
 re-fetch is one day query plus the week window, and no flicker is visible. `.task(id:)` is
 therefore also the working equivalent of Android's `_selectedDate.flatMapLatest { }`.
 
+**D20 · NEVO is not built on iOS.** No tab, no catalogue query, no CSV importer. Its only fill
+mechanisms are the CSV import (v1.1 per **D4**) and a backup restore, so on a fresh install the tab
+is permanently empty behind a message pointing at a Settings screen that will not exist.
+`catalog_foods` and the backup's `catalogFoods` key **stay untouched**, so Phase 1a's schema parity
+and Phase 1b's round-trip both still hold — iOS simply never reads the table. Phase 3a's
+verification greps `Features/` and `Shell/` for `CatalogFood` to keep it that way.
+
+**D21 · Open Food Facts moves to Phase 4**, with the barcode scanner, which is its natural
+companion. Removing it also removes Phase 3a's only network path — and the camera button inside the
+library's search field goes with it.
+
+**D22 · Pickers are sheets with completion closures.** Settles the reverse-result convention below.
+Android's `FoodLibraryScreen(onIngredientPicked:)` is *already* a closure; the Base64/JSON encoding
+around it exists only because Compose nav arguments must be strings. All four `savedStateHandle`
+flows are outside Phase 3a — **three** are Train/v1.1 and the fourth is the Phase 4 scanner — so no
+general mechanism is needed yet.
+
+**D23 · Dismissal uses the environment's `dismiss` action**, not a `navigateBack` flag on the model.
+`RecipeBuilderViewModel` publishes `navigateBack: StateFlow<Boolean>` only because Compose gives it
+no upward signal; every Phase 3 form screen would otherwise grow the same field.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a
@@ -264,8 +285,9 @@ numbered entry above when settled.
 - [x] **Navigation** — **D16**
 - [ ] **Error taxonomy** — the Android side collapses everything into one generic message; worth
       doing better on iOS (Phase 5)
-- [ ] **Replacement for the 4 `savedStateHandle` reverse-result flows** — bindings vs a shared
-      selection coordinator (Phase 3; 2 of the 4 are Train-only and defer to v1.1)
+- [x] **Replacement for the 4 `savedStateHandle` reverse-result flows** — **D22**. (Corrects the
+      earlier count: **3** of the 4 are Train-only and defer to v1.1, not 2; the fourth is the
+      Phase 4 barcode scanner.)
 - [ ] **ATS policy** for user-supplied LLM base URLs — block cleartext, or ship an exception (Phase 5)
 - [ ] **Whether to implement `selectedFont`** or drop it — dead wiring on Android (no `res/font`
       directory exists). Phase 2 kept the stored field so backups round-trip but gave it **no

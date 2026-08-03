@@ -1,13 +1,11 @@
 # iOS Port — STATUS
 
-**Read this first, every session. Keep it under ~160 lines, and the session log to 3 entries.**
-If you need more than this to start, the thing you need belongs in a phase plan or a reference doc.
-(The cap was ~100 for Phases 0–1a and was quietly missed twice; 160 is what the file honestly needs
-once *Blocked* and the phase board are worth reading. The discipline is the session log, which is
-the only part that grows without bound — archive older entries into the docs that carry their detail.)
+**Read this first, every session. Keep it under ~160 lines and the session log to 3 entries.**
+Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
+grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-02 · **Current phase:** Phase 1b — done bar the acceptance fixture ·
-**Branches:** Android `ios/phase-1b-shared-codecs` (unmerged) · iOS `phase-1b-stores` (unmerged).
+**Last updated:** 2026-08-03 · **Current phase:** Phase 2 — built, pending merge ·
+**Branches:** Android `develop` (1b merged) · iOS `phase-2-shell-and-food-log` (unmerged).
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -24,15 +22,17 @@ the query layer and the seven transaction bodies. Schema pinned against Room v15
 three file formats. 🔴 **One thing outstanding: the acceptance test needs a real Android backup.**
 Its 9 tests are written and **self-skip** until the fixture lands — see *Blocked / needs you*.
 
-**The persistence foundation is complete.** Nothing above the database layer exists yet: no UI, no
-`AppContainer` wiring beyond the database itself. Phase 2 starts there.
+✅ **[Phase 2](phases/phase-2-shell-and-food-log.md) is built** — the design system on native
+Liquid Glass, a four-tab shell, and Food Log's thin slice reading and writing the database.
+**351 tests**, zero warnings, Debug and Release both green. Decisions **D15–D19** settled.
+The app launches, you can log a meal, and the totals recompute from the observation.
 
 ### Numbers
 
 | | |
 |---|---|
-| iOS tests | **265** (256 running + 9 armed) · 0 isolation warnings · Debug + Release green |
-| iOS persistence code | ~4,600 LOC across `Persistence/` |
+| iOS tests | **351** (342 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS code | ~4,600 LOC `Persistence/` · ~460 `DesignSystem/` · ~250 `Shell/` · ~900 `Features/FoodLog/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
 | Kotlin tests | `:app` 967 · `:shared` JVM 450 · `:shared` iOS 11 — **1417 total, unchanged** |
@@ -41,11 +41,10 @@ Its 9 tests are written and **self-skip** until the fixture lands — see *Block
 
 ## The decision in one paragraph
 
-Native Swift/SwiftUI on an **iOS 26+** floor, sharing **only `domain/`** (≈5,550 LOC of pure
-synchronous math) via a KMP `:shared` module. Everything else is rebuilt natively: **GRDB** for
-persistence, `URLSession` for HTTP/SSE, Keychain for secrets, HealthKit, `UNUserNotificationCenter`.
-v1 = core loop **+ AI coach**; Train module and NEVO/Samsung CSV import are **v1.1**.
-Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
+Native Swift/SwiftUI on **iOS 26+**, sharing **only `domain/`** via a KMP `:shared` module;
+everything else rebuilt natively (GRDB, `URLSession`, Keychain, HealthKit). v1 = core loop **+ AI
+coach**; Train and CSV import are **v1.1**. Reasoning:
+[00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md) · conventions: [decisions.md](decisions.md).
 
 ## Phase board
 
@@ -54,8 +53,8 @@ Full reasoning: [00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md).
 | **0** | Extract `:shared`, `java.time` → kotlinx-datetime, golden-value tests. **Decision gate.** | ✅ **done — gate passed** |
 | **1a** | GRDB + 19 tables + records + queries + transactions | ✅ **done — 71 tests** |
 | **1b** | Preference stores, Keychain, bundled assets, file codecs | ✅ **done — 265 tests** (fixture pending) |
-| 2 | App shell, design system, **Food Log end-to-end** | ⬜ |
-| 3 | Dashboard, Body, Food Library, Plan, Profile, Onboarding, Streaks, charts | ⬜ |
+| **2** | App shell, design system, **Food Log thin slice** | ✅ **done — 351 tests** |
+| 3 | Food Library, Dashboard, Body, Plan, Profile, Onboarding, Streaks, charts | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
@@ -74,17 +73,14 @@ It must contain: meals across **several slots** (P0-2 was exactly this), a `slot
 coach-logged meal, a routine with sessions and sets, and a recipe — `theFixtureIsAdversarialEnough…`
 fails loudly if it does not, rather than passing over a weak export.
 
-**1b. Give the iOS repo a git remote** — still local-only, now ~35 commits. A private GitHub repo
-would do.
+**2. Apple Developer Program enrolment ($99/yr)** — the only item with a lead time. Needed *from day
+one* of Phase 4 (HealthKit + background-delivery entitlements); nothing before then is blocked.
 
-**1c. Decide the bundle identifier.** It is still the Xcode template default,
-`Epistles-of-Wisdom.RecompTracker`. Unlike Android's signing key a bundle ID is permanent once
-reserved, so this wants settling before Phase 4, not during it.
+**3. Decide the bundle identifier**, needed at enrolment and permanent once reserved. Still the
+Xcode default `Epistles-of-Wisdom.RecompTracker`; `com.zack.recomptracker` would match the Android
+package and the `.rtroutine` UTI already declared.
 
-**2. Apple Developer Program enrolment ($99/yr)** — not needed for the simulator work above, but
-needed *from day one* of Phase 4: HealthKit and background-delivery entitlements require a paid
-account, and enrolment has a lead time. **Reserve the bundle identifier** once enrolled — unlike
-Android, the signing key does not matter but the bundle ID is permanent.
+**4. Give the iOS repo a git remote** — still local-only at ~55 commits.
 
 ## Standing rules
 
@@ -102,32 +98,47 @@ Android, the signing key does not matter but the bundle ID is permanent.
 
 ## Needs visual check
 
-*(none outstanding — the Phase 0 smoke test was run and all rows were green)*
+Gates A–D were reviewed live in the simulator during the Phase 2 session and corrected against
+Android screenshots. Still unlooked-at:
+- **Dynamic Type at the largest accessibility size.** Nothing proves the ramp — `@ScaledMetric`
+  returns its base value outside a hosted view, so no unit test can see it.
+- **Light mode.** The simulator ran light during the session and the app followed, but no one has
+  judged it deliberately.
+- **The eleven accent themes.** `AccentPreviews.swift` in the canvas; there is no Settings screen
+  to switch them until Phase 3, and the app defaults to VIOLET.
 
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
-### 2026-08-02 — Phase 1b executed (Part A inline + 5 parallel worktree agents)
-- **iOS 71 → 265 tests**, 0 isolation warnings, Debug *and* Release green. Kotlin total unchanged at
-  1417 (`:app` 967 · `:shared` JVM 450 · iOS 11) — 78 tests moved to `:shared` with their code.
-- 🔴 **The generated header lies about type names.** It spells `SharedRebalanceSerialization`; with
-  `import Shared` Swift sees `RebalanceSerialization`. Now pinned as code in `SharedInteropTests`,
-  which is the executable form of [reference/shared-codec-api.md](reference/shared-codec-api.md).
-- 🔴 **Synthesised `Decodable` would silently wipe preferences.** It throws on the first missing key;
-  `JSONStore` turns that into "return the default", so *adding a field* resets every user. Two agents
-  found it independently → **D14**: every persisted mirror decodes per-key.
-- 🔴 **Kotlin `encodeDefaults = true` vs Swift's omit-nil.** Eight backup entities give nullables no
-  Kotlin default, so a Swift-written backup would fail to decode on Android with
-  `MissingFieldException`. Every payload type spells `encode(to:)` out by hand.
-- **A Debug run is not enough.** Two isolation warnings appeared only in Release: `nonisolated` on a
-  type does *not* propagate to its extensions.
-- Buildable folders handle **resources** too — all four JSON assets reached `Bundle.main` with no
-  pbxproj edit. The one project change needed was B7's `Info.plist`, which must sit *outside* the
-  synchronized folder or it is claimed twice and the build fails.
-- Agents corrected the plan four times: `coach_memory` has no `:shared` codec, `profilePhotoUri` is
-  not in the backup payload at all, `JSONStore<String>` per store was unworkable (several stores have
-  multiple keys), and P2-18's suggested fix was already what Android does.
+### 2026-08-03 — Phase 2 executed (4 worktree agents + 4 live visual gates)
+- **iOS 265 → 351 tests**, 0 warnings, Debug *and* Release green. D15–D19 settled.
+- 🔴 **A Phase 1a gap surfaced only when a screen finally rendered slots: our migration never seeded
+  the three default meal slots Android's does.** A fresh install therefore had nowhere to log food,
+  and because `meal_entries.slotId` has no foreign key nothing failed loudly. `SchemaEquivalenceTests`
+  pinned table *structure*, never seeded *rows*. Fixed with four tests; five existing tests that had
+  assumed a virgin table broke, which was the correct signal.
+- 🔴 **Screenshots beat reading the Kotlin.** The week strip is a bar chart with a dashed target line
+  and a zone band — I had built dots. The calorie hero is 22pt Black, not 36pt. And **hitting the
+  zone tints the whole card green**, which I had reduced to a coloured word. Layout should match
+  Android even though the *materials* deliberately do not (D15).
+- 🔴 **SwiftUI localises `Text("\(anInt)")`** — the target label rendered "2.550" on a Dutch locale.
+  Four call sites now use `Text(verbatim:)`.
+- **`.task` IS cancelled and restarted per tab switch** (measured: 1 → 3 over two round-trips). No
+  flicker; `.task(id:)` is the working `flatMapLatest` equivalent.
+- 🔴 **`git stash` is shared across worktrees.** Two parallel agents stashed concurrently and each
+  popped the other's files. Nothing was lost — both verified byte-identical recovery — but **no agent
+  may run `git stash` in this repo**.
+- Agents corrected the plan repeatedly: my `screenTitleCompact`/`statValue` mapping was inverted, the
+  two display tokens silently ignored Dynamic Type, my colour-resolution test passed on the exact
+  failure it existed to catch, and my `CalendarDay` accepted `"+026-08-02"`.
+
+### 2026-08-02 — Phase 1b executed · detail in the [1b plan](phases/phase-1b-stores-and-formats.md)
+iOS 71 → 265 tests; Kotlin unchanged at 1417. Three findings that became conventions: the generated
+header spells types with a `Shared` prefix Swift does not use (pinned in `SharedInteropTests`);
+synthesised `Decodable` would silently wipe preferences, hence **D14**; and Kotlin's
+`encodeDefaults = true` vs Swift's omit-nil means a Swift-written backup needs a hand-written
+`encode(to:)` or Android rejects it. Also: a Debug run does not prove zero isolation warnings.
 
 ### 2026-08-02 — Phase 1a executed (71 tests) · full detail in the [1a plan](phases/phase-1a-database.md)
 Schema ground truth was Room's KSP-generated `RecompDatabase_Impl.kt`, not the entity annotations —
@@ -135,12 +146,6 @@ they disagree about DEFAULT clauses. `nullif(?, 0)` is spelled `Int64?` in Swift
 reference` on every record came from MainActor default isolation meeting a same-module protocol
 refining `MutablePersistableRecord`; one `nonisolated` fixed it. Xcode friction, not Swift, cost the
 time. Parallel worktree agents worked: 5 agents, 4 merges, zero conflicts.
-
-### 2026-08-01 — Phase 0 executed and gated · feasibility
-Criteria and reasoning: **D10** in [decisions.md](decisions.md); rationale in
-[00-feasibility-and-roadmap.md](00-feasibility-and-roadmap.md). 11 domain packages moved,
-**372 golden assertions bit-exact on Kotlin/Native**, and a drift review caught a reachable
-`formatFixed` bug the corpus had missed — *a golden corpus is only as good as its input set*.
 
 ---
 

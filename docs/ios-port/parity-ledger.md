@@ -17,14 +17,14 @@ per-screen notes.
 |---|---:|---:|---:|---:|---:|---:|
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
-| Design system | 7 | 0 | 0 | 7 | 0 | 0 |
-| Screens (v1) | 20 | 0 | 0 | 20 | 0 | 0 |
+| Design system | 7 | 4 | 0 | 3 | 0 | 0 |
+| Screens (v1) | 20 | 0 | 1 | 19 | 0 | 0 |
 | Overlays & sheets | 11 | 0 | 0 | 10 | 1 | 0 |
-| Charts | 8 | 0 | 0 | 5 | 3 | 0 |
+| Charts | 8 | 1 | 1 | 3 | 3 | 0 |
 | Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **86** | **11** | **1** | **56** | **16** | **2** |
+| **Total** | **86** | **16** | **4** | **48** | **16** | **2** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
@@ -60,10 +60,10 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 
 | Item | Android reference | Status |
 |---|---|---|
-| `AppType` → Font extensions (prefer Dynamic Type) | `ui/theme/Typography.kt` | ⬜ |
-| `AppColors` + `AppAccent` → asset catalog + `@Environment` | `ui/theme/AppColors.kt`, `DesignTokens.kt` | ⬜ |
-| Card family (`FrostedCard`/`NeutralCard`/`TintedCard`/`DangerCard`) | `GlassComponents.kt` | ⬜ |
-| Button family → `.buttonStyle(.glass)` / `.glassProminent` | `LiquidComponents.kt` | ⬜ |
+| `AppType` → Font extensions (prefer Dynamic Type) | `ui/theme/Typography.kt` | ✅ |
+| `AppColors` + `AppAccent` → asset catalog + `@Environment` | `ui/theme/AppColors.kt`, `DesignTokens.kt` | ✅ |
+| Card family (`FrostedCard`/`NeutralCard`/`TintedCard`/`DangerCard`) | `GlassComponents.kt` | ✅ (Danger deferred — DataBackup is Phase 3) |
+| Button family → `.buttonStyle(.glass)` / `.glassProminent` | `LiquidComponents.kt` | ✅ |
 | `GlassBottomSheet` → `.sheet` + `.presentationDetents` | `GlassBottomSheet.kt` | ⬜ |
 | `GlassAlertDialog` + `ConfirmDialog` | `GlassAlertDialog.kt` | ⬜ |
 | `MarkdownText` → `AttributedString(markdown:)` + custom tables | `MarkdownText.kt` (408 LOC) | ⬜ |
@@ -72,7 +72,7 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 
 | # | Screen | Android file | Phase | Status |
 |---|---|---|---|---|
-| 1 | Food Log | `ui/today/FoodScreen.kt` (1428) | 2 | ⬜ |
+| 1 | Food Log | `ui/today/FoodScreen.kt` (1428) | 2 | 🔨 **thin slice done** — day nav, week chart, nutrition strip, slots, Unassigned, quick add. Deferred to 3: reconcile banner, suggestion card, slot edit mode, recipe selection, macro-edit dialog, rebalance chip |
 | 2 | Home Dashboard | `ui/dashboard/DashboardScreen.kt` (1249) | 3 | ⬜ |
 | 3 | Body / Recovery | `ui/today/BodyRecoveryScreen.kt` (548) | 3 | ⬜ |
 | 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3 | ⬜ |
@@ -117,8 +117,8 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | Chart | Android file | Phase | Status |
 |---|---|---|---|
 | `SparklineChart` (bezier + clip reveal + glow dot + scrub) | `charts/SparklineChart.kt` (266) | 3 | ⬜ |
-| `CalorieProgressBar` (candy stripes + ghost extension) | `charts/CalorieProgressBar.kt` (121) | 2 | ⬜ |
-| `WeekCalorieStrip` | `ui/component/WeekCalorieStrip.kt` (265) | 2 | ⬜ |
+| `CalorieProgressBar` (candy stripes + ghost extension) | `charts/CalorieProgressBar.kt` (121) | 2 | 🔨 plain gradient bar built; candy stripes + planned ghost extension deferred with the planned-meal flow |
+| `WeekCalorieStrip` | `ui/component/WeekCalorieStrip.kt` (265) | 2 | ✅ |
 | `StreakGoalRing` | `StreakComponents.kt:304` | 3 | ⬜ |
 | Rebalance viz (bars / day dots / lever tiles) | `ui/dashboard/RebalanceViz.kt` (655) | 3 | ⬜ |
 | `ProgressLineChart` | `charts/ProgressLineChart.kt` (84) | — | ⏭️ |

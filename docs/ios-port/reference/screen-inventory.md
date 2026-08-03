@@ -40,6 +40,31 @@ All in one flat `NavHost` — `ui/navigation/AppNavGraph.kt:157-805`. No nested 
 | 19 | `MoreScreen` | `ui/more/MoreScreen.kt:58` | 318 | `more` | hub, pushed w/ back | ✅ | S |
 | 20 | ~~`FoodsScreen`~~ | `ui/foods/FoodsScreen.kt:42` | 242 | `foods` | **DEAD ROUTE** | ❌ | — |
 | 21 | `FoodLibraryScreen` | `ui/foodlibrary/FoodLibraryScreen.kt:97` | 1081 | `food_library?` **5 args** | pushed, 2 modes | ✅ | **XL** |
+
+> ### The add-food flow, from screenshots (captured 2026-08-03, for Phase 3)
+>
+> Read this before planning Phase 3 — it is the flow behind `+ Add` on a Food Log slot, and its
+> shape is not obvious from the Kotlin alone.
+>
+> **1 · Food Library (`Add to Breakfast`).** Header carries the slot name **and a live context
+> line — "2210 kcal remaining to zone"**. Then a search field with an inline **camera button**
+> (barcode scan, Phase 4), a horizontally scrolling filter row (`All · Proteins · Carbs · Recipes
+> · NEVO · …`), then three actions: **New food**, **Quick add** (⚡), and full-width **Create
+> Recipe**. Below that a `RECENTS` chip row, then the food list — each row is name, `10P 55C 15F`,
+> `370 kcal`, a **pencil** and a **+**.
+>
+> **2 · Amount sheet** (tapping a food). A bottom sheet over the library: food name, `1 serving =
+> 100 g · 155 kcal / 100 g`, a **Servings/Grams segmented toggle**, a `− 100 g +` stepper, then
+> **four macro tiles** (`155 KCAL`, `2 P`, `27 C`, `3 F`) that recompute live. Under them a
+> coaching line — *"Puts you at 2% protein, 10% carbs for today / Still short on protein — add a
+> protein source next."* Confirm button repeats the slot: **Add to Breakfast**.
+>
+> **3 · New food sheet.** `Macros are per 100 g`. Name, Serving (`100g`), a 2×2 grid of
+> Calories/Protein/Carbs/Fat, optional Serving name + Serving grams, **Save food**.
+>
+> **Phase 2's `QuickAddSheet` is the iOS stand-in for "Quick add"**, reached directly from `+ Add`
+> because the library does not exist yet. Phase 3 must decide whether it keeps its own entry point
+> or moves inside the library, as on Android.
 | 22 | `BarcodeScannerScreen` | `ui/scanner/BarcodeScannerScreen.kt:69` | 417 | `barcode_scanner?` 4 args | full-bleed camera | ✅ | L |
 | 23 | `RecipeBuilderScreen` | `ui/recipes/RecipeBuilderScreen.kt:65` | 381 | `recipe_builder?` | pushed | ✅ | M |
 | 24 | `StreakStatsScreen` | `ui/streak/StreakStatsScreen.kt:26` | 90 | `streak_stats` | pushed | ✅ | S |

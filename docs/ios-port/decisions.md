@@ -219,19 +219,55 @@ writes `Shared.PlanPreferences` / `RecompTracker.PlanPreferences`. Verified to c
 `RecompTrackerTests/SharedInteropTests.swift` — that suite is the executable version of
 [reference/shared-codec-api.md](reference/shared-codec-api.md); trust it over the prose.
 
+## D15–D19 · 2026-08-03 · Phase 2: glass, navigation, tabs, type, state
+
+Settled in the [Phase 2 design session](../superpowers/specs/2026-08-02-ios-phase-2-design.md) and
+proven in code. Five of the "still to decide" list below close here.
+
+**D15 · Native iOS 26 Liquid Glass, not a port of the Android approximation.** The Android glass
+layer exists *because* Compose has no native equivalent — 2,218 LOC across four files, plus six
+colour tokens whose only job is to fake a material. `.glassEffect` supplies all of it, so those six
+tokens were deleted rather than ported and the iOS design system landed near 400 LOC. Accepts that
+the two apps are not pixel-identical.
+
+**D16 · `TabView` + a `NavigationStack` per tab.** Android runs one shared back stack across its
+tabs; iOS keeps per-tab history. A real behavioural difference, accepted because the native tab bar
+is where the glass does its most visible work and that is only free inside `TabView`.
+
+**D17 · Four tabs — Home, Body, Log, Coach — with More behind a header control.** Train is v1.1
+(D4), and iOS auto-collapses past five, so the fifth slot stays empty rather than being given to
+More and taken back later. **The third tab is labelled "Log", not "Food"** — its route is `food` on
+both platforms but the visible label has always been Log.
+
+**D18 · Dynamic Type, replacing Android's fixed `sp` scale.** Eleven of thirteen `AppType` tokens
+map to a native text style; the four that sit outside the 11–34pt range (9pt ×2, 36pt, 44pt) carry
+an explicit base size and a `relativeTo` style so they scale too. Costs pixel-parity at large sizes.
+
+**D19 · One `@Observable` model per screen, activated by `.task`.** Android's 32 ViewModels are
+uniform `MutableStateFlow<UiState>` classes, so this keeps each later screen a mechanical port.
+`.task` rather than `init` fixes review **P2-21** in passing — Android's pipelines run for the
+ViewModel's whole life and recompute aggregates for screens nobody is looking at.
+
+**Measured, not assumed:** `.task` *is* cancelled and restarted on every tab switch (verified by
+instrumenting the activation count and driving the simulator: 1 → 3 over two round-trips). The
+re-fetch is one day query plus the week window, and no flicker is visible. `.task(id:)` is
+therefore also the working equivalent of Android's `_selectedDate.flatMapLatest { }`.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a
 numbered entry above when settled.
 
-- [ ] **Swift module/target layout** — one app target vs feature frameworks (Phase 1)
-- [ ] **View-model shape** — `@Observable` class per screen vs `@State` + plain structs (Phase 2)
-- [ ] **Navigation** — one `NavigationStack` behind a custom tab bar (faithful to Android's single
-      shared back stack) vs `TabView` + per-tab stacks (idiomatic iOS, different behaviour) (Phase 2)
+- [x] **Swift module/target layout** — one app target. Settled in practice across Phases 1–2; no
+      feature framework has been needed, and buildable folders make adding files free.
+- [x] **View-model shape** — **D19**
+- [x] **Navigation** — **D16**
 - [ ] **Error taxonomy** — the Android side collapses everything into one generic message; worth
       doing better on iOS (Phase 5)
 - [ ] **Replacement for the 4 `savedStateHandle` reverse-result flows** — bindings vs a shared
       selection coordinator (Phase 3; 2 of the 4 are Train-only and defer to v1.1)
 - [ ] **ATS policy** for user-supplied LLM base URLs — block cleartext, or ship an exception (Phase 5)
-- [ ] **Whether to implement `selectedFont`** or drop it — it is dead wiring on Android (Phase 2)
+- [ ] **Whether to implement `selectedFont`** or drop it — dead wiring on Android (no `res/font`
+      directory exists). Phase 2 kept the stored field so backups round-trip but gave it **no
+      setter**; deciding needs the appearance screen, so this moves to **Phase 3**.
 - [ ] **Test naming and fixture-sharing convention** with the Kotlin suite (Phase 1)

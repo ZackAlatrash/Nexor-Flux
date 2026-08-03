@@ -73,6 +73,25 @@ Phase 2 is complete: the design system, a four-tab shell, and Food Log's thin sl
 - 🔴 **Never run `git stash`.** `refs/stash` is shared across worktrees; two parallel agents each
   popped the other's files last phase.
 - With `import Shared`, Kotlin types appear **without** the `Shared` ObjC prefix.
+- 🔴 **Never put `didSet` on an `@Observable` stored property.** It compiles with no diagnostic and
+  then **crashes the test runner mid-run** (`Restarting after unexpected exit`). `@Observable`
+  rewrites the setter into `withMutation(keyPath:) { … }`, and the `didSet` observer fires *inside*
+  that call — so the handler reads the property while its own mutation is still open and re-enters
+  the observation registrar. Discovered in Task 4. Use an explicit get/set over a private stored
+  property instead, and have the handler read the **private** property:
+
+```swift
+    private var storedQuery: String = ""
+    var query: String {
+        get { storedQuery }
+        set { storedQuery = newValue; recompute() }   // recompute() reads storedQuery
+    }
+```
+
+- The Kotlin `MealImpactResult` carries `swift_name("MealImpact.Result")` — in Swift it is
+  **`MealImpact.Result`**, a nested type, not `MealImpactResult`.
+- `LibraryItem.savedFood: SavedFood?` was added in Task 4 (nil for meals and recipes, which log
+  whole). Use it to get from a row to an `AmountDraft`.
 
 ### The `:shared` API this phase leans on — verified from the header, not guessed
 

@@ -555,6 +555,30 @@ grep -rn "CatalogFood\|catalog_foods" Features Shell   # D20 — NEVO stays out
 
 ---
 
+## 🔴 Known gap found during execution — the plan ledger is empty on iOS
+
+Task 2 surfaced this and it belongs to **3c**, not here.
+
+`plan_versions` has **no iOS writer**. Android seeds a `1970-01-01` sentinel row
+(`PlanHistoryInitializer`) so the ledger is never empty; iOS has no equivalent, and the only thing
+that writes rows is a backup restore. So on a fresh install the ledger is empty, `PlanHistory.resolve`
+returns an empty map, and **every target resolution takes its fallback path**.
+
+Two consequences:
+
+1. The documented Source-of-Truth guarantee — *"a plan change never re-judges already-logged days"* —
+   is **not implemented on iOS at all** yet. Nothing can change targets in 3b (the Plan screen is 3c),
+   so nothing is currently wrong; it becomes wrong the moment 3c ships plan editing without also
+   writing a version row.
+2. Android is **internally inconsistent** about where the fallback goes: the adherence path applies it
+   *after* `resolveAll` (unreduced, `DashboardViewModel.kt:246,:315`), the today-ring path *before*
+   `resolve` (reduced, `:322`). Android never notices because its ledger is never empty. iOS took the
+   **ring's ordering (reduced)** for all paths, because the unreduced one would make a running
+   rebalance invisible across the whole Dashboard on a fresh install. Pinned by
+   `anEmptyLedgerFallbackIsStillReducedByARunningRebalance`.
+
+**3c must write a plan-version row when the plan changes, and seed the baseline on first run.**
+
 ## What 3b deliberately does NOT do
 
 - **No coach slot, no weekly briefing overlay, no recovery insight card** — Phase 5. Their layout

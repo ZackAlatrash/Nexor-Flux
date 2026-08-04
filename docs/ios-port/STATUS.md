@@ -180,12 +180,9 @@ synthesised `Decodable` would silently wipe preferences, hence **D14**; and Kotl
 `encodeDefaults = true` vs Swift's omit-nil means a Swift-written backup needs a hand-written
 `encode(to:)` or Android rejects it. Also: a Debug run does not prove zero isolation warnings.
 
-### 2026-08-02 — Phase 1a executed (71 tests) · full detail in the [1a plan](phases/phase-1a-database.md)
-Schema ground truth was Room's KSP-generated `RecompDatabase_Impl.kt`, not the entity annotations —
-they disagree about DEFAULT clauses. `nullif(?, 0)` is spelled `Int64?` in Swift. `error: circular
-reference` on every record came from MainActor default isolation meeting a same-module protocol
-refining `MutablePersistableRecord`; one `nonisolated` fixed it. Xcode friction, not Swift, cost the
-time. Parallel worktree agents worked: 5 agents, 4 merges, zero conflicts.
+*Older entries archived — Phase 1a's detail lives in the
+[1a plan](phases/phase-1a-database.md), and the conventions it produced are in
+[decisions.md](decisions.md) and [reference/shared-codec-api.md](reference/shared-codec-api.md).*
 
 ---
 

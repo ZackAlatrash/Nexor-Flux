@@ -4,8 +4,8 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-03 · **Current phase:** Phase 2 — built, pending merge ·
-**Branches:** Android `develop` (1b merged) · iOS `phase-2-shell-and-food-log` (unmerged).
+**Last updated:** 2026-08-04 · **Current phase:** Phase 3a — built, pending visual pass + merge ·
+**Branches:** Android `develop` · iOS `phase-3a-food-library` (unmerged, off `main`).
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -25,14 +25,19 @@ Its 9 tests are written and **self-skip** until the fixture lands — see *Block
 ✅ **[Phase 2](phases/phase-2-shell-and-food-log.md) is built** — the design system on native
 Liquid Glass, a four-tab shell, and Food Log's thin slice reading and writing the database.
 **351 tests**, zero warnings, Debug and Release both green. Decisions **D15–D19** settled.
-The app launches, you can log a meal, and the totals recompute from the observation.
+
+✅ **[Phase 3a](phases/phase-3a-food-library.md) is built** — Food Library, Recipe Builder, and the
+three Food Log changes that make logging real. **455 tests**, zero warnings, Debug and Release both
+green. Decisions **D20–D23** settled. You can now log from your own library in servings or grams,
+create and correct foods, build recipes from picked ingredients, log a portion of one, confirm
+planned meals, and turn a slot into a recipe.
 
 ### Numbers
 
 | | |
 |---|---|
-| iOS tests | **351** (342 running + 9 armed) · 0 warnings · Debug + Release green |
-| iOS code | ~4,600 LOC `Persistence/` · ~460 `DesignSystem/` · ~250 `Shell/` · ~900 `Features/FoodLog/` |
+| iOS tests | **455** (446 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
 | Kotlin tests | `:app` 967 · `:shared` JVM 450 · `:shared` iOS 11 — **1417 total, unchanged** |
@@ -54,7 +59,9 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **1a** | GRDB + 19 tables + records + queries + transactions | ✅ **done — 71 tests** |
 | **1b** | Preference stores, Keychain, bundled assets, file codecs | ✅ **done — 265 tests** (fixture pending) |
 | **2** | App shell, design system, **Food Log thin slice** | ✅ **done — 351 tests** |
-| 3 | Food Library, Dashboard, Body, Plan, Profile, Onboarding, Streaks, charts | ⬜ |
+| **3a** | **Food Library, Recipe Builder, the logging loop** | ✅ **built — 455 tests** (gates 1–5 reviewed live) |
+| 3b | Dashboard, Body/Recovery, check-in, streaks, charts, rebalance surfaces | ⬜ |
+| 3c | Plan, Profile, Onboarding, Progress, Body history/edit, More, Appearance, Usage, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
@@ -98,18 +105,51 @@ package and the `.rtroutine` UTI already declared.
 
 ## Needs visual check
 
-Gates A–D were reviewed live in the simulator during the Phase 2 session and corrected against
-Android screenshots. Still unlooked-at:
+Phase 2's gates A–D and Phase 3a's gates 1–5 (library list, amount sheet, food editor, quick add,
+recipe builder) were reviewed live and corrected against Android screenshots. **Phase 3a's last
+three surfaces were built after the user waived the remaining gates and have never been looked at:**
+
+- **The recipe portion sheet** — no screenshot existed; built from `FoodLibraryScreen.kt:812-856`.
+- **The reconcile banner** — no screenshot existed (none of the nine captured a day with planned
+  entries); built from `FoodScreen.kt:458-496`. Its button-vs-text balance at an accessibility text
+  size is the specific worry.
+- **Slot selection mode** — the tick boxes, the footer bar, and the `⋮` overflow that enters it.
+- **The two-mode ingredient editor** — both bodies were driven in the simulator by the implementing
+  agent, but not judged by a human.
+
+Still unlooked-at from Phase 2, and now covering far more screen:
 - **Dynamic Type at the largest accessibility size.** Nothing proves the ramp — `@ScaledMetric`
   returns its base value outside a hosted view, so no unit test can see it.
-- **Light mode.** The simulator ran light during the session and the app followed, but no one has
-  judged it deliberately.
-- **The eleven accent themes.** `AccentPreviews.swift` in the canvas; there is no Settings screen
-  to switch them until Phase 3, and the app defaults to VIOLET.
+- **Light mode.** Never judged deliberately. 3a added ~12 surfaces to it.
+- **The eleven accent themes.** `AccentPreviews.swift` in the canvas; there is still no Settings
+  screen to switch them (3c), and the app defaults to VIOLET.
 
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
+
+### 2026-08-04 — Phase 3a executed (subagent-driven, 5 live gates then run to completion)
+- **iOS 351 → 455 tests**, 0 warnings, Debug *and* Release green. **D20–D23** recorded. Food Library
+  and Recipe Builder complete; the logging loop closes end to end.
+- 🔴 **`didSet` on an `@Observable` stored property compiles with no diagnostic and then crashes the
+  test runner.** `@Observable` rewrites the setter into `withMutation(keyPath:)`, the observer fires
+  *inside* it, and the handler re-enters the registrar. Use explicit get/set over a private stored
+  property. Failure mode is a dead runner, not a compile error — worth remembering for every model.
+- 🔴 **My own plan was wrong on four counts, each caught by an agent reading the Kotlin rather than
+  trusting the brief:** Android always shows the Servings toggle (only the *scanner* gates it);
+  quick add writes `mealType = "QUICK_ADD"` and recipe logging `"RECIPE"`, not `"MEAL"`/
+  `"FOOD_LIBRARY"`; and **logging a recipe writes one entry per ingredient**, not one flattened row
+  — the per-ingredient shape is what keeps each row's per-100g base, so it stays re-scalable and a
+  restored Android backup renders identically. Screenshots corrected six more UI details.
+- 🔴 **`DebugSampleData` had no call site for the whole of Phase 2** — every screen was reviewed
+  against an empty database and nobody noticed. Wiring it exposed a second bug: its guard required
+  zero `MealSlot`s, which the migration's three default slots made permanently false. Then my own
+  fix spelled `Column("sortOrder")` where the column is `sort_order`, and the `try?` at the call
+  site swallowed the throw — a silently empty library that looked like a broken screen. Now covered
+  by `DebugSampleDataTests`, and the call site asserts rather than discarding.
+- Deferred out of 3a and still owed: postpone, the stale-plan nudge, the ✨ recipe namer (Phase 5),
+  Open Food Facts + the camera button (Phase 4). **`JSONStore` still has no change stream — 3c must
+  add one before it ships Plan or Settings**, or every screen reading plan targets shows a stale value.
 
 ### 2026-08-03 — Phase 2 executed (4 worktree agents + 4 live visual gates)
 - **iOS 265 → 351 tests**, 0 warnings, Debug *and* Release green. D15–D19 settled.

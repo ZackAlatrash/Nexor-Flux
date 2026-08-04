@@ -72,10 +72,10 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 
 | # | Screen | Android file | Phase | Status |
 |---|---|---|---|---|
-| 1 | Food Log | `ui/today/FoodScreen.kt` (1428) | 2 | 🔨 **thin slice done** — day nav, week chart, nutrition strip, slots, Unassigned, quick add. Deferred to 3: reconcile banner, suggestion card, slot edit mode, recipe selection, macro-edit dialog, rebalance chip |
+| 1 | Food Log | `ui/today/FoodScreen.kt` (1428) | 2 + 3a | 🔨 **most of it** — day nav, week chart, nutrition strip, slots, Unassigned, quick add (2); **+ Add opens the Library, reconcile banner, slot selection → recipe, `today` advances across midnight** (3a). Still deferred: suggestion card, macro-edit dialog, rebalance chip, postpone, stale-plan nudge |
 | 2 | Home Dashboard | `ui/dashboard/DashboardScreen.kt` (1249) | 3 | ⬜ |
 | 3 | Body / Recovery | `ui/today/BodyRecoveryScreen.kt` (548) | 3 | ⬜ |
-| 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3 | ⬜ |
+| 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3a | ✅ **minus NEVO (D20) and Open Food Facts (D21, → Phase 4)** — four chips instead of six, search, Recents, the three action buttons, picker mode |
 | 5 | Plan | `ui/plan/PlanScreen.kt` (341) | 3 | ⬜ |
 | 6 | Profile | `ui/profile/ProfileScreen.kt` (592) | 3 | ⬜ |
 | 7 | Onboarding | `ui/onboarding/OnboardingScreen.kt` (434) | 3 | ⬜ |
@@ -85,7 +85,7 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | 11 | Streak Stats | `ui/streak/StreakStatsScreen.kt` (90) | 3 | ⬜ |
 | 12 | Calorie decision | `DashboardScreen.kt:1058` | 3 | ⬜ |
 | 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | 3 | ⬜ |
-| 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3 | ⬜ |
+| 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3a | ✅ **minus the ✨ AI namer (Phase 5)** — both entry points (library, and a Food Log slot selection), two-mode ingredient editor, delete with confirmation |
 | 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4 | ⬜ |
 | 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4 | ⬜ |
 | 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4 | ⬜ |
@@ -104,9 +104,9 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | Rebalance Offer overlay | `ui/dashboard/RebalanceOfferOverlay.kt` (294) | 3 | ⬜ |
 | Rebalance Progress Detail | `ui/dashboard/RebalanceProgressDetailOverlay.kt` (253) | 3 | ⬜ |
 | Body Check-in sheet | `ui/body/BodyCheckInSheet.kt` (152) | 3 | ⬜ |
-| Amount / RecipeAmount / CreateFood / QuickAdd sheets | `FoodLibraryScreen.kt:870/943/988/1050` | 3 | ⬜ |
+| Amount / RecipeAmount / CreateFood / QuickAdd sheets | `FoodLibraryScreen.kt:870/943/988/1050` | 3a | ✅ all four. Sized to their content rather than a fixed detent (`appSheet()`), and Quick Add's name is optional as Android's always was — Phase 2 built that one blind and required one |
 | Product Found sheet | `BarcodeScannerScreen.kt:286` | 4 | ⬜ |
-| Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3 | ⬜ |
+| Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3a | ✅ both bodies (stepper when the ingredient carries a per-100g base, four typed fields when it does not). Grams-only: Android also offers a Servings toggle here, which the picker's amount sheet already provided |
 | Option sheet (Profile) | `ProfileScreen.kt:491` | 3 | ⬜ |
 | Onboarding picker sheet | `OnboardingScreen.kt:400` | 3 | ⬜ |
 | Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ⬜ |

@@ -18,13 +18,13 @@ per-screen notes.
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
 | Design system | 7 | 4 | 0 | 3 | 0 | 0 |
-| Screens (v1) | 20 | 0 | 1 | 19 | 0 | 0 |
-| Overlays & sheets | 11 | 0 | 0 | 10 | 1 | 0 |
+| Screens (v1) | 20 | 2 | 1 | 17 | 0 | 0 |
+| Overlays & sheets | 11 | 2 | 0 | 8 | 1 | 0 |
 | Charts | 8 | 1 | 1 | 3 | 3 | 0 |
 | Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **86** | **16** | **4** | **48** | **16** | **2** |
+| **Total** | **86** | **20** | **4** | **44** | **16** | **2** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 

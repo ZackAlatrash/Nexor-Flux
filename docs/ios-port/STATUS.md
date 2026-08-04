@@ -131,25 +131,17 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
 ### 2026-08-04 — Phase 3a executed (subagent-driven, 5 live gates then run to completion)
 - **iOS 351 → 455 tests**, 0 warnings, Debug *and* Release green. **D20–D23** recorded. Food Library
   and Recipe Builder complete; the logging loop closes end to end.
-- 🔴 **`didSet` on an `@Observable` stored property compiles with no diagnostic and then crashes the
-  test runner.** `@Observable` rewrites the setter into `withMutation(keyPath:)`, the observer fires
-  *inside* it, and the handler re-enters the registrar. Use explicit get/set over a private stored
-  property. Failure mode is a dead runner, not a compile error — worth remembering for every model.
-- 🔴 **My own plan was wrong on four counts, each caught by an agent reading the Kotlin rather than
-  trusting the brief:** Android always shows the Servings toggle (only the *scanner* gates it);
-  quick add writes `mealType = "QUICK_ADD"` and recipe logging `"RECIPE"`, not `"MEAL"`/
-  `"FOOD_LIBRARY"`; and **logging a recipe writes one entry per ingredient**, not one flattened row
-  — the per-ingredient shape is what keeps each row's per-100g base, so it stays re-scalable and a
-  restored Android backup renders identically. Screenshots corrected six more UI details.
-- 🔴 **`DebugSampleData` had no call site for the whole of Phase 2** — every screen was reviewed
-  against an empty database and nobody noticed. Wiring it exposed a second bug: its guard required
-  zero `MealSlot`s, which the migration's three default slots made permanently false. Then my own
-  fix spelled `Column("sortOrder")` where the column is `sort_order`, and the `try?` at the call
-  site swallowed the throw — a silently empty library that looked like a broken screen. Now covered
-  by `DebugSampleDataTests`, and the call site asserts rather than discarding.
-- Deferred out of 3a and still owed: postpone, the stale-plan nudge, the ✨ recipe namer (Phase 5),
-  Open Food Facts + the camera button (Phase 4). **`JSONStore` still has no change stream — 3c must
-  add one before it ships Plan or Settings**, or every screen reading plan targets shows a stale value.
+- 🔴 **Never put `didSet` on an `@Observable` stored property.** It compiles with no diagnostic and
+  then *crashes the test runner* — `@Observable` rewrites the setter into `withMutation(keyPath:)`
+  and the observer re-enters the registrar. Explicit get/set over a private stored property instead.
+- 🔴 **The plan was wrong about Android four times, each caught by an agent reading the Kotlin
+  rather than trusting the brief** — the servings toggle is never gated, quick add writes
+  `"QUICK_ADD"` and recipes `"RECIPE"`, and logging a recipe writes **one entry per ingredient**.
+  Verify against the source; a brief is not evidence. Detail in the [3a plan](phases/phase-3a-food-library.md).
+- 🔴 **`DebugSampleData` had no call site for all of Phase 2**, so every screen was reviewed against
+  an empty database. Wiring it exposed two more bugs behind a `try?`. Now covered by tests.
+- **Owed to 3c: `JSONStore` still has no change stream.** Add one before shipping Plan or Settings,
+  or every screen reading plan targets shows a stale value.
 
 ### 2026-08-03 — Phase 2 executed (4 worktree agents + 4 live visual gates)
 - **iOS 265 → 351 tests**, 0 warnings, Debug *and* Release green. D15–D19 settled.

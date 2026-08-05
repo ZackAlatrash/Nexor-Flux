@@ -274,6 +274,33 @@ general mechanism is needed yet.
 `RecipeBuilderViewModel` publishes `navigateBack: StateFlow<Boolean>` only because Compose gives it
 no upward signal; every Phase 3 form screen would otherwise grow the same field.
 
+**D24 · Every chart is hand-drawn SwiftUI. Swift Charts is not linked and will not be.** The
+sparkline needs a left-to-right clip reveal, dots that pop as the reveal passes them, a 3-stop
+gradient stroke and a 3-layer glow terminal dot; the rebalance bars need per-bar *staggered*
+animation and a divider injected between two groups. Swift Charts models none of these and fights
+all of them. `WeekStrip.swift` proved the hand-drawn path is cheap. Task 18 greps for
+`import Charts` to keep it that way.
+
+**D25 · One `StreakModel` and one streak fetch**, owned by the streak feature rather than by any
+screen. The streak card renders on Dashboard, Body, Food Log and Train; two implementations would
+disagree, and the rules are subtle enough (calendar days *spanned* not hits, a trailing grace
+period, the lenient union zone, base-goal-always for steps) that the disagreement would be
+invisible.
+
+**D26 · Rebalance ships its deterministic copy in 3b**, not deferred to Phase 5.
+`RebalanceCopyService` is decoration: the ViewModel seeds `RebalanceCopyPromptBuilder.fallback(...)`
+**synchronously** and only then launches a job that may replace it. The fallback is the shipping
+string. Phase 5 becomes a one-line swap. The AI *badge* and the "Generating" edge glow stay out — an
+AI badge on a screen with no AI is a lie.
+
+**D27 · `buildStreaks` is ported to Swift, not moved into `:shared`** — despite `:shared` being its
+architecturally correct home (a shared kdoc already references it). Standing rule 2 says every phase
+after 0 only adds files under the iOS repo and is parallel-safe with Android work, and the user runs
+concurrent Android sessions. The cost is 73 lines of duplication and a drift risk; the mitigation is
+that the Swift port carries its own tests, transcribed from the Kotlin ones — **and writing them
+found that the Kotlin tests covered only 5 of the 9 rules**, so the port is now better tested than
+the original. Moving it remains the right follow-up.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a

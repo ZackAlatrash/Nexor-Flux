@@ -18,13 +18,13 @@ per-screen notes.
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
 | Design system | 7 | 4 | 0 | 3 | 0 | 0 |
-| Screens (v1) | 20 | 2 | 1 | 17 | 0 | 0 |
-| Overlays & sheets | 11 | 2 | 0 | 8 | 1 | 0 |
-| Charts | 8 | 1 | 1 | 3 | 3 | 0 |
+| Screens (v1) | 20 | 6 | 1 | 13 | 0 | 0 |
+| Overlays & sheets | 11 | 4 | 1 | 5 | 1 | 0 |
+| Charts | 8 | 3 | 1 | 1 | 3 | 0 |
 | Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **86** | **20** | **4** | **44** | **16** | **2** |
+| **Total** | **86** | **28** | **5** | **35** | **16** | **2** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
@@ -73,8 +73,8 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | # | Screen | Android file | Phase | Status |
 |---|---|---|---|---|
 | 1 | Food Log | `ui/today/FoodScreen.kt` (1428) | 2 + 3a | 🔨 **most of it** — day nav, week chart, nutrition strip, slots, Unassigned, quick add (2); **+ Add opens the Library, reconcile banner, slot selection → recipe, `today` advances across midnight** (3a). Still deferred: suggestion card, macro-edit dialog, rebalance chip, postpone, stale-plan nudge |
-| 2 | Home Dashboard | `ui/dashboard/DashboardScreen.kt` (1249) | 3 | ⬜ |
-| 3 | Body / Recovery | `ui/today/BodyRecoveryScreen.kt` (548) | 3 | ⬜ |
+| 2 | Home Dashboard | `ui/dashboard/DashboardScreen.kt` (1249) | 3b | ✅ **minus the coach slot and the weekly-review overlay (Phase 5)** — their layout slots exist |
+| 3 | Body / Recovery | `ui/today/BodyRecoveryScreen.kt` (548) | 3b | ✅ **minus the recovery insight card (Phase 5)** — the layout already works without it |
 | 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3a | ✅ **minus NEVO (D20) and Open Food Facts (D21, → Phase 4)** — four chips instead of six, search, Recents, the three action buttons, picker mode |
 | 5 | Plan | `ui/plan/PlanScreen.kt` (341) | 3 | ⬜ |
 | 6 | Profile | `ui/profile/ProfileScreen.kt` (592) | 3 | ⬜ |
@@ -82,8 +82,8 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | 8 | Progress / Trends | `ui/progress/ProgressScreen.kt` (403) | 3 | ⬜ |
 | 9 | Body History | `ui/body/BodyHistoryScreen.kt` (140) | 3 | ⬜ |
 | 10 | Body Edit | `ui/body/BodyEditScreen.kt` (96) | 3 | ⬜ |
-| 11 | Streak Stats | `ui/streak/StreakStatsScreen.kt` (90) | 3 | ⬜ |
-| 12 | Calorie decision | `DashboardScreen.kt:1058` | 3 | ⬜ |
+| 11 | Streak Stats | `ui/streak/StreakStatsScreen.kt` (90) | 3b | ✅ |
+| 12 | Calorie decision | `DashboardScreen.kt:1058` | 3b | ✅ **built, no screenshot, no entry point** — More is 3c, so it is preview-only until then |
 | 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | 3 | ⬜ |
 | 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3a | ✅ **minus the ✨ AI namer (Phase 5)** — both entry points (library, and a Food Log slot selection), two-mode ingredient editor, delete with confirmation |
 | 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4 | ⬜ |
@@ -101,9 +101,9 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | Surface | Android file | Phase | Status |
 |---|---|---|---|
 | Weekly Briefing overlay | `ui/review/WeeklyBriefingOverlay.kt` (420) | 5 | ⬜ |
-| Rebalance Offer overlay | `ui/dashboard/RebalanceOfferOverlay.kt` (294) | 3 | ⬜ |
-| Rebalance Progress Detail | `ui/dashboard/RebalanceProgressDetailOverlay.kt` (253) | 3 | ⬜ |
-| Body Check-in sheet | `ui/body/BodyCheckInSheet.kt` (152) | 3 | ⬜ |
+| Rebalance Offer overlay | `ui/dashboard/RebalanceOfferOverlay.kt` (294) | 3b | ✅ device-verified. Fixed `.large` detent, not `appSheet()` — a dial change must not resize the sheet |
+| Rebalance Progress Detail | `ui/dashboard/RebalanceProgressDetailOverlay.kt` (253) | 3b | 🔨 day-0 face device-verified; the **running** face (Day X of Y, dot row) is unverified |
+| Body Check-in sheet | `ui/body/BodyCheckInSheet.kt` (152) | 3b | ✅ — scrolls, unlike Android's plain `Column`; that was a Compose workaround UIKit does not need |
 | Amount / RecipeAmount / CreateFood / QuickAdd sheets | `FoodLibraryScreen.kt:870/943/988/1050` | 3a | ✅ all four. Sized to their content rather than a fixed detent (`appSheet()`), and Quick Add's name is optional as Android's always was — Phase 2 built that one blind and required one |
 | Product Found sheet | `BarcodeScannerScreen.kt:286` | 4 | ⬜ |
 | Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3a | ✅ both bodies (stepper when the ingredient carries a per-100g base, four typed fields when it does not). Grams-only: Android also offers a Servings toggle here, which the picker's amount sheet already provided |
@@ -116,11 +116,11 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 
 | Chart | Android file | Phase | Status |
 |---|---|---|---|
-| `SparklineChart` (bezier + clip reveal + glow dot + scrub) | `charts/SparklineChart.kt` (266) | 3 | ⬜ |
-| `CalorieProgressBar` (candy stripes + ghost extension) | `charts/CalorieProgressBar.kt` (121) | 2 | 🔨 plain gradient bar built; candy stripes + planned ghost extension deferred with the planned-meal flow |
+| `SparklineChart` (bezier + clip reveal + glow dot + scrub) | `charts/SparklineChart.kt` (266) | 3b | ✅ **scrub needed `UIGestureRecognizerRepresentable`** — no SwiftUI `DragGesture` variant coexists with a `ScrollView` |
+| `CalorieProgressBar` (candy stripes + ghost extension) | `charts/CalorieProgressBar.kt` (121) | 2 + 3b | ✅ stripes and ghost landed in 3b and the component was extracted, so Food Log and Dashboard share one bar |
 | `WeekCalorieStrip` | `ui/component/WeekCalorieStrip.kt` (265) | 2 | ✅ |
-| `StreakGoalRing` | `StreakComponents.kt:304` | 3 | ⬜ |
-| Rebalance viz (bars / day dots / lever tiles) | `ui/dashboard/RebalanceViz.kt` (655) | 3 | ⬜ |
+| `StreakGoalRing` | `StreakComponents.kt:304` | 3b | ✅ — animates, unlike Android's, which snaps |
+| Rebalance viz (bars / day dots / lever tiles) | `ui/dashboard/RebalanceViz.kt` (655) | 3b | 🔨 bars + lever tiles device-verified; **`DayDots` unverified** (needs a plan on day ≥ 1). `ConvergenceReadout` deliberately not ported — dead on Android |
 | `ProgressLineChart` | `charts/ProgressLineChart.kt` (84) | — | ⏭️ |
 | est-1RM sparkline | `SessionDetailScreen.kt:232` | — | ⏭️ |
 | `BodyMap` (SVG paths + heat + hit-test) | `train/component/BodyMap.kt` (159) | — | ⏭️ |

@@ -4,8 +4,9 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-04 · **Current phase:** Phase 3a — built, pending visual pass + merge ·
-**Branches:** Android `develop` · iOS `phase-3a-food-library` (unmerged, off `main`).
+**Last updated:** 2026-08-05 · **Current phase:** Phase 3b — built, pending visual pass + merge ·
+**Branches:** Android `develop` · iOS `phase-3b-dashboard-and-body` (unmerged, off the also-unmerged
+`phase-3a-food-library`).
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -27,16 +28,18 @@ Liquid Glass, a four-tab shell, and Food Log's thin slice reading and writing th
 **351 tests**, zero warnings, Debug and Release both green. Decisions **D15–D19** settled.
 
 ✅ **[Phase 3a](phases/phase-3a-food-library.md) is built** — Food Library, Recipe Builder, and the
-three Food Log changes that make logging real. **455 tests**, zero warnings, Debug and Release both
-green. Decisions **D20–D23** settled. You can now log from your own library in servings or grams,
-create and correct foods, build recipes from picked ingredients, log a portion of one, confirm
-planned meals, and turn a slot into a recipe.
+three Food Log changes that make logging real. Decisions **D20–D23**.
+
+✅ **[Phase 3b](phases/phase-3b-dashboard-and-body.md) is built** — Dashboard, Body/Recovery, the
+streak pipeline, the chart kit, and all five rebalance surfaces. Decisions **D24–D27**. **810 tests**,
+zero warnings, Debug and Release green. Home and Body are no longer placeholders: the app opens on a
+real dashboard, and a weekly rebalance can be offered, customised, accepted and tracked.
 
 ### Numbers
 
 | | |
 |---|---|
-| iOS tests | **455** (446 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **810** (801 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -60,7 +63,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **1b** | Preference stores, Keychain, bundled assets, file codecs | ✅ **done — 265 tests** (fixture pending) |
 | **2** | App shell, design system, **Food Log thin slice** | ✅ **done — 351 tests** |
 | **3a** | **Food Library, Recipe Builder, the logging loop** | ✅ **built — 455 tests** (gates 1–5 reviewed live) |
-| 3b | Dashboard, Body/Recovery, check-in, streaks, charts, rebalance surfaces | ⬜ |
+| **3b** | **Dashboard, Body/Recovery, streaks, charts, rebalance** | ✅ **built — 810 tests** |
 | 3c | Plan, Profile, Onboarding, Progress, Body history/edit, More, Appearance, Usage, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
@@ -105,28 +108,54 @@ package and the `.rtroutine` UTI already declared.
 
 ## Needs visual check
 
-Phase 2's gates A–D and Phase 3a's gates 1–5 (library list, amount sheet, food editor, quick add,
-recipe builder) were reviewed live and corrected against Android screenshots. **Phase 3a's last
-three surfaces were built after the user waived the remaining gates and have never been looked at:**
+Phase 2's gates A–D and 3a's gates 1–5 were reviewed live against Android screenshots. 3b's
+Dashboard, Body, check-in sheet and streak stats were built **from screenshots** (`10`–`16` in the
+iOS repo's `screenshots/`) and mostly device-checked by the implementing agents.
 
-- **The recipe portion sheet** — no screenshot existed; built from `FoodLibraryScreen.kt:812-856`.
-- **The reconcile banner** — no screenshot existed (none of the nine captured a day with planned
-  entries); built from `FoodScreen.kt:458-496`. Its button-vs-text balance at an accessibility text
-  size is the specific worry.
-- **Slot selection mode** — the tick boxes, the footer bar, and the `⋮` overflow that enters it.
-- **The two-mode ingredient editor** — both bodies were driven in the simulator by the implementing
-  agent, but not judged by a human.
+**Never looked at by a human:**
+- 🔴 **The running rebalance faces** — the progress sheet's Day-X-of-Y state, the ribbon's running
+  state, and **`DayDots`** in its full 14pt variant. Unreachable without a plan on day ≥ 1, so no
+  screenshot exists and none was captured. The whole P1-13 dot-index fix is invisible until then.
+- 🔴 **The rebalance note card, all four skins** (gold completion, graceful end, no-adjustment, the
+  defensive fallback). The gold one is the only user of the new tinted-glass card overload.
+- **The calorie decision screen** — no screenshot, and no entry point until More lands in 3c.
+- 3a's leftovers: the recipe portion sheet, the reconcile banner, slot selection mode.
 
-Still unlooked-at from Phase 2, and now covering far more screen:
-- **Dynamic Type at the largest accessibility size.** Nothing proves the ramp — `@ScaledMetric`
-  returns its base value outside a hosted view, so no unit test can see it.
-- **Light mode.** Never judged deliberately. 3a added ~12 surfaces to it.
-- **The eleven accent themes.** `AccentPreviews.swift` in the canvas; there is still no Settings
-  screen to switch them (3c), and the app defaults to VIOLET.
+Still unlooked-at and now covering far more screen:
+- **Dynamic Type at the largest accessibility size.** `@ScaledMetric` returns its base value outside
+  a hosted view, so no unit test can see the ramp.
+- **Light mode.** Never judged deliberately. 3a and 3b added ~25 surfaces to it.
+- **The eleven accent themes.** The 3b screenshots are on **Silver**, so near-white buttons and
+  numbers in them are the theme, not the design.
+
+## Open question for 3c — number formatting is inconsistent
+Weights and trends format US-pinned via `String(format:)`; calories use
+`.formatted(.number.grouping(.automatic))`, which follows the device locale — so on a Dutch device
+the hero reads **`3.080 kcal`** where Android pins `Locale.US` and reads `3,080`. Both iOS calorie
+heroes agree with each other, which is why it was left, but nobody has ruled on whether the app
+speaks the device's locale or pins one format.
 
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
+
+### 2026-08-05 — Phase 3b executed (3 research passes, then 8 implementation agents)
+- **iOS 455 → 810 tests**, 0 warnings, Debug *and* Release green. **D24–D27** recorded. Dashboard,
+  Body/Recovery, streaks, the chart kit and all five rebalance surfaces.
+- 🔴 **The research paid for itself before a line was written: 41 of 41 domain symbols these screens
+  need were already in `:shared` and exported.** Not one engine was reimplemented. Scope the shared
+  module *first* on every remaining phase.
+- 🔴 **A SwiftUI `DragGesture` cannot coexist with a `ScrollView`** — `.gesture`,
+  `.highPriorityGesture` and `.simultaneousGesture` all break scrolling, and declining inside the
+  handler does not hand the touch back. The sparkline's scrub needed a
+  `UIGestureRecognizerRepresentable` with a velocity-gated delegate.
+- 🔴 **The "simulator flake" that had been costing a re-run all through 3a was a real crash.**
+  `PaletteTests` resolves colours through `UITraitCollection`/`UIColor`, which is main-thread-only,
+  and Swift Testing runs parameterised cases in parallel — a malloc double-free took the whole test
+  host down, reporting as "Restarting after unexpected exit" with **no test named**. One `@MainActor`
+  fixed it; 8 consecutive runs clean. 13 sleep-based waits were also converted to condition polls.
+- **Owed to 3c, still:** `plan_versions` has no iOS writer, so the ledger is empty and every target
+  resolution takes its fallback. Harmless until 3c ships plan editing — wrong the moment it does.
 
 ### 2026-08-04 — Phase 3a executed (subagent-driven, 5 live gates then run to completion)
 - **iOS 351 → 455 tests**, 0 warnings, Debug *and* Release green. **D20–D23** recorded. Food Library
@@ -145,36 +174,23 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
 ### 2026-08-03 — Phase 2 executed (4 worktree agents + 4 live visual gates)
 - **iOS 265 → 351 tests**, 0 warnings, Debug *and* Release green. D15–D19 settled.
-- 🔴 **A Phase 1a gap surfaced only when a screen finally rendered slots: our migration never seeded
-  the three default meal slots Android's does.** A fresh install therefore had nowhere to log food,
-  and because `meal_entries.slotId` has no foreign key nothing failed loudly. `SchemaEquivalenceTests`
-  pinned table *structure*, never seeded *rows*. Fixed with four tests; five existing tests that had
-  assumed a virgin table broke, which was the correct signal.
-- 🔴 **Screenshots beat reading the Kotlin.** The week strip is a bar chart with a dashed target line
-  and a zone band — I had built dots. The calorie hero is 22pt Black, not 36pt. And **hitting the
-  zone tints the whole card green**, which I had reduced to a coloured word. Layout should match
-  Android even though the *materials* deliberately do not (D15).
-- 🔴 **SwiftUI localises `Text("\(anInt)")`** — the target label rendered "2.550" on a Dutch locale.
-  Four call sites now use `Text(verbatim:)`.
-- **`.task` IS cancelled and restarted per tab switch** (measured: 1 → 3 over two round-trips). No
-  flicker; `.task(id:)` is the working `flatMapLatest` equivalent.
-- 🔴 **`git stash` is shared across worktrees.** Two parallel agents stashed concurrently and each
-  popped the other's files. Nothing was lost — both verified byte-identical recovery — but **no agent
-  may run `git stash` in this repo**.
-- Agents corrected the plan repeatedly: my `screenTitleCompact`/`statValue` mapping was inverted, the
-  two display tokens silently ignored Dynamic Type, my colour-resolution test passed on the exact
-  failure it existed to catch, and my `CalendarDay` accepted `"+026-08-02"`.
+- 🔴 **A Phase 1a gap surfaced only when a screen finally rendered slots:** the migration never
+  seeded Android's three default meal slots, so a fresh install had nowhere to log food — and
+  `meal_entries.slotId` has no foreign key, so nothing failed loudly. Schema tests pinned table
+  *structure*, never seeded *rows*.
+- 🔴 **Screenshots beat reading the Kotlin.** The week strip is a bar chart, not dots; the calorie
+  hero is 22pt Black, not 36pt; hitting the zone tints the *whole card* green. Layout should match
+  Android even where the materials deliberately do not (D15).
+- 🔴 **SwiftUI localises `Text("\(anInt)")`** — rendered "2.550" on a Dutch locale. Use
+  `Text(verbatim:)` for every bare number.
+- 🔴 **`git stash` is shared across worktrees** — two parallel agents popped each other's files.
+  Nothing was lost, but **no agent may run it in this repo**.
+- `.task` *is* cancelled and restarted per tab switch (measured). `.task(id:)` is the working
+  `flatMapLatest` equivalent.
 
-### 2026-08-02 — Phase 1b executed · detail in the [1b plan](phases/phase-1b-stores-and-formats.md)
-iOS 71 → 265 tests; Kotlin unchanged at 1417. Three findings that became conventions: the generated
-header spells types with a `Shared` prefix Swift does not use (pinned in `SharedInteropTests`);
-synthesised `Decodable` would silently wipe preferences, hence **D14**; and Kotlin's
-`encodeDefaults = true` vs Swift's omit-nil means a Swift-written backup needs a hand-written
-`encode(to:)` or Android rejects it. Also: a Debug run does not prove zero isolation warnings.
-
-*Older entries archived — Phase 1a's detail lives in the
-[1a plan](phases/phase-1a-database.md), and the conventions it produced are in
-[decisions.md](decisions.md) and [reference/shared-codec-api.md](reference/shared-codec-api.md).*
+*Older entries archived — Phase 1a/1b detail lives in their phase plans, and the conventions they
+produced are in [decisions.md](decisions.md) and
+[reference/shared-codec-api.md](reference/shared-codec-api.md).*
 
 ---
 

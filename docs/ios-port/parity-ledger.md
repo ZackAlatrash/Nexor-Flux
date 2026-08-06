@@ -69,9 +69,10 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | `MarkdownText` → `AttributedString(markdown:)` + custom tables | `MarkdownText.kt` (408 LOC) | ⬜ |
 
 **The consistency pass (2026-08-06) added seven components with no single Android row**, extracted
-from spellings that had drifted across Phases 2–3b rather than ported from one file: `ScreenHeader`
-(tier-1, D29), `ScreenBanner` + `InlineError` (the five message spellings), `AmountPreviewStat`,
-`AccentPill` (five near-identical pills), `TapTarget` (D31) and `Formatters`/`AppNumber` (D28).
+from spellings that had drifted across Phases 2–3b rather than ported from one file: `ScreenTitle`
+(**D32** — the native large title, which replaced the hand-rolled `ScreenHeader` and `DayHeader`),
+`ScreenBanner` + `InlineError` (the five message spellings), `AmountPreviewStat`, `AccentPill` (five
+near-identical pills), `TapTarget` (D31) and `Formatters`/`AppNumber` (D28).
 
 ## Screens — v1
 

@@ -20,9 +20,10 @@ three file formats, the design system on native Liquid Glass, a four-tab shell, 
 screens. The app opens on a working dashboard, food can be logged end to end, and a weekly rebalance
 can be offered, customised, accepted and tracked.
 
-On top of 3b, **a cross-screen consistency pass** (17 commits, 3 waves, **D28–D31**): every screen
-from Phases 2–3b audited together for title, type, spacing, motion and behaviour, and the drift
-fixed. Seven new shared components; the app now has one header system and one number format.
+On top of 3b, **a cross-screen consistency pass** (**D28–D32**): every screen from Phases 2–3b
+audited together for title, type, spacing, motion and behaviour, and the drift fixed. Seven new
+shared components; the app now has one number format and — after **D32** replaced the hand-rolled
+header with the native large title — one title system across tab roots *and* pushed screens.
 
 🔴 **One thing from Phase 1b is still outstanding** — the backup acceptance test needs a real
 Android export. Its 9 tests are written and **self-skip** until the fixture lands. See
@@ -32,7 +33,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **870** (861 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **869** (860 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -58,6 +59,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **[3a](phases/phase-3a-food-library.md)** | **Food Library, Recipe Builder, the logging loop** | ✅ **built — 455 tests** (gates 1–5 reviewed live) |
 | **[3b](phases/phase-3b-dashboard-and-body.md)** | **Dashboard, Body/Recovery, streaks, charts, rebalance** | ✅ **built — 810 tests** |
 | **3b+** | **Cross-screen consistency pass** — headers, type, locale, tap targets, VoiceOver | ✅ **built — 870 tests** |
+| **3b+** | **Native title system** — every screen on `.navigationTitle` + iOS 26 subtitle (**D32**) | ✅ **built — 869 tests** |
 | 3c | Plan, Profile, Onboarding, Progress, Body history/edit, More, Appearance, Usage, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
@@ -133,8 +135,9 @@ Still unlooked-at and now covering far more screen:
   numbers in them are the theme, not the design.
 
 **Changed by the consistency pass — worth a second look even where you saw the screen before:**
-- 🔴 **The four tab roots' titles.** They now share one header (`ScreenHeader`), which changed
-  size, weight and spacing on at least one of them. This is the most visible change in the pass.
+- 🔴 **Every title in the app is now the native large one** (**D32**) — it collapses into a centred
+  inline title as you scroll, and the bar takes its glass as content passes under. Device-checked on
+  all four tabs, but light mode and the other ten accents are not.
 - **Every number on Dashboard, Body, Food Log and the rebalance tiles** now formats through
   `AppNumber`. On a US device nothing should move; the change is only visible on a non-US locale.
 - **Error and confirmation messages** across Body, Food Log and Food Library now render in one

@@ -314,12 +314,12 @@ Android**, which pins `Locale.US` in places. 🔴 One exemption is still open �
 eight interpolations are asserted character-for-character against `RebalanceCopyServiceTest`. See
 STATUS *Blocked / needs you* item 5.
 
-**D29 · Two header tiers on iOS, mirroring Android's design system — and no third.** The tab roots
-get `ScreenHeader` (tier-1, large title + optional subtitle + trailing slot); pushed screens keep the
-compact header with the 40pt circular back button. iOS had grown four different spellings of a tab
-title before this, because Android's rule was written down in `docs/design-system.md` and the iOS
-port never restated it. **The Android design-system doc is normative for iOS too** wherever a rule is
-about structure rather than about Compose.
+**D29 · ~~Two header tiers on iOS~~ — superseded by D32 for the tab roots.** The half that stands:
+**the Android design-system doc is normative for iOS too** wherever a rule is about structure rather
+than about Compose. iOS had grown four different spellings of a tab title because that rule was
+written down in `docs/design-system.md` and the port never restated it. The half that did not: this
+consolidated the four roots onto a shared hand-rolled `ScreenHeader`, which was the wrong of the two
+systems in the app. **D32** consolidates them onto the native title instead.
 
 **D30 · A preference write that did not land throws.** `JSONStore.set` was two `try?`s with the cache
 updated and every observer notified *before* either was attempted, so a write that never reached disk
@@ -337,6 +337,36 @@ not; and the system will not expand a control's hit region much past ~44pt howev
 a larger number is not a bigger target. ⚠️ The one deliberate exception is `DismissButton` at 34pt:
 a card header is a single line of 9pt section label, and a 44pt control sets the header's height to
 44 (Android's is 28). Every surface using it has a second, larger way out.
+
+**D32 · One title system for the whole app, and it is the platform's — the native large title.**
+Supersedes the tab-root half of **D29**. Owner's call, asked for explicitly: *"think of something
+iOS native."*
+
+The port had inherited **three** behaviours across four tab roots and a fourth on pushed screens.
+Dashboard and Food Log pinned a hand-rolled 28pt `VStack` header above their `ScrollView`; Body put
+the same component *inside* its scroll, so its title left the screen entirely; the placeholders drew
+it above a `ContentUnavailableView` that never scrolled; and Streak Stats, Food Library and Recipe
+Builder already used the native large title with collapse-on-scroll. Each was a faithful port —
+Android's `DashboardScreen` puts its header outside the `LazyColumn` and `BodyRecoveryScreen` puts
+its in an `item { }` — so the port inherited an inconsistency that is invisible on Android, which
+has no platform title to be inconsistent *with*.
+
+Every root now calls `.screenTitle(_:subtitle:)` (`DesignSystem/ScreenTitle.swift`):
+`.navigationTitle` + iOS 26's `.navigationSubtitle` + `.large`. Trailing controls move into
+`.toolbar { ToolbarItem(placement: .topBarTrailing) }`. `ScreenHeader` and `DayHeader` are deleted
+and `RootTabView`'s `.toolbar(.hidden, for: .navigationBar)` is gone.
+
+🔴 **The large title is a behaviour, not a style, and a `VStack` gets none of it:** collapse into a
+centred inline title with the scroll-edge glass appearing exactly as content passes under it;
+tap-status-bar-to-scroll-to-top; the rotor heading VoiceOver lands on; the system Dynamic Type ramp;
+the push/back-swipe title animation; and the tab bar's iOS 26 scroll-minimise reading the same
+scroll view.
+
+⚠️ **A deliberate divergence from Android** — layout matches Android by default (**D15**), but a
+title system is behaviour and Android has no collapse to match. ⚠️ **Food Log's day steppers came
+out better**: they were the whole reason that screen pinned its header, and in the toolbar they stay
+visible *after* the title collapses, which the pinned header only managed by never collapsing.
+Verified on device across all four tabs, the collapse, the steppers and the push seam.
 
 ## Conventions still to decide
 

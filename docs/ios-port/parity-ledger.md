@@ -17,14 +17,14 @@ per-screen notes.
 |---|---:|---:|---:|---:|---:|---:|
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
-| Design system | 7 | 4 | 0 | 3 | 0 | 0 |
+| Design system | 7 | 5 | 1 | 1 | 0 | 0 |
 | Screens (v1) | 20 | 6 | 1 | 13 | 0 | 0 |
 | Overlays & sheets | 11 | 4 | 1 | 5 | 1 | 0 |
 | Charts | 8 | 3 | 1 | 1 | 3 | 0 |
 | Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **86** | **28** | **5** | **35** | **16** | **2** |
+| **Total** | **86** | **29** | **6** | **33** | **16** | **2** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
@@ -64,9 +64,14 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | `AppColors` + `AppAccent` → asset catalog + `@Environment` | `ui/theme/AppColors.kt`, `DesignTokens.kt` | ✅ |
 | Card family (`FrostedCard`/`NeutralCard`/`TintedCard`/`DangerCard`) | `GlassComponents.kt` | ✅ (Danger deferred — DataBackup is Phase 3) |
 | Button family → `.buttonStyle(.glass)` / `.glassProminent` | `LiquidComponents.kt` | ✅ |
-| `GlassBottomSheet` → `.sheet` + `.presentationDetents` | `GlassBottomSheet.kt` | ⬜ |
-| `GlassAlertDialog` + `ConfirmDialog` | `GlassAlertDialog.kt` | ⬜ |
+| `GlassBottomSheet` → `.sheet` + `.presentationDetents` | `GlassBottomSheet.kt` | ✅ shipped in 3a as `appSheet()`; 10 call sites. Sizes to its content rather than taking a fixed detent |
+| `GlassAlertDialog` + `ConfirmDialog` | `GlassAlertDialog.kt` | 🔨 `ConfirmDialog` is done — native `.confirmationDialog`, 3 call sites. The general-purpose `GlassAlertDialog` has no iOS caller yet |
 | `MarkdownText` → `AttributedString(markdown:)` + custom tables | `MarkdownText.kt` (408 LOC) | ⬜ |
+
+**The consistency pass (2026-08-06) added seven components with no single Android row**, extracted
+from spellings that had drifted across Phases 2–3b rather than ported from one file: `ScreenHeader`
+(tier-1, D29), `ScreenBanner` + `InlineError` (the five message spellings), `AmountPreviewStat`,
+`AccentPill` (five near-identical pills), `TapTarget` (D31) and `Formatters`/`AppNumber` (D28).
 
 ## Screens — v1
 

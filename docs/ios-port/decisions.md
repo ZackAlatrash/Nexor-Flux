@@ -301,6 +301,43 @@ that the Swift port carries its own tests, transcribed from the Kotlin ones — 
 found that the Kotlin tests covered only 5 of the 9 rules**, so the port is now better tested than
 the original. Moving it remains the right follow-up.
 
+**D28 · The app follows the device locale, everywhere. Owner decision.** A German reader sees
+`2.288` and `74,7`; a US reader sees `2,288` and `74.7`. There is no US-pinned corner and no "it's
+only a weight" exception. This settles the open question 3b left: calories already went through
+`.formatted(.number.grouping(.automatic))` while weights went through `String(format: "%.1f", …)`,
+which takes **no locale at all** — the Dashboard showed `2,288` in one tile and `74.7` twelve points
+away. `DesignSystem/Formatters.swift` owns the three spellings (`grouped` for quantities, `plain`
+for axis ticks and ranges where a separator competes with an en dash, `oneDecimal`/`signedOneDecimal`
+for every former `%.1f`). Each takes a `locale` defaulting to the device's, so tests pin `en_US` and
+`de_DE` explicitly rather than reading whatever the simulator is set to. Note this **diverges from
+Android**, which pins `Locale.US` in places. 🔴 One exemption is still open — `RebalanceCopy`, whose
+eight interpolations are asserted character-for-character against `RebalanceCopyServiceTest`. See
+STATUS *Blocked / needs you* item 5.
+
+**D29 · Two header tiers on iOS, mirroring Android's design system — and no third.** The tab roots
+get `ScreenHeader` (tier-1, large title + optional subtitle + trailing slot); pushed screens keep the
+compact header with the 40pt circular back button. iOS had grown four different spellings of a tab
+title before this, because Android's rule was written down in `docs/design-system.md` and the iOS
+port never restated it. **The Android design-system doc is normative for iOS too** wherever a rule is
+about structure rather than about Compose.
+
+**D30 · A preference write that did not land throws.** `JSONStore.set` was two `try?`s with the cache
+updated and every observer notified *before* either was attempted, so a write that never reached disk
+repainted the UI as though it had and the old value came back on next launch. It now propagates the
+error and rolls the cache back to what is actually stored, so a caller that swallows it still
+converges on the disk instead of drifting until relaunch. ⚠️ **This does not change reads**, which
+stay tolerant (a malformed file returns the default) — the two are different questions. A bad *read*
+has a sensible answer and nobody is waiting on it; a failed *write* means the decision the user just
+made did not happen, and only they can be told.
+
+**D31 · `minimumTapTarget()` goes on the outside of a `Button`, and 44pt is a ceiling.** Settled
+empirically rather than by reading — an audit claimed the existing spelling was broken, so Wave 1
+built a harness and measured actual tap delivery. The outside spelling works; the inside one does
+not; and the system will not expand a control's hit region much past ~44pt however it is asked, so
+a larger number is not a bigger target. ⚠️ The one deliberate exception is `DismissButton` at 34pt:
+a card header is a single line of 9pt section label, and a 44pt control sets the header's height to
+44 (Android's is 28). Every surface using it has a second, larger way out.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a
@@ -316,6 +353,8 @@ numbered entry above when settled.
       earlier count: **3** of the 4 are Train-only and defer to v1.1, not 2; the fourth is the
       Phase 4 barcode scanner.)
 - [ ] **ATS policy** for user-supplied LLM base URLs — block cleartext, or ship an exception (Phase 5)
+- [ ] **Whether `RebalanceCopy` is exempt from D28** — localising its eight interpolations breaks a
+      character-for-character parity contract with `RebalanceCopyServiceTest`. Needs the owner.
 - [ ] **Whether to implement `selectedFont`** or drop it — dead wiring on Android (no `res/font`
       directory exists). Phase 2 kept the stored field so backups round-trip but gave it **no
       setter**; deciding needs the appearance screen, so this moves to **Phase 3**.

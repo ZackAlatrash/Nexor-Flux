@@ -4,10 +4,10 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-06 · **Current phase:** Phase 3b + a cross-screen consistency pass — built,
-pending visual pass + merge ·
-**Branches:** Android `develop` · iOS `phase-3b-dashboard-and-body` (unmerged, off the also-unmerged
-`phase-3a-food-library`).
+**Last updated:** 2026-08-06 · **Current phase:** **3c is planned and unstarted.** 3a and 3b are
+tested, approved and **merged to iOS `main`** ·
+**Branches:** Android `develop` · iOS `main` (876 tests). Next branch:
+`phase-3c-plan-profile-and-more`.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -33,7 +33,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **869** (860 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **876** (867 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -60,7 +60,10 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **[3b](phases/phase-3b-dashboard-and-body.md)** | **Dashboard, Body/Recovery, streaks, charts, rebalance** | ✅ **built — 810 tests** |
 | **3b+** | **Cross-screen consistency pass** — headers, type, locale, tap targets, VoiceOver | ✅ **built — 870 tests** |
 | **3b+** | **Native title system** — every screen on `.navigationTitle` + iOS 26 subtitle (**D32**) | ✅ **built — 869 tests** |
-| 3c | Plan, Profile, Onboarding, Progress, Body history/edit, More, Appearance, Usage, Developer | ⬜ |
+| **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
+| — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
+| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opens with the plan-ledger fix | 📋 **planned, 12 tasks** |
+| 3d | Onboarding, Progress/Trends, Usage Stats, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
@@ -86,7 +89,9 @@ one* of Phase 4 (HealthKit + background-delivery entitlements); nothing before t
 Xcode default `Epistles-of-Wisdom.RecompTracker`; `com.zack.recomptracker` would match the Android
 package and the `.rtroutine` UTI already declared.
 
-**4. Give the iOS repo a git remote** — still local-only at ~72 commits.
+**4. 🔴 Give the iOS repo a git remote** — still local-only, now ~79 commits on `main` including
+every phase to date. This is the whole port, on one machine, with no copy anywhere. Cheapest
+outstanding item and the highest consequence if the disk goes.
 
 **5. 🔴 Rule on `RebalanceCopy` vs the locale sweep (D28).** It is the one place `AppNumber` was
 deliberately *not* applied. Its eight interpolated numbers ("Cut 250 kcal/day for 4 days", and the
@@ -152,6 +157,24 @@ spellings and every `String(format: "%.1f", …)` is gone. **One exemption is st
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
+### 2026-08-06 (later) — Native titles, the score slider, the merge, and the 3c plan
+- **D32**: the four tab roots moved off a hand-rolled header onto the native large title +
+  `.navigationSubtitle`. They had had *three* different behaviours between them and a fourth on
+  pushed screens; each was a faithful port of an Android inconsistency that is invisible in Compose
+  because there is no platform title to clash with. Food Log's day steppers moved to the toolbar and
+  came out better — visible *after* the title collapses, which the pinned header only managed by
+  never collapsing.
+- The check-in scores are a **red→green `ScoreSlider`**, and `ScoreBar` went green with them:
+  its "best" tier used to be the accent, which is near-white on Silver and contradicted the rule
+  `StatusColor` states twice — green is a verdict, the accent is a brand surface.
+- 🔴 **`SparklineChart`'s private `ScrubPan` is now shared as `HorizontalPan`.** The slider sits in a
+  `ScrollView` inside a `.sheet` — two competing pan recognizers — and needed exactly the same
+  velocity-gated UIKit delegate. A second copy of a measured workaround is what goes stale silently.
+- **3a and 3b merged to `main`** after the owner tested them: 876 tests, two merge commits keeping
+  the phase boundaries.
+- **[Phase 3c planned](phases/phase-3c-plan-profile-and-more.md)** — 12 tasks. The ten-screen 3c
+  bucket was split; 3d takes Onboarding, Progress, Usage and Developer.
+
 ### 2026-08-06 — Cross-screen consistency pass (4 audit agents, then 3 fix waves)
 - **iOS 810 → 870 tests**, 0 warnings, Debug *and* Release green. **D28–D31** recorded. Seven new
   `DesignSystem/` components; every screen from Phases 2–3b touched.
@@ -188,22 +211,16 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
   crash as a flake.
 - **Owed to 3c, still:** `plan_versions` has no iOS writer, so the ledger is empty and every target
   resolution takes its fallback. Harmless until 3c ships plan editing — wrong the moment it does.
-
-### 2026-08-04 — Phase 3a executed (subagent-driven, 5 live gates then run to completion)
-- **iOS 351 → 455 tests**, 0 warnings, Debug *and* Release green. **D20–D23**. Food Library and
-  Recipe Builder complete; the logging loop closes end to end.
-- 🔴 **Never put `didSet` on an `@Observable` stored property** — it compiles with no diagnostic and
-  then crashes the test runner. Explicit get/set over private storage instead.
-- 🔴 **The plan was wrong about Android four times**, each caught by an agent reading the Kotlin
-  rather than trusting the brief. Verify against the source; a brief is not evidence. Detail in the
-  [3a plan](phases/phase-3a-food-library.md).
-- ~~Owed to 3c: `JSONStore` has no change stream~~ — added in 3b, and it now throws on a failed
-  write (**D30**).
+  **Now Task 1 of the [3c plan](phases/phase-3c-plan-profile-and-more.md), before any screen.**
 
 *Older entries archived — Phase 1a/1b/2 detail lives in their phase plans, and the conventions they
 produced are in [decisions.md](decisions.md) and
 [reference/shared-codec-api.md](reference/shared-codec-api.md). Three rules from Phase 2 outlive
 their entry and are repeated here because nothing else states them:*
+- 🔴 **Never put `didSet` on an `@Observable` stored property** (3a) — it compiles with no diagnostic
+  and then crashes the test runner. Explicit get/set over private storage instead.
+- 🔴 **A brief is not evidence** (3a) — the plan was wrong about Android four times, each caught by
+  an agent who opened the Kotlin instead of trusting the task description.
 - 🔴 **No agent may run `git stash` in the iOS repo** — the stash is shared across worktrees, and
   two parallel agents popped each other's files.
 - 🔴 **Screenshots beat reading the Kotlin** (D15). Phase 2 and 3b both found layout the source did

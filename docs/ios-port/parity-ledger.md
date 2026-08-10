@@ -82,25 +82,25 @@ near-identical pills), `TapTarget` (D31) and `Formatters`/`AppNumber` (D28).
 | 2 | Home Dashboard | `ui/dashboard/DashboardScreen.kt` (1249) | 3b | ✅ **minus the coach slot and the weekly-review overlay (Phase 5)** — their layout slots exist |
 | 3 | Body / Recovery | `ui/today/BodyRecoveryScreen.kt` (548) | 3b | ✅ **minus the recovery insight card (Phase 5)** — the layout already works without it |
 | 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3a | ✅ **minus NEVO (D20) and Open Food Facts (D21, → Phase 4)** — four chips instead of six, search, Recents, the three action buttons, picker mode |
-| 5 | Plan | `ui/plan/PlanScreen.kt` (341) | 3 | ⬜ |
-| 6 | Profile | `ui/profile/ProfileScreen.kt` (592) | 3 | ⬜ |
-| 7 | Onboarding | `ui/onboarding/OnboardingScreen.kt` (434) | 3 | ⬜ |
-| 8 | Progress / Trends | `ui/progress/ProgressScreen.kt` (403) | 3 | ⬜ |
-| 9 | Body History | `ui/body/BodyHistoryScreen.kt` (140) | 3 | ⬜ |
-| 10 | Body Edit | `ui/body/BodyEditScreen.kt` (96) | 3 | ⬜ |
+| 5 | Plan | `ui/plan/PlanScreen.kt` (341) | **3c** | 📋 planned — Tasks 3–4. Opens with the `PlanRepository` ledger fix |
+| 6 | Profile | `ui/profile/ProfileScreen.kt` (592) | **3c** | 📋 planned — Tasks 6–7. Photo picker deferred |
+| 7 | Onboarding | `ui/onboarding/OnboardingScreen.kt` (434) | 3d | ⬜ |
+| 8 | Progress / Trends | `ui/progress/ProgressScreen.kt` (403) | 3d | ⬜ |
+| 9 | Body History | `ui/body/BodyHistoryScreen.kt` (140) | **3c** | 📋 planned — Task 8 |
+| 10 | Body Edit | `ui/body/BodyEditScreen.kt` (96) | **3c** | 📋 planned — Task 9, reuses `CheckInDraft` (D35) |
 | 11 | Streak Stats | `ui/streak/StreakStatsScreen.kt` (90) | 3b | ✅ |
 | 12 | Calorie decision | `DashboardScreen.kt:1058` | 3b | ✅ **built, no screenshot, no entry point** — More is 3c, so it is preview-only until then |
-| 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | 3 | ⬜ |
+| 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | **3c** | 📋 planned — Task 11. Entry point is the Dashboard avatar (D17/D36) |
 | 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3a | ✅ **minus the ✨ AI namer (Phase 5)** — both entry points (library, and a Food Log slot selection), two-mode ingredient editor, delete with confirmation |
 | 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4 | ⬜ |
 | 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4 | ⬜ |
 | 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4 | ⬜ |
-| 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | 3 | ⬜ |
+| 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | **3c** | 📋 planned — Task 10. No font row (D34) |
 | 19 | Coach chat | `ui/coach/CoachScreen.kt` (625) | 5 | ⬜ |
 | 20 | AI Coach settings | `ui/aicoach/AiCoachScreen.kt` (344) | 5 | ⬜ |
 | 21 | Coach Memory | `ui/aicoach/CoachMemoryScreen.kt` (120) | 5 | ⬜ |
-| 22 | Usage Stats | `ui/usage/UsageStatsScreen.kt` (159) | 3 | ⬜ |
-| 23 | Developer | `ui/developer/DeveloperScreen.kt` (151) | 3 | ⬜ |
+| 22 | Usage Stats | `ui/usage/UsageStatsScreen.kt` (159) | 3d | ⬜ |
+| 23 | Developer | `ui/developer/DeveloperScreen.kt` (151) | 3d | ⬜ |
 
 ## Overlays & sheets
 
@@ -113,8 +113,8 @@ near-identical pills), `TapTarget` (D31) and `Formatters`/`AppNumber` (D28).
 | Amount / RecipeAmount / CreateFood / QuickAdd sheets | `FoodLibraryScreen.kt:870/943/988/1050` | 3a | ✅ all four. Sized to their content rather than a fixed detent (`appSheet()`), and Quick Add's name is optional as Android's always was — Phase 2 built that one blind and required one |
 | Product Found sheet | `BarcodeScannerScreen.kt:286` | 4 | ⬜ |
 | Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3a | ✅ both bodies (stepper when the ingredient carries a per-100g base, four typed fields when it does not). Grams-only: Android also offers a Servings toggle here, which the picker's amount sheet already provided |
-| Option sheet (Profile) | `ProfileScreen.kt:491` | 3 | ⬜ |
-| Onboarding picker sheet | `OnboardingScreen.kt:400` | 3 | ⬜ |
+| Option sheet (Profile) | `ProfileScreen.kt:491` | **3c** | 📋 planned — Task 7. `appSheet()`, so Android's leaking-Material-surface bug does not port |
+| Onboarding picker sheet | `OnboardingScreen.kt:400` | 3d | ⬜ |
 | Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ⬜ |
 | Exercise Detail sheet | `ui/train/ExerciseDetailSheet.kt` (237) | — | ⏭️ |
 

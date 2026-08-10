@@ -4,10 +4,9 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-06 · **Current phase:** **3c is planned and unstarted.** 3a and 3b are
-tested, approved and **merged to iOS `main`** ·
-**Branches:** Android `develop` · iOS `main` (876 tests). Next branch:
-`phase-3c-plan-profile-and-more`.
+**Last updated:** 2026-08-11 · **Current phase:** **3c is built, pending the owner's visual pass** ·
+**Branches:** Android `develop` · iOS `phase-3c-plan-profile-and-more` (unmerged, off `main`).
+921 tests.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -25,6 +24,11 @@ audited together for title, type, spacing, motion and behaviour, and the drift f
 shared components; the app now has one number format and — after **D32** replaced the hand-rolled
 header with the native large title — one title system across tab roots *and* pushed screens.
 
+✅ **Phase 3c is built** — Plan (with the plan-version ledger it was blocked on), Profile including a
+real photo picker, Check-in History, Body Edit, Appearance and the More hub. **D33–D38**. Every
+dangling `nil` from 3a/3b is now wired: the Dashboard avatar opens More, the history row opens
+Check-in History, and the calorie decision screen has an entry point at last.
+
 🔴 **One thing from Phase 1b is still outstanding** — the backup acceptance test needs a real
 Android export. Its 9 tests are written and **self-skip** until the fixture lands. See
 *Blocked / needs you*.
@@ -33,7 +37,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **876** (867 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **921** (912 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -62,7 +66,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **3b+** | **Native title system** — every screen on `.navigationTitle` + iOS 26 subtitle (**D32**) | ✅ **built — 869 tests** |
 | **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
 | — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
-| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opens with the plan-ledger fix | 📋 **planned, 12 tasks** |
+| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **built — 921 tests** |
 | 3d | Onboarding, Progress/Trends, Usage Stats, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
@@ -139,6 +143,16 @@ Still unlooked-at and now covering far more screen:
 - **The eleven accent themes.** The 3b screenshots are on **Silver**, so near-white buttons and
   numbers in them are the theme, not the design.
 
+**New in 3c, none of it looked at by you yet:**
+- **Plan** and **Appearance** were built against screenshots 17 and 19 and device-checked by me.
+- 🔴 **Four surfaces were built blind** — no screenshot exists: **More**, **Check-in History**,
+  **Body Edit**, and the **plan-generation sheets** (preview + weight entry). Treat their spacing
+  and hierarchy as a first draft.
+- **Profile** matches screenshot 18 including the photo picker; the picker itself is untested with a
+  real image on device.
+- ⚠️ **The generate-from-profile flow needs a complete profile to reach its preview.** With an empty
+  profile it correctly reports the missing fields instead, so the preview sheet is unverified.
+
 **Changed by the consistency pass — worth a second look even where you saw the screen before:**
 - 🔴 **Every title in the app is now the native large one** (**D32**) — it collapses into a centred
   inline title as you scroll, and the bar takes its glass as content passes under. Device-checked on
@@ -156,6 +170,26 @@ spellings and every `String(format: "%.1f", …)` is gone. **One exemption is st
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
+
+### 2026-08-11 — Phase 3c built (six screens, inline rather than by subagent)
+- **iOS 876 → 921 tests**, 0 warnings, Debug *and* Release green. **D33–D38**.
+- 🔴 **`JSONStore` was one instance per call site, not one per file** — found on the *first* live
+  check of Appearance: tapping an accent wrote to disk and nothing moved. Every model resolves its
+  store as `injected ?? (try? SomeStore())`, so two instances over one file meant two caches and two
+  observer lists. Plan → Dashboard and Plan → Food Log were queued up behind the same silence, and
+  the plan observation added earlier in the phase would never have fired. `JSONStore.shared(name:)`
+  fixes it at the source (**D37**).
+- 🔴 **The ledger fix went first, before any screen, and that ordering was the point.** `save()`
+  appends a version only when the six day-judging fields moved — a threshold edit appends nothing —
+  which is what keeps `plan_versions` a ledger rather than a changelog of settings taps.
+- **Two bugs were caught by tests written after the code, not before**: `PlanModel` declared carried
+  Health Connect fields and never seeded them, so every save switched the toggle off; and the photo
+  downscale worked in points, so a 512 target wrote a 1536px file on a 3× device. Both were invisible
+  on screen.
+- **The screenshots changed two planned decisions.** The photo picker was going to be deferred and
+  is now shipped (`PhotosPicker` sidesteps Android's persistable-URI bug instead of porting it);
+  **D34** was re-confirmed *against* a screenshot showing the font row, because the control is dead
+  on Android and porting it would mean writing one known to do nothing.
 
 ### 2026-08-06 (later) — Native titles, the score slider, the merge, and the 3c plan
 - **D32**: the four tab roots moved off a hand-rolled header onto the native large title +
@@ -194,26 +228,7 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
   feature dirs, Wave 3 persistence + rebalance). No collisions — but three items fell *between* the
   fences and needed a fourth pass to catch.
 
-### 2026-08-05 — Phase 3b executed (3 research passes, then 8 implementation agents)
-- **iOS 455 → 810 tests**, 0 warnings, Debug *and* Release green. **D24–D27** recorded. Dashboard,
-  Body/Recovery, streaks, the chart kit and all five rebalance surfaces.
-- 🔴 **The research paid for itself before a line was written: 41 of 41 domain symbols these screens
-  need were already in `:shared` and exported.** Not one engine was reimplemented. Scope the shared
-  module *first* on every remaining phase.
-- 🔴 **A SwiftUI `DragGesture` cannot coexist with a `ScrollView`** — `.gesture`,
-  `.highPriorityGesture` and `.simultaneousGesture` all break scrolling, and declining inside the
-  handler does not hand the touch back. The sparkline's scrub needed a
-  `UIGestureRecognizerRepresentable` with a velocity-gated delegate.
-- 🔴 **The "simulator flake" that had cost a re-run all through 3a was a real crash.** `PaletteTests`
-  resolves colours through `UIColor`, which is main-thread-only, and Swift Testing runs parameterised
-  cases in parallel — a malloc double-free took the test host down, reported as "Restarting after
-  unexpected exit" with **no test named**. One `@MainActor` fixed it. Never write off an unnamed
-  crash as a flake.
-- **Owed to 3c, still:** `plan_versions` has no iOS writer, so the ledger is empty and every target
-  resolution takes its fallback. Harmless until 3c ships plan editing — wrong the moment it does.
-  **Now Task 1 of the [3c plan](phases/phase-3c-plan-profile-and-more.md), before any screen.**
-
-*Older entries archived — Phase 1a/1b/2 detail lives in their phase plans, and the conventions they
+*Older entries archived — Phase 1a/1b/2/3b detail lives in their phase plans, and the conventions they
 produced are in [decisions.md](decisions.md) and
 [reference/shared-codec-api.md](reference/shared-codec-api.md). Three rules from Phase 2 outlive
 their entry and are repeated here because nothing else states them:*
@@ -227,6 +242,12 @@ their entry and are repeated here because nothing else states them:*
   not predict.
 - `.task` *is* cancelled and restarted per tab switch (measured); `.task(id:)` is the working
   `flatMapLatest` equivalent.
+- 🔴 **Scope `:shared` before writing anything** (3b) — 41 of 41 domain symbols that phase needed
+  were already exported, and not one engine had to be reimplemented.
+- 🔴 **A SwiftUI `DragGesture` cannot coexist with a `ScrollView`** (3b). `HorizontalPan` is the
+  measured answer; both the sparkline scrub and the score slider use it.
+- 🔴 **An unnamed "Restarting after unexpected exit" is a real crash, not a flake** (3b) — it was
+  `UIColor` resolution off the main thread in a parameterised test.
 
 ---
 

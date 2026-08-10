@@ -368,6 +368,46 @@ out better**: they were the whole reason that screen pinned its header, and in t
 visible *after* the title collapses, which the pinned header only managed by never collapsing.
 Verified on device across all four tabs, the collapse, the steppers and the push seam.
 
+**D33 · A Swift `PlanRepository` owns every plan write.** Confirmed as planned. `save()` appends a
+`plan_versions` row effective today **only when the six day-judging fields moved**, so a threshold
+edit or the Health Connect toggle writes preferences and appends nothing — that condition is what
+keeps the table a ledger of plans rather than a changelog of settings taps. `resetDefaults()` is
+unconditional, matching Android. The store's three write methods are renamed
+`unsafe*BypassingLedger`, because Swift has no way to make them unreachable inside one module the
+way Android's `PlanPreferencesSource` interface does.
+
+**D34 · `selectedFont` is dropped from the UI.** Confirmed *after* seeing screenshot 19, which does
+show Android's Default / Space / Jakarta row. It changes nothing — no `res/font` directory exists —
+so porting it would mean writing a control known to do nothing. The stored field still round-trips.
+⚠️ **Open to reversal**: bundling Space Grotesk and Plus Jakarta Sans and making the row real is a
+small, deliberate change; inheriting a dead control is not.
+
+**D35 · Body Edit reuses `CheckInDraft`.** Confirmed, and it paid twice. Two extractions fell out of
+it — `CheckInFormFields` (the nine inputs, now shared by the check-in sheet and the past-day editor)
+and `CheckInWriter` (the whole-row upsert plus its steps reconciliation). Android keeps the two
+apart and its copies already disagree about `stepsEdited`, which is the drift this avoids.
+
+**D36 · More is pushed from Home.** Confirmed. The Dashboard avatar, drawn-but-inert since 3b, is
+the entry point.
+
+**D37 · One `JSONStore` per named file.** Found on the first live check of Appearance: tapping an
+accent wrote to disk and nothing moved.
+
+Every model resolves its store as `injected ?? (try? SomeStore())`, so a fresh `JSONStore` was built
+at each call site. **Two instances over one file are two caches and two observer lists** — Appearance
+wrote through one while `ThemeHost` observed another. Plan → Dashboard and Plan → Food Log were
+queued up behind the same silence; the plan observation added in this phase would never have fired.
+
+`JSONStore.shared(name:default:)` now returns the one instance for a name. A `static func` rather
+than an initialiser, because an actor's `init` cannot reassign `self`. ⚠️ The **URL** initialiser
+stays unshared — it is what tests use, and sharing by throwaway URL would leak state between them.
+
+**D38 · An unbuilt More row is shown and disabled, with its phase named.** Not hidden. Hiding would
+make the hub change shape three more times and answer nothing when someone goes looking for Data &
+Backup; a row that pushes nothing is the dead affordance this codebase refuses everywhere else. The
+list of what is built lives on `MoreDestination.arrivingIn` and has a test, so a landed phase that
+forgets to update it fails rather than shipping a greyed row next to the screen it opens.
+
 ## Conventions still to decide
 
 Recorded here so they get decided *once*, deliberately, rather than drifting. Move each into a
@@ -385,7 +425,4 @@ numbered entry above when settled.
 - [ ] **ATS policy** for user-supplied LLM base URLs — block cleartext, or ship an exception (Phase 5)
 - [ ] **Whether `RebalanceCopy` is exempt from D28** — localising its eight interpolations breaks a
       character-for-character parity contract with `RebalanceCopyServiceTest`. Needs the owner.
-- [ ] **Whether to implement `selectedFont`** or drop it — dead wiring on Android (no `res/font`
-      directory exists). Phase 2 kept the stored field so backups round-trip but gave it **no
-      setter**; deciding needs the appearance screen, so this moves to **Phase 3**.
 - [ ] **Test naming and fixture-sharing convention** with the Kotlin suite (Phase 1)

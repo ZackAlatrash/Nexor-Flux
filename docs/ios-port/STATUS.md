@@ -4,10 +4,9 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-11 · **Current phase:** 🎉 **Phase 3 is complete.** 3d built, pending the
-owner's visual pass. **Phase 4 is next and unplanned.** ·
-**Branches:** Android `develop` · iOS `phase-3d-onboarding-progress-and-tools` (unmerged, off
-`main`). 960 tests.
+**Last updated:** 2026-08-11 · **Current phase:** 🎉 **Phase 3 is complete and merged.** 3d is on
+`main`, pending the owner's visual pass. **Phase 4 is next and unplanned.** ·
+**Branches:** Android `develop` · iOS **`main`** (3d merged; no branch outstanding). 960 tests.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -66,7 +65,8 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
 | — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
 | **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
-| **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | ✅ **built — 960 tests** |
+| **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | ✅ **merged — 960 tests** |
+| — | **Phase 3 complete on `main`** — sixteen screens, the whole core loop | ✅ **960 tests on `main`** |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
@@ -144,7 +144,8 @@ Still unlooked-at and now covering far more screen:
   numbers in them are the theme, not the design.
 
 **New in 3d, none of it looked at by you yet** — all four were built without screenshots, from the
-Kotlin plus my own design calls:
+Kotlin plus my own design calls, and merged to `main` before the visual pass at your request, so
+anything wrong here is on `main` rather than on a branch:
 - 🔴 **Onboarding**, which is the most redesigned surface in the port — a question flow rather than
   Android's form, with the goal and activity choices inline and a plan reveal that counts up. I
   walked all four steps on device; the *look* is the part that needs your judgement.
@@ -182,8 +183,9 @@ spellings and every `String(format: "%.1f", …)` is gone. **One exemption is st
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
-### 2026-08-11 (later) — Phase 3d built; **Phase 3 complete**
-- **iOS 928 → 960 tests**, 0 warnings, Debug *and* Release green. **D40–D44**.
+### 2026-08-11 (later) — Phase 3d built and merged; **Phase 3 complete on `main`**
+- **iOS 928 → 960 tests**, 0 warnings, Debug *and* Release green. **D40–D44**. Merged `--no-ff`;
+  the suite was re-run on `main` after the merge, not only on the branch.
 - 🔴 **`usage_events` had a record and no writer** — the same shape as the plan-ledger gap. The
   reflex was to move the screen to Phase 5 since most event types are AI; **checking rather than
   assuming** showed 7 of 14 are producible today, so the screen ships with real data.

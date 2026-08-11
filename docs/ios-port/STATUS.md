@@ -4,10 +4,11 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-11 · **Current phase:** 🎉 **Phase 3 is complete and merged.** 3d is on
-`main`, pending the owner's visual pass. **[Phase 4 is planned](phases/phase-4-platform-integrations.md)**
-— three branches, starting with HealthKit **unless enrolment has not cleared, in which case start
-4b.** · **Branches:** Android `develop` · iOS **`main`** (3d merged; no branch outstanding). 960 tests.
+**Last updated:** 2026-08-11 · **Current phase:** **Phase 4 is underway.**
+[Plan](phases/phase-4-platform-integrations.md) · **4b is built** (scanner, Open Food Facts, Data &
+Backup) **plus the app backdrop**; 4a (HealthKit) and 4c (notifications → TestFlight) remain. ·
+**Branches:** Android `develop` · iOS `phase-4b-scanner-and-backup` (unmerged, off `main`).
+1008 tests.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -36,7 +37,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **960** (951 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **1008** (999 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -68,7 +69,9 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
 | **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | ✅ **merged — 960 tests** |
 | — | **Phase 3 complete on `main`** — sixteen screens, the whole core loop | ✅ **960 tests on `main`** |
-| **[4](phases/phase-4-platform-integrations.md)** | HealthKit, scanner, notifications, background → **TestFlight** — three branches, 4a/4b/4c | 📋 **planned, not started** |
+| **[4b](phases/phase-4-platform-integrations.md)** | **Barcode scanner, Open Food Facts, Data & Backup** + the per-accent backdrop (**D52–D53**) | ✅ **built — 1008 tests** (unmerged) |
+| **4a** | HealthKit, Integrations screen, 365-day import, background delivery | ⬜ **blocked on the HealthKit-capability check** |
+| **4c** | The coach spine, notifications, `BGTaskScheduler` → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
 
@@ -143,6 +146,16 @@ Still unlooked-at and now covering far more screen:
 - **Light mode.** Never judged deliberately. 3a and 3b added ~25 surfaces to it.
 - **The eleven accent themes.** The 3b screenshots are on **Silver**, so near-white buttons and
   numbers in them are the theme, not the design.
+
+**New in 4b, and the backdrop with it:**
+- **The barcode scanner** — only its *unsupported* state is checkable in the simulator, because
+  VisionKit needs a real camera. The scan flow itself was driven end to end against the live Open
+  Food Facts API using the DEBUG barcode field.
+- **The Product Found sheet** (it is `AmountSheet` with a caution line and a second action) and
+  **Data & Backup**, both built blind.
+- 🔴 **The backdrop is now behind every screen** (**D53**) — worth looking at on all eleven accents
+  and in both modes, since that is the whole point of it. The parallax needs a **device**: Core
+  Motion reports nothing in the simulator, so it is static there.
 
 **New in 3d, none of it looked at by you yet** — all four were built without screenshots, from the
 Kotlin plus my own design calls, and merged to `main` before the visual pass at your request, so

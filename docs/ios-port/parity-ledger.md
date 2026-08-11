@@ -18,13 +18,13 @@ per-screen notes.
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
 | Design system | 7 | 5 | 1 | 1 | 0 | 0 |
-| Screens (v1) | 20 | 16 | 1 | 3 | 0 | 0 |
-| Overlays & sheets | 11 | 5 | 1 | 3 | 1 | 1 |
+| Screens (v1) | 20 | 18 | 1 | 1 | 0 | 0 |
+| Overlays & sheets | 11 | 6 | 1 | 2 | 1 | 1 |
 | Charts | 8 | 3 | 1 | 1 | 3 | 0 |
-| Platform integrations | 9 | 0 | 0 | 9 | 0 | 0 |
+| Platform integrations | 11 | 3 | 0 | 7 | 1 | 0 |
 | AI | 8 | 0 | 0 | 8 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **86** | **40** | **6** | **21** | **16** | **3** |
+| **Total** | **88** | **48** | **6** | **16** | **17** | **3** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
@@ -96,9 +96,9 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | 12 | Calorie decision | `DashboardScreen.kt:1058` | 3b + 3c | ✅ built in 3b, **reachable from 3c** via More. Still no screenshot — built blind |
 | 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | 3c | ✅ **built blind**. Reached from the Dashboard avatar (**D17**/**D36**); unbuilt rows shown disabled with their phase (**D38**) |
 | 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3a | ✅ **minus the ✨ AI namer (Phase 5)** — both entry points (library, and a Food Log slot selection), two-mode ingredient editor, delete with confirmation |
-| 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4 | ⬜ |
-| 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4 | ⬜ |
-| 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4 | ⬜ |
+| 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4b | ✅ **built blind, on VisionKit** — `DataScannerViewController` replaces the CameraX + ML Kit pipeline, so the amount arithmetic is `AmountDraft`'s and none of it is ported. Symbologies enumerated (**they must be**); a DEBUG barcode field stands in for the camera on the simulator |
+| 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4a | ⬜ |
+| 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4b | ✅ **built blind**, over the Phase 1b engine. Wired the `BackupPreferenceSink` that had no conformance and the wire↔store conversions that had no caller |
 | 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | 3c | ✅ built against screenshot 19, **including a working font row** — three system designs, not Android's two dead bundled families (**D39**). Accents are a wrapping grid, not Android's clipped scroll |
 | 19 | Coach chat | `ui/coach/CoachScreen.kt` (625) | 5 | ⬜ |
 | 20 | AI Coach settings | `ui/aicoach/AiCoachScreen.kt` (344) | 5 | ⬜ |
@@ -115,7 +115,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Rebalance Progress Detail | `ui/dashboard/RebalanceProgressDetailOverlay.kt` (253) | 3b | 🔨 day-0 face device-verified; the **running** face (Day X of Y, dot row) is unverified |
 | Body Check-in sheet | `ui/body/BodyCheckInSheet.kt` (152) | 3b | ✅ — scrolls, unlike Android's plain `Column`; that was a Compose workaround UIKit does not need |
 | Amount / RecipeAmount / CreateFood / QuickAdd sheets | `FoodLibraryScreen.kt:870/943/988/1050` | 3a | ✅ all four. Sized to their content rather than a fixed detent (`appSheet()`), and Quick Add's name is optional as Android's always was — Phase 2 built that one blind and required one |
-| Product Found sheet | `BarcodeScannerScreen.kt:286` | 4 | ⬜ |
+| Product Found sheet | `BarcodeScannerScreen.kt:286` | 4b | ✅ **it is `AmountSheet`**, plus two optional parameters and no new component: a caution line for missing macros (Android renders the same sentence in `colorScheme.error`) and a secondary action, because the sheet genuinely has two confirms |
 | Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3a | ✅ both bodies (stepper when the ingredient carries a per-100g base, four typed fields when it does not). Grams-only: Android also offers a Servings toggle here, which the picker's amount sheet already provided |
 | Option sheet (Profile) | `ProfileScreen.kt:491` | 3c | ✅ one generic `OptionSheet` for all three pickers. `appSheet()`, so Android's leaking-Material-surface bug does not port |
 | Onboarding picker sheet | `OnboardingScreen.kt:400` | 3d | ❌ **not ported** — the goal and activity choices are inline rows instead. Hiding the app's most consequential decision behind a picker row makes it the least visible thing on its own screen |
@@ -134,6 +134,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | `ProgressLineChart` | `charts/ProgressLineChart.kt` (84) | — | ⏭️ |
 | est-1RM sparkline | `SessionDetailScreen.kt:232` | — | ⏭️ |
 | `BodyMap` (SVG paths + heat + hit-test) | `train/component/BodyMap.kt` (159) | — | ⏭️ |
+| App backdrop (per accent × light/dark, parallax) | `component/GlassOrbBackground.kt` (126) + 22 `bg_*` drawables | 4b | ✅ **D53** — Android's own artwork as 11 HEIC imagesets with `luminosity` variants; parallax re-derived for Core Motion and Reduce-Motion gated |
 
 ## Platform integrations (Phase 4)
 
@@ -147,6 +148,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Notifications + `RateLimiter`/`QuietHours` port | `RateLimiter.kt`, `AndroidCoachNotifier.kt` | ⬜ |
 | Background: `HKObserverQuery` + `BGTaskScheduler` | `HealthSyncWorker.kt`, `CoachDigestWorker.kt` | ⬜ |
 | Share / import `.rtroutine` via UTI | `RoutineShareLauncher.kt`, `RoutineShareInbox.kt` | ⏭️ **v1.1, with Train** (**D51**) — the UTI stays declared; the handler waits for a screen to open into |
+| Open Food Facts client (barcode + search) | `OpenFoodFactsApi.kt` + `BarcodeRepository.kt` | ✅ **D52** — no `countries_tags` pin, device-language product name, lenient numbers (a string `serving_quantity` reads as a network error on Android) |
 | Profile photo (⚠️ copy into container, no persistable URI) | `ProfileScreen.kt:105-113` | ✅ **shipped in 3c** — `PhotosPicker` + copy into the container. The downscale worked in points at first, so a 512 target wrote 1536px on a 3× device |
 
 ## AI (Phase 5)

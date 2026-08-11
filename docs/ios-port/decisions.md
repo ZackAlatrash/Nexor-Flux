@@ -513,3 +513,29 @@ numbered entry above when settled.
 - [ ] **Whether `RebalanceCopy` is exempt from D28** — localising its eight interpolations breaks a
       character-for-character parity contract with `RebalanceCopyServiceTest`. Needs the owner.
 - [ ] **Test naming and fixture-sharing convention** with the Kotlin suite (Phase 1)
+
+**D53 · The app's backdrop is Android's artwork, in eleven imagesets.** The owner asked for the
+same background the Android app has — per accent theme, and per light/dark. The twenty-two
+`bg_<accent>_<mode>` files are copied rather than re-drawn: the point is that the two apps look
+like one app.
+
+🔴 **WebP in an asset catalog compiles to nothing, and says nothing.** Xcode accepted the files,
+`actool` ran over them without a warning, and the built `Assets.car` held only the eleven colours —
+so the app rendered no background at all while looking plausible, because the accent chrome already
+tinted the same corner. They are **HEIC** now, and the check that matters is reading `Assets.car`
+(`assetutil --info`), not looking at the screen.
+
+**Eleven imagesets, not twenty-two images.** Each holds the light artwork plus a
+`luminosity: dark` variant, so `Image("bg_violet")` is already mode-correct — no Swift reads the
+colour scheme, and the light/dark crossfade is the system's. Android needs a 22-branch `when` whose
+`else` quietly returns Silver; the Swift equivalent is one string and a test that every theme
+resolves.
+
+⚠️ **`Form` and `List` paint an opaque background where a `ScrollView` does not**, so a settings-
+style screen silently opts out of the backdrop. Two screens needed
+`.scrollContentBackground(.hidden)`; any future `Form` will too.
+
+The parallax is **re-derived, not transcribed** — Android's quaternion×0.28 with a ±0.09 clamp
+works back to saturation at ~37° of tilt, which Core Motion expresses as one angle. It also fixes
+an axis mix-up (Android maps rotation about *x* to `translationX`, so its backdrop slides sideways
+when the phone tilts forwards) and adds the Reduce Motion gate the map flagged as missing.

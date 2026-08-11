@@ -552,3 +552,23 @@ The parallax is **re-derived, not transcribed** — Android's quaternion×0.28 w
 works back to saturation at ~37° of tilt, which Core Motion expresses as one angle. It also fixes
 an axis mix-up (Android maps rotation about *x* to `translationX`, so its backdrop slides sideways
 when the phone tilts forwards) and adds the Reduce Motion gate the map flagged as missing.
+
+**D54 · Titles are `.inlineLarge`, not `.large`.** A large title is a *second row*: the bar's own
+row carries the back button and the toolbar items, and the title is a block beneath it. On a tab
+root whose only item is a trailing avatar that row is empty, so every screen opened with ~65pt of
+nothing above its title.
+
+⚠️ **The avatar was not the cause**, though it is what draws the eye — it is the one thing floating
+in the empty band. Removing the toolbar item entirely left the title at exactly the same height, and
+a stock Settings screenshot puts its own title at the same y. The measurement is the point: the
+suspect that looks guilty here is innocent, and two screenshots settle it.
+
+`.toolbarTitleDisplayMode(.inlineLarge)` moves the title into that row. **Everything D32 bought is
+kept** — the collapse to a centred inline title on scroll, scroll-to-top, the accessibility heading,
+the Dynamic Type ramp, the tab-bar minimise. ⚠️ **Pushed screens change**: they now open with the
+platform's centred inline title rather than a large one, which is iOS's own convention for a push
+and removes the same empty row there.
+
+⚠️ `.navigationBarTitleDisplayMode(.large)` is **deleted, not left unset** — it wins over
+`.inlineLarge` and silently restores the gap. The first attempt at this appeared to do nothing for
+exactly that reason.

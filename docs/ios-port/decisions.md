@@ -405,6 +405,37 @@ unrecognised value, so a backup crossing either way degrades to the default type
 a broken read. That is a shrug only because **the field is inert on Android** — if Android ever
 ships real fonts, `AppFontDesign.isAndroidValue(_:)` is where the two vocabularies get reconciled.
 
+**D40 · `UsageTracker` is fire-and-forget, and it is the one place a swallowed write error is
+correct.** Everywhere else the rule is the opposite — `JSONStore.set` was changed in 3b precisely so
+a failed write cannot repaint the UI as though it landed (**D30**), and `FoodLogModel.deleteEntry`
+says the same for the database. Telemetry is not a feature the app depends on: an insert that could
+surface an error, block a tap, or roll back the transaction it rode in on would trade a real
+interaction for a count nobody is waiting for. It writes on a **detached** task, which is also what
+guarantees it cannot join the caller's transaction. ⚠️ The inversion has to be stated at the call
+site; without the note the `try?` reads as exactly the bug D30 exists to prevent.
+
+**D41 · The rebalance debug scenarios are ported to Swift.** Same call **D27** made for
+`buildStreaks`: `RebalanceDebugScenarios.kt` lives in Android's `data/` layer, and standing rule 2
+says a phase after 0 only adds files under the iOS repo.
+
+**D42 · Onboarding writes through `PlanRepository`, so first run stamps a plan version.** Android's
+`finish()` already called `planRepository.save()`; on iOS that now appends a `plan_versions` row
+effective on day 1 (**D33**), which is what makes every day the user ever logs resolve against a
+real version rather than the fallback. A free consequence of ordering 3c's ledger fix first.
+
+**D43 · Imperial input is a display concern; storage is metric.** The wizard carries
+`heightFeet`/`heightInches` beside `height` and reads weight and waist per `useMetric`. Only cm and
+kg leave the draft, because every engine in `:shared` takes metric. ⚠️ **Flipping units clears every
+measurement** — converting silently would change a number the user entered, and keeping them would
+read 80 kg as 80 lb.
+
+**D44 · The app's rebalance coordinator lives on `AppContainer`.** Found while building the
+Developer screen: `RebalanceModel.live` built a coordinator per screen, and the ended-plan notice is
+**in-memory on the instance** — so a debug scenario's note would never have reached the Dashboard's
+card. The persisted state propagates anyway now that stores are shared per name (**D37**), which is
+the half-working behaviour that makes this class of bug hard to see. Android's `CLAUDE.md` says the
+same thing: *"Every coordinator lives in `AppContainer` on `appScope`."*
+
 ## Conventions still to decide
 
 **D35 · Body Edit reuses `CheckInDraft`.** Confirmed, and it paid twice. Two extractions fell out of
@@ -432,6 +463,37 @@ make the hub change shape three more times and answer nothing when someone goes 
 Backup; a row that pushes nothing is the dead affordance this codebase refuses everywhere else. The
 list of what is built lives on `MoreDestination.arrivingIn` and has a test, so a landed phase that
 forgets to update it fails rather than shipping a greyed row next to the screen it opens.
+
+**D40 · `UsageTracker` is fire-and-forget, and it is the one place a swallowed write error is
+correct.** Everywhere else the rule is the opposite — `JSONStore.set` was changed in 3b precisely so
+a failed write cannot repaint the UI as though it landed (**D30**), and `FoodLogModel.deleteEntry`
+says the same for the database. Telemetry is not a feature the app depends on: an insert that could
+surface an error, block a tap, or roll back the transaction it rode in on would trade a real
+interaction for a count nobody is waiting for. It writes on a **detached** task, which is also what
+guarantees it cannot join the caller's transaction. ⚠️ The inversion has to be stated at the call
+site; without the note the `try?` reads as exactly the bug D30 exists to prevent.
+
+**D41 · The rebalance debug scenarios are ported to Swift.** Same call **D27** made for
+`buildStreaks`: `RebalanceDebugScenarios.kt` lives in Android's `data/` layer, and standing rule 2
+says a phase after 0 only adds files under the iOS repo.
+
+**D42 · Onboarding writes through `PlanRepository`, so first run stamps a plan version.** Android's
+`finish()` already called `planRepository.save()`; on iOS that now appends a `plan_versions` row
+effective on day 1 (**D33**), which is what makes every day the user ever logs resolve against a
+real version rather than the fallback. A free consequence of ordering 3c's ledger fix first.
+
+**D43 · Imperial input is a display concern; storage is metric.** The wizard carries
+`heightFeet`/`heightInches` beside `height` and reads weight and waist per `useMetric`. Only cm and
+kg leave the draft, because every engine in `:shared` takes metric. ⚠️ **Flipping units clears every
+measurement** — converting silently would change a number the user entered, and keeping them would
+read 80 kg as 80 lb.
+
+**D44 · The app's rebalance coordinator lives on `AppContainer`.** Found while building the
+Developer screen: `RebalanceModel.live` built a coordinator per screen, and the ended-plan notice is
+**in-memory on the instance** — so a debug scenario's note would never have reached the Dashboard's
+card. The persisted state propagates anyway now that stores are shared per name (**D37**), which is
+the half-working behaviour that makes this class of bug hard to see. Android's `CLAUDE.md` says the
+same thing: *"Every coordinator lives in `AppContainer` on `appScope`."*
 
 ## Conventions still to decide
 

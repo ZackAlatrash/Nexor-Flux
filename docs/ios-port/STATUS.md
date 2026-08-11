@@ -4,29 +4,29 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-11 · **Current phase:** **3c merged. [3d is planned](phases/phase-3d-onboarding-progress-and-tools.md), 12 tasks, unstarted.** ·
-**Branches:** Android `develop` · iOS `main` (928 tests). Nothing unmerged.
+**Last updated:** 2026-08-11 · **Current phase:** 🎉 **Phase 3 is complete.** 3d built, pending the
+owner's visual pass. **Phase 4 is next and unplanned.** ·
+**Branches:** Android `develop` · iOS `phase-3d-onboarding-progress-and-tools` (unmerged, off
+`main`). 960 tests.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
 
 ## Where we are
 
-**Phases 0 through 3b are built** — see the phase board below for the per-phase status and the
-linked plan for each one's detail. In plain terms: the database, the ten preference stores, all
-three file formats, the design system on native Liquid Glass, a four-tab shell, and five real
-screens. The app opens on a working dashboard, food can be logged end to end, and a weekly rebalance
-can be offered, customised, accepted and tracked.
+🎉 **Phases 0 through 3 are built.** The database, the ten preference stores, all three file
+formats, the design system on native Liquid Glass, a four-tab shell, and **sixteen screens**. A new
+user is onboarded, given a plan, and can log food, weigh in, check trends and be offered a weekly
+rebalance — the whole core loop, end to end.
 
-On top of 3b, **a cross-screen consistency pass** (**D28–D32**): every screen from Phases 2–3b
-audited together for title, type, spacing, motion and behaviour, and the drift fixed. Seven new
-shared components; the app now has one number format and — after **D32** replaced the hand-rolled
-header with the native large title — one title system across tab roots *and* pushed screens.
+**What is left is not screens.** Phase 4 is platform integration (HealthKit, the scanner,
+notifications, background) and Phase 5 is the AI coach. Everything either of them needs a *place*
+for already has one.
 
-✅ **Phase 3c is built** — Plan (with the plan-version ledger it was blocked on), Profile including a
-real photo picker, Check-in History, Body Edit, Appearance and the More hub. **D33–D38**. Every
-dangling `nil` from 3a/3b is now wired: the Dashboard avatar opens More, the history row opens
-Check-in History, and the calorie decision screen has an entry point at last.
+Three cross-cutting passes landed on top of the phases and are worth knowing about:
+**D28–D32** (one number format, one title system), **D33/D37/D44** (the plan ledger, one store per
+file, one coordinator for the app — all three were silent correctness bugs), and **D39** (a working
+font picker where Android's is inert).
 
 🔴 **One thing from Phase 1b is still outstanding** — the backup acceptance test needs a real
 Android export. Its 9 tests are written and **self-skip** until the fixture lands. See
@@ -36,7 +36,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **928** (919 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **960** (951 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -66,7 +66,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
 | — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
 | **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
-| **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | 📋 **planned, 12 tasks** |
+| **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | ✅ **built — 960 tests** |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
@@ -126,12 +126,10 @@ Dashboard, Body, check-in sheet and streak stats were built **from screenshots**
 iOS repo's `screenshots/`) and mostly device-checked by the implementing agents.
 
 **Never looked at by a human:**
-- 🔴 **The running rebalance faces** — the progress sheet's Day-X-of-Y state, the ribbon's running
-  state, and **`DayDots`** in its full 14pt variant. Unreachable without a plan on day ≥ 1, so no
-  screenshot exists and none was captured. The whole P1-13 dot-index fix is invisible until then.
-  **[3d's Developer screen](phases/phase-3d-onboarding-progress-and-tools.md) is what makes these
-  reachable** — six of its twelve scenarios put the app into exactly these states, which is why that
-  task is ordered fourth rather than last.
+- ~~**The running rebalance faces**~~ — 🎉 **closed by 3d's Developer screen.** The running ribbon
+  and the Day-2-of-4 dot row were rendered and checked on device: checkmark on day 1, ring on day 2,
+  and the TODAY card showing the reduced target. The P1-13 dot-index fix is now visibly correct.
+  **The other five scenarios still want your eyes** — More → Developer, the rows marked "unseen".
 - 🔴 **The rebalance note card, all four skins** (gold completion, graceful end, no-adjustment, the
   defensive fallback). The gold one is the only user of the new tinted-glass card overload.
 - **The calorie decision screen** — no screenshot, and no entry point until More lands in 3c.
@@ -144,6 +142,14 @@ Still unlooked-at and now covering far more screen:
 - **Light mode.** Never judged deliberately. 3a and 3b added ~25 surfaces to it.
 - **The eleven accent themes.** The 3b screenshots are on **Silver**, so near-white buttons and
   numbers in them are the theme, not the design.
+
+**New in 3d, none of it looked at by you yet** — all four were built without screenshots, from the
+Kotlin plus my own design calls:
+- 🔴 **Onboarding**, which is the most redesigned surface in the port — a question flow rather than
+  Android's form, with the goal and activity choices inline and a plan reveal that counts up. I
+  walked all four steps on device; the *look* is the part that needs your judgement.
+- **Trends**, grouped Body / Nutrition / Consistency rather than Android's flat list of nine.
+- **Usage Stats** and **Developer**.
 
 **New in 3c, none of it looked at by you yet** — merged to `main` before the visual pass at your
 request, so anything wrong here is on `main` rather than on a branch:
@@ -176,6 +182,23 @@ spellings and every `String(format: "%.1f", …)` is gone. **One exemption is st
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
+### 2026-08-11 (later) — Phase 3d built; **Phase 3 complete**
+- **iOS 928 → 960 tests**, 0 warnings, Debug *and* Release green. **D40–D44**.
+- 🔴 **`usage_events` had a record and no writer** — the same shape as the plan-ledger gap. The
+  reflex was to move the screen to Phase 5 since most event types are AI; **checking rather than
+  assuming** showed 7 of 14 are producible today, so the screen ships with real data.
+- 🔴 **Ordering the Developer screen fourth rather than last paid off immediately.** It closed a gap
+  STATUS had carried since 3b: the running ribbon and the Day-2-of-4 dot row were rendered on device
+  for the first time, and the P1-13 fix is visibly correct.
+- 🔴 **Building it also found a real bug**: `RebalanceModel.live` built a coordinator per screen, and
+  the ended-plan notice is in-memory on the instance — so a scenario's note would never have reached
+  the Dashboard. The coordinator moved to `AppContainer` (**D44**). The persisted state propagated
+  anyway via **D37**, which is what made it hard to see.
+- **Onboarding was redesigned, not transcribed** — a question flow with inline choices and a
+  counting-up reveal. The device pass caught the sex picker drawing "Male" as chosen while the draft
+  was still `nil`: a control claiming an answer nobody gave, with Continue disabled and no
+  explanation.
+
 ### 2026-08-11 — Phase 3c built (six screens, inline rather than by subagent)
 - **iOS 876 → 921 tests**, 0 warnings, Debug *and* Release green. **D33–D38**.
 - 🔴 **`JSONStore` was one instance per call site, not one per file** — found on the *first* live
@@ -198,43 +221,6 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
   bundled TTFs. That needed two mechanisms — `.fontDesign` for SwiftUI and `ChromeTypeface` for the
   UIKit nav-bar title and tab-bar labels, which read nothing from the SwiftUI environment. A font
   setting that misses the largest text on every screen reads as a bug.
-
-### 2026-08-06 (later) — Native titles, the score slider, the merge, and the 3c plan
-- **D32**: the four tab roots moved off a hand-rolled header onto the native large title +
-  `.navigationSubtitle`. They had had *three* different behaviours between them and a fourth on
-  pushed screens; each was a faithful port of an Android inconsistency that is invisible in Compose
-  because there is no platform title to clash with. Food Log's day steppers moved to the toolbar and
-  came out better — visible *after* the title collapses, which the pinned header only managed by
-  never collapsing.
-- The check-in scores are a **red→green `ScoreSlider`**, and `ScoreBar` went green with them:
-  its "best" tier used to be the accent, which is near-white on Silver and contradicted the rule
-  `StatusColor` states twice — green is a verdict, the accent is a brand surface.
-- 🔴 **`SparklineChart`'s private `ScrubPan` is now shared as `HorizontalPan`.** The slider sits in a
-  `ScrollView` inside a `.sheet` — two competing pan recognizers — and needed exactly the same
-  velocity-gated UIKit delegate. A second copy of a measured workaround is what goes stale silently.
-- **3a and 3b merged to `main`** after the owner tested them: 876 tests, two merge commits keeping
-  the phase boundaries.
-- **[Phase 3c planned](phases/phase-3c-plan-profile-and-more.md)** — 12 tasks. The ten-screen 3c
-  bucket was split; 3d takes Onboarding, Progress, Usage and Developer.
-
-### 2026-08-06 — Cross-screen consistency pass (4 audit agents, then 3 fix waves)
-- **iOS 810 → 870 tests**, 0 warnings, Debug *and* Release green. **D28–D31** recorded. Seven new
-  `DesignSystem/` components; every screen from Phases 2–3b touched.
-- 🔴 **An audit finding is a hypothesis, not a fact.** Two of the four audits were confidently wrong:
-  the 44pt `.contentShape` spelling was called broken (Wave 1 built a harness, measured taps, and
-  found the *outside* spelling works and the system caps expansion at ~44pt), and the "biggest
-  typography gap" was two different Android screens rendered correctly. **Verify before fixing.**
-- 🔴 **Fixing the US pinning found the bug it had been hiding.** `RebalanceLever.trailing` takes a
-  `locale` and dropped it on one branch — unobservable while `formatK` ignored locales, a wrong
-  separator the moment it stopped. A locale-blind formatter hides every call site that forgets to
-  thread one through.
-- 🔴 **`JSONStore.set` was two `try?`s**, with the cache updated and observers notified *before*
-  either — a preference that never reached disk repainted the UI as though it had and reverted on
-  next launch. It now throws and rolls the cache back. Nothing could have failed a test before,
-  because there was nothing to fail on.
-- **Waves were fenced by directory** (Wave 1 `DesignSystem/` alone, Wave 2 three agents on disjoint
-  feature dirs, Wave 3 persistence + rebalance). No collisions — but three items fell *between* the
-  fences and needed a fourth pass to catch.
 
 *Older entries archived — Phase 1a/1b/2/3b detail lives in their phase plans, and the conventions they
 produced are in [decisions.md](decisions.md) and

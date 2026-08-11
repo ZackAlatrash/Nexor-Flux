@@ -572,3 +572,23 @@ and removes the same empty row there.
 ⚠️ `.navigationBarTitleDisplayMode(.large)` is **deleted, not left unset** — it wins over
 `.inlineLarge` and silently restores the gap. The first attempt at this appeared to do nothing for
 exactly that reason.
+
+🔴 **Four screens had opted out of `screenTitle` entirely** — Food Library, Recipe Builder, Streak
+Stats and Calorie Decision all predate it and still called `.navigationTitle` directly, so they
+carried neither the backdrop (**D53**) nor this title treatment. The food picker having no
+background is how it surfaced. "A screen cannot forget its backdrop without forgetting its title"
+only holds while nothing titles itself another way, and four things already did.
+
+The guard is a **source scan** (`ScreenTitleUsageTests`), not a rendering test: nothing in the type
+system prevents a raw `.navigationTitle`, and a test that runs a view cannot see that it is missing
+a background. It allows only `ScreenTitle.swift` and names the offenders. ⚠️ It was checked by
+breaking a screen on purpose and watching it fail with that file named — a guard nobody has seen
+fail is not a guard, which is the same lesson D53's false verification taught.
+
+**D55 · The Dashboard has no subtitle.** A toolbar item centres against the *whole* title block, so
+with a date underneath the avatar sat ~6pt below the word "Dashboard". One line puts them level.
+⚠️ Two fixes were tried and rejected: `.frame(maxHeight:alignment:)` does nothing to a bar button
+item (it is laid out at its intrinsic size), and bottom padding rides the circle up but the
+toolbar's glass capsule grows with it and clips the avatar. The alignment is not nudgeable — the
+block has to be one line. Affordable **here only**: the Dashboard is always today and has no day
+picker, so the date restated the TODAY card. Food Log navigates days and keeps its own.

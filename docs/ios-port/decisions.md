@@ -535,6 +535,19 @@ resolves.
 style screen silently opts out of the backdrop. Two screens needed
 `.scrollContentBackground(.hidden)`; any future `Form` will too.
 
+🔴 **The backdrop is applied on `screenTitle`, and that is the only placement that works.** Three
+that should have — `ThemeHost`'s content, `.background` on the `NavigationStack`, and
+`.containerBackground(for: .navigation)` — are painted over: the first by the `TabView` (nothing
+visible at all), the other two by every pushed screen. Only a background *inside* a screen's own
+content survives, so it rides on the one modifier every screen already has (**D32**). A screen
+cannot forget its backdrop without forgetting its title.
+
+⚠️ **This was reported as working when it was not**, and the way it passed is worth remembering:
+the check was "the artwork ships in `Assets.car`" plus "a top-left tint follows the accent" — and
+the tint was `DashboardScreen.ambientOrbs`, the Dashboard's own accent orb in the same corner. The
+test that settles it is replacing the whole backdrop with a flat colour. No unit test can see that
+a view is covered; the `everyThemeHasArtwork` assertion passed the whole time.
+
 The parallax is **re-derived, not transcribed** — Android's quaternion×0.28 with a ±0.09 clamp
 works back to saturation at ~37° of tilt, which Core Motion expresses as one angle. It also fixes
 an axis mix-up (Android maps rotation about *x* to `translationX`, so its backdrop slides sideways

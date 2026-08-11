@@ -88,8 +88,8 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | 4 | Food Library | `ui/foodlibrary/FoodLibraryScreen.kt` (1081) | 3a | ✅ **minus NEVO (D20) and Open Food Facts (D21, → Phase 4)** — four chips instead of six, search, Recents, the three action buttons, picker mode |
 | 5 | Plan | `ui/plan/PlanScreen.kt` (341) | 3c | ✅ built against screenshot 17 — targets, zone, collapsed Advanced, generation preview + weight entry, phase-start picker. Writes through `PlanRepository` (**D33**) |
 | 6 | Profile | `ui/profile/ProfileScreen.kt` (592) | 3c | ✅ **including the photo picker**, which was going to be deferred — `PhotosPicker` sidesteps Android's persistable-URI bug rather than porting it |
-| 7 | Onboarding | `ui/onboarding/OnboardingScreen.kt` (434) | 3d | ⬜ |
-| 8 | Progress / Trends | `ui/progress/ProgressScreen.kt` (403) | 3d | ⬜ |
+| 7 | Onboarding | `ui/onboarding/OnboardingScreen.kt` (434) | **3d** | 📋 planned — Tasks 8–11. Writes through `PlanRepository`, so first run stamps a plan version (**D42**) |
+| 8 | Progress / Trends | `ui/progress/ProgressScreen.kt` (403) | **3d** | 📋 planned — Tasks 6–7. **8 series of 10**: the two Train series are v1.1 (D4) and the insight card is Phase 5 |
 | 9 | Body History | `ui/body/BodyHistoryScreen.kt` (140) | 3c | ✅ **built blind** — no screenshot. Missing days are rows, not gaps |
 | 10 | Body Edit | `ui/body/BodyEditScreen.kt` (96) | 3c | ✅ **built blind**. Reuses `CheckInDraft` and the extracted `CheckInFormFields` / `CheckInWriter` (**D35**) |
 | 11 | Streak Stats | `ui/streak/StreakStatsScreen.kt` (90) | 3b | ✅ |
@@ -103,8 +103,8 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | 19 | Coach chat | `ui/coach/CoachScreen.kt` (625) | 5 | ⬜ |
 | 20 | AI Coach settings | `ui/aicoach/AiCoachScreen.kt` (344) | 5 | ⬜ |
 | 21 | Coach Memory | `ui/aicoach/CoachMemoryScreen.kt` (120) | 5 | ⬜ |
-| 22 | Usage Stats | `ui/usage/UsageStatsScreen.kt` (159) | 3d | ⬜ |
-| 23 | Developer | `ui/developer/DeveloperScreen.kt` (151) | 3d | ⬜ |
+| 22 | Usage Stats | `ui/usage/UsageStatsScreen.kt` (159) | **3d** | 📋 planned — Tasks 1–3. 🔴 Opens with a `UsageTracker`: the table has a record and no writer, and 7 of 14 event types are producible today |
+| 23 | Developer | `ui/developer/DeveloperScreen.kt` (151) | **3d** | 📋 planned — Tasks 4–5. 🔴 Ordered early: six of its scenarios are the only way to reach the rebalance faces nobody has seen |
 
 ## Overlays & sheets
 
@@ -118,7 +118,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Product Found sheet | `BarcodeScannerScreen.kt:286` | 4 | ⬜ |
 | Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3a | ✅ both bodies (stepper when the ingredient carries a per-100g base, four typed fields when it does not). Grams-only: Android also offers a Servings toggle here, which the picker's amount sheet already provided |
 | Option sheet (Profile) | `ProfileScreen.kt:491` | 3c | ✅ one generic `OptionSheet` for all three pickers. `appSheet()`, so Android's leaking-Material-surface bug does not port |
-| Onboarding picker sheet | `OnboardingScreen.kt:400` | 3d | ⬜ |
+| Onboarding picker sheet | `OnboardingScreen.kt:400` | **3d** | 📋 planned — reuses 3c's `OptionSheet` rather than a second picker style in the first-run flow |
 | Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ⬜ |
 | Exercise Detail sheet | `ui/train/ExerciseDetailSheet.kt` (237) | — | ⏭️ |
 

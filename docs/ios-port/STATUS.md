@@ -4,7 +4,7 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-11 · **Current phase:** **3c merged. 3d is next and unplanned.** ·
+**Last updated:** 2026-08-11 · **Current phase:** **3c merged. [3d is planned](phases/phase-3d-onboarding-progress-and-tools.md), 12 tasks, unstarted.** ·
 **Branches:** Android `develop` · iOS `main` (928 tests). Nothing unmerged.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
@@ -66,7 +66,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
 | — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
 | **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
-| 3d | Onboarding, Progress/Trends, Usage Stats, Developer | ⬜ |
+| **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | 📋 **planned, 12 tasks** |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
@@ -129,6 +129,9 @@ iOS repo's `screenshots/`) and mostly device-checked by the implementing agents.
 - 🔴 **The running rebalance faces** — the progress sheet's Day-X-of-Y state, the ribbon's running
   state, and **`DayDots`** in its full 14pt variant. Unreachable without a plan on day ≥ 1, so no
   screenshot exists and none was captured. The whole P1-13 dot-index fix is invisible until then.
+  **[3d's Developer screen](phases/phase-3d-onboarding-progress-and-tools.md) is what makes these
+  reachable** — six of its twelve scenarios put the app into exactly these states, which is why that
+  task is ordered fourth rather than last.
 - 🔴 **The rebalance note card, all four skins** (gold completion, graceful end, no-adjustment, the
   defensive fallback). The gold one is the only user of the new tinted-glass card overload.
 - **The calorie decision screen** — no screenshot, and no entry point until More lands in 3c.

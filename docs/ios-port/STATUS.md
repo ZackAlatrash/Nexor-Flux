@@ -6,7 +6,7 @@ grows without bound — archive older entries into the docs that carry their det
 
 **Last updated:** 2026-08-11 · **Current phase:** **3c is built, pending the owner's visual pass** ·
 **Branches:** Android `develop` · iOS `phase-3c-plan-profile-and-more` (unmerged, off `main`).
-921 tests.
+928 tests.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---

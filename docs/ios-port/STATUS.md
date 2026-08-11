@@ -4,9 +4,8 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-11 · **Current phase:** **3c is built, pending the owner's visual pass** ·
-**Branches:** Android `develop` · iOS `phase-3c-plan-profile-and-more` (unmerged, off `main`).
-928 tests.
+**Last updated:** 2026-08-11 · **Current phase:** **3c merged. 3d is next and unplanned.** ·
+**Branches:** Android `develop` · iOS `main` (928 tests). Nothing unmerged.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -66,7 +65,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **3b+** | **Native title system** — every screen on `.navigationTitle` + iOS 26 subtitle (**D32**) | ✅ **built — 869 tests** |
 | **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
 | — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
-| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **built — 928 tests** |
+| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
 | 3d | Onboarding, Progress/Trends, Usage Stats, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
@@ -93,7 +92,7 @@ one* of Phase 4 (HealthKit + background-delivery entitlements); nothing before t
 Xcode default `Epistles-of-Wisdom.RecompTracker`; `com.zack.recomptracker` would match the Android
 package and the `.rtroutine` UTI already declared.
 
-**4. 🔴 Give the iOS repo a git remote** — still local-only, now ~79 commits on `main` including
+**4. 🔴 Give the iOS repo a git remote** — still local-only, now ~87 commits on `main` including
 every phase to date. This is the whole port, on one machine, with no copy anywhere. Cheapest
 outstanding item and the highest consequence if the disk goes.
 
@@ -143,7 +142,8 @@ Still unlooked-at and now covering far more screen:
 - **The eleven accent themes.** The 3b screenshots are on **Silver**, so near-white buttons and
   numbers in them are the theme, not the design.
 
-**New in 3c, none of it looked at by you yet:**
+**New in 3c, none of it looked at by you yet** — merged to `main` before the visual pass at your
+request, so anything wrong here is on `main` rather than on a branch:
 - **Plan** and **Appearance** were built against screenshots 17 and 19 and device-checked by me.
   Appearance now carries a **working font picker** (**D39**) — worth trying all three on a screen
   with real content, since only the settings screens were looked at closely.

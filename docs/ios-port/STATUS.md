@@ -37,7 +37,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **921** (912 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **928** (919 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -66,7 +66,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **3b+** | **Native title system** — every screen on `.navigationTitle` + iOS 26 subtitle (**D32**) | ✅ **built — 869 tests** |
 | **3b+** | **Red→green score slider** replaces the check-in stepper | ✅ **built — 876 tests** |
 | — | **3a + 3b merged to `main`**, tested and approved by the owner | ✅ **876 tests on `main`** |
-| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **built — 921 tests** |
+| **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **built — 928 tests** |
 | 3d | Onboarding, Progress/Trends, Usage Stats, Developer | ⬜ |
 | 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
@@ -145,6 +145,8 @@ Still unlooked-at and now covering far more screen:
 
 **New in 3c, none of it looked at by you yet:**
 - **Plan** and **Appearance** were built against screenshots 17 and 19 and device-checked by me.
+  Appearance now carries a **working font picker** (**D39**) — worth trying all three on a screen
+  with real content, since only the settings screens were looked at closely.
 - 🔴 **Four surfaces were built blind** — no screenshot exists: **More**, **Check-in History**,
   **Body Edit**, and the **plan-generation sheets** (preview + weight entry). Treat their spacing
   and hierarchy as a first draft.
@@ -188,8 +190,11 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
   on screen.
 - **The screenshots changed two planned decisions.** The photo picker was going to be deferred and
   is now shipped (`PhotosPicker` sidesteps Android's persistable-URI bug instead of porting it);
-  **D34** was re-confirmed *against* a screenshot showing the font row, because the control is dead
-  on Android and porting it would mean writing one known to do nothing.
+  **D34** was re-confirmed against a screenshot showing the font row, then **reversed the same day**
+  on the owner's call (**D39**): the picker is real, with three *system* font designs rather than two
+  bundled TTFs. That needed two mechanisms — `.fontDesign` for SwiftUI and `ChromeTypeface` for the
+  UIKit nav-bar title and tab-bar labels, which read nothing from the SwiftUI environment. A font
+  setting that misses the largest text on every screen reads as a bug.
 
 ### 2026-08-06 (later) — Native titles, the score slider, the merge, and the 3c plan
 - **D32**: the four tab roots moved off a hand-rolled header onto the native large title +

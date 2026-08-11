@@ -376,11 +376,36 @@ unconditional, matching Android. The store's three write methods are renamed
 `unsafe*BypassingLedger`, because Swift has no way to make them unreachable inside one module the
 way Android's `PlanPreferencesSource` interface does.
 
-**D34 · `selectedFont` is dropped from the UI.** Confirmed *after* seeing screenshot 19, which does
-show Android's Default / Space / Jakarta row. It changes nothing — no `res/font` directory exists —
-so porting it would mean writing a control known to do nothing. The stored field still round-trips.
-⚠️ **Open to reversal**: bundling Space Grotesk and Plus Jakarta Sans and making the row real is a
-small, deliberate change; inheriting a dead control is not.
+**D34 · ~~`selectedFont` is dropped from the UI~~ — reversed the same day, see D39.** The reasoning
+stands and is worth keeping: Android's Default / Space / Jakarta row changes nothing, because no
+`res/font` directory exists, so *porting* it would have meant writing a control known to be inert.
+The entry said reversal was open if the row were made real. It was.
+
+**D39 · The font picker is real on iOS, with three system designs rather than two bundled files.**
+Owner's decision, taken against the stated alternative of downloading Space Grotesk and Plus Jakarta
+Sans from Google Fonts and committing ~250 KB of binary.
+
+`AppFontDesign` offers **Default / Rounded / Serif** — SF Pro, SF Pro Rounded and New York. They
+bring what a bundled TTF does not: full Dynamic Type ramps, every weight and optical size, correct
+metrics in every script the device supports, and no bytes in the app. ⚠️ `.monospaced` is
+deliberately absent — a fine design for code and a poor one for the coach's prose, which this
+setting also re-renders.
+
+🔴 **It takes two mechanisms, not one.** `.fontDesign` in `ThemeHost` re-typefaces every `Text` in
+one line, because no `AppType` token names a design — and it stops dead at the **navigation bar's
+large title** and the **tab bar's labels**, which are UIKit. Since **D32** made the native large
+title the app's one title system, that is the biggest text on every screen; leaving it in SF Pro
+read as a bug rather than as a boundary. `ChromeTypeface` covers both bars via appearance proxies
+**plus a sweep over the bars already on screen** — a proxy does not retroactively restyle a live
+view, so without the sweep the setting appears to do nothing until you navigate.
+
+⚠️ **The stored vocabularies diverge**: Android writes `"space"`/`"jakarta"`, iOS writes
+`"rounded"`/`"serif"`; `"default"` is shared. Both sides fall back to their own default on an
+unrecognised value, so a backup crossing either way degrades to the default typeface rather than to
+a broken read. That is a shrug only because **the field is inert on Android** — if Android ever
+ships real fonts, `AppFontDesign.isAndroidValue(_:)` is where the two vocabularies get reconciled.
+
+## Conventions still to decide
 
 **D35 · Body Edit reuses `CheckInDraft`.** Confirmed, and it paid twice. Two extractions fell out of
 it — `CheckInFormFields` (the nine inputs, now shared by the check-in sheet and the past-day editor)

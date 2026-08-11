@@ -99,7 +99,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4 | ⬜ |
 | 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4 | ⬜ |
 | 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4 | ⬜ |
-| 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | 3c | ✅ built against screenshot 19, **minus the font row** (**D34**). Accents are a wrapping grid, not Android's clipped scroll |
+| 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | 3c | ✅ built against screenshot 19, **including a working font row** — three system designs, not Android's two dead bundled families (**D39**). Accents are a wrapping grid, not Android's clipped scroll |
 | 19 | Coach chat | `ui/coach/CoachScreen.kt` (625) | 5 | ⬜ |
 | 20 | AI Coach settings | `ui/aicoach/AiCoachScreen.kt` (344) | 5 | ⬜ |
 | 21 | Coach Memory | `ui/aicoach/CoachMemoryScreen.kt` (120) | 5 | ⬜ |

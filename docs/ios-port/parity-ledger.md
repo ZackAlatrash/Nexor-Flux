@@ -146,8 +146,8 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Permission UX redesign (⚠️ no read-denial introspection) | `HealthSyncCoordinator.kt:80,97,129` | ⬜ |
 | Notifications + `RateLimiter`/`QuietHours` port | `RateLimiter.kt`, `AndroidCoachNotifier.kt` | ⬜ |
 | Background: `HKObserverQuery` + `BGTaskScheduler` | `HealthSyncWorker.kt`, `CoachDigestWorker.kt` | ⬜ |
-| Share / import `.rtroutine` via UTI | `RoutineShareLauncher.kt`, `RoutineShareInbox.kt` | ⬜ |
-| Profile photo (⚠️ copy into container, no persistable URI) | `ProfileScreen.kt:105-113` | ⬜ |
+| Share / import `.rtroutine` via UTI | `RoutineShareLauncher.kt`, `RoutineShareInbox.kt` | ⏭️ **v1.1, with Train** (**D51**) — the UTI stays declared; the handler waits for a screen to open into |
+| Profile photo (⚠️ copy into container, no persistable URI) | `ProfileScreen.kt:105-113` | ✅ **shipped in 3c** — `PhotosPicker` + copy into the container. The downscale worked in points at first, so a 512 target wrote 1536px on a 3× device |
 
 ## AI (Phase 5)
 

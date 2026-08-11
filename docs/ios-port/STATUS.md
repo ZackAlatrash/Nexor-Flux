@@ -5,8 +5,9 @@ Anything longer belongs in a phase plan or a reference doc. The session log is t
 grows without bound — archive older entries into the docs that carry their detail.
 
 **Last updated:** 2026-08-11 · **Current phase:** 🎉 **Phase 3 is complete and merged.** 3d is on
-`main`, pending the owner's visual pass. **Phase 4 is next and unplanned.** ·
-**Branches:** Android `develop` · iOS **`main`** (3d merged; no branch outstanding). 960 tests.
+`main`, pending the owner's visual pass. **[Phase 4 is planned](phases/phase-4-platform-integrations.md)**
+— three branches, starting with HealthKit **unless enrolment has not cleared, in which case start
+4b.** · **Branches:** Android `develop` · iOS **`main`** (3d merged; no branch outstanding). 960 tests.
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -67,7 +68,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
 | **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | ✅ **merged — 960 tests** |
 | — | **Phase 3 complete on `main`** — sixteen screens, the whole core loop | ✅ **960 tests on `main`** |
-| 4 | HealthKit, scanner, notifications, background → **TestFlight** | ⬜ |
+| **[4](phases/phase-4-platform-integrations.md)** | HealthKit, scanner, notifications, background → **TestFlight** — three branches, 4a/4b/4c | 📋 **planned, not started** |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
 | 6 | Store readiness → submit | ⬜ |
 

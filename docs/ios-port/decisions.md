@@ -591,4 +591,11 @@ with a date underneath the avatar sat ~6pt below the word "Dashboard". One line 
 item (it is laid out at its intrinsic size), and bottom padding rides the circle up but the
 toolbar's glass capsule grows with it and clips the avatar. The alignment is not nudgeable — the
 block has to be one line. Affordable **here only**: the Dashboard is always today and has no day
-picker, so the date restated the TODAY card. Food Log navigates days and keeps its own.
+picker, so the date restated the TODAY card.
+
+**Food Log had the same offset and a different answer**, because its date is *state*: you navigate
+days with the arrows, so dropping the label would leave them saying nothing about which day you are
+on. The date moved **into** the stepper — `‹ Tue, Aug 11 ›` — which fixes the alignment and is the
+better home for it regardless: it now sits in the control that changes it. ⚠️ **One `ToolbarItem`,
+not three**: on iOS 26 each item gets its own glass capsule, so a date between two of them reads as
+three unrelated controls rather than one day picker.

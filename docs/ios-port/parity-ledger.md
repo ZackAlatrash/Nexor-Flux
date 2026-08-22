@@ -17,14 +17,14 @@ per-screen notes.
 |---|---:|---:|---:|---:|---:|---:|
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
-| Design system | 7 | 5 | 1 | 1 | 0 | 0 |
+| Design system | 7 | 6 | 0 | 1 | 0 | 0 |
 | Screens (v1) | 21 | 20 | 1 | 0 | 0 | 0 |
-| Overlays & sheets | 12 | 7 | 1 | 2 | 1 | 1 |
+| Overlays & sheets | 13 | 8 | 1 | 1 | 1 | 2 |
 | Charts | 8 | 3 | 1 | 1 | 3 | 0 |
 | Platform integrations | 11 | 6 | 4 | 0 | 1 | 0 |
 | AI | 8 | 1 | 0 | 7 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **90** | **58** | **10** | **9** | **17** | **3** |
+| **Total** | **91** | **61** | **8** | **7** | **17** | **4** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
@@ -65,8 +65,8 @@ It is 🔨 rather than ⬜ because the only outstanding work is dropping the fil
 | Card family (`FrostedCard`/`NeutralCard`/`TintedCard`/`DangerCard`) | `GlassComponents.kt` | ✅ (Danger deferred — DataBackup is Phase 3) |
 | Button family → `.buttonStyle(.glass)` / `.glassProminent` | `LiquidComponents.kt` | ✅ |
 | `GlassBottomSheet` → `.sheet` + `.presentationDetents` | `GlassBottomSheet.kt` | ✅ shipped in 3a as `appSheet()`; 10 call sites. Sizes to its content rather than taking a fixed detent |
-| `GlassAlertDialog` + `ConfirmDialog` | `GlassAlertDialog.kt` | 🔨 `ConfirmDialog` is done — native `.confirmationDialog`, 3 call sites. The general-purpose `GlassAlertDialog` has no iOS caller yet |
-| `MarkdownText` → `AttributedString(markdown:)` + custom tables | `MarkdownText.kt` (408 LOC) | ⬜ |
+| `GlassAlertDialog` + `ConfirmDialog` | `GlassAlertDialog.kt` | ✅ **as `ConfirmDialog`** — native `.confirmationDialog`, 3 call sites. The general-purpose one is **not coming**: every iOS-reachable case among Android's 8 is a confirm, and the rest are on Phase 5 / v1.1 screens (**D61**) |
+| `MarkdownText` → `AttributedString(markdown:)` + custom tables | `MarkdownText.kt` (408 LOC) | ⬜ **Phase 5, with its only caller** — the coach chat is the sole consumer on Android (**D61**) |
 
 **The consistency pass (2026-08-06) added seven components with no single Android row**, extracted
 from spellings that had drifted across Phases 2–3b rather than ported from one file: `ScreenTitle`
@@ -111,6 +111,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 
 | Surface | Android file | Phase | Status |
 |---|---|---|---|
+| Today's Coaching slot | `ui/dashboard/CoachTodaySlot.kt` (232) + its view model (123) | 4c | ✅ **D60** — two skins over one body (accent, and gold for a celebration). Deterministic: `phrase` defaults to the identity, so Phase 5 swaps one closure. ⚠️ The discovery skin is absent until a signal can produce it |
 | Weekly Briefing overlay | `ui/review/WeeklyBriefingOverlay.kt` (420) | 5 | ⬜ |
 | Rebalance Offer overlay | `ui/dashboard/RebalanceOfferOverlay.kt` (294) | 3b | ✅ device-verified. Fixed `.large` detent, not `appSheet()` — a dial change must not resize the sheet |
 | Rebalance Progress Detail | `ui/dashboard/RebalanceProgressDetailOverlay.kt` (253) | 3b | 🔨 day-0 face device-verified; the **running** face (Day X of Y, dot row) is unverified |
@@ -121,7 +122,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Option sheet (Profile) | `ProfileScreen.kt:491` | 3c | ✅ one generic `OptionSheet` for all three pickers. `appSheet()`, so Android's leaking-Material-surface bug does not port |
 | Onboarding picker sheet | `OnboardingScreen.kt:400` | 3d | ❌ **not ported** — the goal and activity choices are inline rows instead. Hiding the app's most consequential decision behind a picker row makes it the least visible thing on its own screen |
 | Food-import review sheet | `IntegrationsComponents.kt:170` | 4a | ✅ **built blind**. Everything starts selected, as Android does — a year of history is dozens of rows and per-row opt-in means nobody imports anything. Its caption carries the duplicate and unnamed-day counts (**D48**) |
-| Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ⬜ |
+| Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ❌ **not ported** (**D61**) — its four Android call sites (Plan, Body, Dashboard, Food Library) are all covered by `screenBanner`, which self-clears. Body was the one that acknowledged nothing and now does |
 | Exercise Detail sheet | `ui/train/ExerciseDetailSheet.kt` (237) | — | ⏭️ |
 
 ## Charts

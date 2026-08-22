@@ -706,3 +706,56 @@ until the background task did: `BGTaskScheduler` relaunches the app **without a 
 `WindowGroup`'s `.task` never runs and the handler would otherwise open its own. This is
 `JSONStore.shared(name:)` (**D37**) one layer down, for the same reason and with the same failure
 mode: two handles over one file, each believing it is the only one.
+
+**D59 · `RebalanceCopy` localises, and the parity contract is re-baselined.** It was the one place
+`AppNumber` was deliberately skipped when **D28** put the app on the device locale, because Kotlin
+interpolates raw and `RebalanceCopyServiceTest` pins the output byte for byte. The exemption made
+the most user-visible numbers in the feature — *"Recovers your full 2400 kcal"*, on a card the user
+is being asked to accept — the only ones in the app that ignore a German reader's separators.
+
+Quantities now group and counts do not, the convention the rest of the app already follows
+(`ReconcileBanner` does the same). ⚠️ **The two platforms' rebalance copy now differs by separator**:
+on a German phone Android says `2400` and iOS says `2.400`. The *wording* is untouched and rewording
+one is still a spec change; only the digits localise.
+
+🔴 **Doing it exposed something worse than the exemption.** Nine tests went red, and not because the
+change was wrong — because they had **never been hermetic**. They assert formatted numbers with no
+locale, so they had been asserting whatever locale the machine ran in, and they passed only because
+they were written on a US one. Every assertion now passes an explicit locale, `RebalanceModel` takes
+one, and a `de_DE` suite pins the claim instead of describing it. Two more locale-blind surfaces
+turned up on the way out: the calorie-overage clause on the Dashboard and in the nutrition strip,
+and a bare `.formatted(.number.grouping(.automatic))` that survived the D28 sweep precisely because
+it produced the right answer while being invisible to the grep that finds the wrong ones.
+
+**D60 · The Today coaching card ships in Phase 4, with the spine that feeds it.** The digest had
+been staging one signal a day into `CoachInboxStore` and **nothing on iOS read it** — the coach
+could speak only through a push the user had to opt into, and tapping that push landed on a tab
+that said nothing about the signal. That is the "writer with no reader" shape this port keeps
+catching in Android, reproduced at the scale of a whole feature.
+
+It ships now because the card is **deterministic**: the engine computes every number and writes the
+sentence, so `phrase` defaults to the identity and Phase 5 swaps one closure. The card and a tapped
+notification resolve through the **same** `CoachDeepLink` mapping — Android keeps two copies and its
+own comment says one "mirrors" the other, which is one edit from divergence.
+
+⚠️ **Android's discovery skin is deliberately absent.** Nothing on iOS can produce a
+`CROSS_SIGNAL_DISCOVERY` signal until Phase 5, and a rendering path no data can reach is the dead
+branch this codebase refuses. It lands with the signal that needs it.
+
+**D61 · An unbuilt piece stays unbuilt until its consumer lands, and the pair is checked both ways.**
+Three design-system rows sat open in the ledger — `ToastOverlay`, `GlassAlertDialog`, `MarkdownText`.
+Each was checked against its *real* consumers and all three would be dead code today: the toast's
+four Android call sites are already covered by `screenBanner` (and a second mechanism for "tell the
+user that worked" is how an app ends up with two), `GlassAlertDialog`'s iOS-reachable cases are all
+`ConfirmDialog`, and `MarkdownText` has one caller and it is the Phase 5 coach chat.
+
+The rule that falls out of it, and out of D60's absent skin and the exercise seeder: **a missing
+writer is only acceptable when the reader is missing too.** A consistent pair is a deferral; a
+lopsided one is the bug. `scripts/find-unread-declarations.py` finds the lopsided ones — a script
+and not a test, because the same scan as a `@Test` needed a 400-entry allowlist and nine minutes,
+and a guard that cries wolf is one that gets disabled.
+
+**D62 · The bundle identifier is `com.zack.recomptracker`.** It matches the Android package and the
+`.rtroutine` UTI the app already reserves, where the Xcode default `Epistles-of-Wisdom.RecompTracker`
+matched neither and would have shown in crash reports and App Store Connect permanently. Moved
+before an App Store Connect record exists, because after one it cannot be.

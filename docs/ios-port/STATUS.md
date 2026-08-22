@@ -4,11 +4,11 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-22 · **Current phase:** **Phase 4 is code-complete.**
+**Last updated:** 2026-08-22 (later) · **Current phase:** **Phase 4 is code-complete and swept.**
 [Plan](phases/phase-4-platform-integrations.md) · 4a, 4b and 4c are all built. Everything that
 remains in the phase needs **a device or your Apple account**, not more code — see
 *Blocked / needs you*. · **Branches:** Android `develop` · iOS
-`phase-4c-coach-spine-and-notifications` (unmerged, off `main`, carries 4b's merge). **1123 tests.**
+`phase-4c-coach-spine-and-notifications` (unmerged, off `main`, carries 4b's merge). **1162 tests.**
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -22,8 +22,14 @@ rebalance — the whole core loop, end to end.
 
 🎉 **Phase 4 is built too.** HealthKit reads steps, weight and sleep and writes them into the log;
 the barcode scanner and Open Food Facts work; Data & Backup closes the file-format loop; and the
-**proactive coach spine runs** — eighteen detectors, a selector, a staged card and a real
-notification, none of which needs a model. **Twenty-one screens.**
+**proactive coach spine runs end to end** — eighteen detectors, a selector, a staged winner, the
+card on the Dashboard that shows it, and a real notification. None of it needs a model.
+**Twenty-two screens.**
+
+**A defect sweep followed** (**D59–D62**) and is worth knowing about: Phase 4 had shipped four
+values that were written and read by nobody, `RebalanceCopy`'s locale exemption was closed, and the
+coaching card that had no reader got one. The sweep also found that **nine number-formatting tests
+had never been hermetic** — they asserted whatever locale the machine ran in.
 
 **What is left is not screens.** Phase 5 is the AI coach and Phase 6 is store readiness. Everything
 either of them needs a *place* for already has one.
@@ -41,7 +47,7 @@ Android export. Its 9 tests are written and **self-skip** until the fixture land
 
 | | |
 |---|---|
-| iOS tests | **1123** (1114 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **1162** (1153 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -91,9 +97,9 @@ expires in a year rather than the seven days a free team gets. The blocker that 
 phase plan is gone.
 
 What is left is yours, in order:
-- **Decide the bundle identifier.** Still the Xcode default `Epistles-of-Wisdom.RecompTracker`.
-  `com.zack.recomptracker` matches the Android package and the `.rtroutine` UTI already declared.
-  🔴 **Permanent once an App Store Connect record exists** — decide before, not after.
+- ~~**Decide the bundle identifier**~~ — 🎉 **settled: `com.zack.recomptracker`** (**D62**), matching
+  the Android package and the `.rtroutine` UTI. Xcode has already issued a profile for it with
+  HealthKit on, and the device build is green under it.
 - **Create the App Store Connect record**, then `./scripts/archive.sh` and Organizer → Distribute →
   **TestFlight Internal Only** (≤100 testers, no review; external needs Beta App Review). The build
   number is `git rev-list --count HEAD`, applied by that script.
@@ -131,14 +137,11 @@ including every phase to date. This is the whole port, on one machine, with no c
 Cheapest outstanding item and the highest consequence if the disk goes. The CI workflow written in
 this phase does nothing until it exists.
 
-**6. 🔴 Rule on `RebalanceCopy` vs the locale sweep (D28).** It is the one place `AppNumber` was
-deliberately *not* applied. Its eight interpolated numbers ("Cut 250 kcal/day for 4 days", and the
-rest) are asserted character-for-character against Android's `RebalanceCopyServiceTest`, so
-localising them breaks that parity contract — and these are the most user-visible numbers in the
-feature, the only ones that will not follow a German reader's locale. Two honest options: **(a)**
-localise and re-baseline the Swift transcription of those assertions, accepting that the two
-platforms' copy now differs by separator, or **(b)** keep the pin and record it as a deliberate
-exemption. Nothing is blocked either way; it just should not drift by default.
+~~**6. Rule on `RebalanceCopy` vs the locale sweep**~~ — 🎉 **settled: it localises** (**D59**).
+The Swift assertions are re-baselined and the two platforms' rebalance copy now differs by
+separator, deliberately. ⚠️ Doing it exposed that nine number-formatting tests had never been
+hermetic — they asserted whatever locale the machine ran in, and passed only because they were
+written on a US one. They all pass an explicit locale now, and a `de_DE` suite pins the claim.
 
 **7. Re-verify `getEarliestAuthorizedSampleDate(for:)` at iOS 27 GM (D48).** It was in developer beta
 at capture, so the 365-day import deliberately does not call it and cannot yet say *"we could only
@@ -165,7 +168,13 @@ reviewed live against screenshots; 3b's Dashboard, Body, check-in sheet and stre
 from screenshots `10`–`16` and device-checked by the implementing agents. **Everything after that
 was built without your eyes on it, and thirteen surfaces were built with no screenshot at all.**
 
-**Phase 4, newest first — three of these were built blind:**
+**Phase 4, newest first — four of these were built blind:**
+- 🔴 **The Today coaching card** (**D60**), and it is the highest-value thing on this list, because
+  until now the spine had no visible surface at all. ⚠️ It needs **fourteen logged days** before any
+  detector fires. Two skins to look at: the ordinary accent-tinted one, and the **gold celebration**
+  skin, which is still the only user of the tinted-glass card overload and has never been seen.
+  More → Developer can stage a rebalance scenario but not a coach signal — the fastest route is a
+  populated install.
 - 🔴 **Integrations** (4a). `28-integrations-health-sync.jpg` was asked for and never produced, so
   the layout is the Kotlin plus my own design calls. Its behaviour is transcribed and tested; its
   look is a first draft. Four states: unsupported, off, **connected — waiting for data** (the D45
@@ -230,6 +239,30 @@ spellings and every `String(format: "%.1f", …)` is gone. **One exemption is st
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
+### 2026-08-22 (later) — **the defect sweep**: what Phase 4 and earlier phases missed
+- **iOS 1123 → 1162 tests**, 0 warnings, Debug *and* Release green. **D59–D62**.
+- 🔴 **Phase 4 shipped four writers with no reader** — the anti-pattern this port keeps catching in
+  Android, reproduced by me in one commit: a background-delivery failure nobody surfaced, a history
+  boundary that was always `nil` behind a stub, an inert notifier with no caller, and a computed
+  property nothing asked for. All four are wired or gone, and the audit that finds them is now
+  `scripts/find-unread-declarations.py` (a script, not a `@Test` — the same scan as a test needed a
+  400-entry allowlist and nine minutes, and a guard that cries wolf gets disabled).
+- 🔴 **The spine had no reader either, at feature scale.** The digest staged one signal a day and
+  nothing rendered it: the coach could speak only through an opt-in push, which then landed on a tab
+  that said nothing. The Today card ships (**D60**) because it is deterministic — `phrase` defaults
+  to the identity and Phase 5 swaps one closure.
+- 🔴 **Closing the `RebalanceCopy` locale exemption turned nine green tests red, and the reason was
+  worse than the exemption**: they had never been hermetic. They assert formatted numbers with no
+  locale, so they were asserting whatever locale the machine ran in — they passed because they were
+  written on a US one, and this Mac is European.
+- **Three "unbuilt" ledger rows turned out to be correctly absent** (**D61**). Checked against their
+  real consumers, all three would be dead code today. The rule that fell out: a missing writer is
+  only acceptable when the reader is missing too. A consistent pair is a deferral; a lopsided one is
+  the bug.
+- ⚠️ **A test aborted the runner rather than failing** for the second time this phase, and the same
+  way: constructing a `CoachSignal` that trips a Kotlin `require`. It is worth remembering that no
+  Kotlin precondition is catchable from Swift.
+
 ### 2026-08-22 — **Phase 4 code-complete**: 4c then 4a, in one sitting
 - **iOS 1043 → 1123 tests**, 0 warnings, Debug *and* Release green. **D45–D50**, **D56–D58**.
 - 🎉 **The enrolment blocker was already gone and nobody had checked.** The phase plan called the
@@ -252,18 +285,7 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
   and `RootTabView` — which exists only once onboarding is known complete — is what takes it. Both
   halves of Android's gate collapse into one condition that cannot be forgotten.
 
-### 2026-08-11 (later) — Phase 3d built and merged; **Phase 3 complete on `main`**
-- **iOS 928 → 960 tests**, 0 warnings, Debug *and* Release green. **D40–D44**.
-- 🔴 **`usage_events` had a record and no writer** — the same shape as the plan-ledger gap. The
-  reflex was to move the screen to Phase 5 since most event types are AI; **checking rather than
-  assuming** showed 7 of 14 are producible today, so it ships with real data.
-- 🔴 **Ordering the Developer screen fourth rather than last paid off immediately** — it closed a
-  gap STATUS had carried since 3b, and building it found a real bug: `RebalanceModel.live` built a
-  coordinator per screen, so a scenario's note would never have reached the Dashboard (**D44**).
-- **Onboarding was redesigned, not transcribed.** The device pass caught the sex picker drawing
-  "Male" as chosen while the draft was still `nil` — a control claiming an answer nobody gave.
-
-*Older entries archived — Phase 1a/1b/2/3b/3c detail lives in their phase plans, and the conventions they
+*Older entries archived — Phase 1a/1b/2/3b/3c/3d detail lives in their phase plans, and the conventions they
 produced are in [decisions.md](decisions.md) and
 [reference/shared-codec-api.md](reference/shared-codec-api.md). Three rules from Phase 2 outlive
 their entry and are repeated here because nothing else states them:*

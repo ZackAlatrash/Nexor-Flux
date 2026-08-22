@@ -4,11 +4,11 @@
 Anything longer belongs in a phase plan or a reference doc. The session log is the only part that
 grows without bound — archive older entries into the docs that carry their detail.
 
-**Last updated:** 2026-08-11 · **Current phase:** **Phase 4 is underway.**
-[Plan](phases/phase-4-platform-integrations.md) · **4b is built** (scanner, Open Food Facts, Data &
-Backup) **plus the app backdrop**; 4a (HealthKit) and 4c (notifications → TestFlight) remain. ·
-**Branches:** Android `develop` · iOS `phase-4b-scanner-and-backup` (unmerged, off `main`).
-1008 tests.
+**Last updated:** 2026-08-22 · **Current phase:** **Phase 4 is code-complete.**
+[Plan](phases/phase-4-platform-integrations.md) · 4a, 4b and 4c are all built. Everything that
+remains in the phase needs **a device or your Apple account**, not more code — see
+*Blocked / needs you*. · **Branches:** Android `develop` · iOS
+`phase-4c-coach-spine-and-notifications` (unmerged, off `main`, carries 4b's merge). **1123 tests.**
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -20,9 +20,13 @@ formats, the design system on native Liquid Glass, a four-tab shell, and **sixte
 user is onboarded, given a plan, and can log food, weigh in, check trends and be offered a weekly
 rebalance — the whole core loop, end to end.
 
-**What is left is not screens.** Phase 4 is platform integration (HealthKit, the scanner,
-notifications, background) and Phase 5 is the AI coach. Everything either of them needs a *place*
-for already has one.
+🎉 **Phase 4 is built too.** HealthKit reads steps, weight and sleep and writes them into the log;
+the barcode scanner and Open Food Facts work; Data & Backup closes the file-format loop; and the
+**proactive coach spine runs** — eighteen detectors, a selector, a staged card and a real
+notification, none of which needs a model. **Twenty-one screens.**
+
+**What is left is not screens.** Phase 5 is the AI coach and Phase 6 is store readiness. Everything
+either of them needs a *place* for already has one.
 
 Three cross-cutting passes landed on top of the phases and are worth knowing about:
 **D28–D32** (one number format, one title system), **D33/D37/D44** (the plan ledger, one store per
@@ -31,13 +35,13 @@ font picker where Android's is inert).
 
 🔴 **One thing from Phase 1b is still outstanding** — the backup acceptance test needs a real
 Android export. Its 9 tests are written and **self-skip** until the fixture lands. See
-*Blocked / needs you*.
+*Blocked / needs you* item 4.
 
 ### Numbers
 
 | | |
 |---|---|
-| iOS tests | **1008** (999 running + 9 armed) · 0 warnings · Debug + Release green |
+| iOS tests | **1123** (1114 running + 9 armed) · 0 warnings · Debug + Release green |
 | iOS code | ~4,600 LOC `Persistence/` · ~700 `DesignSystem/` · ~250 `Shell/` · ~1,400 `Features/FoodLog/` · ~2,600 `Features/FoodLibrary/` · ~700 `Features/RecipeBuilder/` |
 | `:shared` commonMain | 71 files (66 + the 5 moved codecs) |
 | `:shared` commonTest | **372 golden assertions** — run on JVM *and* iOS |
@@ -79,28 +83,55 @@ Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
 
 ## Blocked / needs you
 
-**1. 🔴 Export a real Android backup** — the last outstanding piece of Phase 1b. The 9 acceptance
-tests are written and **self-skip** until it appears, so the suite is green but the claim "iOS reads
-Android's backup" is *unproven*. Settings → Data Backup → Export, from a populated install, saved to
+Phase 4 has no code left in it. Every item below needs a device, a file, or your Apple account.
+
+**1. 🔴 Take the app to TestFlight — everything else is ready.** 🎉 **The enrolment has cleared**:
+Xcode regenerated the provisioning profile with **HealthKit and background-delivery** on it, and it
+expires in a year rather than the seven days a free team gets. The blocker that shaped the whole
+phase plan is gone.
+
+What is left is yours, in order:
+- **Decide the bundle identifier.** Still the Xcode default `Epistles-of-Wisdom.RecompTracker`.
+  `com.zack.recomptracker` matches the Android package and the `.rtroutine` UTI already declared.
+  🔴 **Permanent once an App Store Connect record exists** — decide before, not after.
+- **Create the App Store Connect record**, then `./scripts/archive.sh` and Organizer → Distribute →
+  **TestFlight Internal Only** (≤100 testers, no review; external needs Beta App Review). The build
+  number is `git rev-list --count HEAD`, applied by that script.
+- **Replace the app icon.** One ships so the archive is valid, but it is derived from the Android
+  launcher asset, which tops out at **288 px** of real content — it is readable and visibly soft.
+  A 1024 export from whatever drew the original replaces one file.
+
+⚠️ **A device build now needs your Apple account signed into Xcode**, because the target carries the
+HealthKit entitlement. If it fails with *"provisioning profile doesn't include the HealthKit
+capability"*, sign in under Xcode › Settings › Accounts and build again. The simulator is unaffected.
+
+**2. 🔴 Steps with a paired Apple Watch (D46).** The one number in the port that no test can settle.
+`HKStatisticsQuery(.cumulativeSum)` de-overlaps samples from the *same* source; iPhone + Watch are
+different sources. Android's equivalent bug showed **17k steps on a 4k day**. Walk with both, and
+compare the app's figure against the Health app's own for the same day.
+
+**3. 🔴 Background delivery and the background digest, on a device.** Neither can be verified in a
+simulator. The observer wakes on new step data (`.hourly`); the coach digest is a
+`BGProcessingTaskRequest` the system runs when it likes. Both are written to fail quietly, which is
+correct behaviour and also means *nothing tells you they are not working*. The Integrations screen's
+last-synced line is the visible tell.
+
+**4. 🔴 Export a real Android backup** — the last outstanding piece of Phase 1b, and now easier
+because the restore path is reachable through the UI. The 9 acceptance tests are written and
+**self-skip** until it appears, so the suite is green but the claim "iOS reads Android's backup" is
+*unproven*. Settings → Data Backup → Export, from a populated install, saved to
 `~/Desktop/RecompTracker-IOS/RecompTracker/RecompTrackerTests/Fixtures/android-backup-v2.json`
-(note the nested `RecompTracker/` — the test target lives inside the project folder). Buildable
-folders pick it up with no project change; just re-run the suite.
+(note the nested `RecompTracker/` — the test target lives inside the project folder).
 It must contain: meals across **several slots** (P0-2 was exactly this), a `slotId = null`
 coach-logged meal, a routine with sessions and sets, and a recipe — `theFixtureIsAdversarialEnough…`
 fails loudly if it does not, rather than passing over a weak export.
 
-**2. Apple Developer Program enrolment ($99/yr)** — the only item with a lead time. Needed *from day
-one* of Phase 4 (HealthKit + background-delivery entitlements); nothing before then is blocked.
+**5. 🔴 Give the iOS repo a git remote** — still local-only, now ~92 commits on top of `main`
+including every phase to date. This is the whole port, on one machine, with no copy anywhere.
+Cheapest outstanding item and the highest consequence if the disk goes. The CI workflow written in
+this phase does nothing until it exists.
 
-**3. Decide the bundle identifier**, needed at enrolment and permanent once reserved. Still the
-Xcode default `Epistles-of-Wisdom.RecompTracker`; `com.zack.recomptracker` would match the Android
-package and the `.rtroutine` UTI already declared.
-
-**4. 🔴 Give the iOS repo a git remote** — still local-only, now ~87 commits on `main` including
-every phase to date. This is the whole port, on one machine, with no copy anywhere. Cheapest
-outstanding item and the highest consequence if the disk goes.
-
-**5. 🔴 Rule on `RebalanceCopy` vs the locale sweep (D28).** It is the one place `AppNumber` was
+**6. 🔴 Rule on `RebalanceCopy` vs the locale sweep (D28).** It is the one place `AppNumber` was
 deliberately *not* applied. Its eight interpolated numbers ("Cut 250 kcal/day for 4 days", and the
 rest) are asserted character-for-character against Android's `RebalanceCopyServiceTest`, so
 localising them breaks that parity contract — and these are the most user-visible numbers in the
@@ -108,6 +139,10 @@ feature, the only ones that will not follow a German reader's locale. Two honest
 localise and re-baseline the Swift transcription of those assertions, accepting that the two
 platforms' copy now differs by separator, or **(b)** keep the pin and record it as a deliberate
 exemption. Nothing is blocked either way; it just should not drift by default.
+
+**7. Re-verify `getEarliestAuthorizedSampleDate(for:)` at iOS 27 GM (D48).** It was in developer beta
+at capture, so the 365-day import deliberately does not call it and cannot yet say *"we could only
+reach 90 days — grant full history in Settings"*. One method and one UI state when it is real.
 
 ## Standing rules
 
@@ -125,120 +160,110 @@ exemption. Nothing is blocked either way; it just should not drift by default.
 
 ## Needs visual check
 
-Phase 2's gates A–D and 3a's gates 1–5 were reviewed live against Android screenshots. 3b's
-Dashboard, Body, check-in sheet and streak stats were built **from screenshots** (`10`–`16` in the
-iOS repo's `screenshots/`) and mostly device-checked by the implementing agents.
+**Nothing in this app has been judged by you since 3b.** Phase 2's gates A–D and 3a's gates 1–5 were
+reviewed live against screenshots; 3b's Dashboard, Body, check-in sheet and streak stats were built
+from screenshots `10`–`16` and device-checked by the implementing agents. **Everything after that
+was built without your eyes on it, and thirteen surfaces were built with no screenshot at all.**
 
-**Never looked at by a human:**
-- ~~**The running rebalance faces**~~ — 🎉 **closed by 3d's Developer screen.** The running ribbon
-  and the Day-2-of-4 dot row were rendered and checked on device: checkmark on day 1, ring on day 2,
-  and the TODAY card showing the reduced target. The P1-13 dot-index fix is now visibly correct.
-  **The other five scenarios still want your eyes** — More → Developer, the rows marked "unseen".
+**Phase 4, newest first — three of these were built blind:**
+- 🔴 **Integrations** (4a). `28-integrations-health-sync.jpg` was asked for and never produced, so
+  the layout is the Kotlin plus my own design calls. Its behaviour is transcribed and tested; its
+  look is a first draft. Four states: unsupported, off, **connected — waiting for data** (the D45
+  state, whose *wording* matters most), and connected with a last-synced line.
+- 🔴 **The food-import review sheet** (4a), also blind. Everything starts selected; the caption
+  carries the duplicate and unnamed-day counts.
+- **Notifications** (4c) — an iOS-only screen with no Android counterpart (**D57**). The
+  denied-permission card only appears after you refuse the system prompt.
+- **The push itself.** ⚠️ The spine needs **fourteen logged days** before any detector fires, so a
+  populated install is the fastest route. Tap one from the lock screen: it should open the right
+  tab, including on a **cold start** — the case Android's P0-3 crashed on.
+- **The barcode scanner** (4b) — only its *unsupported* state is checkable in the simulator; the
+  scan flow was driven end to end against the live Open Food Facts API via the DEBUG barcode field.
+  **The Product Found sheet** and **Data & Backup** were both built blind.
+- 🔴 **The backdrop is behind every screen** (**D53**) — worth looking at on all eleven accents and
+  in both modes, since that is the whole point of it. ⚠️ The parallax needs a **device**: Core
+  Motion reports nothing in a simulator, so it is static there.
+
+**Built blind in 3c and 3d, and merged to `main` before the visual pass at your request** — so
+anything wrong here is on `main`, not on a branch:
+- 🔴 **Onboarding**, the most redesigned surface in the port: a question flow rather than Android's
+  form. I walked all four steps on device; the *look* needs your judgement.
+- **Trends** (grouped rather than Android's flat nine), **Usage Stats**, **Developer**, **More**,
+  **Check-in History**, **Body Edit**, the **plan-generation sheets**, and the **calorie decision**
+  screen. Treat their spacing and hierarchy as first drafts.
+- **Plan**, **Appearance** and **Profile** were built against screenshots 17–19 and device-checked.
+  Appearance carries a **working font picker** (**D39**) — try all three on a screen with real
+  content, since only the settings screens were looked at closely. The photo picker is untested with
+  a real image on device.
+- ⚠️ **The generate-from-profile preview needs a complete profile to reach.** With an empty one it
+  correctly reports the missing fields instead, so the preview sheet is unverified.
+
+**Older, still open:**
 - 🔴 **The rebalance note card, all four skins** (gold completion, graceful end, no-adjustment, the
-  defensive fallback). The gold one is the only user of the new tinted-glass card overload.
-- **The calorie decision screen** — no screenshot, and no entry point until More lands in 3c.
+  defensive fallback). The gold one is the only user of the tinted-glass card overload. The other
+  five Developer scenarios also want your eyes — More → Developer, the rows marked "unseen".
 - 3a's leftovers: the recipe portion sheet, the reconcile banner, slot selection mode.
 
-Still unlooked-at and now covering far more screen:
+**Three things no test can see, on every screen:**
 - **Dynamic Type at the largest accessibility size.** `@ScaledMetric` returns its base value outside
-  a hosted view, so no unit test can see the ramp. The consistency pass converted the fixed widths
-  that would clip first (`ScoreBar`'s label and number columns), but only on the surfaces it audited.
-- **Light mode.** Never judged deliberately. 3a and 3b added ~25 surfaces to it.
+  a hosted view, so no unit test sees the ramp. The consistency pass converted the fixed widths that
+  would clip first, but only on the surfaces it audited.
+- **Light mode.** Never judged deliberately, and it now covers ~30 surfaces.
 - **The eleven accent themes.** The 3b screenshots are on **Silver**, so near-white buttons and
   numbers in them are the theme, not the design.
 
-**New in 4b, and the backdrop with it:**
-- **The barcode scanner** — only its *unsupported* state is checkable in the simulator, because
-  VisionKit needs a real camera. The scan flow itself was driven end to end against the live Open
-  Food Facts API using the DEBUG barcode field.
-- **The Product Found sheet** (it is `AmountSheet` with a caution line and a second action) and
-  **Data & Backup**, both built blind.
-- 🔴 **The backdrop is now behind every screen** (**D53**) — worth looking at on all eleven accents
-  and in both modes, since that is the whole point of it. The parallax needs a **device**: Core
-  Motion reports nothing in the simulator, so it is static there.
-
-**New in 3d, none of it looked at by you yet** — all four were built without screenshots, from the
-Kotlin plus my own design calls, and merged to `main` before the visual pass at your request, so
-anything wrong here is on `main` rather than on a branch:
-- 🔴 **Onboarding**, which is the most redesigned surface in the port — a question flow rather than
-  Android's form, with the goal and activity choices inline and a plan reveal that counts up. I
-  walked all four steps on device; the *look* is the part that needs your judgement.
-- **Trends**, grouped Body / Nutrition / Consistency rather than Android's flat list of nine.
-- **Usage Stats** and **Developer**.
-
-**New in 3c, none of it looked at by you yet** — merged to `main` before the visual pass at your
-request, so anything wrong here is on `main` rather than on a branch:
-- **Plan** and **Appearance** were built against screenshots 17 and 19 and device-checked by me.
-  Appearance now carries a **working font picker** (**D39**) — worth trying all three on a screen
-  with real content, since only the settings screens were looked at closely.
-- 🔴 **Four surfaces were built blind** — no screenshot exists: **More**, **Check-in History**,
-  **Body Edit**, and the **plan-generation sheets** (preview + weight entry). Treat their spacing
-  and hierarchy as a first draft.
-- **Profile** matches screenshot 18 including the photo picker; the picker itself is untested with a
-  real image on device.
-- ⚠️ **The generate-from-profile flow needs a complete profile to reach its preview.** With an empty
-  profile it correctly reports the missing fields instead, so the preview sheet is unverified.
-
 **Changed by the consistency pass — worth a second look even where you saw the screen before:**
-- 🔴 **Every title in the app is now the native large one** (**D32**) — it collapses into a centred
-  inline title as you scroll, and the bar takes its glass as content passes under. Device-checked on
-  all four tabs, but light mode and the other ten accents are not.
-- **Every number on Dashboard, Body, Food Log and the rebalance tiles** now formats through
-  `AppNumber`. On a US device nothing should move; the change is only visible on a non-US locale.
-- **Error and confirmation messages** across Body, Food Log and Food Library now render in one
-  shared banner rather than five spellings.
+- 🔴 **Every title in the app is the native one** (**D32**, **D54**), collapsing to a centred inline
+  title as you scroll, with the bar taking its glass as content passes under. Light mode and ten of
+  the eleven accents are unchecked.
+- **Every number** on Dashboard, Body, Food Log and the rebalance tiles formats through `AppNumber`.
+  On a US device nothing moves; the change is only visible on a non-US locale.
+- **Error and confirmation messages** across Body, Food Log and Food Library render in one shared
+  banner rather than five spellings.
 
 ## ~~Open question for 3c — number formatting~~ — **settled, see D28**
 The owner ruled: **the app follows the device locale, everywhere.** `AppNumber` now owns all three
 spellings and every `String(format: "%.1f", …)` is gone. **One exemption is still open** — see
-*Blocked / needs you* item 5.
+*Blocked / needs you* item 6.
 
 ## Session log
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
+### 2026-08-22 — **Phase 4 code-complete**: 4c then 4a, in one sitting
+- **iOS 1043 → 1123 tests**, 0 warnings, Debug *and* Release green. **D45–D50**, **D56–D58**.
+- 🎉 **The enrolment blocker was already gone and nobody had checked.** The phase plan called the
+  HealthKit-capability question "unverified and worth checking on day one"; the profile on disk
+  expired in *a year*, which a free team never gets. Adding the entitlement and building for a
+  device regenerated it with HealthKit and background-delivery on it. **4a was never blocked.**
+- 🔴 **Quiet hours defer on iOS rather than reject** (**D56**), and the reasoning is the platform,
+  not taste: Android retries under WorkManager, iOS's background trigger runs *overnight while
+  charging*, which is precisely the window a rejection would fall in. The `RateLimiter` is then
+  asked at the **delivery** clock, so the caps count the day the user is actually interrupted.
+- 🔴 **A test aborted the runner rather than failing.** A `CoachSignal` with a blank verdict trips a
+  Kotlin `require`, and a Kotlin exception crossing back into Swift is a trap, not a catchable
+  error. The gate it was testing turned out to be unreachable for a real signal — which is now what
+  the file says instead of the test.
+- **Sleep was rewritten, not ported** (**D47**). Android's one-liner has no counterpart:
+  `sleepAnalysis` is a flat stream with no statistics query, so the night window, the stage filter
+  and the cross-source union are ours. Two sources over one night is the same bug as the steps one
+  that showed 17k on a 4k day, and the union is the same fix.
+- **Android's P0-3 was made structural rather than flagged**: the tap only *offers* a destination,
+  and `RootTabView` — which exists only once onboarding is known complete — is what takes it. Both
+  halves of Android's gate collapse into one condition that cannot be forgotten.
+
 ### 2026-08-11 (later) — Phase 3d built and merged; **Phase 3 complete on `main`**
-- **iOS 928 → 960 tests**, 0 warnings, Debug *and* Release green. **D40–D44**. Merged `--no-ff`;
-  the suite was re-run on `main` after the merge, not only on the branch.
+- **iOS 928 → 960 tests**, 0 warnings, Debug *and* Release green. **D40–D44**.
 - 🔴 **`usage_events` had a record and no writer** — the same shape as the plan-ledger gap. The
   reflex was to move the screen to Phase 5 since most event types are AI; **checking rather than
-  assuming** showed 7 of 14 are producible today, so the screen ships with real data.
-- 🔴 **Ordering the Developer screen fourth rather than last paid off immediately.** It closed a gap
-  STATUS had carried since 3b: the running ribbon and the Day-2-of-4 dot row were rendered on device
-  for the first time, and the P1-13 fix is visibly correct.
-- 🔴 **Building it also found a real bug**: `RebalanceModel.live` built a coordinator per screen, and
-  the ended-plan notice is in-memory on the instance — so a scenario's note would never have reached
-  the Dashboard. The coordinator moved to `AppContainer` (**D44**). The persisted state propagated
-  anyway via **D37**, which is what made it hard to see.
-- **Onboarding was redesigned, not transcribed** — a question flow with inline choices and a
-  counting-up reveal. The device pass caught the sex picker drawing "Male" as chosen while the draft
-  was still `nil`: a control claiming an answer nobody gave, with Continue disabled and no
-  explanation.
+  assuming** showed 7 of 14 are producible today, so it ships with real data.
+- 🔴 **Ordering the Developer screen fourth rather than last paid off immediately** — it closed a
+  gap STATUS had carried since 3b, and building it found a real bug: `RebalanceModel.live` built a
+  coordinator per screen, so a scenario's note would never have reached the Dashboard (**D44**).
+- **Onboarding was redesigned, not transcribed.** The device pass caught the sex picker drawing
+  "Male" as chosen while the draft was still `nil` — a control claiming an answer nobody gave.
 
-### 2026-08-11 — Phase 3c built (six screens, inline rather than by subagent)
-- **iOS 876 → 921 tests**, 0 warnings, Debug *and* Release green. **D33–D38**.
-- 🔴 **`JSONStore` was one instance per call site, not one per file** — found on the *first* live
-  check of Appearance: tapping an accent wrote to disk and nothing moved. Every model resolves its
-  store as `injected ?? (try? SomeStore())`, so two instances over one file meant two caches and two
-  observer lists. Plan → Dashboard and Plan → Food Log were queued up behind the same silence, and
-  the plan observation added earlier in the phase would never have fired. `JSONStore.shared(name:)`
-  fixes it at the source (**D37**).
-- 🔴 **The ledger fix went first, before any screen, and that ordering was the point.** `save()`
-  appends a version only when the six day-judging fields moved — a threshold edit appends nothing —
-  which is what keeps `plan_versions` a ledger rather than a changelog of settings taps.
-- **Two bugs were caught by tests written after the code, not before**: `PlanModel` declared carried
-  Health Connect fields and never seeded them, so every save switched the toggle off; and the photo
-  downscale worked in points, so a 512 target wrote a 1536px file on a 3× device. Both were invisible
-  on screen.
-- **The screenshots changed two planned decisions.** The photo picker was going to be deferred and
-  is now shipped (`PhotosPicker` sidesteps Android's persistable-URI bug instead of porting it);
-  **D34** was re-confirmed against a screenshot showing the font row, then **reversed the same day**
-  on the owner's call (**D39**): the picker is real, with three *system* font designs rather than two
-  bundled TTFs. That needed two mechanisms — `.fontDesign` for SwiftUI and `ChromeTypeface` for the
-  UIKit nav-bar title and tab-bar labels, which read nothing from the SwiftUI environment. A font
-  setting that misses the largest text on every screen reads as a bug.
-
-*Older entries archived — Phase 1a/1b/2/3b detail lives in their phase plans, and the conventions they
+*Older entries archived — Phase 1a/1b/2/3b/3c detail lives in their phase plans, and the conventions they
 produced are in [decisions.md](decisions.md) and
 [reference/shared-codec-api.md](reference/shared-codec-api.md). Three rules from Phase 2 outlive
 their entry and are repeated here because nothing else states them:*

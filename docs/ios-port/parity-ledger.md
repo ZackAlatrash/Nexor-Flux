@@ -18,13 +18,13 @@ per-screen notes.
 | Foundations | 8 | 8 | 0 | 0 | 0 | 0 |
 | File formats | 4 | 3 | 1 | 0 | 0 | 0 |
 | Design system | 7 | 5 | 1 | 1 | 0 | 0 |
-| Screens (v1) | 20 | 18 | 1 | 1 | 0 | 0 |
-| Overlays & sheets | 11 | 6 | 1 | 2 | 1 | 1 |
+| Screens (v1) | 21 | 20 | 1 | 0 | 0 | 0 |
+| Overlays & sheets | 12 | 7 | 1 | 2 | 1 | 1 |
 | Charts | 8 | 3 | 1 | 1 | 3 | 0 |
-| Platform integrations | 11 | 3 | 0 | 7 | 1 | 0 |
-| AI | 8 | 0 | 0 | 8 | 0 | 0 |
+| Platform integrations | 11 | 6 | 4 | 0 | 1 | 0 |
+| AI | 8 | 1 | 0 | 7 | 0 | 0 |
 | Deferred / dropped | 14 | — | — | — | 12 | 2 |
-| **Total** | **88** | **48** | **6** | **16** | **17** | **3** |
+| **Total** | **90** | **58** | **10** | **9** | **17** | **3** |
 
 (File formats were previously counted inside Foundations' 8; they are now their own row, hence 86.)
 
@@ -97,7 +97,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | 13 | More (hub) | `ui/more/MoreScreen.kt` (318) | 3c | ✅ **built blind**. Reached from the Dashboard avatar (**D17**/**D36**); unbuilt rows shown disabled with their phase (**D38**) |
 | 14 | Recipe Builder | `ui/recipes/RecipeBuilderScreen.kt` (381) | 3a | ✅ **minus the ✨ AI namer (Phase 5)** — both entry points (library, and a Food Log slot selection), two-mode ingredient editor, delete with confirmation |
 | 15 | Barcode Scanner | `ui/scanner/BarcodeScannerScreen.kt` (417) | 4b | ✅ **built blind, on VisionKit** — `DataScannerViewController` replaces the CameraX + ML Kit pipeline, so the amount arithmetic is `AmountDraft`'s and none of it is ported. Symbologies enumerated (**they must be**); a DEBUG barcode field stands in for the camera on the simulator |
-| 16 | Integrations (minus CSV import) | `ui/integrations/IntegrationsScreen.kt` (240) | 4a | ⬜ |
+| 16 | Integrations (health half only) | `ui/integrations/IntegrationsScreen.kt` (240) | 4a | ✅ **built blind** — no screenshot was produced. The health card, the three-state status line (**D45**), "Sync now" and the food-history import. The Samsung/NEVO rows are shown disabled as v1.1 (**D20**, **D38**) |
 | 17 | Data Backup | `ui/databackup/DataBackupScreen.kt` (350) | 4b | ✅ **built blind**, over the Phase 1b engine. Wired the `BackupPreferenceSink` that had no conformance and the wire↔store conversions that had no caller |
 | 18 | Appearance | `ui/appearance/AppearanceScreen.kt` (137) | 3c | ✅ built against screenshot 19, **including a working font row** — three system designs, not Android's two dead bundled families (**D39**). Accents are a wrapping grid, not Android's clipped scroll |
 | 19 | Coach chat | `ui/coach/CoachScreen.kt` (625) | 5 | ⬜ |
@@ -105,6 +105,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | 21 | Coach Memory | `ui/aicoach/CoachMemoryScreen.kt` (120) | 5 | ⬜ |
 | 22 | Usage Stats | `ui/usage/UsageStatsScreen.kt` (159) | 3d | ✅ **built blind**, over a new `UsageTracker` (**D40**). 7 of 14 event types wired; the insight-card section names Phase 5 rather than showing zeroes |
 | 23 | Developer | `ui/developer/DeveloperScreen.kt` (151) | 3d | ✅ **built blind**, all 12 scenarios (**D41**). 🔴 **It closed the two-phase-old gap** — the running ribbon and Day-2-of-4 dots were verified on device from it |
+| 24 | Notifications | — (Android has none) | 4c | ✅ **iOS-only screen** (**D57**). Android's three push preferences live on its AI & Coach screen, which is Phase 5 — shipping a push path with no reachable off switch was not an option. It is also where the one permission prompt is spent |
 
 ## Overlays & sheets
 
@@ -119,6 +120,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Ingredient Amount sheet | `RecipeBuilderScreen.kt:312` | 3a | ✅ both bodies (stepper when the ingredient carries a per-100g base, four typed fields when it does not). Grams-only: Android also offers a Servings toggle here, which the picker's amount sheet already provided |
 | Option sheet (Profile) | `ProfileScreen.kt:491` | 3c | ✅ one generic `OptionSheet` for all three pickers. `appSheet()`, so Android's leaking-Material-surface bug does not port |
 | Onboarding picker sheet | `OnboardingScreen.kt:400` | 3d | ❌ **not ported** — the goal and activity choices are inline rows instead. Hiding the app's most consequential decision behind a picker row makes it the least visible thing on its own screen |
+| Food-import review sheet | `IntegrationsComponents.kt:170` | 4a | ✅ **built blind**. Everything starts selected, as Android does — a year of history is dozens of rows and per-row opt-in means nobody imports anything. Its caption carries the duplicate and unnamed-day counts (**D48**) |
 | Toast overlay | `ui/toast/ToastOverlay.kt` (152) | 2 | ⬜ |
 | Exercise Detail sheet | `ui/train/ExerciseDetailSheet.kt` (237) | — | ⏭️ |
 
@@ -140,13 +142,13 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 
 | Item | Android reference | Status |
 |---|---|---|
-| HealthKit — steps (⚠️ Watch double-count) | `HealthConnectRepository.kt:146` | ⬜ |
-| HealthKit — weight | `:156-161` | ⬜ |
-| HealthKit — sleep (⚠️ night-grouping, own aggregation) | `:163-169` | ⬜ |
-| HealthKit — nutrition + 365-day import (⚠️ `HKCorrelation`) | `:92-112` | ⬜ |
-| Permission UX redesign (⚠️ no read-denial introspection) | `HealthSyncCoordinator.kt:80,97,129` | ⬜ |
-| Notifications + `RateLimiter`/`QuietHours` port | `RateLimiter.kt`, `AndroidCoachNotifier.kt` | ⬜ |
-| Background: `HKObserverQuery` + `BGTaskScheduler` | `HealthSyncWorker.kt`, `CoachDigestWorker.kt` | ⬜ |
+| HealthKit — steps (⚠️ Watch double-count) | `HealthConnectRepository.kt:146` | 🔨 **built** — `HKStatisticsQuery(.cumulativeSum)` for today, `HKStatisticsCollectionQuery` per day for history (**D46**). 🔴 **Unverified with a paired Watch**, which is the whole risk |
+| HealthKit — weight | `:156-161` | ✅ latest sample inside the day's own window, never carried forward — Android's reasoning ports verbatim (a stale weekly scale reading would flatten the trend) |
+| HealthKit — sleep (⚠️ night-grouping, own aggregation) | `:163-169` | ✅ **rewritten, not ported** (**D47**) — 18:00→18:00 window, asleep stages only, cross-source union. Android's one-liner has no counterpart; 9 tests carry the arithmetic |
+| HealthKit — nutrition + 365-day import (⚠️ `HKCorrelation`) | `:92-112` | 🔨 **built** over `HKCorrelation(.food)`, loose samples counted and reported (**D48**). ⚠️ `getEarliestAuthorizedSampleDate` deliberately not called — beta at capture, re-verify at GM |
+| Permission UX redesign (⚠️ no read-denial introspection) | `HealthSyncCoordinator.kt:80,97,129` | ✅ **D45** — a `health_state` store holding *did we ask* and *has anything come back*, and a status line that covers refusal and emptiness in one sentence, because from inside the app they are the same observation |
+| Notifications + `RateLimiter`/`QuietHours` port | `RateLimiter.kt`, `AndroidCoachNotifier.kt` | ✅ the five caps in precedence order, `UNUserNotificationCenter` behind the same seam, per-channel request ids replacing `4200 + ordinal`. ⚠️ **Quiet hours defer rather than reject** (**D56**) |
+| Background: `HKObserverQuery` + `BGTaskScheduler` | `HealthSyncWorker.kt`, `CoachDigestWorker.kt` | 🔨 **both built** (**D49**) — observer on `.stepCount` with `defer { handler() }` and a one-shot read; `BGProcessingTaskRequest` registered before launch returns. 🔴 **Neither is verified on a device**, and neither can be in a simulator |
 | Share / import `.rtroutine` via UTI | `RoutineShareLauncher.kt`, `RoutineShareInbox.kt` | ⏭️ **v1.1, with Train** (**D51**) — the UTI stays declared; the handler waits for a screen to open into |
 | Open Food Facts client (barcode + search) | `OpenFoodFactsApi.kt` + `BarcodeRepository.kt` | ✅ **D52** — no `countries_tags` pin, device-language product name, lenient numbers (a string `serving_quantity` reads as a network error on Android) |
 | Profile photo (⚠️ copy into container, no persistable URI) | `ProfileScreen.kt:105-113` | ✅ **shipped in 3c** — `PhotosPicker` + copy into the container. The downscale worked in points at first, so a 512 target wrote 1536px on a 3× device |
@@ -162,7 +164,7 @@ pickers), `CheckInFormFields` and `CheckInWriter` (shared by the check-in sheet 
 | Weekly briefing + `merge()` deterministic overlay | `WeeklyBriefingGenerator.kt` | ⬜ |
 | Phrasing / rebalance copy / recipe namer (fallback-verbatim) | 6 files (459) | ⬜ |
 | Knowledge base: corpus + retriever + injector | `ai/knowledge/*` (206) | ⬜ |
-| Proactive spine: assembler → selector → emitter | `data/coach/*` | ⬜ |
+| Proactive spine: assembler → selector → emitter | `data/coach/*` | ✅ **shipped in Phase 4** (**D50**) — the deterministic half needs no model. Builder, assembler, digest coordinator, push emitter, notifier, deep-link routing. ⚠️ The AI master gate defaults **open** (there is no settings screen until Phase 5); the user-facing off switch is the notification preferences |
 
 ## Store readiness (Phase 6)
 

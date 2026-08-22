@@ -599,3 +599,110 @@ on. The date moved **into** the stepper — `‹ Tue, Aug 11 ›` — which fixe
 better home for it regardless: it now sits in the control that changes it. ⚠️ **One `ToolbarItem`,
 not three**: on iOS 26 each item gets its own glass capsule, so a date between two of them reads as
 three unrelated controls rather than one day picker.
+
+**D45 · HealthKit availability is inferred from data, never from permission introspection.** Apple,
+verbatim: *"your app doesn't know whether someone granted or denied permission to read data from
+HealthKit."* `authorizationStatus(for:)` answers for **writes**; re-requesting an already-decided
+type is a silent no-op; there is no `getGrantedPermissions()`. Android's `hasPermissions()` gates
+three sync entry points and the whole Integrations screen, and it has **no port**.
+
+So the screen is built from two facts the app *can* know, held in an iOS-only `health_state` store:
+**did we ask**, and **has a read ever come back with something**. Three states result —
+`unsupported`, `off`, `waitingForData`, `connected` — and the middle one is the honest one: it
+covers "you refused" and "your Health app is empty" with one sentence, because from inside the app
+those are the same observation. ⚠️ **Not a field on `PlanPreferences`**: that document is the backup
+format both platforms parse, and this is a fact about one platform's permission model.
+
+⚠️ **Do not fake it with a probe sample.** The app is read-only against Health — it never requests
+`NSHealthUpdateUsageDescription` — and writing data to prove a read works would be a lie in the
+user's own Health app and a review risk besides.
+
+**D46 · Steps stay an aggregate.** Android's KDoc records the war story: several sources each write
+their own `StepsRecord` for one walk, and summing raw records showed **17k steps on a 4k day**.
+`HKStatisticsQuery(.cumulativeSum)` de-overlaps samples from the *same* source, which is most of the
+problem — 🔴 **it is not all of it**, because an iPhone and a paired Watch are different sources and
+no machine without both attached can assert how they reconcile. Unverified, and on the *Blocked*
+list as such. The apply path keeps `StepsReconciliation`, so whatever the number is, a manual entry
+is never clobbered by a lower one.
+
+**D47 · Sleep is grouped into nights in our own code, and it is a real regression.** Health Connect
+gives one `SleepSessionRecord`; Android's implementation is one line. `HKCategoryType(.sleepAnalysis)`
+gives a flat stream of stage samples with no session over them, and ⚠️ **there is no statistics query
+for category types** — they exist only for quantity types. `SleepNights` does three things, each of
+which is a bug if missing: an **18:00 → 18:00 window** (sleep crosses midnight, so a calendar day is
+the wrong container); **asleep stages only** (`.inBed` overlaps everything beneath it and would
+roughly double a tracked night); and a **union, not a sum** (a watch and a phone app both write the
+same night — the same shape as D46's bug, with the same fix). An unrecognised stage is excluded, so
+a future iOS under-reports rather than inventing sleep.
+
+**D48 · The 365-day import is honest about what it could not reach.** Only an `HKCorrelation(.food)`
+carries a name — a logged meal is one quantity sample per nutrient with the correlation over the top
+— and plenty of apps write loose samples. Those are **counted and reported** (`looseSampleDays`)
+rather than dropped, because "found 0 foods" reads as a bug and usually is not.
+
+⚠️ **`getEarliestAuthorizedSampleDate(for:)` is deliberately not called.** iOS 27's limited-history
+consent screen is real and the API is the right answer to it, but it was in developer beta at
+capture and the phase plan says to re-verify at GM. Reaching it through a runtime lookup would be a
+behaviour difference nobody could watch fail. Until it is pinned the import says what window it
+asked for and lets the count speak — the conservative half of Apple's own guidance.
+
+**D49 · Background is `HKObserverQuery` first, `BGTask` second.** The 4-hourly `HealthSyncWorker`
+becomes an observer plus `enableBackgroundDelivery(.hourly)` — the only mechanism that wakes a
+backgrounded or terminated app on new health data, and more reliable than `BGAppRefreshTask`. A
+periodic job becomes an event-driven one, which is strictly better. The 24-hour `CoachDigestWorker`
+becomes a `BGProcessingTaskRequest`, but 🔴 **the foreground `runIfDue` stays primary** because
+`BGProcessingTask` carries no delivery guarantee and WorkManager did.
+
+⚠️ `defer { handler() }` on every path out of the observer, or future deliveries stop — for good,
+not for that update. ⚠️ A **one-shot** read inside the observer: an anchored query's `results(for:)`
+is cancelled the moment the app backgrounds, which is exactly when it is needed. No anchor is
+persisted, and that is a decision rather than an omission — the sync is a statistics query over
+whole days, so re-running it is idempotent and an anchor would add persistence to track changes
+nothing uses.
+
+**D50 · The deterministic coach spine ships in Phase 4, not Phase 5.** It is the producer that makes
+notifications honest, it needs no API key, and two-thirds of it already existed. ⚠️ **The AI master
+gate defaults open**: Android's coordinator takes an `aiEnabledFlow` and iOS has no AI settings
+screen until Phase 5, so defaulting it closed would ship a spine that never runs — the
+"record with no writer" shape this port keeps tripping over. The user-facing off switch in v1 is the
+notification preferences, which is what actually reaches them. Nothing leaves the device either way.
+
+**D51 · `.rtroutine` share and import follow Train to v1.1.** The UTI stays declared; the handler
+does not ship until there is a screen behind it.
+
+**D52 · Open Food Facts drops the hardcoded Dutch filter.** Android pins
+`countries_tags=en:netherlands` in the search endpoint. That is an unexamined assumption about one
+user and it contradicts **D28**. iOS sends no country filter.
+
+**D56 · Quiet hours *defer* on iOS, where Android rejects.** Android drops a push raised inside the
+window; its `CoachDigestWorker` runs every 24 h under WorkManager, so "tomorrow" is a real retry.
+iOS has no such guarantee — the primary trigger is the user foregrounding the app, and the secondary
+is a `BGProcessingTaskRequest`, which the system likes to run **overnight while charging**. Rejecting
+inside the window would silence the background path almost every time it ran, and a P0 detected at
+23:00 could go unheard indefinitely.
+
+So the emitter computes the next allowed instant and schedules a `UNCalendarNotificationTrigger`
+there. 🔴 **The clock the `RateLimiter` sees moves with it**: the caps are evaluated at the delivery
+moment, so the consecutive-day and rolling-week rules count the day the user is actually
+interrupted. `PushRejectionReason.QUIET_HOURS` therefore can no longer be observed — it has been
+*answered* before the limiter is asked, not skipped. ⚠️ A calendar trigger, never a time-interval
+one: the deferral is to a wall-clock moment, and an interval would drift across a DST change and
+fire inside the window. ⚠️ A degenerate window (start == end, which `QuietHours` reads as quiet all
+day) has no next instant and falls back to silence.
+
+**D57 · The notification preferences get their own row under More, not Integrations.** Android puts
+them on its AI & Coach screen, which is Phase 5 here; the phase plan proposed Integrations, which is
+4a. Shipping the spine and the push path with no reachable off switch was not an option. It is also
+the iOS-native answer — Settings gives every app a Notifications page, and that is the word someone
+looks for. ⚠️ When Integrations landed it did **not** get a copy of these switches; there is one
+home. The permission is requested there and **only** there, when a switch is turned on: iOS grants
+one prompt per install, and spending it at launch on notifications the app cannot produce for
+fourteen days is how it becomes a permanent no.
+
+**D58 · One `AppContainer` per process, memoised.** `AppDatabase.onDisk` opens a `DatabaseQueue` —
+a single SQLite connection — so two containers are two connections over one file, and the second
+writer gets `SQLITE_BUSY` rather than an error anyone would recognise. Nothing needed a second one
+until the background task did: `BGTaskScheduler` relaunches the app **without a scene**, so the
+`WindowGroup`'s `.task` never runs and the handler would otherwise open its own. This is
+`JSONStore.shared(name:)` (**D37**) one layer down, for the same reason and with the same failure
+mode: two handles over one file, each believing it is the only one.

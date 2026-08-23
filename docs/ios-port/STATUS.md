@@ -151,10 +151,17 @@ the port could not be rebuilt from the remotes alone: CI failed with *"cannot fi
 the fix — **the iOS repo is only as backed-up as the Android repo's default branch**, because
 `Shared.xcframework` is a build product of it.
 
-⚠️ **CI cannot test `KeychainStore`.** It builds with `CODE_SIGNING_ALLOWED=NO`, and the Keychain
-refuses an unsigned process with `errSecMissingEntitlement`. Signing CI would mean a distribution
-certificate in repository secrets, which is the worse trade — so those 12 tests **skip themselves
-there** and only the local run proves them. Run the suite locally before a release.
+🎉 **CI is green** — `macos-latest`, ~13 min: it checks out both repos, builds the XCFramework from
+Kotlin, runs all 1162 tests and a Release build. Two things it cannot do, both recorded rather than
+worked around:
+- ⚠️ **It cannot test `KeychainStore`.** It builds with `CODE_SIGNING_ALLOWED=NO`, and the Keychain
+  refuses an unsigned process with `errSecMissingEntitlement`. Signing CI would mean a distribution
+  certificate in repository secrets, which is the worse trade — so those 12 tests **skip themselves
+  there** and only the local run proves them. Run the suite locally before a release.
+- ⚠️ **It is slow enough to change what "flaky" means.** `waitUntil`'s 5 s timeout was sized for
+  this Mac and failed on a shared runner — the very test its own doc comment names as the reason it
+  exists. It is 30 s now; that is a hang-detector, not a performance budget, and it costs a passing
+  run nothing.
 
 ~~**6. Rule on `RebalanceCopy` vs the locale sweep**~~ — 🎉 **settled: it localises** (**D59**).
 The Swift assertions are re-baselined and the two platforms' rebalance copy now differs by
@@ -273,6 +280,10 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
 - ⚠️ **CI cannot test the Keychain** — unsigned builds get `errSecMissingEntitlement`, and the fix
   is not to put a certificate in repository secrets. Those 12 tests skip themselves there, as the
   backup-fixture tests already do, and only the local run proves them.
+- 🔴 **A shared runner changes what "flaky" means.** `waitUntil`'s 5 s timeout was sized for this
+  Mac, and CI failed the exact test its own doc comment names as the reason it exists. **CI is
+  green** now (~13 min, both repos, 1162 tests, Release build) — and four red runs is what it cost
+  to learn that turning it on was worth doing.
 
 ### 2026-08-22 (later) — **the defect sweep**: what Phase 4 and earlier phases missed
 - **iOS 1123 → 1162 tests**, 0 warnings, Debug *and* Release green. **D59–D62**.

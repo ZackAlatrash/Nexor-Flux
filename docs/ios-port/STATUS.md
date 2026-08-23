@@ -8,7 +8,9 @@ grows without bound — archive older entries into the docs that carry their det
 [Plan](phases/phase-4-platform-integrations.md) · 4a, 4b and 4c are all built. Everything that
 remains in the phase needs **a device or your Apple account**, not more code — see
 *Blocked / needs you*. · **Branches:** Android `develop` · iOS
-`phase-4c-coach-spine-and-notifications` (unmerged, off `main`, carries 4b's merge). **1162 tests.**
+**`main`** — Phase 4 is merged, and the repo now has a remote:
+[ZackAlatrash/RecompTracker-IOS](https://github.com/ZackAlatrash/RecompTracker-IOS) (private).
+**1162 tests.**
 iOS work happens in `~/Desktop/RecompTracker-IOS/`.
 
 ---
@@ -84,6 +86,7 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **4a** | **HealthKit, Integrations, the 365-day import, background delivery** (**D45–D49**) | ✅ **built — 1123 tests**. 🔴 **The capability check passed** — the enrolment had already cleared |
 | **4 · task 18** | Icon, build number, CI, archive script → **TestFlight** | 🔨 **prepared; the upload is yours** |
 | **4 · sweep** | **Defect sweep** — dead code, the locale exemption, the coaching card (**D59–D62**) | ✅ **1162 tests** |
+| — | **Phase 4 merged to `main`** — twenty-two screens, suite re-run *on `main`* | ✅ **1162 tests on `main`** |
 | 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ **next** |
 | 6 | Store readiness → submit | ⬜ |
 
@@ -134,10 +137,24 @@ It must contain: meals across **several slots** (P0-2 was exactly this), a `slot
 coach-logged meal, a routine with sessions and sets, and a recipe — `theFixtureIsAdversarialEnough…`
 fails loudly if it does not, rather than passing over a weak export.
 
-**5. 🔴 Give the iOS repo a git remote** — still local-only, now ~92 commits on top of `main`
-including every phase to date. This is the whole port, on one machine, with no copy anywhere.
-Cheapest outstanding item and the highest consequence if the disk goes. The CI workflow written in
-this phase does nothing until it exists.
+~~**5. Give the iOS repo a git remote**~~ — 🎉 **done**:
+[ZackAlatrash/RecompTracker-IOS](https://github.com/ZackAlatrash/RecompTracker-IOS), **private**,
+with `main` and all eight phase branches pushed. ⚠️ The Android sibling (`Nexor-Flux`) is *public*
+and this one is not — deliberately, because "a copy off this machine" does not require publishing.
+`gh repo edit ZackAlatrash/RecompTracker-IOS --visibility public` if you want them to match.
+
+🔴 **The backup was incomplete in a way nobody had noticed, and turning CI on is what found it.**
+`Nexor-Flux` had **46 unpushed commits** — 43 of them this documentation, and **two `refactor(ios)`
+commits that moved five codecs into `:shared`**. Those two are what the iOS app compiles against, so
+the port could not be rebuilt from the remotes alone: CI failed with *"cannot find type
+`CoachExperiment`"* against a `:shared` that predated the move. **Pushed.** ⚠️ The lesson outlives
+the fix — **the iOS repo is only as backed-up as the Android repo's default branch**, because
+`Shared.xcframework` is a build product of it.
+
+⚠️ **CI cannot test `KeychainStore`.** It builds with `CODE_SIGNING_ALLOWED=NO`, and the Keychain
+refuses an unsigned process with `errSecMissingEntitlement`. Signing CI would mean a distribution
+certificate in repository secrets, which is the worse trade — so those 12 tests **skip themselves
+there** and only the local run proves them. Run the suite locally before a release.
 
 ~~**6. Rule on `RebalanceCopy` vs the locale sweep**~~ — 🎉 **settled: it localises** (**D59**).
 The Swift assertions are re-baselined and the two platforms' rebalance copy now differs by
@@ -241,6 +258,22 @@ spellings and every `String(format: "%.1f", …)` is gone. **One exemption is st
 
 Append 3–6 lines per session. Newest first. Archive below 20 entries.
 
+### 2026-08-23 — remote, merge, and what turning CI on found
+- 🎉 **The iOS repo has a remote at last**, closing the oldest cheap-but-serious blocker:
+  [ZackAlatrash/RecompTracker-IOS](https://github.com/ZackAlatrash/RecompTracker-IOS), **private**,
+  `main` plus all eight phase branches. ⚠️ Private where the Android sibling is public — deliberately,
+  because "a copy off this machine" does not require publishing.
+- 🎉 **Phase 4 is merged to `main`** (`--no-ff`, 13 commits), and the suite was re-run **on `main`**
+  rather than only on the branch: 1162 tests, 0 warnings, Release green.
+- 🔴 **The backup was incomplete and nothing had said so.** `Nexor-Flux` was 46 commits behind, and
+  two of them were the `refactor(ios)` commits that moved five codecs into `:shared` — the iOS app
+  compiles against those, so the port could not have been rebuilt from the remotes. Only turning CI
+  on surfaced it, as *"cannot find type `CoachExperiment`"*. Pushed. **The iOS repo is only as
+  backed-up as the Android repo's default branch.**
+- ⚠️ **CI cannot test the Keychain** — unsigned builds get `errSecMissingEntitlement`, and the fix
+  is not to put a certificate in repository secrets. Those 12 tests skip themselves there, as the
+  backup-fixture tests already do, and only the local run proves them.
+
 ### 2026-08-22 (later) — **the defect sweep**: what Phase 4 and earlier phases missed
 - **iOS 1123 → 1162 tests**, 0 warnings, Debug *and* Release green. **D59–D62**.
 - 🔴 **Phase 4 shipped four writers with no reader** — the anti-pattern this port keeps catching in
@@ -264,28 +297,6 @@ Append 3–6 lines per session. Newest first. Archive below 20 entries.
 - ⚠️ **A test aborted the runner rather than failing** for the second time this phase, and the same
   way: constructing a `CoachSignal` that trips a Kotlin `require`. It is worth remembering that no
   Kotlin precondition is catchable from Swift.
-
-### 2026-08-22 — **Phase 4 code-complete**: 4c then 4a, in one sitting
-- **iOS 1043 → 1123 tests**, 0 warnings, Debug *and* Release green. **D45–D50**, **D56–D58**.
-- 🎉 **The enrolment blocker was already gone and nobody had checked.** The phase plan called the
-  HealthKit-capability question "unverified and worth checking on day one"; the profile on disk
-  expired in *a year*, which a free team never gets. Adding the entitlement and building for a
-  device regenerated it with HealthKit and background-delivery on it. **4a was never blocked.**
-- 🔴 **Quiet hours defer on iOS rather than reject** (**D56**), and the reasoning is the platform,
-  not taste: Android retries under WorkManager, iOS's background trigger runs *overnight while
-  charging*, which is precisely the window a rejection would fall in. The `RateLimiter` is then
-  asked at the **delivery** clock, so the caps count the day the user is actually interrupted.
-- 🔴 **A test aborted the runner rather than failing.** A `CoachSignal` with a blank verdict trips a
-  Kotlin `require`, and a Kotlin exception crossing back into Swift is a trap, not a catchable
-  error. The gate it was testing turned out to be unreachable for a real signal — which is now what
-  the file says instead of the test.
-- **Sleep was rewritten, not ported** (**D47**). Android's one-liner has no counterpart:
-  `sleepAnalysis` is a flat stream with no statistics query, so the night window, the stage filter
-  and the cross-source union are ours. Two sources over one night is the same bug as the steps one
-  that showed 17k on a 4k day, and the union is the same fix.
-- **Android's P0-3 was made structural rather than flagged**: the tap only *offers* a destination,
-  and `RootTabView` — which exists only once onboarding is known complete — is what takes it. Both
-  halves of Android's gate collapse into one condition that cannot be forgotten.
 
 *Older entries archived — Phase 1a/1b/2/3b/3c/3d detail lives in their phase plans, and the conventions they
 produced are in [decisions.md](decisions.md) and

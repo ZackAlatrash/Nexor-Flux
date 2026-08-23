@@ -79,10 +79,12 @@ coach**; Train and CSV import are **v1.1**. Reasoning:
 | **[3c](phases/phase-3c-plan-profile-and-more.md)** | **Plan, Profile, Body history/edit, Appearance, More** — opened with the plan-ledger fix | ✅ **merged — 928 tests** |
 | **[3d](phases/phase-3d-onboarding-progress-and-tools.md)** | **Onboarding, Progress/Trends, Usage Stats, Developer** — closes Phase 3 | ✅ **merged — 960 tests** |
 | — | **Phase 3 complete on `main`** — sixteen screens, the whole core loop | ✅ **960 tests on `main`** |
-| **[4b](phases/phase-4-platform-integrations.md)** | **Barcode scanner, Open Food Facts, Data & Backup** + the per-accent backdrop (**D52–D53**) | ✅ **built — 1008 tests** (unmerged) |
-| **4a** | HealthKit, Integrations screen, 365-day import, background delivery | ⬜ **blocked on the HealthKit-capability check** |
-| **4c** | The coach spine, notifications, `BGTaskScheduler` → **TestFlight** | ⬜ |
-| 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ |
+| **[4b](phases/phase-4-platform-integrations.md)** | **Barcode scanner, Open Food Facts, Data & Backup** + the per-accent backdrop (**D52–D53**) | ✅ **built — 1008 tests** (merged into the 4c branch) |
+| **4c** | **The coach spine, the push path, notification settings, `BGTaskScheduler`** (**D50**, **D56–D58**) | ✅ **built — 1087 tests** |
+| **4a** | **HealthKit, Integrations, the 365-day import, background delivery** (**D45–D49**) | ✅ **built — 1123 tests**. 🔴 **The capability check passed** — the enrolment had already cleared |
+| **4 · task 18** | Icon, build number, CI, archive script → **TestFlight** | 🔨 **prepared; the upload is yours** |
+| **4 · sweep** | **Defect sweep** — dead code, the locale exemption, the coaching card (**D59–D62**) | ✅ **1162 tests** |
+| 5 | AI coach, insight cards, briefing, SSE, tool executor | ⬜ **next** |
 | 6 | Store readiness → submit | ⬜ |
 
 Detail: [parity-ledger.md](parity-ledger.md) for surface-level progress.
